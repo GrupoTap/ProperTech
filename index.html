@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>ProperCare Field · PGP Preventivas v9</title>
+<title>ProperCare Field · PGP Preventivas v14</title>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
@@ -443,6 +443,184 @@
   .login-btn{width:100%;background:var(--blue);color:white;border:none;border-radius:10px;padding:14px;font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;text-transform:uppercase;cursor:pointer;letter-spacing:.5px;transition:opacity .15s}
   .login-btn:active{opacity:.85}
   .login-error{font-size:12px;color:var(--red);font-weight:600;min-height:18px;margin-top:8px}
+
+/* ── SPRINT 4E-D: PIPELINE MOBILE ──────────────────────────────────────── */
+.pf-fase-titulo {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: #64748b;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #1e293b;
+}
+.pf-card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-left: 3px solid #475569;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  transition: border-color .15s;
+}
+.pf-card.status-completo       { border-left-color: #22c55e; }
+.pf-card.status-em_andamento   { border-left-color: #3b82f6; }
+.pf-card.status-incompleto     { border-left-color: #f59e0b; }
+.pf-card.status-com_pendencia  { border-left-color: #ef4444; }
+.pf-card.status-bloqueado      { border-left-color: #374151; opacity: .45; pointer-events: none; }
+.pf-card.status-pendente       { border-left-color: #475569; }
+.pf-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.pf-card-nome {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e2e8f0;
+  flex: 1;
+  line-height: 1.3;
+}
+.pf-card-desc {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+.pf-card-meta {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 4px;
+}
+.pf-status-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.pf-btn {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  min-height: 40px;
+  line-height: 1.2;
+  transition: opacity .15s;
+}
+.pf-btn:active { opacity: .75; }
+.pf-btn-concluir {
+  background: #1e40af;
+  color: white;
+}
+.pf-btn-abrir-form {
+  background: #065f46;
+  color: white;
+}
+.pf-btn-breve {
+  background: #1e293b;
+  color: #475569;
+  border: 1px solid #334155;
+  cursor: not-allowed;
+}
+.pf-confirm-area {
+  display: none;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #334155;
+}
+.pf-confirm-area.visible { display: block; }
+.pf-obs-input {
+  width: 100%;
+  background: #0f172a;
+  border: 1.5px solid #334155;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-family: 'Barlow', sans-serif;
+  font-size: 13px;
+  color: #e2e8f0;
+  resize: none;
+  min-height: 60px;
+  margin-bottom: 8px;
+  outline: none;
+}
+.pf-obs-input:focus { border-color: #3b82f6; }
+.pf-confirm-row {
+  display: flex;
+  gap: 8px;
+}
+.pf-btn-confirmar {
+  flex: 1;
+  background: #16a34a;
+  color: white;
+}
+.pf-btn-cancelar {
+  background: #334155;
+  color: #94a3b8;
+  padding: 8px 12px;
+}
+.pf-os-card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.pf-os-card:active { background: #263347; }
+.pf-os-numero {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  color: #e2e8f0;
+}
+.pf-os-cliente {
+  font-size: 13px;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+.pf-os-status {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-family: 'Barlow Condensed', sans-serif;
+  white-space: nowrap;
+}
+.pf-os-status.aberta       { background: #1e3a5f; color: #60a5fa; }
+.pf-os-status.em_andamento { background: #1e3a5f; color: #60a5fa; }
+.pf-os-status.concluida    { background: #14532d; color: #4ade80; }
+.pf-notif-item {
+  padding: 10px 14px;
+  border-bottom: 1px solid #334155;
+  cursor: pointer;
+}
+.pf-notif-item:hover { background: #263347; }
+.pf-notif-item:last-child { border-bottom: none; }
+.pf-notif-msg {
+  font-size: 12px;
+  color: #e2e8f0;
+  line-height: 1.4;
+  margin-bottom: 4px;
+}
+.pf-notif-link {
+  font-size: 11px;
+  color: #60a5fa;
+  font-weight: 600;
+  font-family: 'Barlow Condensed', sans-serif;
+}
 </style>
 </head>
 <body>
@@ -465,7 +643,7 @@
   <div class="top-row">
     <div>
       <h1>📋 ProperCare Field</h1>
-      <div class="subtitle">PGP Preventiva · v9</div>
+      <div class="subtitle">PGP Preventiva · v9 + Pipeline</div>
     </div>
     <div class="header-right">
       <div class="progress-pill" id="progressPill">0 / 0</div>
@@ -480,6 +658,11 @@
         <button class="btn-sessions-header" onclick="salvarColeta()" title="Salvar coleta">💾</button>
         <button class="btn-sessions-header" onclick="novaColeta()" title="Iniciar nova coleta">➕</button>
         <button class="btn-sessions-header" onclick="abrirSessoes()" title="Coletas salvas">📂</button>
+        <!-- Sprint 4E-D: botão pipeline -->
+        <button class="btn-sessions-header" id="btnPipeline" onclick="pfAbrir()" title="Pipeline de OS" style="position:relative">
+          🔧
+          <span id="pfNotifBadge" style="display:none;position:absolute;top:-4px;right:-4px;background:#ef4444;color:white;font-size:9px;font-weight:700;padding:1px 4px;border-radius:10px;min-width:14px;text-align:center;line-height:1.4"></span>
+        </button>
       </div>
     </div>
   </div>
@@ -735,6 +918,13 @@
     var session = JSON.parse(raw);
     window.PROPER_SESSION = session;
     window._GC = session.google_credential || '';
+    // Sprint 4E-D: iniciar polling de notificações após login confirmado
+    setTimeout(function() {
+      if (!_pfNotifInterval) {
+        _pfNotifInterval = setInterval(pollPfNotificacoes, 60000);
+        pollPfNotificacoes();
+      }
+    }, 3000);
   } catch(e) {
     window.location.href = 'https://grupotap.github.io/ProperHub/';
   }
@@ -5376,6 +5566,448 @@ function pgpUpdateAdminLocal(payload){
 
 // ── AUTH ── autenticação migrada para Hub (checkHubSession no topo do script)
 
+// ════════════════════════════════════════════════════════════════════════════
+// SPRINT 4E-D: PIPELINE DE OS PARA TÉCNICOS
+// ════════════════════════════════════════════════════════════════════════════
+
+// ── pfGet: helper GET para o pipeline (análogo ao gsGet do PCM) ─────────────
+async function pfGet(action, params) {
+  params = params || {};
+  const qs = new URLSearchParams(Object.assign({ action, key: _AUTH_HASH }, params));
+  const r = await fetch(_pgpGsUrl + '?' + qs.toString() + gcParam(), { method: 'GET' });
+  const txt = await r.text();
+  if (txt.trim().startsWith('<')) throw new Error('GAS retornou HTML — verifique publicação');
+  const d = JSON.parse(txt);
+  if (!d || d.status !== 'ok') throw new Error(d?.error || 'Erro GAS');
+  return d;
+}
+
+// ── PIPELINE STATE ────────────────────────────────────────────────────────────
+var _pfOsList = [];
+var _pfOsId = null;
+var _pfOsNome = '';
+var _pfTarefas = [];
+var _pfNotifList = [];
+var _pfNotifInterval = null;
+var _pfGsConnected = false;
+var _pfBannerTimeout = null;
+
+// ── Abertura / fechamento do overlay ─────────────────────────────────────────
+function pfAbrir() {
+  var ov = document.getElementById('pfOverlay');
+  ov.style.display = 'flex';
+  document.getElementById('pfScreenOS').style.display = 'block';
+  document.getElementById('pfScreenPipeline').style.display = 'none';
+  pfLoadOS();
+  if (!_pfNotifInterval) {
+    _pfNotifInterval = setInterval(pollPfNotificacoes, 60000);
+    pollPfNotificacoes();
+  }
+}
+
+function pfFechar() {
+  document.getElementById('pfOverlay').style.display = 'none';
+}
+
+function pfVoltarOS() {
+  _pfOsId = null;
+  _pfOsNome = '';
+  _pfTarefas = [];
+  document.getElementById('pfScreenPipeline').style.display = 'none';
+  document.getElementById('pfScreenOS').style.display = 'block';
+  document.getElementById('pfOsLabel').textContent = '—';
+}
+
+// ── Logout por expiração JWT ──────────────────────────────────────────────────
+function pfHubLogout() {
+  sessionStorage.removeItem('proper_session');
+  window.location.href = 'https://grupotap.github.io/ProperHub/';
+}
+
+// ── Carregar lista de OS ──────────────────────────────────────────────────────
+async function pfLoadOS() {
+  var statusEl = document.getElementById('pfOsStatus');
+  var listaEl  = document.getElementById('pfOsLista');
+  statusEl.textContent = 'Carregando ordens de serviço…';
+  statusEl.style.display = 'block';
+  listaEl.innerHTML = '';
+
+  try {
+    var r = await pfGet('getOS', {});
+    _pfOsList = (r.os || []).filter(function(o) {
+      var st = String(o.Status || '').toLowerCase();
+      return st !== 'cancelada' && st !== 'concluida';
+    });
+    _pfGsConnected = true;
+
+    if (_pfOsList.length === 0) {
+      statusEl.textContent = 'Nenhuma OS aberta no momento.';
+      return;
+    }
+    statusEl.style.display = 'none';
+    listaEl.innerHTML = _pfOsList.map(function(o) {
+      var num   = o.OS_ID || o.Numero || o.ID || '—';
+      var cli   = o.Cliente || o.cliente || '';
+      var tipo  = o.Tipo_OS ? (' · ' + o.Tipo_OS) : '';
+      var st    = String(o.Status || 'aberta').toLowerCase();
+      var stLbl = st === 'em_andamento' ? 'Em andamento' : (st.charAt(0).toUpperCase() + st.slice(1));
+      var stCls = st.replace(/_/g, '_');
+      return '<div class="pf-os-card" onclick="pfSelecionarOS(\'' + num.replace(/'/g, "\\'") + '\',\'' + (cli + tipo).replace(/'/g, "\\'") + '\')">' +
+        '<div>' +
+          '<div class="pf-os-numero">OS #' + num + '</div>' +
+          '<div class="pf-os-cliente">' + (cli ? cli : '—') + tipo + '</div>' +
+        '</div>' +
+        '<span class="pf-os-status ' + stCls + '">' + stLbl + '</span>' +
+      '</div>';
+    }).join('');
+  } catch(e) {
+    if (e.message && e.message.includes('AUTH_GOOGLE')) { pfHubLogout(); return; }
+    statusEl.textContent = '⚠ Erro ao carregar OS: ' + e.message;
+  }
+}
+
+// ── Selecionar OS e carregar pipeline ─────────────────────────────────────────
+async function pfSelecionarOS(osId, osNome) {
+  _pfOsId   = osId;
+  _pfOsNome = osNome;
+  document.getElementById('pfOsLabel').textContent = 'OS #' + osId + (osNome ? ' · ' + osNome : '');
+  document.getElementById('pfScreenOS').style.display = 'none';
+  document.getElementById('pfScreenPipeline').style.display = 'block';
+  pfLoadPipeline();
+}
+
+async function pfLoadPipeline() {
+  var conteudo  = document.getElementById('pfPipelineConteudo');
+  var progLabel = document.getElementById('pfProgressLabel');
+  var progBar   = document.getElementById('pfProgressBar');
+  conteudo.innerHTML = '<div style="text-align:center;padding:24px;color:#64748b;font-size:13px">Carregando pipeline…</div>';
+  progLabel.textContent = '';
+  progBar.style.width = '0%';
+
+  try {
+    var r = await pgpPostJson('getPipelineByOS', { os_id: _pfOsId });
+    _pfTarefas = r.tarefas || [];
+
+    if (_pfTarefas.length === 0) {
+      conteudo.innerHTML = '<div style="text-align:center;padding:32px 16px;color:#64748b">' +
+        '<div style="font-size:32px;margin-bottom:12px">🔧</div>' +
+        '<div style="font-size:14px;font-weight:600;color:#94a3b8;margin-bottom:6px">Nenhuma tarefa no pipeline</div>' +
+        '<div style="font-size:12px">Esta OS ainda não tem um pipeline instanciado.<br>O admin pode configurá-lo no ProperAdmin.</div>' +
+      '</div>';
+      return;
+    }
+
+    // Progresso
+    var total = _pfTarefas.length;
+    var conc  = _pfTarefas.filter(function(t) { return t.Status === 'completo'; }).length;
+    var pct   = total > 0 ? Math.round(conc / total * 100) : 0;
+    progLabel.textContent = conc + ' de ' + total + ' tarefas concluídas';
+    progBar.style.width   = pct + '%';
+
+    // Agrupar por fase
+    var faseMap   = {};
+    var faseOrder = [];
+    _pfTarefas.forEach(function(t) {
+      var fase = t.Fase || 'Geral';
+      if (!faseMap[fase]) {
+        faseMap[fase] = { ordem: parseInt(t.Fase_Ordem) || 0, tarefas: [] };
+        faseOrder.push(fase);
+      }
+      faseMap[fase].tarefas.push(t);
+    });
+    faseOrder.sort(function(a, b) { return faseMap[a].ordem - faseMap[b].ordem; });
+
+    var html = '';
+    faseOrder.forEach(function(fase) {
+      html += '<div style="margin-bottom:20px">' +
+        '<div class="pf-fase-titulo">' + fase + '</div>';
+      var tarefas = faseMap[fase].tarefas.slice().sort(function(a, b) {
+        return (parseInt(a.Ordem) || 0) - (parseInt(b.Ordem) || 0);
+      });
+      tarefas.forEach(function(t) { html += pfBuildCard(t); });
+      html += '</div>';
+    });
+
+    conteudo.innerHTML = html;
+
+  } catch(e) {
+    if (e.message && e.message.includes('AUTH_GOOGLE')) { pfHubLogout(); return; }
+    conteudo.innerHTML = '<div style="text-align:center;padding:24px;color:#ef4444;font-size:13px">' +
+      '⚠ Erro ao carregar pipeline: ' + e.message +
+      '<br><br><button onclick="pfLoadPipeline()" style="background:#1e293b;border:1px solid #334155;color:#94a3b8;padding:8px 16px;border-radius:8px;cursor:pointer;font-family:\'Barlow Condensed\',sans-serif;font-size:13px;font-weight:700">Tentar novamente</button>' +
+    '</div>';
+  }
+}
+
+// ── Construção dos cards de tarefa ────────────────────────────────────────────
+function pfStatusIcon(status) {
+  switch(status) {
+    case 'completo':      return '✅';
+    case 'em_andamento':  return '🔵';
+    case 'incompleto':    return '🟡';
+    case 'com_pendencia': return '🔴';
+    case 'bloqueado':     return '🔒';
+    default:              return '⬜'; // pendente
+  }
+}
+
+function pfGetFormUrl(tipo) {
+  switch(tipo) {
+    case 'auto:form08':     return 'https://grupotap.github.io/ProperForms/form08.html';
+    case 'auto:rotores':    return 'https://grupotap.github.io/ProperRotores/index.html';
+    case 'auto:inspecao':   return 'https://grupotap.github.io/ProperTech/index.html';
+    case 'auto:preventiva': return 'https://grupotap.github.io/ProperTech/index.html?modo=preventiva';
+    case 'auto:form09':     return null;
+    case 'auto:form10':     return null;
+    default:                return null;
+  }
+}
+
+function pfBuildCard(t) {
+  var st      = t.Status || 'pendente';
+  var tid     = t.Tarefa_ID || '';
+  var tipo    = t.Tipo || 'manual';
+  var nome    = t.Nome || '—';
+  var desc    = t.Descricao || '';
+  var conclBy = t.Concluido_por || '';
+  var conclAt = t.Data_conclusao ? new Date(t.Data_conclusao).toLocaleDateString('pt-BR') : '';
+  var icon    = pfStatusIcon(st);
+  var tidSafe = tid.replace(/'/g, "\\'");
+
+  var metaHtml = '';
+  if (st === 'completo' && (conclBy || conclAt)) {
+    metaHtml = '<div class="pf-card-meta">✓ ' + (conclBy ? conclBy : '') + (conclAt ? ' · ' + conclAt : '') + '</div>';
+  }
+
+  var acaoHtml = '';
+  if (st !== 'bloqueado' && st !== 'completo') {
+    if (tipo === 'manual') {
+      acaoHtml = '<div style="margin-top:10px">' +
+        '<button class="pf-btn pf-btn-concluir" onclick="pfExpandirConfirmar(\'' + tidSafe + '\',this)">Concluir tarefa</button>' +
+        '<div class="pf-confirm-area" id="pfConfirm-' + tid + '">' +
+          '<textarea class="pf-obs-input" id="pfObs-' + tid + '" placeholder="Observação (opcional)…" rows="2"></textarea>' +
+          '<div class="pf-confirm-row">' +
+            '<button class="pf-btn pf-btn-confirmar" id="pfBtnConfirmar-' + tid + '" onclick="pfConfirmarTarefa(\'' + tidSafe + '\')">✓ Confirmar</button>' +
+            '<button class="pf-btn pf-btn-cancelar" onclick="pfCancelarConfirmar(\'' + tidSafe + '\')">Cancelar</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    } else {
+      var formUrl = pfGetFormUrl(tipo);
+      if (formUrl) {
+        acaoHtml = '<div style="margin-top:10px">' +
+          '<button class="pf-btn pf-btn-abrir-form" onclick="pfAbrirForm(\'' + tidSafe + '\',\'' + formUrl.replace(/'/g, "\\'") + '\')">📋 Abrir formulário</button>' +
+        '</div>';
+      } else {
+        acaoHtml = '<div style="margin-top:10px">' +
+          '<button class="pf-btn pf-btn-breve" disabled title="Módulo ainda não disponível">Em breve…</button>' +
+        '</div>';
+      }
+    }
+  }
+
+  return '<div class="pf-card status-' + st + '" id="pfCard-' + tid + '">' +
+    '<div class="pf-card-header">' +
+      '<span class="pf-status-icon">' + icon + '</span>' +
+      '<span class="pf-card-nome">' + nome + '</span>' +
+    '</div>' +
+    (desc ? '<div class="pf-card-desc">' + desc + '</div>' : '') +
+    metaHtml +
+    acaoHtml +
+  '</div>';
+}
+
+// ── Confirmar tarefa manual ───────────────────────────────────────────────────
+function pfExpandirConfirmar(tarefaId, btn) {
+  var area = document.getElementById('pfConfirm-' + tarefaId);
+  if (!area) return;
+  if (area.classList.contains('visible')) {
+    area.classList.remove('visible');
+  } else {
+    area.classList.add('visible');
+    var ta = document.getElementById('pfObs-' + tarefaId);
+    if (ta) ta.focus();
+  }
+}
+
+function pfCancelarConfirmar(tarefaId) {
+  var area = document.getElementById('pfConfirm-' + tarefaId);
+  if (area) area.classList.remove('visible');
+}
+
+async function pfConfirmarTarefa(tarefaId) {
+  var obs   = '';
+  var obsEl = document.getElementById('pfObs-' + tarefaId);
+  if (obsEl) obs = obsEl.value.trim();
+
+  var btnEl = document.getElementById('pfBtnConfirmar-' + tarefaId);
+  if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Enviando…'; }
+
+  var usuario = (window.PROPER_SESSION && window.PROPER_SESSION.tecnico)
+    ? (window.PROPER_SESSION.tecnico.id || window.PROPER_SESSION.tecnico.nome || '')
+    : '';
+
+  try {
+    await pgpPostJson('updateTarefaStatus', {
+      os_id:      _pfOsId,
+      tarefa_id:  tarefaId,
+      status:     'completo',
+      usuario:    usuario,
+      observacao: obs
+    });
+    pfShowUnlockBanner('✅ Tarefa concluída!');
+    pfLoadPipeline();
+  } catch(e) {
+    if (e.message && e.message.includes('AUTH_GOOGLE')) { pfHubLogout(); return; }
+    if (btnEl) { btnEl.disabled = false; btnEl.textContent = '✓ Confirmar'; }
+    pfShowUnlockBanner('⚠ Erro: ' + e.message, true);
+  }
+}
+
+// ── Abrir formulário vinculado ────────────────────────────────────────────────
+async function pfAbrirForm(tarefaId, formUrl) {
+  var usuario = (window.PROPER_SESSION && window.PROPER_SESSION.tecnico)
+    ? (window.PROPER_SESSION.tecnico.id || window.PROPER_SESSION.tecnico.nome || '')
+    : '';
+  try {
+    await pgpPostJson('registrarAbertura', {
+      os_id:     _pfOsId,
+      tarefa_id: tarefaId,
+      usuario:   usuario
+    });
+  } catch(e) {
+    console.warn('[pfAbrirForm] registrarAbertura falhou:', e.message);
+  }
+  window.location.href = formUrl;
+}
+
+// ── Sistema de notificações ───────────────────────────────────────────────────
+async function pollPfNotificacoes() {
+  var userId = window.PROPER_SESSION && window.PROPER_SESSION.tecnico
+    ? window.PROPER_SESSION.tecnico.id
+    : null;
+  if (!userId) return;
+  if (!_pfGsConnected) return;
+
+  try {
+    var r    = await pfGet('getNotificacoes', { usuario: userId });
+    var novas = r.notificacoes || [];
+
+    var idsAntes = _pfNotifList.map(function(n) { return n.Notif_ID; });
+    var novasIds = novas.filter(function(n) { return idsAntes.indexOf(n.Notif_ID) < 0; });
+
+    _pfNotifList = novas;
+    pfRenderNotifBadge(_pfNotifList);
+
+    var ov = document.getElementById('pfOverlay');
+    if (ov && ov.style.display !== 'none' && novasIds.length > 0) {
+      pfShowUnlockBanner('🔔 ' + novasIds[0].Mensagem);
+      if (_pfOsId && document.getElementById('pfScreenPipeline').style.display !== 'none') {
+        pfLoadPipeline();
+      }
+    }
+  } catch(e) {
+    if (e.message && e.message.includes('AUTH_GOOGLE')) { pfHubLogout(); return; }
+    // Silencioso para outros erros de polling
+  }
+}
+
+function pfRenderNotifBadge(notifs) {
+  var b1    = document.getElementById('pfNotifBadge');
+  var b2    = document.getElementById('pfNotifBadgeOverlay');
+  var count = notifs ? notifs.length : 0;
+  [b1, b2].forEach(function(b) {
+    if (!b) return;
+    if (count === 0) {
+      b.style.display = 'none';
+    } else {
+      b.style.display = 'inline-block';
+      b.textContent = count > 99 ? '99+' : String(count);
+    }
+  });
+}
+
+function pfToggleNotif() {
+  var panel = document.getElementById('pfNotifPanel');
+  if (!panel) return;
+  if (panel.style.display !== 'none') {
+    panel.style.display = 'none';
+    return;
+  }
+  panel.style.display = 'block';
+  pfRenderNotifPanel();
+
+  setTimeout(function() {
+    function outside(e) {
+      var btn = document.getElementById('pfNotifBtn');
+      if (!panel.contains(e.target) && (!btn || !btn.contains(e.target))) {
+        panel.style.display = 'none';
+        document.removeEventListener('click', outside);
+      }
+    }
+    document.addEventListener('click', outside);
+  }, 0);
+}
+
+function pfRenderNotifPanel() {
+  var panel = document.getElementById('pfNotifPanel');
+  if (!panel) return;
+
+  if (!_pfNotifList || _pfNotifList.length === 0) {
+    panel.innerHTML = '<div style="padding:16px;text-align:center;color:#64748b;font-size:12px">Nenhuma notificação</div>';
+    return;
+  }
+
+  panel.innerHTML = _pfNotifList.map(function(n) {
+    var nid  = (n.Notif_ID || '').replace(/'/g, "\\'");
+    var osid = (n.OS_ID    || '').replace(/'/g, "\\'");
+    return '<div class="pf-notif-item" onclick="pfOnNotifClick(\'' + nid + '\',\'' + osid + '\')">' +
+      '<div class="pf-notif-msg">' + (n.Mensagem || '') + '</div>' +
+      '<div class="pf-notif-link">Ver pipeline →</div>' +
+    '</div>';
+  }).join('');
+}
+
+async function pfOnNotifClick(notifId, osId) {
+  var panel = document.getElementById('pfNotifPanel');
+  if (panel) panel.style.display = 'none';
+
+  if (notifId) {
+    try {
+      await pgpPostJson('marcarNotifLida', { notif_id: notifId });
+      _pfNotifList = _pfNotifList.filter(function(n) { return n.Notif_ID !== notifId; });
+      pfRenderNotifBadge(_pfNotifList);
+    } catch(e) {
+      if (e.message && e.message.includes('AUTH_GOOGLE')) { pfHubLogout(); return; }
+    }
+  }
+
+  if (osId) {
+    _pfOsId  = osId;
+    var osObj = _pfOsList.find(function(o) {
+      return String(o.OS_ID || o.Numero || o.ID) === String(osId);
+    });
+    _pfOsNome = osObj ? (osObj.Cliente || '') : '';
+    document.getElementById('pfOsLabel').textContent = 'OS #' + osId + (_pfOsNome ? ' · ' + _pfOsNome : '');
+    document.getElementById('pfScreenOS').style.display = 'none';
+    document.getElementById('pfScreenPipeline').style.display = 'block';
+    pfLoadPipeline();
+  }
+}
+
+// ── Banner de desbloqueio (toast interno ao overlay) ─────────────────────────
+function pfShowUnlockBanner(msg, isError) {
+  var b = document.getElementById('pfUnlockBanner');
+  if (!b) return;
+  b.textContent = msg;
+  b.style.background = isError ? '#7f1d1d' : '#1e40af';
+  b.style.display = 'block';
+  if (_pfBannerTimeout) clearTimeout(_pfBannerTimeout);
+  _pfBannerTimeout = setTimeout(function() { b.style.display = 'none'; }, 4000);
+}
+
+// ── END SPRINT 4E-D ──────────────────────────────────────────────────────────
+
 </script>
 
 <!-- FOTO PICKER MODAL -->
@@ -5398,6 +6030,55 @@ function pgpUpdateAdminLocal(payload){
 <!-- Inputs ocultos globais para câmera e galeria -->
 <input type="file" accept="image/*" capture="environment" id="globalCameraInput" style="display:none">
 <input type="file" accept="image/*"                       id="globalGalleryInput" style="display:none">
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     SPRINT 4E-D: PIPELINE OVERLAY
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<div id="pfOverlay" style="display:none;position:fixed;inset:0;background:#0f172a;z-index:500;flex-direction:column;overflow:hidden">
+
+  <!-- Header do overlay -->
+  <div id="pfHeader" style="background:#1a3a6b;padding:12px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.4)">
+    <button onclick="pfFechar()" style="background:rgba(255,255,255,.15);border:none;color:white;font-size:18px;padding:6px 10px;border-radius:8px;cursor:pointer;line-height:1;flex-shrink:0">‹</button>
+    <div style="flex:1;min-width:0">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;color:white;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">🔧 Pipeline</div>
+      <div id="pfOsLabel" style="font-size:11px;color:rgba(255,255,255,.65);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</div>
+    </div>
+    <!-- Badge de notificações no header do overlay -->
+    <div id="pfNotifBtn" onclick="pfToggleNotif()" style="position:relative;cursor:pointer;font-size:20px;line-height:1;padding:6px">
+      🔔
+      <span id="pfNotifBadgeOverlay" style="display:none;position:absolute;top:2px;right:2px;background:#ef4444;color:white;font-size:9px;font-weight:700;padding:1px 4px;border-radius:10px;min-width:14px;text-align:center;line-height:1.4"></span>
+    </div>
+  </div>
+
+  <!-- Painel de notificações (dropdown sobreposto) -->
+  <div id="pfNotifPanel" style="display:none;position:absolute;top:56px;right:12px;width:300px;max-height:320px;overflow-y:auto;background:#1e293b;border:1px solid #334155;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.5);z-index:600"></div>
+
+  <!-- Tela A: seleção de OS -->
+  <div id="pfScreenOS" style="flex:1;overflow-y:auto;padding:16px">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Selecionar Ordem de Serviço</div>
+    <div id="pfOsStatus" style="font-size:13px;color:#94a3b8;text-align:center;padding:20px 0">Conectando ao Sheets…</div>
+    <div id="pfOsLista"></div>
+  </div>
+
+  <!-- Tela B: pipeline da OS (inicialmente oculta) -->
+  <div id="pfScreenPipeline" style="display:none;flex:1;overflow-y:auto;padding:16px">
+    <!-- Barra de progresso -->
+    <div id="pfProgressWrap" style="margin-bottom:16px">
+      <div id="pfProgressLabel" style="font-size:12px;color:#94a3b8;margin-bottom:6px"></div>
+      <div style="height:6px;background:#1e293b;border-radius:3px;overflow:hidden">
+        <div id="pfProgressBar" style="height:100%;background:#3b82f6;border-radius:3px;transition:width .3s;width:0%"></div>
+      </div>
+    </div>
+    <!-- Botão voltar para seleção de OS -->
+    <button onclick="pfVoltarOS()" style="margin-bottom:16px;background:transparent;border:1px solid #334155;color:#94a3b8;padding:7px 14px;border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:.04em">‹ Trocar OS</button>
+    <!-- Cards de fases e tarefas -->
+    <div id="pfPipelineConteudo"></div>
+  </div>
+
+  <!-- Banner de notificação de desbloqueio (toast no topo) -->
+  <div id="pfUnlockBanner" style="display:none;position:fixed;top:70px;left:50%;transform:translateX(-50%);background:#1e40af;color:white;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.4);z-index:700;max-width:90vw;text-align:center"></div>
+
+</div>
 
 </body>
 </html>
