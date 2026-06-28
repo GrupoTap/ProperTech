@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>ProperCare Field · PGP Preventivas v14</title>
+<title>ProperCare Field · PGP Preventivas v15</title>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
@@ -630,7 +630,7 @@
 <div class="login-overlay" id="loginOverlay">
   <div class="login-box">
     <div class="login-logo">⚙ Proper</div>
-    <div class="login-sub">ProperCare Field · v9</div>
+    <div class="login-sub">ProperCare Field · v10</div>
     <label class="login-label">Senha de acesso</label>
     <input class="login-input" type="password" id="loginInput" placeholder="••••••"
            maxlength="20" onkeydown="if(event.key==='Enter')loginEntrar()">
@@ -643,7 +643,7 @@
   <div class="top-row">
     <div>
       <h1>📋 ProperCare Field</h1>
-      <div class="subtitle">PGP Preventiva · v9 + Pipeline</div>
+      <div class="subtitle">PGP Preventiva · v10 + Pipeline</div>
     </div>
     <div class="header-right">
       <div class="progress-pill" id="progressPill">0 / 0</div>
@@ -918,13 +918,30 @@
     var session = JSON.parse(raw);
     window.PROPER_SESSION = session;
     window._GC = session.google_credential || '';
+
+    // Esconder overlay de login legado (auth agora vem do ProperHub)
+    var overlay = document.getElementById('loginOverlay');
+    if (overlay) overlay.classList.add('hidden');
+
+    // Ler parâmetro ?modo=preventiva da URL e ativar tipo de visita
+    var urlParams = new URLSearchParams(window.location.search);
+    var modoUrl = urlParams.get('modo');
+    if (modoUrl === 'preventiva') {
+      // pgpSetTipoVisita será chamado após DOM pronto
+      window._INITIAL_MODO = 'preventiva';
+    }
+
     // Sprint 4E-D: iniciar polling de notificações após login confirmado
     setTimeout(function() {
       if (!_pfNotifInterval) {
         _pfNotifInterval = setInterval(pollPfNotificacoes, 60000);
         pollPfNotificacoes();
       }
-    }, 3000);
+      // Aplicar modo inicial se veio da URL
+      if (window._INITIAL_MODO === 'preventiva') {
+        if (typeof pgpSetTipoVisita === 'function') pgpSetTipoVisita('preventiva');
+      }
+    }, 500);
   } catch(e) {
     window.location.href = 'https://grupotap.github.io/ProperHub/';
   }
@@ -1057,7 +1074,7 @@ const PHOTOS = [
 
 let machines = [];
 let currentMachine = 0;
-const APP_VERSION = 'v9';
+const APP_VERSION = 'v10';
 
 function normSessionKey(v) {
   return String(v || '')
@@ -5565,6 +5582,11 @@ function pgpUpdateAdminLocal(payload){
 
 
 // ── AUTH ── autenticação migrada para Hub (checkHubSession no topo do script)
+// Stub de segurança: se loginOverlay aparecer sem sessão, redirecionar ao Hub
+function loginEntrar() {
+  sessionStorage.removeItem('proper_session');
+  window.location.href = 'https://grupotap.github.io/ProperHub/';
+}
 
 // ════════════════════════════════════════════════════════════════════════════
 // SPRINT 4E-D: PIPELINE DE OS PARA TÉCNICOS
