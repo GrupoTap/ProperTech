@@ -643,7 +643,7 @@
   <div class="top-row">
     <div>
       <h1>📋 ProperCare Field</h1>
-      <div class="subtitle">PGP Preventiva · v10 + Pipeline</div>
+      <div class="subtitle">PGP Preventiva · v10 + Pipeline · v16</div>
     </div>
     <div class="header-right">
       <div class="progress-pill" id="progressPill">0 / 0</div>
@@ -5657,7 +5657,7 @@ async function pfLoadOS() {
   try {
     var r = await pfGet('getOS', {});
     _pfOsList = (r.os || []).filter(function(o) {
-      var st = String(o.Status || '').toLowerCase();
+      var st = String(o.status || '').toLowerCase();
       return st !== 'cancelada' && st !== 'concluida';
     });
     _pfGsConnected = true;
@@ -5668,10 +5668,10 @@ async function pfLoadOS() {
     }
     statusEl.style.display = 'none';
     listaEl.innerHTML = _pfOsList.map(function(o) {
-      var num   = o.OS_ID || o.Numero || o.ID || '—';
-      var cli   = o.Cliente || o.cliente || '';
-      var tipo  = o.Tipo_OS ? (' · ' + o.Tipo_OS) : '';
-      var st    = String(o.Status || 'aberta').toLowerCase();
+      var num   = o.id_os || o.numero_os || '—';
+      var cli   = o.cliente || '';
+      var tipo  = o.tipo_os ? (' · ' + o.tipo_os) : '';
+      var st    = String(o.status || 'aberta').toLowerCase();
       var stLbl = st === 'em_andamento' ? 'Em andamento' : (st.charAt(0).toUpperCase() + st.slice(1));
       var stCls = st.replace(/_/g, '_');
       return '<div class="pf-os-card" onclick="pfSelecionarOS(\'' + num.replace(/'/g, "\\'") + '\',\'' + (cli + tipo).replace(/'/g, "\\'") + '\')">' +
@@ -5775,7 +5775,7 @@ function pfStatusIcon(status) {
 
 function pfGetFormUrl(tipo) {
   switch(tipo) {
-    case 'auto:form08':     return 'https://grupotap.github.io/ProperForms/form08.html';
+    case 'auto:form08':     return 'https://grupotap.github.io/ProperForms/form08_v1_3.html';
     case 'auto:rotores':    return 'https://grupotap.github.io/ProperRotores/index.html';
     case 'auto:inspecao':   return 'https://grupotap.github.io/ProperTech/index.html';
     case 'auto:preventiva': return 'https://grupotap.github.io/ProperTech/index.html?modo=preventiva';
@@ -6007,9 +6007,9 @@ async function pfOnNotifClick(notifId, osId) {
   if (osId) {
     _pfOsId  = osId;
     var osObj = _pfOsList.find(function(o) {
-      return String(o.OS_ID || o.Numero || o.ID) === String(osId);
+      return String(o.id_os || o.numero_os || '') === String(osId);
     });
-    _pfOsNome = osObj ? (osObj.Cliente || '') : '';
+    _pfOsNome = osObj ? (osObj.cliente || '') : '';
     document.getElementById('pfOsLabel').textContent = 'OS #' + osId + (_pfOsNome ? ' · ' + _pfOsNome : '');
     document.getElementById('pfScreenOS').style.display = 'none';
     document.getElementById('pfScreenPipeline').style.display = 'block';
