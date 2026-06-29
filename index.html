@@ -932,6 +932,7 @@
     }
     if (modoUrl === 'pipeline') {
       window._INITIAL_MODO = 'pipeline';
+      window._PF_VEIO_DO_HUB = true;
     }
 
     // Aplicar modo inicial se veio da URL
@@ -5630,6 +5631,10 @@ function pfAbrir() {
 }
 
 function pfFechar() {
+  if (window._PF_VEIO_DO_HUB) {
+    window.location.href = 'https://grupotap.github.io/ProperHub/';
+    return;
+  }
   document.getElementById('pfOverlay').style.display = 'none';
 }
 
