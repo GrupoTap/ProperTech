@@ -643,7 +643,7 @@
   <div class="top-row">
     <div>
       <h1>📋 ProperCare Field</h1>
-      <div class="subtitle">PGP Preventiva · v10 + Pipeline · v16</div>
+      <div class="subtitle">PGP Preventiva · v10 + Pipeline · v18</div>
     </div>
     <div class="header-right">
       <div class="progress-pill" id="progressPill">0 / 0</div>
@@ -930,11 +930,17 @@
       // pgpSetTipoVisita será chamado após DOM pronto
       window._INITIAL_MODO = 'preventiva';
     }
+    if (modoUrl === 'pipeline') {
+      window._INITIAL_MODO = 'pipeline';
+    }
 
     // Aplicar modo inicial se veio da URL
     setTimeout(function() {
       if (window._INITIAL_MODO === 'preventiva') {
         if (typeof pgpSetTipoVisita === 'function') pgpSetTipoVisita('preventiva');
+      }
+      if (window._INITIAL_MODO === 'pipeline') {
+        if (typeof pfAbrir === 'function') pfAbrir();
       }
     }, 500);
   } catch(e) {
@@ -5589,7 +5595,7 @@ function loginEntrar() {
 
 // ── pfGet: helper GET para o pipeline (análogo ao gsGet do PCM) ─────────────
 async function pfGet(action, params) {
-  if (!_pgpGsConnected || !_pgpGsUrl) throw new Error('Sem conexão com o servidor');
+  if (!_pgpGsUrl) throw new Error('URL do servidor não configurada. Acesse Configurações no ProperTech.');
   params = params || {};
   const qs = new URLSearchParams(Object.assign({ action, key: _AUTH_HASH }, params));
   const r = await fetch(_pgpGsUrl + '?' + qs.toString() + gcParam(), { method: 'GET' });
