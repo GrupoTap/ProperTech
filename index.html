@@ -931,13 +931,8 @@
       window._INITIAL_MODO = 'preventiva';
     }
 
-    // Sprint 4E-D: iniciar polling de notificações após login confirmado
+    // Aplicar modo inicial se veio da URL
     setTimeout(function() {
-      if (!_pfNotifInterval) {
-        _pfNotifInterval = setInterval(pollPfNotificacoes, 60000);
-        pollPfNotificacoes();
-      }
-      // Aplicar modo inicial se veio da URL
       if (window._INITIAL_MODO === 'preventiva') {
         if (typeof pgpSetTipoVisita === 'function') pgpSetTipoVisita('preventiva');
       }
@@ -5594,6 +5589,7 @@ function loginEntrar() {
 
 // ── pfGet: helper GET para o pipeline (análogo ao gsGet do PCM) ─────────────
 async function pfGet(action, params) {
+  if (!_pgpGsConnected || !_pgpGsUrl) throw new Error('Sem conexão com o servidor');
   params = params || {};
   const qs = new URLSearchParams(Object.assign({ action, key: _AUTH_HASH }, params));
   const r = await fetch(_pgpGsUrl + '?' + qs.toString() + gcParam(), { method: 'GET' });
