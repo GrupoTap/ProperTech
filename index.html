@@ -1693,7 +1693,7 @@ function buildPanelHTML(idx) {
     </div>
     <div class="section-body">
       <div class="drive-reminder">
-        <strong>📁 Lembrete para o escritório:</strong> solicitar ao técnico o link da pasta do Drive com as fotos para vincular na planilha PGP (campo "Link Fotos/Drive").
+        <strong>📁 Lembrete para o escritório:</strong> solicitar o link da pasta do Drive com as fotos para vincular na planilha PGP (campo "Link Fotos/Drive").
       </div>
       ${photoItems}
     </div>
@@ -1707,12 +1707,12 @@ function buildPanelHTML(idx) {
     <div class="section-body">
       <div class="field-item" onclick="toggleField(this,${idx})">
         <div class="field-label"><div class="checkbox">✓</div>
-          <div class="label-text"><div class="label-main">Observações gerais e técnico responsável</div>
+          <div class="label-text"><div class="label-main">Observações gerais e responsável</div>
           <div class="label-hint">Condições do ambiente, acesso, urgências</div></div></div>
         <div class="field-input">
           <textarea placeholder="Ex: ambiente com muito pó, acesso difícil ao filtro..." data-key="${p}obs_gerais" onclick="event.stopPropagation()"></textarea>
           <div class="sub-group" style="margin-top:6px">
-            <label>Técnico / Vendedor</label>
+            <label>Responsável</label>
             <input type="text" placeholder="Seu nome" data-key="${p}tecnico" onclick="event.stopPropagation()">
           </div>
         </div>
@@ -2157,7 +2157,7 @@ ${(() => {
 
 📝 *OBSERVAÇÕES*
 ${vg(i,'obs_gerais')}
-👷 Técnico: ${vg(i,'tecnico')}`;
+👷 Responsável: ${vg(i,'tecnico')}`;
   });
 
   document.getElementById('summaryBox').textContent = txt;
@@ -2631,7 +2631,7 @@ function renderPGPFields() {
 
     html += `<div class="pgp-field-group"><div class="pgp-group-title">📝 Observações</div>`;
     html += makeRow('Obs. Gerais', pgpVal(i,'obs_gerais'));
-    html += makeRow('Técnico', pgpVal(i,'tecnico'));
+    html += makeRow('Responsável', pgpVal(i,'tecnico'));
     html += `</div>`;
   });
   document.getElementById('pgpFieldsContent').innerHTML = html;
@@ -3410,7 +3410,7 @@ async function gerarPDF() {
     y = sectionTitle(y, '[H]', '3. Horímetro e Regime de Trabalho');
     y = infoRow2(y, [{label:'Horímetro Total (h)', value:g('horimetro')}, {label:'Data da Leitura', value:g('data_leitura')}]);
     y = infoRow(y, 'Regime de Trabalho', g('h_dia'), false);
-    y = infoRow2(y, [{label:'Total h/Semana', value:g('h_sem_total') !== '—' ? g('h_sem_total')+' h' : '—'}, {label:'Técnico Responsável', value:g('tecnico')}]);
+    y = infoRow2(y, [{label:'Total h/Semana', value:g('h_sem_total') !== '—' ? g('h_sem_total')+' h' : '—'}, {label:'Responsável', value:g('tecnico')}]);
     y += 3;
 
     // ── SEÇÃO 4: PEÇAS ────────────────────────────────
@@ -4308,7 +4308,7 @@ async function pgpDoSerialSearch(){
 
 /**
  * pgpLoadClientDataByName: busca dados do cliente em window._pgpClientsFull (cache do GAS)
- * e preenche campos do formulário do midx atual sem sobrescrever o que o técnico digitou.
+ * e preenche campos do formulário do midx atual sem sobrescrever o que o usuário digitou.
  */
 function pgpLoadClientDataByName(name, midx){
   const idx = pgpGetMachineIndex(midx !== undefined ? midx : currentMachine);
@@ -4321,7 +4321,7 @@ function pgpLoadClientDataByName(name, midx){
 
 /**
  * pgpLoadClientDataFromObj: preenche campos do formulário com dados do objeto cliente.
- * Só preenche campos VAZIOS para não sobrescrever o que o técnico digitou.
+ * Só preenche campos VAZIOS para não sobrescrever o que o usuário digitou.
  */
 function pgpLoadClientDataFromObj(clientObj, midx){
   const idx = pgpGetMachineIndex(midx !== undefined ? midx : currentMachine);
@@ -4403,7 +4403,7 @@ function pgpHighlightMissingClientFields(midx){
 
 /**
  * pgpMarkDynamicFieldsForUpdate: destaca (laranja) campos que mudam a cada visita
- * para lembrar o técnico de atualizá-los. Remove destaque ao editar.
+ * para lembrar o usuário de atualizá-los. Remove destaque ao editar.
  */
 function pgpMarkDynamicFieldsForUpdate(midx){
   const idx = pgpGetMachineIndex(midx !== undefined ? midx : currentMachine);
@@ -4512,7 +4512,7 @@ function pgpLoadMachine(eq,localDb,midx=currentMachine,clientData=null){
   // Última visita vem do banco; data_visita = hoje por padrão; prox_visita preservada se vier
   if(eq.lastVisit) sv('ult_visita', eq.lastVisit);
   if(eq.nextVisit) sv('prox_visita', eq.nextVisit);
-  // data_visita: preencher com hoje automaticamente (editável pelo técnico)
+  // data_visita: preencher com hoje automaticamente (editável pelo usuário)
   const dvEl = document.querySelector(`[data-key="${p}data_visita"]`);
   if(dvEl && !dvEl.value) dvEl.value = new Date().toISOString().slice(0,10);
 
@@ -4672,7 +4672,7 @@ function renderMachineHistory(hist, loading) {
         <span style="font-weight:500">${tipoLabel[v.tipo] || v.tipo}</span>
         <span style="color:var(--text2,#888);font-size:11px">${v.visitDate || '—'}</span>
       </div>
-      <div style="color:var(--text2,#888);font-size:11px">Horímetro: ${v.hourTotal ? v.hourTotal + 'h' : '—'}${v.tech ? ' · Técnico: ' + v.tech : ''}</div>
+      <div style="color:var(--text2,#888);font-size:11px">Horímetro: ${v.hourTotal ? v.hourTotal + 'h' : '—'}${v.tech ? ' · Responsável: ' + v.tech : ''}</div>
       ${pecasHtml}
     </div>`;
   }).join('');
