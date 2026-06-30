@@ -5780,7 +5780,13 @@ function pfStatusIcon(status) {
   }
 }
 
-function pfGetFormUrl(tipo) {
+function pfGetFormUrl(tipo, tarefa) {
+  // Prioridade 1: URL vinda da própria tarefa instanciada (checklists novos,
+  // cadastrados no editor de template a partir da Sessão B).
+  if (tarefa && tarefa.Form_URL) return tarefa.Form_URL;
+
+  // Prioridade 2 (fallback de compatibilidade): tarefas instanciadas antes desta
+  // sessão, sem Form_URL preenchido — mantém o comportamento exato de antes.
   switch(tipo) {
     case 'auto:form08':     return 'https://grupotap.github.io/ProperForms/form08_v1_3.html';
     case 'auto:rotores':    return 'https://grupotap.github.io/ProperRotores/index.html';
@@ -5822,7 +5828,7 @@ function pfBuildCard(t) {
         '</div>' +
       '</div>';
     } else {
-      var formUrl = pfGetFormUrl(tipo);
+      var formUrl = pfGetFormUrl(tipo, t);
       if (formUrl) {
         acaoHtml = '<div style="margin-top:10px">' +
           '<button class="pf-btn pf-btn-abrir-form" onclick="pfAbrirForm(\'' + tidSafe + '\',\'' + formUrl.replace(/'/g, "\\'") + '\')">📋 Abrir formulário</button>' +
