@@ -119,6 +119,17 @@
   .drive-reminder{margin:8px 14px 4px;background:var(--orange-light);border-left:3px solid var(--orange);border-radius:0 6px 6px 0;padding:8px 10px;font-size:11.5px;color:#7B4000;line-height:1.5}
   .drive-reminder strong{color:var(--orange)}
 
+  /* ── Miniaturas persistentes de fotos (até 3 por item) ── */
+  .photo-thumbs-mini{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:4px 0 2px}
+  .photo-thumbs-mini:empty{display:none}
+  .photo-item .photo-thumbs-mini{width:100%;margin-left:32px;margin-top:-2px}
+  .photo-thumb-mini{position:relative;width:50px;height:50px;border-radius:7px;overflow:hidden;border:1.5px solid var(--green);flex-shrink:0;background:#eee}
+  .photo-thumb-mini img{width:100%;height:100%;object-fit:cover;display:block}
+  .photo-thumb-del{position:absolute;top:-2px;right:-2px;width:17px;height:17px;border-radius:50%;background:rgba(20,20,20,.7);color:#fff;font-size:11px;line-height:17px;text-align:center;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .photo-thumb-count{font-size:10.5px;color:var(--text-light);white-space:nowrap;font-weight:600}
+  .foto-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.35);z-index:900;max-width:88vw;text-align:center;opacity:0;transition:opacity .2s}
+  .foto-toast.show{opacity:1}
+
   .actions{padding:12px 12px 0;display:flex;gap:10px}
   .btn{flex:1;padding:13px;border:none;border-radius:10px;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;transition:transform .1s}
   .btn:active{transform:scale(.97)}
@@ -328,7 +339,8 @@
   @media print{
     header,.machine-tabs-wrap,.tip-box,.restore-banner,.actions,.modal-overlay,.back-guard,
     .btn-add-machine,.chevron,.photo-nd-btn,.na-btn,.obs-btn,.btn-add-turno,.turno-del,.btn-photo-capture,.photo-input-file,
-    .foto-inicial-banner,.btn-foto-inline,.inp-foto-inline,.foto-ini-inp,.btn-foto-peca{display:none!important}
+    .foto-inicial-banner,.btn-foto-inline,.inp-foto-inline,.foto-ini-inp,.btn-foto-peca,
+    .photo-thumbs-mini,.foto-toast{display:none!important}
     body{background:white;padding:0}
     .section-body.hidden{display:block!important}
     .machine-panel{display:block!important}
@@ -959,34 +971,131 @@ function gcParam() {
 }
 
 // ── ARMAZENAMENTO DE FOTOS (base64 para PDF) ──────────
-// Estrutura: photoStore[midx][photoKey] = { label, dataUrl }
+// v23: Estrutura agora é uma LISTA por item, permitindo múltiplas fotos:
+// photoStore[midx][photoKey] = [ { label, dataUrl, w, h }, ... ] (máx MAX_FOTOS_POR_ITEM)
 const photoStore = {};
+const MAX_FOTOS_POR_ITEM = 3;
 
-function storePhotoBase64(midx, photoKey, label, file, saveToDevice) {
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    // Redimensiona para máx 800px de largura antes de armazenar
-    const img = new Image();
-    img.onload = function() {
-      const canvas = document.createElement('canvas');
-      const maxW = 800;
-      const scale = img.width > maxW ? maxW / img.width : 1;
-      canvas.width  = Math.round(img.width  * scale);
-      canvas.height = Math.round(img.height * scale);
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
-      if (!photoStore[midx]) photoStore[midx] = {};
-      photoStore[midx][photoKey] = { label, dataUrl, w: canvas.width, h: canvas.height };
-      // Salva na galeria/downloads se solicitado (apenas quando veio da câmera)
-      if (saveToDevice) {
-        savePhotoToDevice(dataUrl, photoKey, label);
-      }
+// Exibe um aviso rápido no rodapé da tela (ex: limite de fotos atingido)
+let _fotoToastTimer = null;
+function showFotoToast(msg) {
+  const el = document.getElementById('fotoToast');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(_fotoToastTimer);
+  _fotoToastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+// Converte um File em dataURL comprimido (máx 800px de largura, jpeg 0.82)
+function compressPhotoFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const img = new Image();
+      img.onload = function() {
+        const canvas = document.createElement('canvas');
+        const maxW = 800;
+        const scale = img.width > maxW ? maxW / img.width : 1;
+        canvas.width  = Math.round(img.width  * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve({ dataUrl: canvas.toDataURL('image/jpeg', 0.82), w: canvas.width, h: canvas.height });
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
     };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// Adiciona UMA foto ao array do item (respeitando o limite). Retorna true/false.
+async function storePhotoBase64(midx, photoKey, label, file, saveToDevice) {
+  if (!file) return false;
+  if (!photoStore[midx]) photoStore[midx] = {};
+  if (!photoStore[midx][photoKey]) photoStore[midx][photoKey] = [];
+  if (photoStore[midx][photoKey].length >= MAX_FOTOS_POR_ITEM) {
+    showFotoToast('Limite de ' + MAX_FOTOS_POR_ITEM + ' fotos por item já atingido');
+    return false;
+  }
+  try {
+    const { dataUrl, w, h } = await compressPhotoFile(file);
+    photoStore[midx][photoKey].push({ label, dataUrl, w, h });
+    renderPhotoThumbs(midx, photoKey);
+    if (saveToDevice) savePhotoToDevice(dataUrl, photoKey, label);
+    autoSaveDraft();
+    return true;
+  } catch (err) {
+    console.warn('storePhotoBase64 error:', err);
+    return false;
+  }
+}
+
+// Processa uma FileList (câmera = 1 arquivo, galeria = N arquivos), respeitando o limite.
+// Ao final, atualiza o(s) botão(ões) "feito" vinculados ao photoKey.
+async function storePhotosFromFileList(midx, photoKey, label, fileList, saveToDevice) {
+  if (!fileList || !fileList.length) return;
+  const files = Array.from(fileList);
+  let added = 0, blocked = 0;
+  for (const file of files) {
+    const existing = (photoStore[midx] && photoStore[midx][photoKey]) ? photoStore[midx][photoKey].length : 0;
+    if (existing >= MAX_FOTOS_POR_ITEM) { blocked++; continue; }
+    const ok = await storePhotoBase64(midx, photoKey, label, file, saveToDevice);
+    if (ok) added++; else blocked++;
+  }
+  if (blocked > 0 && added > 0) {
+    showFotoToast(added + ' foto(s) adicionada(s) — algumas ignoradas (limite de ' + MAX_FOTOS_POR_ITEM + ')');
+  }
+  syncDoneButtonsForKey(midx, photoKey);
+}
+
+// Re-renderiza TODAS as miniaturas vinculadas a um midx+photoKey (pode haver mais de um
+// local na tela apontando para a mesma chave, ex: "geral" aparece no banner e no campo Localização)
+function renderPhotoThumbs(midx, photoKey) {
+  const fotos = (photoStore[midx] && photoStore[midx][photoKey]) || [];
+  const containers = document.querySelectorAll(
+    '.photo-thumbs-mini[data-midx="' + midx + '"][data-pkey="' + cssEscapeKey(photoKey) + '"]'
+  );
+  containers.forEach(container => {
+    container.innerHTML = fotos.map((foto, i) => `
+      <div class="photo-thumb-mini">
+        <img src="${foto.dataUrl}" alt="Foto">
+        <div class="photo-thumb-del" onclick="event.stopPropagation();removePhotoDoStore(${midx},'${photoKey}',${i})">✕</div>
+      </div>`).join('') + (fotos.length ? `<span class="photo-thumb-count">${fotos.length}/${MAX_FOTOS_POR_ITEM}</span>` : '');
+  });
+}
+
+// Escapa aspas simples em chaves usadas dentro de seletores CSS (defensivo)
+function cssEscapeKey(key) {
+  return String(key).replace(/"/g, '\\"');
+}
+
+// Remove uma foto específica do item e re-renderiza tudo
+function removePhotoDoStore(midx, photoKey, i) {
+  if (!photoStore[midx] || !photoStore[midx][photoKey]) return;
+  photoStore[midx][photoKey].splice(i, 1);
+  renderPhotoThumbs(midx, photoKey);
+  syncDoneButtonsForKey(midx, photoKey);
+  autoSaveDraft();
+}
+
+// Atualiza o texto/estado visual de todos os botões "📷 ..." vinculados a um photoKey
+function syncDoneButtonsForKey(midx, photoKey) {
+  const panel = document.getElementById('panel-' + midx);
+  if (!panel) return;
+  const count = (photoStore[midx] && photoStore[midx][photoKey]) ? photoStore[midx][photoKey].length : 0;
+  panel.querySelectorAll('[data-photokey="' + cssEscapeKey(photoKey) + '"]').forEach(btn => {
+    if (count > 0) {
+      btn.classList.add('done');
+      const base = btn.dataset.doneLabel || '✅ Foto ok';
+      btn.innerHTML = base + ' (' + count + '/' + MAX_FOTOS_POR_ITEM + ')';
+    } else {
+      btn.classList.remove('done');
+      btn.innerHTML = btn.dataset.origLabel || btn.innerHTML;
+    }
+  });
 }
 
 function savePhotoToDevice(dataUrl, photoKey, label) {
@@ -1283,17 +1392,21 @@ function buildPartsTable(p, midx, scenario) {
           </div>
           <div id="${pk}_calc_box"></div>
           <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
-            <button class="btn-foto-peca" id="${pk}_hori_btn" data-done-label="✅ Horímetro ok"
+            <button class="btn-foto-peca" id="${pk}_hori_btn" data-done-label="✅ Horímetro ok" data-orig-label="📷 Foto horímetro desta peça"
+                    data-photokey="hori_${pt.k}"
                     onclick="event.stopPropagation();abrirFotoPicker(this,'linked',${midx},'hori_${pt.k}')">
                 📷 Foto horímetro desta peça
             </button>
             ${PART_PHOTO_MAP[pt.k] !== undefined ? `
-            <button class="btn-foto-peca" id="${pk}_foto_btn" data-done-label="✅ Foto ok"
+            <button class="btn-foto-peca" id="${pk}_foto_btn" data-done-label="✅ Foto ok" data-orig-label="📷 Foto da peça"
+                    data-photokey="${PART_PHOTO_MAP[pt.k]}"
                     onclick="event.stopPropagation();abrirFotoPicker(this,'linked',${midx},'${PART_PHOTO_MAP[pt.k]}')"
                     ${!PART_PHOTO_MAP[pt.k] ? 'title="Sem item vinculado na seção 5"' : ''}>
               📷 Foto da peça
             </button>` : ''}
           </div>
+          <div class="photo-thumbs-mini" data-midx="${midx}" data-pkey="hori_${pt.k}"></div>
+          ${PART_PHOTO_MAP[pt.k] !== undefined ? `<div class="photo-thumbs-mini" data-midx="${midx}" data-pkey="${PART_PHOTO_MAP[pt.k]}"></div>` : ''}
         </div>
       </td>
     </tr>`;
@@ -1506,7 +1619,9 @@ function buildPanelHTML(idx) {
   const p = 'm'+idx+'_';
   // Seção 4 gerida por buildPartsSection()
 
-  const photoItems = PHOTOS.map((ph,i) => `
+  const photoItems = PHOTOS.map((ph,i) => {
+    const pKey = ph.photoKey || ('foto_idx_' + i);
+    return `
     <div class="photo-item" data-pidx="${i}" onclick="togglePhoto(this,${idx})">
       <div class="photo-cb">✓</div>
       <div style="flex:1">
@@ -1515,7 +1630,9 @@ function buildPanelHTML(idx) {
       </div>
       <button class="btn-photo-capture" onclick="event.stopPropagation();abrirFotoPicker(this,'photo-item',${idx})">📷</button>
       <button class="photo-nd-btn" onclick="togglePhotoND(event,this,${idx})">N/D</button>
-    </div>`).join('');
+    </div>
+    <div class="photo-thumbs-mini" data-midx="${idx}" data-pkey="${pKey}"></div>`;
+  }).join('');
 
   return `
   <!-- ── LEMBRETE FOTO INICIAL ── -->
@@ -1525,9 +1642,11 @@ function buildPanelHTML(idx) {
       Foto obrigatória inicial: tirar foto geral do local de instalação
       <small>Estado geral e ambiente onde o compressor está instalado</small>
     </div>
-    <button class="foto-ini-btn" id="${p}btn_foto_geral" data-done-label="✅ Foto ok"
+    <button class="foto-ini-btn" id="${p}btn_foto_geral" data-done-label="✅ Foto ok" data-orig-label="📷 Tirar foto"
+            data-photokey="geral"
             onclick="event.stopPropagation();abrirFotoPicker(this,'linked',${idx},'geral')">📷 Tirar foto</button>
   </div>
+  <div class="photo-thumbs-mini" data-midx="${idx}" data-pkey="geral" style="margin:-6px 14px 10px"></div>
 
   <div class="section" data-section>
     <div class="section-header" onclick="toggleSection(this)">
@@ -1613,8 +1732,10 @@ function buildPanelHTML(idx) {
         <div class="field-input">
           <div class="sub-group"><label>Localização</label><input type="text" placeholder="Local de instalação (ex: Casa de compressores)" data-key="${p}localizacao" onclick="event.stopPropagation()"></div>
           <div class="sub-group"><label>TAG / Matrícula</label><input type="text" placeholder="TAG (ex: COMP-01) — se houver" data-key="${p}tag" onclick="event.stopPropagation()"></div>
-          <button class="btn-foto-inline" id="${p}btn_foto_local" data-done-label="✅ Local ok"
+          <button class="btn-foto-inline" id="${p}btn_foto_local" data-done-label="✅ Local ok" data-orig-label="📷 Foto do local de instalação"
+                  data-photokey="geral"
                   onclick="event.stopPropagation();abrirFotoPicker(this,'linked',${idx},'geral')">📷 Foto do local de instalação</button>
+          <div class="photo-thumbs-mini" data-midx="${idx}" data-pkey="geral"></div>
         </div>
       </div>
       <div class="field-item" onclick="toggleField(this,${idx})">
@@ -1643,8 +1764,10 @@ function buildPanelHTML(idx) {
             <div class="sub-group"><label>Horas totais</label><input type="number" placeholder="Ex: 15000" data-key="${p}horimetro" onclick="event.stopPropagation()"></div>
             <div class="sub-group"><label>Data da leitura</label><input type="date" data-key="${p}data_leitura" onclick="event.stopPropagation()"></div>
           </div>
-          <button class="btn-foto-inline" id="${p}btn_foto_horimetro" data-done-label="✅ Horímetro ok"
+          <button class="btn-foto-inline" id="${p}btn_foto_horimetro" data-done-label="✅ Horímetro ok" data-orig-label="📷 Foto do horímetro"
+                  data-photokey="horimetro"
                   onclick="event.stopPropagation();abrirFotoPicker(this,'linked',${idx},'horimetro')">📷 Foto do horímetro</button>
+          <div class="photo-thumbs-mini" data-midx="${idx}" data-pkey="horimetro"></div>
         </div>
       </div>
       <div class="field-item" onclick="toggleField(this,${idx})">
@@ -1943,19 +2066,21 @@ function handlePhotoCapture(input, midx) {
 // ── CAPTURA DE FOTO VINCULADA (novos botões fora da seção 5) ──────────
 // photoKey: chave que mapeia para um item da seção 5 via PHOTOS[i].photoKey
 // triggerBtn: o botão que disparou (para feedback visual .done)
-function capturePhotoLinked(input, midx, photoKey, triggerBtn, saveToDevice) {
+// v23: agora aceita múltiplos arquivos de uma vez (seleção múltipla da galeria)
+async function capturePhotoLinked(input, midx, photoKey, triggerBtn, saveToDevice) {
   if (!input.files || !input.files.length) return;
   const panel = document.getElementById('panel-' + midx);
   if (!panel) return;
 
-  const file = input.files[0];
+  const files = input.files;
+  const firstFile = files[0];
 
   // Armazena base64 para uso no PDF (e salva no dispositivo se veio da câmera)
   if (photoKey && photoKey !== 'null') {
     const ph = PHOTOS.find(p => p.photoKey === photoKey);
     const label = ph ? ph.label
-      : (HORI_PHOTO_LABELS[photoKey] || (triggerBtn ? (triggerBtn.textContent.trim() || photoKey) : photoKey));
-    storePhotoBase64(midx, photoKey, label, file, saveToDevice);
+      : (HORI_PHOTO_LABELS[photoKey] || (triggerBtn ? (triggerBtn.dataset.origLabel || triggerBtn.textContent.trim()) : photoKey));
+    await storePhotosFromFileList(midx, photoKey, label, files, saveToDevice);
   }
 
   // Marcar item correspondente na seção 5 (somente se photoKey válido)
@@ -1968,21 +2093,14 @@ function capturePhotoLinked(input, midx, photoKey, triggerBtn, saveToDevice) {
         const ndBtn = item.querySelector('.photo-nd-btn');
         if (ndBtn) ndBtn.classList.remove('active');
         item.classList.remove('photo-nd');
-        item.dataset.photoFile = file.name;
+        item.dataset.photoFile = firstFile.name;
         item.classList.add('photo-checked');
         refreshSection(item.closest('[data-section]'));
       }
     });
   }
 
-  // Feedback visual no botão disparador
-  if (triggerBtn) {
-    triggerBtn.classList.add('done');
-    const label = triggerBtn.dataset.doneLabel || '✅ Foto ok';
-    triggerBtn.innerHTML = label;
-    triggerBtn.dataset.origLabel = triggerBtn.dataset.origLabel || triggerBtn.dataset.doneLabel || '';
-  }
-
+  // Feedback visual no botão disparador (contagem já atualizada por syncDoneButtonsForKey)
   updateProgress();
   checkDone();
 }
@@ -2389,9 +2507,15 @@ function resetCurrent() {
     delete el.dataset.photoFile;
   });
   panel.querySelectorAll('input,textarea,select').forEach(el => el.value='');
-  // Reset feedback visual dos botões de foto inline
-  panel.querySelectorAll('.foto-ini-btn, .btn-foto-inline, .btn-foto-peca').forEach(b => b.classList.remove('done'));
+  // Reset feedback visual dos botões de foto inline (v23: também restaura o texto original)
+  panel.querySelectorAll('.foto-ini-btn, .btn-foto-inline, .btn-foto-peca').forEach(b => {
+    b.classList.remove('done');
+    if (b.dataset.origLabel) b.innerHTML = b.dataset.origLabel;
+  });
   panel.querySelectorAll('.section-header').forEach(h => h.classList.remove('done-section'));
+  // v23: limpar fotos e miniaturas armazenadas desta máquina
+  delete photoStore[currentMachine];
+  panel.querySelectorAll('.photo-thumbs-mini').forEach(c => c.innerHTML = '');
   // Reset cenário de peças
   panel.querySelectorAll('.sc-btn').forEach(b => b.classList.remove('active'));
   panel.querySelectorAll('.parts-table-wrap').forEach(w => { w.classList.remove('visible'); w.querySelector('[id$="_table_content"]') && (w.querySelector('[id$="_table_content"]').innerHTML=''); });
@@ -2424,6 +2548,7 @@ function novaColeta() {
   document.querySelectorAll('.machine-panel').forEach(p => p.remove());
   machines = [{}];
   currentMachine = 0;
+  Object.keys(photoStore).forEach(k => delete photoStore[k]); // v23: limpar fotos da coleta anterior
   createPanel(0);
   renderTabs();
   updateProgress();
@@ -2785,7 +2910,8 @@ function captureState() {
     photoItems: [],
     naButtons: {},
     scenarios: {},   // novo: cenário selecionado por máquina
-    partCards: {}    // compatibilidade legado
+    partCards: {},   // compatibilidade legado
+    photoStore: {}   // v23: fotos (dataURL) por máquina/photoKey, para as miniaturas persistirem
   };
 
   document.querySelectorAll('[data-key]').forEach(el => {
@@ -2821,6 +2947,9 @@ function captureState() {
 
   state.machineSignatures = buildStateMachineSignatures(state);
   state.sessionSignature = (state.machineSignatures || []).join('||');
+
+  // v23: inclui as fotos (dataURL) para que as miniaturas sobrevivam ao fechar/reabrir o app
+  state.photoStore = photoStore;
 
   return state;
 }
@@ -2876,6 +3005,9 @@ function restoreState(state) {
     if (tr) tr.classList.add('pt-na');
   });
 
+  // v23: restaurar fotos (miniaturas) e o estado "feito" dos botões vinculados
+  restorePhotoStore(state.photoStore);
+
   // Recalcular tudo após restore
   machines.forEach((_, i) => {
     calcRegime(i);
@@ -2887,13 +3019,46 @@ function restoreState(state) {
   switchMachine(0);
 }
 
+// v23: repovoa o objeto global photoStore a partir do draft/sessão salvos e redesenha
+// todas as miniaturas + estado "feito" dos botões vinculados a cada photoKey
+function restorePhotoStore(savedPhotoStore) {
+  Object.keys(photoStore).forEach(k => delete photoStore[k]);
+  if (!savedPhotoStore) return;
+  Object.entries(savedPhotoStore).forEach(([midx, byKey]) => {
+    photoStore[midx] = byKey;
+    Object.keys(byKey || {}).forEach(photoKey => {
+      renderPhotoThumbs(midx, photoKey);
+      syncDoneButtonsForKey(midx, photoKey);
+    });
+  });
+}
+
 function autoSaveDraft() {
   clearTimeout(_draftTimer);
   _draftTimer = setTimeout(() => {
     const state = captureState();
     state.clientName = vg(0, 'razao_social');
-    try { localStorage.setItem(DRAFT_KEY, JSON.stringify(state)); } catch(e) {}
+    saveDraftStateSafely(state);
   }, 1200);
+}
+
+// v23: tenta salvar o rascunho com as fotos; se o localStorage estourar o limite
+// (comum quando há muitas fotos em alta resolução), salva sem as fotos para não
+// perder o restante do preenchimento, e avisa o técnico uma única vez.
+let _fotoQuotaWarned = false;
+function saveDraftStateSafely(state) {
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(state));
+  } catch (e) {
+    try {
+      const lite = Object.assign({}, state, { photoStore: {} });
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(lite));
+      if (!_fotoQuotaWarned) {
+        _fotoQuotaWarned = true;
+        showFotoToast('Muitas fotos para salvar localmente — as miniaturas podem não sobreviver a um fechamento do app');
+      }
+    } catch(e2) {}
+  }
 }
 
 function autoSaveSession() {
@@ -2930,7 +3095,7 @@ function autoSaveSession() {
         if (sessions.length > 10) sessions = sessions.slice(0, 10);
       }
     }
-    persistSessions(sessions);
+    persistSessionsSafely(sessions);
   }, 30000);
 }
 
@@ -2940,6 +3105,22 @@ function getSessions() {
 
 function persistSessions(arr) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(arr)); } catch(e) {}
+}
+
+// v23: mesma lógica de degradação graciosa usada no rascunho, aplicada à lista de sessões
+function persistSessionsSafely(arr) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+  } catch(e) {
+    try {
+      const lite = arr.map(s => Object.assign({}, s, { photoStore: {} }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(lite));
+      if (!_fotoQuotaWarned) {
+        _fotoQuotaWarned = true;
+        showFotoToast('Muitas fotos para salvar localmente — as miniaturas podem não sobreviver a um fechamento do app');
+      }
+    } catch(e2) {}
+  }
 }
 
 function getDraft() {
@@ -2985,7 +3166,7 @@ function saveCurrentSession() {
     }
   }
 
-  persistSessions(sessions);
+  persistSessionsSafely(sessions);
   try { localStorage.removeItem(DRAFT_KEY); } catch(e) {}
 }
 
@@ -3151,19 +3332,19 @@ function fotoPickerEscolher(origem) {
   const newInput = input.cloneNode(true);
   input.parentNode.replaceChild(newInput, input);
 
-  newInput.onchange = function() {
+  newInput.onchange = async function() {
     if (!newInput.files || !newInput.files.length) return;
     if (type === 'photo-item') {
       // Botão câmera da seção 5 — encontrar o photo-item pai do botão
       const item = triggerBtn.closest('.photo-item');
       if (!item) return;
-      const file = newInput.files[0];
-      item.dataset.photoFile = file.name;
+      const files = newInput.files;
+      item.dataset.photoFile = files[0].name;
       const pidx = parseInt(item.dataset.pidx);
       const ph = PHOTOS[pidx];
       if (ph) {
         const key = ph.photoKey || ('foto_idx_' + pidx);
-        storePhotoBase64(midx, key, ph.label, file, isCam);
+        await storePhotosFromFileList(midx, key, ph.label, files, isCam);
       }
       const ndBtn = item.querySelector('.photo-nd-btn');
       if (ndBtn) ndBtn.classList.remove('active');
@@ -3174,7 +3355,7 @@ function fotoPickerEscolher(origem) {
       checkDone();
     } else {
       // type === 'linked' — botões fora da seção 5
-      capturePhotoLinked(newInput, midx, photoKey, triggerBtn, isCam);
+      await capturePhotoLinked(newInput, midx, photoKey, triggerBtn, isCam);
     }
     newInput.value = '';
   };
@@ -3582,8 +3763,16 @@ async function gerarPDF() {
     y += 4;
 
     // ── SEÇÃO 7: FOTOS ────────────────────────────────
+    // v23: cada photoKey agora guarda uma LISTA de fotos (até 3) — achatar para a galeria do PDF,
+    // numerando a legenda quando houver mais de uma foto do mesmo item.
     const machinePhotos = photoStore[midx] || {};
-    const photoEntries = Object.values(machinePhotos).filter(p => p && p.dataUrl);
+    const photoEntries = [];
+    Object.values(machinePhotos).forEach(list => {
+      const arr = Array.isArray(list) ? list : [list]; // compat. com rascunhos antigos (objeto único)
+      arr.filter(p => p && p.dataUrl).forEach((p, i) => {
+        photoEntries.push(arr.length > 1 ? Object.assign({}, p, { label: (p.label || '') + ' (' + (i+1) + '/' + arr.length + ')' }) : p);
+      });
+    });
 
     if (photoEntries.length > 0) {
       // Nova página para fotos
@@ -6104,7 +6293,9 @@ function pfShowUnlockBanner(msg, isError) {
 </div>
 <!-- Inputs ocultos globais para câmera e galeria -->
 <input type="file" accept="image/*" capture="environment" id="globalCameraInput" style="display:none">
-<input type="file" accept="image/*"                       id="globalGalleryInput" style="display:none">
+<input type="file" accept="image/*" multiple                id="globalGalleryInput" style="display:none">
+<!-- v23: galeria aceita seleção múltipla; câmera permanece 1 foto por disparo -->
+<div class="foto-toast" id="fotoToast"></div>
 
 <!-- ═══════════════════════════════════════════════════════════════════════════
      SPRINT 4E-D: PIPELINE OVERLAY
