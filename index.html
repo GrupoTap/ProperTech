@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>ProperCare Field · PGP Preventivas v25</title>
+<title>ProperCare Field · PGP Preventivas v26</title>
 <meta name="theme-color" content="#0f172a">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -916,7 +916,7 @@
       <div class="proper-logo-mark">H</div>
       <div class="proper-logo-text">
         <span class="brand">PROPER</span>
-        <span class="brand-sub">Field · v25</span>
+        <span class="brand-sub">Field · v26</span>
       </div>
     </div>
     <div class="header-right">
@@ -924,8 +924,10 @@
       <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
         <div class="machine-counter" id="machineCounter">Máquina 1 de 1</div>
         <div class="gs-pill-pgp" id="gsPill" onclick="abrirConfig()">
-          <div class="gs-dot-pgp off" id="gsDotPgp"></div>
-          <span id="gsTextPgp">Sheets</span>
+          <div style="display:flex;align-items:center;gap:4px;cursor:pointer" onclick="event.stopPropagation();pgpTestGs()" title="Toque para reconectar">
+            <div class="gs-dot-pgp off" id="gsDotPgp"></div>
+            <span id="gsTextPgp">Sheets</span>
+          </div>
         </div>
         <span id="pgpPendingBadge" style="display:none;background:#f97316;color:white;font-size:10px;font-weight:700;padding:3px 8px;border-radius:12px;cursor:pointer;white-space:nowrap;font-family:'Barlow Condensed',sans-serif" onclick="pgpFlushPending()" title="Toque para reenviar">⏳</span>
         <button class="btn-sessions-header" id="btnCatalogLookup" onclick="pgpToggleCatalogPanel()" title="Consulta de peças">🔍</button>
@@ -4658,6 +4660,9 @@ function pgpSetGsStatus(state){
     dot.className='gs-dot-pgp';
     txt.textContent='Sheets ✓';
     _pgpGsConnected=true;
+    // v26: se o cache de clientes foi montado antes de conectar (ou nunca foi montado),
+    // força recarregar agora que o Sheets está disponível
+    if(!_pgpAllClientsCacheOk) pgpEnsureClientsCache(true).catch(e => console.warn('Cache clientes:', e));
     // SYNC-1: atualizar cache do catálogo ao conectar para que o painel funcione offline
     pgpEnsureCatalogCache().catch(e => console.warn('Cache catálogo:', e));
     // Ao conectar, reenviar pendências automaticamente
@@ -4755,7 +4760,7 @@ function pgpOnInput(){
   const normInput = v => String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
   const matches=pgpGetLocalMachines().filter(m=>{
     const fields=[m.serial,m.tag,m.client,m.model,m.brand,m.id].map(normInput);
-    const key=m.id||m.serial||m.tag;
+    const key=pgpMachineIdentityKey(m)||m.id||m.serial||m.tag;
     return fields.some(f=>f.includes(q))&&!seen.has(key)&&seen.add(key);
   }).slice(0,8);
   if(!matches.length){pgpHideAc();return;}
@@ -5274,12 +5279,16 @@ function pgpBackToStep1(){
   document.getElementById('pgpNewMachine').classList.remove('show');
 }
 
-// v8.5.4: cache de clientes carregado uma única vez
+// v26: cache de clientes — só é considerado "definitivo" depois de uma
+// carga bem-sucedida com o Sheets conectado. Se a primeira carga ocorreu
+// offline/desconectado, o cache fica marcado como provisório e é
+// automaticamente refeito assim que a conexão for estabelecida.
 let _pgpAllClientsCache = null;
+let _pgpAllClientsCacheOk = false; // true somente após carregar com _pgpGsConnected=true
 let _pgpClientsCacheLoading = false;
 
-async function pgpEnsureClientsCache(){
-  if(_pgpAllClientsCache !== null) return;
+async function pgpEnsureClientsCache(force){
+  if(_pgpAllClientsCache !== null && _pgpAllClientsCacheOk && !force) return;
   if(_pgpClientsCacheLoading) return;
   _pgpClientsCacheLoading = true;
   // Locais
@@ -5316,6 +5325,7 @@ async function pgpEnsureClientsCache(){
     if(k&&!seenKeys.has(k)){seenKeys.add(k);all.push(c);}
   });
   _pgpAllClientsCache = all.sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  _pgpAllClientsCacheOk = _pgpGsConnected; // só marca "definitivo" se buscou do servidor conectado
   _pgpClientsCacheLoading = false;
 }
 
@@ -5383,6 +5393,48 @@ async function pgpSelectClient(name){
   await pgpFetchMachinesByClient(name);
 }
 
+// v26: chave de identidade normalizada — prioriza cliente+série (identificador físico
+// mais confiável) em vez de `id`, que pode divergir entre cache local e servidor.
+function pgpMachineIdentityKey(m){
+  const ck = clientKey(m.client||'');
+  const serial = compactKey(m.serial||'');
+  if(serial) return 'S:'+ck+':'+serial;
+  const tag = compactKey(m.tag||'');
+  if(tag) return 'T:'+ck+':'+tag;
+  if(m.id) return 'ID:'+String(m.id).trim().toLowerCase();
+  return null;
+}
+
+// v26: remove do cache local (localStorage) entradas que já existem no servidor
+// sob outro id (órfãs de submissões antigas feitas fora do fluxo de busca).
+// O servidor sempre manda; a cópia local divergente é descartada.
+function pgpReconcileLocalMachines(serverMachines){
+  if(!serverMachines || !serverMachines.length) return;
+  try{
+    const raw = localStorage.getItem('proper_admin_v2');
+    if(!raw) return;
+    const db = JSON.parse(raw);
+    if(!db || !Array.isArray(db.machines) || !db.machines.length) return;
+    const serverIndex = new Map();
+    serverMachines.forEach(sm=>{
+      const k = pgpMachineIdentityKey(sm);
+      if(k) serverIndex.set(k, sm);
+    });
+    let changed = false;
+    const before = db.machines.length;
+    db.machines = db.machines.filter(lm=>{
+      const k = pgpMachineIdentityKey(lm);
+      const match = k && serverIndex.get(k);
+      if(match) { changed = true; return false; } // já existe no servidor — descarta a cópia local
+      return true;
+    });
+    if(changed){
+      localStorage.setItem('proper_admin_v2', JSON.stringify(db));
+      console.log(`[PCF] pgpReconcileLocalMachines: removidas ${before - db.machines.length} máquina(s) órfã(s) do cache local`);
+    }
+  }catch(e){ console.warn('pgpReconcileLocalMachines:', e); }
+}
+
 async function pgpFetchMachinesByClient(client){
   const listEl=document.getElementById('pgpMachineList');
   if(!listEl) return;
@@ -5409,16 +5461,20 @@ async function pgpFetchMachinesByClient(client){
           pgpLoadClientDataFromObj(d.clientData, currentMachine);
           serverMachines=(serverMachines||[]).map(m=>Object.assign({},m,{clientData:d.clientData}));
         }
+        // v26: limpa do cache local qualquer registro órfão que já existe no servidor
+        pgpReconcileLocalMachines(serverMachines);
       }
     }catch(e){}
   }
 
   // Mesclar: server é fonte de verdade, local complementa
-  // v8.5.3: chave de dedup por id > serial > tag (compactKey para série)
+  // v26: chave de dedup por identidade normalizada (cliente+série > cliente+TAG > id)
+  // em vez de id||serial||tag por registro — evita duplicar a mesma máquina física
+  // quando o cache local não tem o id canônico do servidor.
   const seen=new Set();
   const machines=[];
   [...serverMachines,...localMachines].forEach(m=>{
-    const key=String(m.id||'').trim()||compactKey(m.serial||'')||compactKey(m.tag||'');
+    const key=pgpMachineIdentityKey(m);
     if(!key||seen.has(key)) return;
     seen.add(key);
     machines.push(m);
@@ -6147,7 +6203,14 @@ function pgpUpdateAdminLocal(payload){
 (async()=>{
   pgpRenderLastClients();
   pgpUpdatePendingBadge();
-  if(_pgpGsUrl) await pgpTestGs();
+  if(_pgpGsUrl){
+    let ok = await pgpTestGs();
+    // v26: cold start do Apps Script pode falhar na primeira tentativa — tenta mais 2x
+    for(let i=0; i<2 && !ok; i++){
+      await new Promise(r=>setTimeout(r, 2000*(i+1)));
+      ok = await pgpTestGs();
+    }
+  }
   pgpUpdateGsStatusDisplay();
 })();
 
