@@ -5817,9 +5817,27 @@ function pfBuildCard(t) {
   var acaoHtml = '';
   if (st !== 'bloqueado' && st !== 'completo') {
     if (tipo === 'manual') {
+      var agora = new Date();
+      var inicioSugeridoDate = t.Data_abertura
+        ? new Date(t.Data_abertura)
+        : (t.Tempo_Estimado_Min ? new Date(agora.getTime() - (parseInt(t.Tempo_Estimado_Min) * 60000)) : null);
+      var inicioSugeridoStr = inicioSugeridoDate ? pfToDatetimeLocal(inicioSugeridoDate) : '';
+      var fimSugeridoStr = pfToDatetimeLocal(agora);
+
       acaoHtml = '<div style="margin-top:10px">' +
         '<button class="pf-btn pf-btn-concluir" onclick="pfExpandirConfirmar(\'' + tidSafe + '\',this)">Concluir tarefa</button>' +
         '<div class="pf-confirm-area" id="pfConfirm-' + tid + '">' +
+          '<div style="font-size:11px;color:#94a3b8;margin-bottom:6px">Estimativa de quando você trabalhou nesta tarefa (ajuste se necessário, não precisa ser exato):</div>' +
+          '<div style="display:flex;gap:8px;margin-bottom:8px">' +
+            '<div style="flex:1">' +
+              '<label style="font-size:10px;color:#64748b;display:block;margin-bottom:2px">Início</label>' +
+              '<input type="datetime-local" id="pfHoraInicio-' + tid + '" value="' + inicioSugeridoStr + '" style="width:100%;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:6px;padding:6px;font-size:12px">' +
+            '</div>' +
+            '<div style="flex:1">' +
+              '<label style="font-size:10px;color:#64748b;display:block;margin-bottom:2px">Fim</label>' +
+              '<input type="datetime-local" id="pfHoraFim-' + tid + '" value="' + fimSugeridoStr + '" style="width:100%;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:6px;padding:6px;font-size:12px">' +
+            '</div>' +
+          '</div>' +
           '<textarea class="pf-obs-input" id="pfObs-' + tid + '" placeholder="Observação (opcional)…" rows="2"></textarea>' +
           '<div class="pf-confirm-row">' +
             '<button class="pf-btn pf-btn-confirmar" id="pfBtnConfirmar-' + tid + '" onclick="pfConfirmarTarefa(\'' + tidSafe + '\')">✓ Confirmar</button>' +
@@ -5852,6 +5870,14 @@ function pfBuildCard(t) {
   '</div>';
 }
 
+// Formata um objeto Date para o formato aceito por <input type="datetime-local">
+// (YYYY-MM-DDTHH:MM), respeitando o horário local do dispositivo.
+function pfToDatetimeLocal(date) {
+  var pad = function(n) { return String(n).padStart(2, '0'); };
+  return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) +
+    'T' + pad(date.getHours()) + ':' + pad(date.getMinutes());
+}
+
 // ── Confirmar tarefa manual ───────────────────────────────────────────────────
 function pfExpandirConfirmar(tarefaId, btn) {
   var area = document.getElementById('pfConfirm-' + tarefaId);
@@ -5862,6 +5888,13 @@ function pfExpandirConfirmar(tarefaId, btn) {
     area.classList.add('visible');
     var ta = document.getElementById('pfObs-' + tarefaId);
     if (ta) ta.focus();
+    // Registra abertura da tarefa manual na primeira vez que o usuário interage
+    // com ela (não bloqueia a UI — silencioso, mesmo padrão usado em pfAbrirForm).
+    var usuario = (window.PROPER_SESSION && window.PROPER_SESSION.tecnico)
+      ? (window.PROPER_SESSION.tecnico.id || window.PROPER_SESSION.tecnico.nome || '')
+      : '';
+    pgpPostJson('registrarAbertura', { os_id: _pfOsId, tarefa_id: tarefaId, usuario: usuario })
+      .catch(function(e) { console.warn('[pfExpandirConfirmar] registrarAbertura falhou:', e.message); });
   }
 }
 
@@ -5874,6 +5907,11 @@ async function pfConfirmarTarefa(tarefaId) {
   var obs   = '';
   var obsEl = document.getElementById('pfObs-' + tarefaId);
   if (obsEl) obs = obsEl.value.trim();
+
+  var horaInicioEl = document.getElementById('pfHoraInicio-' + tarefaId);
+  var horaFimEl    = document.getElementById('pfHoraFim-' + tarefaId);
+  var horaInicioEstimada = (horaInicioEl && horaInicioEl.value) ? new Date(horaInicioEl.value).toISOString() : '';
+  var horaFimEstimada    = (horaFimEl && horaFimEl.value) ? new Date(horaFimEl.value).toISOString() : '';
 
   var btnEl = document.getElementById('pfBtnConfirmar-' + tarefaId);
   if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Enviando…'; }
@@ -5888,7 +5926,9 @@ async function pfConfirmarTarefa(tarefaId) {
       tarefa_id:  tarefaId,
       status:     'completo',
       usuario:    usuario,
-      observacao: obs
+      observacao: obs,
+      hora_inicio_estimada: horaInicioEstimada,
+      hora_fim_estimada: horaFimEstimada
     });
     pfShowUnlockBanner('✅ Tarefa concluída!');
     pfLoadPipeline();
