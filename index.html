@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>ProperCare Field · PGP Preventivas v24</title>
+<title>ProperCare Field · PGP Preventivas v25</title>
 <meta name="theme-color" content="#0f172a">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -122,8 +122,8 @@
   .photo-item.photo-checked .photo-pname{color:var(--green);text-decoration:line-through;text-decoration-color:rgba(30,140,74,.4)}
   .photo-item.photo-nd .photo-cb{background:#f0f0f0;border-color:#aaa;color:#888;font-size:10px;font-weight:700}
   .photo-item.photo-nd .photo-pname{color:#999;text-decoration:line-through;text-decoration-color:rgba(0,0,0,.2)}
-  .photo-nd-btn{font-size:10px;font-weight:600;color:#999;border:1.5px solid #ddd;background:#f7f7f7;border-radius:6px;padding:3px 8px;cursor:pointer;flex-shrink:0;white-space:nowrap;-webkit-tap-highlight-color:transparent}
-  .photo-nd-btn.active{color:#888;border-color:#aaa;background:#ececec}
+  .photo-nd-btn{font-size:10px;font-weight:600;color:#666;border:1.5px solid #ddd;background:#f7f7f7;border-radius:6px;padding:3px 8px;cursor:pointer;flex-shrink:0;white-space:nowrap;-webkit-tap-highlight-color:transparent}
+  .photo-nd-btn.active{color:#555;border-color:#aaa;background:#ececec}
   /* ── Botão tirar foto ── */
   .btn-photo-capture{font-size:10px;font-weight:700;color:var(--blue-mid);border:1.5px solid var(--blue-mid);background:white;border-radius:6px;padding:3px 8px;cursor:pointer;flex-shrink:0;white-space:nowrap;-webkit-tap-highlight-color:transparent;transition:all .15s}
   .btn-photo-capture:active{background:var(--blue-light)}
@@ -140,6 +140,11 @@
   .photo-thumb-mini{position:relative;width:50px;height:50px;border-radius:7px;overflow:hidden;border:1.5px solid var(--green);flex-shrink:0;background:#eee}
   .photo-thumb-mini img{width:100%;height:100%;object-fit:cover;display:block}
   .photo-thumb-del{position:absolute;top:-2px;right:-2px;width:17px;height:17px;border-radius:50%;background:rgba(20,20,20,.7);color:#fff;font-size:11px;line-height:17px;text-align:center;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  /* ── Indicador de backup no Drive (v25) ── */
+  .photo-thumb-drive{position:absolute;bottom:-2px;left:-2px;width:15px;height:15px;border-radius:50%;background:rgba(20,20,20,.75);font-size:9px;line-height:15px;text-align:center}
+  .photo-thumb-drive-pending{opacity:.4;color:#e2e8f0}
+  .photo-thumb-drive-ok{opacity:1;color:#6ee7b7}
+  .photo-thumb-drive-error{opacity:1;color:#f87171}
   .photo-thumb-count{font-size:10.5px;color:var(--text-light);white-space:nowrap;font-weight:600}
   .foto-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.35);z-index:900;max-width:88vw;text-align:center;opacity:0;transition:opacity .2s}
   .foto-toast.show{opacity:1}
@@ -188,7 +193,7 @@
   .back-guard.open{display:flex}
   .back-guard-box{background:white;border-radius:16px;padding:24px 20px;max-width:320px;width:100%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.3)}
   .back-guard-box h3{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;text-transform:uppercase;color:#c0392b;margin-bottom:8px}
-  .back-guard-box p{font-size:13px;color:var(--text-light);line-height:1.55;margin-bottom:20px}
+  .back-guard-box p{font-size:13px;color:#555;line-height:1.55;margin-bottom:20px}
   .back-guard-actions{display:flex;gap:10px}
   .btn-guard-stay{flex:2;padding:13px;border:none;border-radius:10px;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;background:var(--green);color:white;cursor:pointer}
   .btn-guard-leave{flex:1;padding:13px;border:1.5px solid var(--gray-mid);border-radius:10px;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;background:white;color:var(--text-light);cursor:pointer}
@@ -233,7 +238,7 @@
   .turno-row{display:flex;align-items:flex-end;gap:6px;background:var(--blue-light);border-radius:8px;padding:8px;flex-wrap:wrap}
   .turno-dias{flex:2;min-width:120px;display:flex;flex-direction:column;gap:3px}
   .turno-h{flex:1;min-width:70px;display:flex;flex-direction:column;gap:3px}
-  .custom-days-wrap{display:none;flex-wrap:wrap;gap:4px;margin-top:4px;background:#fff;border-radius:6px;padding:6px 8px;border:1.5px solid var(--gray-mid)}
+  .custom-days-wrap{display:none;flex-wrap:wrap;gap:4px;margin-top:4px;background:var(--bg-app);border-radius:6px;padding:6px 8px;border:1.5px solid rgba(255,255,255,.1)}
   .custom-day-label{display:flex;align-items:center;gap:3px;font-size:11px;font-weight:600;color:var(--text);cursor:pointer}
   .custom-day-label input{width:14px;height:14px;accent-color:var(--blue-mid)}
 
@@ -241,9 +246,9 @@
   .scenario-selector{padding:10px 12px 8px}
   .scenario-label{font-size:10px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
   .scenario-btns{display:flex;flex-direction:column;gap:5px}
-  .sc-btn{display:flex;align-items:flex-start;gap:8px;padding:9px 11px;border-radius:8px;border:1.5px solid var(--gray-mid);background:white;cursor:pointer;text-align:left;font-family:'Barlow',sans-serif;transition:all .15s;width:100%}
+  .sc-btn{display:flex;align-items:flex-start;gap:8px;padding:9px 11px;border-radius:8px;border:1.5px solid rgba(255,255,255,.1);background:var(--bg-elev);cursor:pointer;text-align:left;font-family:'Barlow',sans-serif;transition:all .15s;width:100%}
   .sc-btn.active{border-color:var(--blue-mid);background:var(--blue-light)}
-  .sc-dot{width:16px;height:16px;border-radius:50%;border:2px solid var(--gray-mid);flex-shrink:0;margin-top:1px;transition:all .15s}
+  .sc-dot{width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,.2);flex-shrink:0;margin-top:1px;transition:all .15s}
   .sc-btn.active .sc-dot{border-color:var(--blue-mid);background:var(--blue-mid)}
   .sc-title{font-size:12px;font-weight:700;color:var(--text);line-height:1.3}
   .sc-desc{font-size:10px;color:var(--text-light);margin-top:1px;line-height:1.35}
@@ -419,15 +424,15 @@
   .pgp-step{padding:10px;margin-bottom:4px}
   .pgp-step-label{font-size:12px;font-weight:700;color:var(--blue);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
   .pgp-machine-list{display:flex;flex-direction:column;gap:6px}
-  .pgp-machine-card{background:#fff;border:1.5px solid var(--gray-mid);border-radius:10px;padding:10px 12px;cursor:pointer;transition:border-color .15s,background .15s}
-  .pgp-machine-card:active{background:var(--blue-light)}
+  .pgp-machine-card{background:var(--bg-elev);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px 12px;cursor:pointer;transition:border-color .15s,background .15s}
+  .pgp-machine-card:active{background:rgba(245,130,32,.1)}
   .pgp-machine-card-title{font-size:14px;font-weight:700;color:var(--text)}
   .pgp-machine-card-sub{font-size:12px;color:var(--text-light);margin-top:2px}
   .pgp-machine-card-new{background:#fff7ed;border:1.5px dashed var(--orange);border-radius:10px;padding:10px 12px;cursor:pointer;color:var(--orange);font-size:13px;font-weight:700;text-align:center}
   .pgp-link-btn{background:none;border:none;cursor:pointer;font-size:12px;color:var(--blue-mid);padding:2px 0;font-family:inherit;text-decoration:underline}
 
   /* ── ETAPA 5 — REGISTRAR PREVENTIVA ── */
-  .pgp-tipo-btn{flex:1;padding:10px 8px;border:1.5px solid var(--gray-mid);border-radius:8px;background:#fff;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;cursor:pointer;color:var(--text);transition:all .15s}
+  .pgp-tipo-btn{flex:1;padding:10px 8px;border:1.5px solid rgba(255,255,255,.1);border-radius:8px;background:var(--bg-elev);font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;cursor:pointer;color:var(--text-light);transition:all .15s}
   .pgp-tipo-btn-active{background:var(--blue);color:white;border-color:var(--blue)}
   .pgp-acao-wrap{margin-bottom:10px}
   .pgp-acao-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--blue);display:block;margin-bottom:6px}
@@ -748,7 +753,7 @@
   .section-body th{background:var(--bg-surface)!important;color:var(--text-light)!important;font-family:'JetBrains Mono',monospace!important;font-size:9px!important;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:8px 6px!important;border-bottom:1px solid rgba(255,255,255,.06)}
   .section-body td{border-bottom:1px solid rgba(255,255,255,.04)!important;padding:6px 4px!important;color:var(--text)}
   .section-body tr:last-child td{border-bottom:none!important}
-  .section-body input[type="text"],.section-body input[type="number"],.section-body input[type="date"],.section-body select,.section-body textarea{background:var(--bg-app)!important;color:var(--text)!important;border:1.5px solid rgba(255,255,255,.08)!important;border-radius:8px!important;padding:10px 12px!important;font-size:14px!important;min-height:44px!important;font-family:'Inter',sans-serif;width:100%}
+  .section-body input[type="text"],.section-body input[type="number"],.section-body input[type="date"],.section-body input[type="time"],.section-body select,.section-body textarea{background:var(--bg-app)!important;color:var(--text)!important;border:1.5px solid rgba(255,255,255,.08)!important;border-radius:8px!important;padding:10px 12px!important;font-size:14px!important;min-height:44px!important;font-family:'Inter',sans-serif;width:100%}
   .section-body input:focus,.section-body select:focus,.section-body textarea:focus{border-color:var(--brand-start)!important;box-shadow:0 0 0 3px var(--brand-glow)!important;outline:none;background:var(--bg-surface)!important}
   .section-body input::placeholder,.section-body textarea::placeholder{color:var(--text-light)!important;opacity:.5}
 
@@ -911,7 +916,7 @@
       <div class="proper-logo-mark">H</div>
       <div class="proper-logo-text">
         <span class="brand">PROPER</span>
-        <span class="brand-sub">Field · v24</span>
+        <span class="brand-sub">Field · v25</span>
       </div>
     </div>
     <div class="header-right">
@@ -1268,6 +1273,122 @@ function compressPhotoFile(file) {
   });
 }
 
+// ── BACKUP DE FOTOS NO GOOGLE DRIVE (v25) ──────────────────────────────
+// Compressão separada, em qualidade maior que a usada no PDF (800px/0.82),
+// só para a cópia de backup que sobe pro Drive. Constantes fáceis de achar
+// caso um dia isso precise virar Script Property configurável.
+const DRIVE_PHOTO_MAX_W = 1600;
+const DRIVE_PHOTO_QUALITY = 0.88;
+
+function compressPhotoForDrive(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const img = new Image();
+      img.onload = function() {
+        const canvas = document.createElement('canvas');
+        const scale = img.width > DRIVE_PHOTO_MAX_W ? DRIVE_PHOTO_MAX_W / img.width : 1;
+        canvas.width  = Math.round(img.width  * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve({ dataUrl: canvas.toDataURL('image/jpeg', DRIVE_PHOTO_QUALITY), w: canvas.width, h: canvas.height });
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// Fila SEPARADA da pgp_pending_sync (dados críticos, QUEUE_LIMIT=40 compartilhado
+// entre saveMachine/saveVisit/updateMachineParts). Backups de foto são um "extra":
+// vivem só em memória, sem tocar localStorage — se a página recarregar com
+// uploads pendentes aqui, eles são perdidos (a foto continua no PDF normalmente).
+let _pendingPhotoUploads = [];
+
+// Lê um campo de uma máquina específica pelo data-key (mesmo padrão usado em
+// pgpBuildPayload/vg, mas sem o fallback '—' — aqui queremos string vazia mesmo).
+function pgpFieldVal(midx, key) {
+  const el = document.querySelector('[data-key="m' + midx + '_' + key + '"]');
+  return el ? el.value.trim() : '';
+}
+
+// Gera um entityId legível para auditoria manual na planilha, já que o PCF hoje
+// não tem número de OS (BL-01/BL-02): serial/tag + data da visita, com fallback
+// para cliente + timestamp se a máquina ainda não tiver serial/tag cadastrado.
+function pgpDriveEntityId(midx) {
+  const serialOrTag = pgpFieldVal(midx, 'ns') || pgpFieldVal(midx, 'tag');
+  const visitDate = pgpFieldVal(midx, 'data_visita') || new Date().toISOString().slice(0, 10);
+  if (serialOrTag) return serialOrTag + '_' + visitDate;
+  const clientNameFallback = vg(0, 'razao_social');
+  return (clientNameFallback !== '—' ? clientNameFallback : 'SemCliente') + '_' + Date.now();
+}
+
+function pgpDriveStatusLabel(status) {
+  if (status === 'ok') return 'Backup no Drive: ok';
+  if (status === 'error') return 'Backup no Drive: falhou (foto já está no PDF normalmente)';
+  return 'Backup no Drive: enviando...';
+}
+
+// Faz o upload em si (compressão 1600px/0.88 + salvarFotosDrivePGP no GAS).
+// Atualiza fotoObj.driveStatus e re-renderiza a miniatura ao final.
+async function uploadPhotoToDrive(item) {
+  const { midx, photoKey, label, fotoObj, file } = item;
+  try {
+    const { dataUrl: driveDataUrl } = await compressPhotoForDrive(file);
+    const base64 = driveDataUrl.split(',')[1] || '';
+    const clientNameRaw = vg(0, 'razao_social');
+    const clientName = clientNameRaw !== '—' ? clientNameRaw : 'SemCliente';
+    await pgpPostJson('salvarFotosDrivePGP', {
+      clientName,
+      osNumero: '',
+      dataBase64: base64,
+      mime: 'image/jpeg',
+      fileName: photoKey + '_' + Date.now() + '.jpg',
+      attachmentType: 'foto_pcf',
+      caption: label || '',
+      entityType: 'foto_pcf',
+      entityId: pgpDriveEntityId(midx),
+      createdBy: pgpFieldVal(midx, 'tecnico')
+    });
+    fotoObj.driveStatus = 'ok';
+  } catch (err) {
+    fotoObj.driveStatus = 'error';
+    throw err;
+  } finally {
+    renderPhotoThumbs(midx, photoKey);
+  }
+}
+
+// Ponto de entrada chamado pela captura de foto — fire-and-forget, nunca trava
+// a UI. Se online, tenta subir na hora; se falhar ou estiver offline, guarda só
+// em memória para reenviar depois (ver flushPendingPhotoUploads).
+function queuePhotoDriveUpload(midx, photoKey, label, fotoObj, file) {
+  const item = { midx, photoKey, label, fotoObj, file };
+  if (_pgpGsConnected) {
+    uploadPhotoToDrive(item).catch(() => { _pendingPhotoUploads.push(item); });
+  } else {
+    fotoObj.driveStatus = 'pending';
+    renderPhotoThumbs(midx, photoKey);
+    _pendingPhotoUploads.push(item);
+  }
+}
+
+// Reenvia backups de foto pendentes. Reaproveita o mesmo gatilho de
+// pgpFlushPending() (chamado ao reconectar e sempre que o usuário força reenvio
+// pelo badge ⏳) — não o mecanismo de armazenamento, que continua separado.
+async function flushPendingPhotoUploads() {
+  if (!_pgpGsConnected || !_pendingPhotoUploads.length) return;
+  const pending = _pendingPhotoUploads;
+  _pendingPhotoUploads = [];
+  for (const item of pending) {
+    try { await uploadPhotoToDrive(item); }
+    catch (e) { _pendingPhotoUploads.push(item); }
+  }
+}
+
 // Adiciona UMA foto ao array do item (respeitando o limite). Retorna true/false.
 async function storePhotoBase64(midx, photoKey, label, file, saveToDevice) {
   if (!file) return false;
@@ -1279,10 +1400,12 @@ async function storePhotoBase64(midx, photoKey, label, file, saveToDevice) {
   }
   try {
     const { dataUrl, w, h } = await compressPhotoFile(file);
-    photoStore[midx][photoKey].push({ label, dataUrl, w, h });
+    const fotoObj = { label, dataUrl, w, h, driveStatus: 'pending' };
+    photoStore[midx][photoKey].push(fotoObj);
     renderPhotoThumbs(midx, photoKey);
     if (saveToDevice) savePhotoToDevice(dataUrl, photoKey, label);
     autoSaveDraft();
+    queuePhotoDriveUpload(midx, photoKey, label, fotoObj, file);
     return true;
   } catch (err) {
     console.warn('storePhotoBase64 error:', err);
@@ -1319,6 +1442,7 @@ function renderPhotoThumbs(midx, photoKey) {
     container.innerHTML = fotos.map((foto, i) => `
       <div class="photo-thumb-mini">
         <img src="${foto.dataUrl}" alt="Foto">
+        ${foto.driveStatus ? `<div class="photo-thumb-drive photo-thumb-drive-${foto.driveStatus}" title="${pgpDriveStatusLabel(foto.driveStatus)}">☁</div>` : ''}
         <div class="photo-thumb-del" onclick="event.stopPropagation();removePhotoDoStore(${midx},'${photoKey}',${i})">✕</div>
       </div>`).join('') + (fotos.length ? `<span class="photo-thumb-count">${fotos.length}/${MAX_FOTOS_POR_ITEM}</span>` : '');
   });
@@ -4492,6 +4616,8 @@ async function pgpPostJson(action, body){
 
 async function pgpFlushPending(){
   if(!_pgpGsConnected||!_pgpGsUrl) return;
+  // v25: reenvia backups de foto pendentes (fila separada, não bloqueia o resto)
+  flushPendingPhotoUploads();
   const list = pgpGetPending();
   if(!list.length) return;
   const failed = [];
