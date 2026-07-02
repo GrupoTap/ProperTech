@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>ProperCare Field · PGP Preventivas v27</title>
+<title>ProperCare Field · PGP Preventivas v28</title>
 <meta name="theme-color" content="#0f172a">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -1192,6 +1192,38 @@
 
 <script>
 // ══════════════════════════════════════════════════════════════════════════
+// CHANGELOG v28 (Sprint Preventiva↔Pipeline de OS — itens 3 e 4 do prompt)
+// ══════════════════════════════════════════════════════════════════════════
+// - checkHubSession: passa a ler ?os_id= da URL (window._PGP_OS_ID). Quando
+//   modo=preventiva e os_id presente, chama pgpIniciarPreventivaDeOS(osId) em
+//   vez do pgpSetTipoVisita simples — fluxo avulso (sem os_id) inalterado.
+//   Quando modo=pipeline e os_id presente, abre a OS específica direto
+//   (pfSelecionarOS) em vez de sempre cair na lista de OS.
+// - Novas funções pgpIniciarPreventivaDeOS/pgpCarregarMaquinaOS: buscam as
+//   máquinas vinculadas à OS via getMaquinasByOS e pré-carregam direto no(s)
+//   painel(éis) do formulário, pulando pgpStep1/pgpStep2 (busca manual de
+//   cliente/máquina). Múltiplas máquinas reaproveitam addMachine() — mesmo
+//   padrão já usado no fluxo avulso multi-máquina.
+// - pgpBuildPayload: payload agora inclui os_id (de window._PGP_OS_ID),
+//   viajando também na fila offline (mesmo objeto payload). Sem isso o
+//   autoCompletarTarefa já existente no GAS nunca recebia os_id e nunca
+//   disparava.
+// - pfAbrirForm: acrescenta ?os_id=/&os_id= na URL de navegação em tempo de
+//   execução (nunca no Form_URL salvo no template, que continua estático e
+//   compartilhado entre OS).
+// - pgpEnviarPreventiva: quando a sessão veio de uma OS, não reseta mais o
+//   tipo de visita para 'inspecao' ao salvar (evitava esconder ações de
+//   preventiva de outras máquinas ainda pendentes na mesma sessão). Novo
+//   banner fixo "Voltar para OS" (pgpMostrarVoltarParaOS/pgpVoltarParaOS)
+//   oferece o retorno ao pipeline sem forçar navegação automática.
+// - Depende de GAS_properCare_v43.js (getMaquinasByOS normalizado no mesmo
+//   formato de getMachinesByClient, local_atendimento na OS) e de
+//   PCM_v47.html (campo interno/externo). O cadastro do template
+//   "Preventiva" via UI do editor de templates do PCM (item 7 do prompt)
+//   não exige código — é configuração feita depois do deploy.
+// ══════════════════════════════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════════════════════════
 // CHANGELOG v27 (Sprint PCF v26→v27 — Qualidade do relatório PDF)
 // ══════════════════════════════════════════════════════════════════════════
 // - limparTextoPDF: parou de remover acentos (WinAnsi já suporta); troca
@@ -1253,8 +1285,12 @@
     // Ler parâmetro ?modo=preventiva da URL e ativar tipo de visita
     var urlParams = new URLSearchParams(window.location.search);
     var modoUrl = urlParams.get('modo');
+    // v28 — Preventiva↔Pipeline: os_id presente na URL indica que o formulário foi aberto
+    // a partir de uma tarefa do pipeline de uma OS (não é uma preventiva avulsa).
+    window._PGP_OS_ID = urlParams.get('os_id') || null;
     if (modoUrl === 'preventiva') {
-      // pgpSetTipoVisita será chamado após DOM pronto
+      // pgpSetTipoVisita (ou pgpIniciarPreventivaDeOS, se vier de uma OS) será chamado
+      // após DOM pronto
       window._INITIAL_MODO = 'preventiva';
     }
     if (modoUrl === 'pipeline') {
@@ -1265,10 +1301,18 @@
     // Aplicar modo inicial se veio da URL
     setTimeout(function() {
       if (window._INITIAL_MODO === 'preventiva') {
-        if (typeof pgpSetTipoVisita === 'function') pgpSetTipoVisita('preventiva');
+        if (window._PGP_OS_ID && typeof pgpIniciarPreventivaDeOS === 'function') {
+          pgpIniciarPreventivaDeOS(window._PGP_OS_ID);
+        } else if (typeof pgpSetTipoVisita === 'function') {
+          pgpSetTipoVisita('preventiva');
+        }
       }
       if (window._INITIAL_MODO === 'pipeline') {
         if (typeof pfAbrir === 'function') pfAbrir();
+        // v28: se a URL já traz os_id, pula a lista de OS e abre o pipeline direto nela
+        if (window._PGP_OS_ID && typeof pfSelecionarOS === 'function') {
+          pfSelecionarOS(window._PGP_OS_ID, '');
+        }
       }
     }, 500);
   } catch(e) {
@@ -5861,6 +5905,75 @@ function pgpClientSearchFallback(){
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+// v28 — Preventiva↔Pipeline: pré-carrega a(s) máquina(s) vinculada(s) a uma OS, pulando as
+// telas de busca manual de cliente (pgpStep1) e lista de máquinas (pgpStep2) do fluxo avulso.
+// Usada quando o formulário é aberto a partir de uma tarefa auto:preventiva do pipeline
+// (?modo=preventiva&os_id=...).
+async function pgpIniciarPreventivaDeOS(osId){
+  pgpSetTipoVisita('preventiva');
+
+  const step1 = document.getElementById('pgpStep1');
+  const step2 = document.getElementById('pgpStep2');
+  if(step1) step1.style.display = 'none';
+  if(step2) step2.style.display = 'none';
+
+  try{
+    const r = await pfGet('getMaquinasByOS', { id_os: osId });
+    const osMachines = r.machines || [];
+
+    if(osMachines.length === 0){
+      showNotification('⚠ Esta OS não tem máquinas vinculadas. Vincule ao menos uma máquina no ProperAdmin antes de abrir a preventiva.');
+      return;
+    }
+
+    // Primeira máquina usa o painel 0, que já existe por padrão ao abrir o app.
+    await pgpCarregarMaquinaOS(osMachines[0], 0);
+
+    // Máquinas adicionais: cria um painel por máquina, reaproveitando addMachine()
+    // — mesmo padrão já usado no fluxo avulso multi-máquina.
+    for(let i = 1; i < osMachines.length; i++){
+      addMachine(); // cria o painel no próximo índice e já muda currentMachine para ele
+      await pgpCarregarMaquinaOS(osMachines[i], currentMachine);
+    }
+
+    switchMachine(0);
+    renderTabs();
+    if(typeof updateAllTabNames === 'function') updateAllTabNames();
+
+    const found = document.getElementById('pgpFound');
+    if(found){
+      found.textContent = '✓ ' + osMachines.length + ' máquina(s) carregada(s) da OS #' + osId;
+      found.classList.add('show');
+    }
+  }catch(e){
+    if(e.message && e.message.includes('AUTH_GOOGLE')){ pfHubLogout(); return; }
+    showNotification('⚠ Erro ao carregar máquinas da OS: ' + e.message);
+  }
+}
+
+// Carrega uma única máquina (já no formato normalizado de getMaquinasByOS/getMachinesByClient)
+// no painel de índice idx, reaproveitando o mesmo merge com dados locais que
+// pgpSelectClientMachine já usa no fluxo avulso — para manter consistência de comportamento
+// (ex: priorizar registro local mais completo quando existir).
+async function pgpCarregarMaquinaOS(eq, idx){
+  const localDb = pgpGetLocalMachines();
+  let found = null;
+  if(eq.id) found = localDb.find(m => m.id === eq.id);
+  if(!found && eq.serial) found = localDb.find(m => compactKey(m.serial||'') === compactKey(eq.serial));
+  if(!found && eq.tag && eq.client)
+    found = localDb.find(m => clientKey(m.client||'') === clientKey(eq.client) && compactKey(m.tag||'') === compactKey(eq.tag));
+
+  const machineToLoad = pgpMergeClientDataForLoad(found || eq, eq?.clientData || null);
+  if(eq.client) machineToLoad.client = eq.client;
+
+  try{
+    const fullDb = JSON.parse(localStorage.getItem('proper_admin_v2') || 'null');
+    pgpLoadMachine(machineToLoad, fullDb, idx, eq?.clientData || null);
+  }catch(e){
+    pgpLoadMachine(machineToLoad, null, idx, eq?.clientData || null);
+  }
+}
+
 // ── ETAPA 5 — REGISTRAR PREVENTIVA ───────────────────────────────────────────
 
 function pgpSetAcao(pk, acao){
@@ -6099,7 +6212,14 @@ async function pgpEnviarPreventiva(midx=currentMachine){
       showNotification('ℹ Esta preventiva já foi registrada');
     } else if(d.status==='ok'){
       showNotification('✅ Preventiva registrada — '+nTrocadas+' peça(s) atualizada(s)');
-      pgpSetTipoVisita('inspecao');
+      // v28 — Preventiva↔Pipeline: se a sessão veio de uma OS, não reseta o tipo de visita
+      // (evita esconder as ações de preventiva de outras máquinas ainda pendentes na mesma
+      // OS/sessão) e mostra o caminho de volta para o pipeline.
+      if(window._PGP_OS_ID){
+        pgpMostrarVoltarParaOS();
+      } else {
+        pgpSetTipoVisita('inspecao');
+      }
     } else {
       throw new Error(d.error||'Erro desconhecido');
     }
@@ -6120,6 +6240,31 @@ async function pgpEnviarPreventiva(midx=currentMachine){
   }finally{
     if(btn){btn.disabled=false;btn.textContent='🔧 Registrar Preventiva';}
   }
+}
+
+// v28 — Preventiva↔Pipeline: banner fixo oferecendo voltar para o pipeline da OS depois de
+// registrar a preventiva. Fica sempre visível (não navega sozinho) porque o técnico pode
+// preferir continuar preenchendo outras máquinas da mesma OS antes de voltar.
+function pgpMostrarVoltarParaOS(){
+  if(!window._PGP_OS_ID) return;
+  if(document.getElementById('pgpVoltarOsBanner')) return; // já exibido, não duplica
+  const b = document.createElement('div');
+  b.id = 'pgpVoltarOsBanner';
+  b.style.cssText = 'position:fixed;left:12px;right:12px;bottom:76px;z-index:500;' +
+    'background:linear-gradient(180deg,var(--brand-start),var(--brand-end));color:#fff;' +
+    'border-radius:12px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;' +
+    'gap:10px;box-shadow:0 4px 16px rgba(0,0,0,.35);font-family:"Barlow Condensed",sans-serif;';
+  b.innerHTML =
+    '<span style="font-weight:700;font-size:14px">✅ Preventiva registrada — voltar para a OS?</span>' +
+    '<button onclick="pgpVoltarParaOS()" style="background:#fff;color:#e85d1f;border:none;border-radius:8px;' +
+    'padding:8px 14px;font-weight:800;font-size:13px;cursor:pointer;white-space:nowrap;flex-shrink:0">🔧 Voltar para OS</button>';
+  document.body.appendChild(b);
+}
+
+function pgpVoltarParaOS(){
+  if(!window._PGP_OS_ID) return;
+  window.location.href = window.location.origin + window.location.pathname +
+    '?modo=pipeline&os_id=' + encodeURIComponent(window._PGP_OS_ID);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -6310,6 +6455,11 @@ function pgpBuildPayload(midx=currentMachine){
     auxiliar:   gv('auxiliar')    || '',
     horaInicio: gv('hora_inicio') || '',
     horaFim:    gv('hora_fim')    || '',
+    // v28 — Preventiva↔Pipeline: quando o formulário foi aberto a partir de uma tarefa do
+    // pipeline de uma OS (?os_id= na URL de entrada), viaja junto em toda gravação — inclusive
+    // no item da fila offline, já que a fila reaproveita este mesmo objeto payload — permitindo
+    // ao GAS auto-completar a tarefa correspondente e gravar o vínculo visita↔OS.
+    os_id: window._PGP_OS_ID || '',
   };
 }
 
@@ -6897,7 +7047,12 @@ async function pfAbrirForm(tarefaId, formUrl) {
   } catch(e) {
     console.warn('[pfAbrirForm] registrarAbertura falhou:', e.message);
   }
-  window.location.href = formUrl;
+  // v28 — Preventiva↔Pipeline: acrescenta os_id na URL de navegação em tempo de execução —
+  // o Form_URL salvo no template continua estático e compartilhado entre todas as OS; é aqui,
+  // por instância de tarefa, que sabemos a qual OS ela pertence.
+  var separador = formUrl.indexOf('?') >= 0 ? '&' : '?';
+  var urlComOs = formUrl + separador + 'os_id=' + encodeURIComponent(_pfOsId);
+  window.location.href = urlComOs;
 }
 
 // ── Sistema de notificações ───────────────────────────────────────────────────
