@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>ProperCare Field · PGP Preventivas v28</title>
+<title>ProperCare Field · PGP Preventivas v29</title>
 <meta name="theme-color" content="#0f172a">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -1192,6 +1192,22 @@
 
 <script>
 // ══════════════════════════════════════════════════════════════════════════
+// CHANGELOG v29 (Sprint: sessão resiliente a baixa conectividade)
+// ══════════════════════════════════════════════════════════════════════════
+// - Novas funções lerSessaoStorage/limparSessaoStorage: sessão passa a ser
+//   lida de localStorage (com fallback em sessionStorage) em vez de só
+//   sessionStorage — sobrevive a fechar o app/processo em campo sem sinal,
+//   sem novo login, mesma janela de validade de sempre (8h). A sessão em si
+//   continua sendo criada pelo ProperHub (v10), que agora grava nos dois
+//   storages.
+// - checkHubSession, loginEntrar, pfHubLogout: atualizados para usar os
+//   helpers acima em vez de sessionStorage direto.
+// - Depende de GAS_properCare_v44.js (JWT do Google agora verificado de
+//   verdade via tokeninfo, rate-limit de tentativas de PIN) e de
+//   ProperHub_index_v10.html (sessão gravada em localStorage+sessionStorage).
+// ══════════════════════════════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════════════════════════
 // CHANGELOG v28 (Sprint Preventiva↔Pipeline de OS — itens 3 e 4 do prompt)
 // ══════════════════════════════════════════════════════════════════════════
 // - checkHubSession: passa a ler ?os_id= da URL (window._PGP_OS_ID). Quando
@@ -1266,9 +1282,26 @@
 //   genérico citado originalmente no prompt do sprint).
 // ══════════════════════════════════════════════════════════════════════════
 
+// ── SESSÃO RESILIENTE A BAIXA CONECTIVIDADE ─────────────────────────────────
+// v29 — lê de localStorage (sobrevive a fechar o app/aba — essencial em campo
+// sem sinal) com fallback em sessionStorage (sessão criada pelo ProperHub
+// grava nos dois desde a v10). Mesma janela de validade de sempre (8h via
+// token_at), só muda onde fica guardado.
+function lerSessaoStorage() {
+  try {
+    return localStorage.getItem('proper_session') || sessionStorage.getItem('proper_session');
+  } catch(e) {
+    try { return sessionStorage.getItem('proper_session'); } catch(e2) { return null; }
+  }
+}
+function limparSessaoStorage() {
+  try { localStorage.removeItem('proper_session'); } catch(e) {}
+  try { sessionStorage.removeItem('proper_session'); } catch(e) {}
+}
+
 // ── HUB SESSION CHECK ──────────────────────────────────────────────────────
 (function checkHubSession() {
-  var raw = sessionStorage.getItem('proper_session');
+  var raw = lerSessaoStorage();
   if (!raw) {
     window.location.href = 'https://grupotap.github.io/ProperHub/';
     return;
@@ -6680,7 +6713,7 @@ function pgpUpdateAdminLocal(payload){
 // ── AUTH ── autenticação migrada para Hub (checkHubSession no topo do script)
 // Stub de segurança: se loginOverlay aparecer sem sessão, redirecionar ao Hub
 function loginEntrar() {
-  sessionStorage.removeItem('proper_session');
+  limparSessaoStorage();
   window.location.href = 'https://grupotap.github.io/ProperHub/';
 }
 
@@ -6743,7 +6776,7 @@ function pfVoltarOS() {
 
 // ── Logout por expiração JWT ──────────────────────────────────────────────────
 function pfHubLogout() {
-  sessionStorage.removeItem('proper_session');
+  limparSessaoStorage();
   window.location.href = 'https://grupotap.github.io/ProperHub/';
 }
 
