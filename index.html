@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>ProperCare Field · PGP Preventivas v29</title>
+<title>ProperCare Field · PGP Preventivas v30</title>
 <meta name="theme-color" content="#0f172a">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -1192,6 +1192,23 @@
 
 <script>
 // ══════════════════════════════════════════════════════════════════════════
+// CHANGELOG v30 (Limpeza: remover código morto de google_credential)
+// ══════════════════════════════════════════════════════════════════════════
+// - window._GC (populado a partir de session.google_credential em
+//   checkHubSession) removido — nada mais lia esse campo; a sessão gravada
+//   pelo ProperHub v12 e o GAS v47 migraram para login só por PIN
+//   (_AUTH_HASH), sem credential do Google.
+// - gcBody()/gcParam(): pararam de anexar google_credential ao corpo/query
+//   string das chamadas ao GAS. Assinatura e nome das funções mantidos (só
+//   removido o campo morto) para não exigir mudança nas ~10 chamadas
+//   existentes (savePreventiva, ping, getMachinesByClient, searchMachine,
+//   getClientsForField, etc.) — todas seguem autenticando normalmente via
+//   key/_AUTH_HASH.
+// - Nenhuma mudança em checkHubSession, lerSessaoStorage/limparSessaoStorage,
+//   PROPER_SESSION, _AUTH_HASH ou _pgpGsUrl.
+// ══════════════════════════════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════════════════════════
 // CHANGELOG v29 (Sprint: sessão resiliente a baixa conectividade)
 // ══════════════════════════════════════════════════════════════════════════
 // - Novas funções lerSessaoStorage/limparSessaoStorage: sessão passa a ser
@@ -1309,7 +1326,6 @@ function limparSessaoStorage() {
   try {
     var session = JSON.parse(raw);
     window.PROPER_SESSION = session;
-    window._GC = session.google_credential || '';
 
     // Esconder overlay de login legado (auth agora vem do ProperHub)
     var overlay = document.getElementById('loginOverlay');
@@ -1356,10 +1372,10 @@ function limparSessaoStorage() {
 
 // v_novo ─ helpers Google credential
 function gcBody(obj) {
-  return JSON.stringify(Object.assign({}, obj, { google_credential: window._GC || '' }));
+  return JSON.stringify(Object.assign({}, obj));
 }
 function gcParam() {
-  return '&google_credential=' + encodeURIComponent(window._GC || '');
+  return '';
 }
 
 // ── ARMAZENAMENTO DE FOTOS (base64 para PDF) ──────────
