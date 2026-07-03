@@ -1,11 +1,13 @@
-// PCF_index_v33.html
-// v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
-//        abertura do Pipeline
-//   - Nova função interna _pgpFetchComRetry_: até 2 retries
-//     (1000ms/2500ms) para falhas de infraestrutura. Mesmo padrão do
-//     PCM v50, backoff mais longo pra conectividade de campo.
-//   - pfAbrir: aguarda pfLoadOS() antes de iniciar polling de
-//     notificações, em vez de disparar as duas em paralelo.
+<!--
+PCF_index_v33.html
+v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
+       abertura do Pipeline
+  - Nova função interna _pgpFetchComRetry_: até 2 retries
+    (1000ms/2500ms) para falhas de infraestrutura. Mesmo padrão do
+    PCM v50, backoff mais longo pra conectividade de campo.
+  - pfAbrir: aguarda pfLoadOS() antes de iniciar polling de
+    notificações, em vez de disparar as duas em paralelo.
+-->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
