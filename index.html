@@ -1,4 +1,12 @@
-﻿<!DOCTYPE html>
+// PCF_index_v33.html
+// v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
+//        abertura do Pipeline
+//   - Nova função interna _pgpFetchComRetry_: até 2 retries
+//     (1000ms/2500ms) para falhas de infraestrutura. Mesmo padrão do
+//     PCM v50, backoff mais longo pra conectividade de campo.
+//   - pfAbrir: aguarda pfLoadOS() antes de iniciar polling de
+//     notificações, em vez de disparar as duas em paralelo.
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -5211,16 +5219,10 @@ function pgpUpdatePendingBadge(){
 }
 
 async function pgpPostJson(action, body){
-  // Sem Content-Type: evita preflight CORS (Apps Script não responde OPTIONS)
-  const r = await fetch(_pgpGsUrl,{
+  const d = await _pgpFetchComRetry_(_pgpGsUrl, {
     method:'POST',
     body:gcBody({action, key:_AUTH_HASH, ...body})
   });
-  if(!r.ok) throw new Error(`HTTP ${r.status}`);
-  const txt = await r.text();
-  if(txt.trim().startsWith('<')) throw new Error('Apps Script retornou HTML — verifique a publicação (Qualquer pessoa, sem login)');
-  let d = null;
-  try{ d = JSON.parse(txt); }catch(e){ throw new Error('Resposta inválida do Apps Script'); }
   if(!d || d.status!=='ok') throw new Error((d && d.error) || `Falha em ${action}`);
   return d;
 }
@@ -6990,14 +6992,46 @@ function loginEntrar() {
 // ════════════════════════════════════════════════════════════════════════════
 
 // ── pfGet: helper GET para o pipeline (análogo ao gsGet do PCM) ─────────────
+// v33 — Resiliência de rede em campo: retry com backoff (1000ms/2500ms,
+// mais longo que o PCM porque a rede de campo demora mais pra se
+// recuperar). NÃO retenta erro de negócio nem HTML de config incorreta.
+async function _pgpFetchComRetry_(url, options, maxRetries) {
+  if (maxRetries === undefined) maxRetries = 2;
+  var lastErr;
+  for (var tentativa = 0; tentativa <= maxRetries; tentativa++) {
+    try {
+      const r = await fetch(url, options);
+      const txt = await r.text();
+      if (txt.trim().startsWith('<')) {
+        throw new Error('GAS retornou HTML — verifique a publicação do Web App');
+      }
+      if (!r.ok) {
+        throw new Error('HTTP ' + r.status);
+      }
+      try {
+        return JSON.parse(txt);
+      } catch (e) {
+        throw new Error('Resposta inválida do GAS: ' + txt.slice(0, 80));
+      }
+    } catch (e) {
+      lastErr = e;
+      var infraTransitoria = /^HTTP \d+$/.test(e.message) ||
+        /Failed to fetch|NetworkError|Load failed/i.test(e.message);
+      if (!infraTransitoria || tentativa === maxRetries) throw e;
+      var delayMs = tentativa === 0 ? 1000 : 2500;
+      console.warn('[pgpFetch] tentativa ' + (tentativa + 1) + ' falhou (' +
+        e.message + ') — retry em ' + delayMs + 'ms');
+      await new Promise(function(res) { setTimeout(res, delayMs); });
+    }
+  }
+  throw lastErr;
+}
+
 async function pfGet(action, params) {
   if (!_pgpGsUrl) throw new Error('URL do servidor não configurada. Acesse Configurações no ProperTech.');
   params = params || {};
   const qs = new URLSearchParams(Object.assign({ action, key: _AUTH_HASH }, params));
-  const r = await fetch(_pgpGsUrl + '?' + qs.toString() + gcParam(), { method: 'GET' });
-  const txt = await r.text();
-  if (txt.trim().startsWith('<')) throw new Error('GAS retornou HTML — verifique publicação');
-  const d = JSON.parse(txt);
+  const d = await _pgpFetchComRetry_(_pgpGsUrl + '?' + qs.toString() + gcParam(), { method: 'GET' });
   if (!d || d.status !== 'ok') throw new Error(d?.error || 'Erro GAS');
   return d;
 }
@@ -7014,13 +7048,13 @@ var _pfGsConnected = false;
 var _pfBannerTimeout = null;
 
 // ── Abertura / fechamento do overlay ─────────────────────────────────────────
-function pfAbrir() {
+async function pfAbrir() {
   var ov = document.getElementById('pfOverlay');
   ov.style.display = 'flex';
   document.getElementById('pfScreenOS').style.display = 'block';
   document.getElementById('pfScreenPipeline').style.display = 'none';
   _pfOsFilter = 'todas';
-  pfLoadOS();
+  await pfLoadOS();
   if (!_pfNotifInterval) {
     _pfNotifInterval = setInterval(pollPfNotificacoes, 60000);
     pollPfNotificacoes();
