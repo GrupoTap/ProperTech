@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>ProperCare Field · PGP Preventivas v30</title>
+<title>ProperCare Field · PGP Preventivas v31</title>
 <meta name="theme-color" content="#0f172a">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -113,8 +113,12 @@
   .regime-calc-row{display:flex;justify-content:space-between;font-size:12px;color:var(--text);padding:2px 0}
   .regime-calc-row b{color:var(--green);font-size:13px}
 
-  .photo-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #f0f2f5;cursor:pointer;-webkit-tap-highlight-color:transparent}
-  .photo-item:last-child{border-bottom:none}
+  /* v31 item 5: divisória movida de .photo-item para .photo-item-group, que
+     agrupa o item + suas thumbs — antes a borda separava o texto do item das
+     próprias fotos (que vinham depois, como irmão seguinte fora da borda). */
+  .photo-item-group{border-bottom:1px solid #f0f2f5}
+  .photo-item-group:last-child{border-bottom:none}
+  .photo-item{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;-webkit-tap-highlight-color:transparent}
   .photo-item:active{background:#f5f7fb}
   .photo-cb{width:22px;height:22px;border-radius:50%;border:2.5px solid var(--gray-mid);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;color:transparent;background:white;transition:all .2s}
   .photo-item.photo-checked .photo-cb{background:var(--green);border-color:var(--green);color:white}
@@ -136,7 +140,7 @@
   /* ── Miniaturas persistentes de fotos (até 3 por item) ── */
   .photo-thumbs-mini{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:4px 0 2px}
   .photo-thumbs-mini:empty{display:none}
-  .photo-item .photo-thumbs-mini{width:100%;margin-left:32px;margin-top:-2px}
+  .photo-item-group .photo-thumbs-mini{width:100%;margin-left:32px;margin-top:-2px}
   .photo-thumb-mini{position:relative;width:50px;height:50px;border-radius:7px;overflow:hidden;border:1.5px solid var(--green);flex-shrink:0;background:#eee}
   .photo-thumb-mini img{width:100%;height:100%;object-fit:cover;display:block}
   .photo-thumb-del{position:absolute;top:-2px;right:-2px;width:17px;height:17px;border-radius:50%;background:rgba(20,20,20,.7);color:#fff;font-size:11px;line-height:17px;text-align:center;cursor:pointer;-webkit-tap-highlight-color:transparent}
@@ -285,9 +289,20 @@
   /* v27: linha sempre visível (referência + fotos) — não depende de tocar
      para expandir, diferente de .pt-detail-row (ver item 9 do sprint). */
   .pt-quick-row td{padding:0!important;border-bottom:1px solid #e8f0fb!important}
-  .pt-quick-box{padding:6px 10px;background:#fafbfd;display:flex;flex-direction:column;gap:6px}
-  .pt-detail-box{padding:8px 10px;background:#f5f8ff;display:flex;flex-direction:column;gap:6px}
+  /* v31 item 4: fundo branco puro destoava do resto do app (tema escuro) —
+     trocado pelo mesmo tom elevado já usado em .turno-row (var(--blue-light),
+     que no tema escuro remapeia para --bg-elev), com borda lateral colorida +
+     cabeçalho repetindo o nome da peça (.pt-box-partname) para deixar claro a
+     qual peça o bloco pertence sem precisar olhar a linha da tabela acima. */
+  .pt-quick-box{padding:6px 10px;background:var(--blue-light);border-left:3px solid var(--brand-start);border-radius:0 8px 8px 0;display:flex;flex-direction:column;gap:6px}
+  .pt-detail-box{padding:8px 10px;background:var(--blue-light);border-left:3px solid var(--blue-mid);border-radius:0 8px 8px 0;display:flex;flex-direction:column;gap:6px}
+  .pt-box-partname{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;color:var(--brand-start);text-transform:uppercase;letter-spacing:.4px}
   .pt-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  /* v31 item 2: cada botão de foto + suas thumbs em coluna própria, para
+     deixar clara a associação visual (antes os 2 botões ficavam lado a lado
+     e as 2 photo-thumbs-mini vinham soltas depois, fora de ordem visual). */
+  .pt-photo-cols{display:flex;gap:10px;flex-wrap:wrap}
+  .pt-photo-col{display:flex;flex-direction:column;gap:4px;flex:1;min-width:140px}
   .pt-det-field{display:flex;flex-direction:column;gap:2px}
   .pt-det-field label{font-size:9px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.4px}
   .pt-det-field input,.pt-det-field textarea,.pt-det-field select{width:100%;border:1.5px solid var(--gray-mid);border-radius:6px;padding:6px 7px;font-family:'Barlow',sans-serif;font-size:13px;color:var(--text);background:white;outline:none}
@@ -1111,6 +1126,17 @@
        2+ máquinas na coleta. -->
   <button id="btnConsolidarPdf" class="btn btn-reset" onclick="gerarPDFConsolidado()" style="display:none;background:#7b4000;color:white;border-color:#7b4000;flex:none;padding:12px 18px;font-size:14px">📚 Consolidar PDFs</button>
 </div>
+<!-- v31 item 7: acesso direto ao envio ao Sheets na tela principal, sem
+     precisar abrir o modal "Gerar Resumo" e trocar de aba (antes eram 3
+     cliques). Botão do modal (id="btnEnviarGS") mantido intacto — este é só
+     um atalho a mais para a mesma ação (pgpEnviarGS()). Reaproveita o mesmo
+     status de conectado/pendente via pgpUpdateGsStatusDisplay(). -->
+<div class="actions" style="padding-top:6px">
+  <button class="btn btn-reset" id="btnEnviarGSMain" onclick="pgpEnviarGS()" style="background:var(--blue);color:white;border-color:var(--blue)">📤 Enviar ao Sheets</button>
+</div>
+<div style="text-align:center;font-size:11px;color:var(--text-light);margin-top:-4px" id="pgpGsStatusMain">
+  Status: <span id="pgpGsStatusTextMain">verificando...</span>
+</div>
 
 <div id="pgpPrevActionsWrap" class="pgp-prev-actions" style="display:none">
   <button class="btn-preventiva" onclick="pgpEnviarPreventiva()">
@@ -1191,6 +1217,60 @@
 </div>
 
 <script>
+// ══════════════════════════════════════════════════════════════════════════
+// CHANGELOG v31 (Sprint: 11 correções cirúrgicas — prompt_correcoes_PCF_v30.md)
+// ══════════════════════════════════════════════════════════════════════════
+// 1. Registrar Preventiva falha com muitas fotos: pgpEnviarPreventiva() agora
+//    envolve a montagem do payload (pgpBuildPreventivaPayload/pgpUpdateAdminLocal)
+//    em try/catch próprio — falhas ali não derrubam mais a função sem
+//    enfileirar. Novo guard de tamanho (JSON.stringify(payload).length >
+//    ~900KB) avisa o técnico com mensagem clara e salva na fila local em vez
+//    de deixar o fetch falhar silenciosamente.
+// 2. Layout das infos por peça: pt-quick-box reorganizado em colunas
+//    (.pt-photo-cols/.pt-photo-col) — cada botão de foto ("Foto horímetro
+//    desta peça" / "Foto da peça") agora fica imediatamente acima da sua
+//    respectiva .photo-thumbs-mini, em vez de os 2 botões lado a lado com as
+//    2 thumbs soltas depois.
+// 3. Campo "Última troca (h total)" removido da tela do PCF (buildPartsTable)
+//    — input vira <input type="hidden"> com o mesmo id/data-key, para não
+//    quebrar leituras existentes. Valor passa a ser sempre calculado (item 8).
+// 4. Esquema de cores: .pt-quick-box/.pt-detail-box trocaram o fundo branco
+//    puro por var(--blue-light) (mesmo tom elevado de .turno-row), com borda
+//    lateral colorida + cabeçalho .pt-box-partname repetindo o nome da peça.
+// 5. Divisórias da lista de fotos (seção 5): .photo-item e sua
+//    .photo-thumbs-mini agora ficam num wrapper .photo-item-group — a borda
+//    divisória saiu de .photo-item e foi para o grupo inteiro, então a linha
+//    volta a separar item+fotos do próximo item, não mais o texto das fotos.
+// 6. Segundo regime de trabalho não salva: restoreState() agora varre
+//    state.fields por padrão m{midx}_turno{N}_dias|_inicio|_fim, acha o maior
+//    N por máquina e chama addTurno() o número de vezes necessário para
+//    recriar as faixas extras ANTES de repovoar os valores — antes
+//    document.querySelector retornava null para turno1+ (só existiam no DOM
+//    depois de clicar manualmente em "+ Adicionar faixa").
+// 7. Botão "📤 Enviar ao Sheets" duplicado na tela principal (chama
+//    pgpEnviarGS() direto) — antes só existia dentro do modal de resumo (3
+//    cliques). Botão do modal mantido. pgpUpdateGsStatusDisplay() atualiza os
+//    dois textos de status (pgpGsStatusText/pgpGsStatusTextMain).
+// 8. "Última Troca (h)" agora calculada automaticamente: nova função utilitária
+//    calcUltimaTroca(horimetroTotal, valorMostrado, intervalo, contador),
+//    reaproveitada em pgpBuildPreventivaPayload, pgpBuildPayload, gerarPDF
+//    (tabela de peças), gerarResumo (WhatsApp), renderPGPFields (aba Campos
+//    PGP) e exportarCSV — antes só existia (duplicada 2x) nos payloads, e o
+//    PDF só lia o input manual removido no item 3, nunca calculava.
+// 9. Foto da peça Óleo Lubrificante: PART_PHOTO_MAP.p5 tinha valor `null`,
+//    que o template literal convertia na STRING "null" — e capturePhotoLinked
+//    tem um guard `photoKey !== 'null'` que descartava a foto tirada nesse
+//    botão sem nunca armazená-la. Corrigido dando a p5 uma photoKey real
+//    ('oleo_lubrificante'), com label própria em PART_PHOTO_LABELS.
+// 10. Títulos de seção do PDF sem mais o prefixo [C]/[M]/[H]/[D]/[P]/[OBS]/[F]
+//     — sectionTitle() para de imprimir o parâmetro icon (assinatura e as 8
+//     chamadas existentes mantidas intactas).
+// 11. Caracteres corrompidos na seção "6. Registro Fotográfico – Status":
+//     símbolos ✔/➖/✗/○ (fora do charset padrão helvetica/WinAnsi do jsPDF)
+//     trocados por texto simples (Fotografado/Não Aplicável/Não disponível/
+//     Pendente), mesmo padrão já usado sem problema na tabela de peças.
+// ══════════════════════════════════════════════════════════════════════════
+
 // ══════════════════════════════════════════════════════════════════════════
 // CHANGELOG v30 (Limpeza: remover código morto de google_credential)
 // ══════════════════════════════════════════════════════════════════════════
@@ -1784,12 +1864,18 @@ function buildTurnoRow(p, tIdx, midx) {
 // ── HELPERS PEÇAS – NOVA SEÇÃO 4 COM CENÁRIOS ──────────
 
 // Mapeamento de chave de peça para photoKey da seção 5
+// v31 item 9: p5 (Óleo Lubrificante) tinha photoKey null — o template literal
+// que monta data-photokey/onclick em buildPartsTable() virava a STRING "null"
+// (não o valor null de JS), e capturePhotoLinked() tem um guard explícito
+// `photoKey !== 'null'` que descartava silenciosamente a foto tirada nesse
+// botão (nunca chamava storePhotosFromFileList). Corrigido dando a p5 uma
+// photoKey real e única, do mesmo jeito que as demais peças.
 const PART_PHOTO_MAP = {
   p1: 'filtro_oleo',
   p2: 'filtro_ar_prim',
   p3: 'filtro_ar_sec',
   p4: 'separador',
-  p5: null,            // Óleo lubrificante — sem foto específica na seção 5
+  p5: 'oleo_lubrificante',
   p9: 'correia',
 };
 
@@ -1809,6 +1895,13 @@ const HORI_PHOTO_LABELS = {
   hori_p4: 'Horímetro – Sep. Ar/Óleo',
   hori_p5: 'Horímetro – Óleo Lubrificante',
   hori_p9: 'Horímetro – Correia',
+};
+
+// v31 item 9: equivalente de HORI_PHOTO_LABELS para a foto NÃO-horímetro da
+// peça, usado quando o photoKey não corresponde a nenhum item do checklist
+// da seção 5 (PHOTOS) — hoje só o caso de Óleo Lubrificante (oleo_lubrificante).
+const PART_PHOTO_LABELS = {
+  oleo_lubrificante: 'Óleo Lubrificante',
 };
 
 const SCENARIOS = [
@@ -1890,32 +1983,38 @@ function buildPartsTable(p, midx, scenario) {
     <tr class="pt-quick-row" id="${pk}_quick_row">
       <td colspan="10">
         <div class="pt-quick-box">
+          <div class="pt-box-partname">${pt.label}</div>
           <div class="pt-det-field">
             <label>Referência / Código</label>
             <input type="text" placeholder="Código da peça" id="${pk}_ref" data-key="${pk}_ref" onclick="event.stopPropagation()">
           </div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <button class="btn-foto-peca" id="${pk}_hori_btn" data-done-label="✅ Horímetro ok" data-orig-label="📷 Foto horímetro desta peça"
-                    data-photokey="hori_${pt.k}"
-                    onclick="event.stopPropagation();abrirFotoPicker(this,'linked',${midx},'hori_${pt.k}')">
-                📷 Foto horímetro desta peça
-            </button>
+          <div class="pt-photo-cols">
+            <div class="pt-photo-col">
+              <button class="btn-foto-peca" id="${pk}_hori_btn" data-done-label="✅ Horímetro ok" data-orig-label="📷 Foto horímetro desta peça"
+                      data-photokey="hori_${pt.k}"
+                      onclick="event.stopPropagation();abrirFotoPicker(this,'linked',${midx},'hori_${pt.k}')">
+                  📷 Foto horímetro desta peça
+              </button>
+              <div class="photo-thumbs-mini" data-midx="${midx}" data-pkey="hori_${pt.k}"></div>
+            </div>
             ${PART_PHOTO_MAP[pt.k] !== undefined ? `
-            <button class="btn-foto-peca" id="${pk}_foto_btn" data-done-label="✅ Foto ok" data-orig-label="📷 Foto da peça"
-                    data-photokey="${PART_PHOTO_MAP[pt.k]}"
-                    onclick="event.stopPropagation();abrirFotoPicker(this,'linked',${midx},'${PART_PHOTO_MAP[pt.k]}')"
-                    ${!PART_PHOTO_MAP[pt.k] ? 'title="Sem item vinculado na seção 5"' : ''}>
-              📷 Foto da peça
-            </button>` : ''}
+            <div class="pt-photo-col">
+              <button class="btn-foto-peca" id="${pk}_foto_btn" data-done-label="✅ Foto ok" data-orig-label="📷 Foto da peça"
+                      data-photokey="${PART_PHOTO_MAP[pt.k]}"
+                      onclick="event.stopPropagation();abrirFotoPicker(this,'linked',${midx},'${PART_PHOTO_MAP[pt.k]}')"
+                      ${!PART_PHOTO_MAP[pt.k] ? 'title="Sem item vinculado na seção 5"' : ''}>
+                📷 Foto da peça
+              </button>
+              <div class="photo-thumbs-mini" data-midx="${midx}" data-pkey="${PART_PHOTO_MAP[pt.k]}"></div>
+            </div>` : ''}
           </div>
-          <div class="photo-thumbs-mini" data-midx="${midx}" data-pkey="hori_${pt.k}"></div>
-          ${PART_PHOTO_MAP[pt.k] !== undefined ? `<div class="photo-thumbs-mini" data-midx="${midx}" data-pkey="${PART_PHOTO_MAP[pt.k]}"></div>` : ''}
         </div>
       </td>
     </tr>
     <tr class="pt-detail-row" id="${pk}_detail_row" style="display:none">
       <td colspan="10">
         <div class="pt-detail-box">
+          <div class="pt-box-partname">${pt.label}</div>
           <input type="hidden" id="${pk}_acao" value="">
           <div class="pgp-acao-wrap" style="display:${_pgpTipoVisita==='preventiva'?'':'none'}">
             <label class="pgp-acao-label">Ação desta peça</label>
@@ -1928,13 +2027,13 @@ function buildPartsTable(p, midx, scenario) {
                       onclick="event.stopPropagation();pgpSetAcao('${pk}','na')">N/A</button>
             </div>
           </div>
+          <!-- v31 item 3: campo "Última troca (h total)" removido da UI — o valor
+               passa a ser sempre calculado (ver calcUltimaTroca), nunca digitado
+               manualmente. Input mantido como hidden com o mesmo id/data-key
+               para não quebrar leituras existentes (ex. edição manual antiga
+               salva em coletas/rascunhos anteriores). -->
+          <input type="hidden" id="${pk}_ult" data-key="${pk}_ult" data-user-edited="false">
           <div class="pt-detail-grid">
-            <div class="pt-det-field">
-              <label>Última troca (h total)</label>
-              <input type="number" placeholder="Se conhecido" id="${pk}_ult" data-key="${pk}_ult"
-                     data-user-edited="false"
-                     oninput="this.dataset.userEdited='true';event.stopPropagation()">
-            </div>
             ${scenario !== 'D' ? `
             <div class="pt-det-field">
               <label>Intervalo entre trocas (h)</label>
@@ -2164,19 +2263,25 @@ function buildPanelHTML(idx) {
   const p = 'm'+idx+'_';
   // Seção 4 gerida por buildPartsSection()
 
+  // v31 item 5: .photo-item e sua .photo-thumbs-mini agora ficam num wrapper
+  // único (.photo-item-group) — antes eram irmãos soltos e a borda divisória
+  // vivia em .photo-item, fazendo a thumb parecer pertencer ao item SEGUINTE.
+  // A borda agora fica no grupo inteiro (nome do item + suas fotos).
   const photoItems = PHOTOS.map((ph,i) => {
     const pKey = ph.photoKey || ('foto_idx_' + i);
     return `
-    <div class="photo-item" data-pidx="${i}" onclick="togglePhoto(this,${idx})">
-      <div class="photo-cb">✓</div>
-      <div style="flex:1">
-        <div class="photo-pname">${ph.label}</div>
-        ${ph.hint?'<div class="photo-hint">'+ph.hint+'</div>':''}
+    <div class="photo-item-group">
+      <div class="photo-item" data-pidx="${i}" onclick="togglePhoto(this,${idx})">
+        <div class="photo-cb">✓</div>
+        <div style="flex:1">
+          <div class="photo-pname">${ph.label}</div>
+          ${ph.hint?'<div class="photo-hint">'+ph.hint+'</div>':''}
+        </div>
+        <button class="btn-photo-capture" onclick="event.stopPropagation();abrirFotoPicker(this,'photo-item',${idx})">📷</button>
+        <button class="photo-nd-btn" onclick="togglePhotoND(event,this,${idx})">N/D</button>
       </div>
-      <button class="btn-photo-capture" onclick="event.stopPropagation();abrirFotoPicker(this,'photo-item',${idx})">📷</button>
-      <button class="photo-nd-btn" onclick="togglePhotoND(event,this,${idx})">N/D</button>
-    </div>
-    <div class="photo-thumbs-mini" data-midx="${idx}" data-pkey="${pKey}"></div>`;
+      <div class="photo-thumbs-mini" data-midx="${idx}" data-pkey="${pKey}"></div>
+    </div>`;
   }).join('');
 
   return `
@@ -2647,7 +2752,7 @@ async function capturePhotoLinked(input, midx, photoKey, triggerBtn, saveToDevic
   if (photoKey && photoKey !== 'null') {
     const ph = PHOTOS.find(p => p.photoKey === photoKey);
     const label = ph ? ph.label
-      : (HORI_PHOTO_LABELS[photoKey] || (triggerBtn ? (triggerBtn.dataset.origLabel || triggerBtn.textContent.trim()) : photoKey));
+      : (HORI_PHOTO_LABELS[photoKey] || PART_PHOTO_LABELS[photoKey] || (triggerBtn ? (triggerBtn.dataset.origLabel || triggerBtn.textContent.trim()) : photoKey));
     await storePhotosFromFileList(midx, photoKey, label, files, saveToDevice);
   }
 
@@ -2815,7 +2920,13 @@ ${(() => {
         const vm    = (document.getElementById(pfx+'_valor_mostrado')||{}).value || '—';
         const cont  = (document.getElementById(pfx+'_contador')     ||{}).value || '—';
         const intV  = (document.getElementById(pfx+'_int')          ||{}).value || pt.intDefault;
-        const ultV  = (document.getElementById(pfx+'_ult')          ||{}).value || '—';
+        let ultV  = (document.getElementById(pfx+'_ult')          ||{}).value || '—';
+        // v31 item 8: campo manual removido da UI — calcular fallback pela
+        // mesma fórmula usada nos payloads/PDF quando não há valor salvo.
+        if (ultV === '—') {
+          const calcUlt = calcUltimaTroca(vg(i,'horimetro'), vm, intV, cont);
+          if (calcUlt !== null) ultV = String(Math.max(0, calcUlt).toFixed(0));
+        }
         const refV  = (document.getElementById(pfx+'_ref')          ||{}).value || '';
         const obsV  = (document.getElementById(pfx+'_obs')          ||{}).value || '';
         let horasRodadas = '—', horasRestantes = '—';
@@ -2935,7 +3046,19 @@ function exportarCSV() {
     // Peças (9 peças x 11 campos)
     partKeys.forEach((pk, pkIdx) => {
       const intDefault = PARTS[pkIdx] ? PARTS[pkIdx].intDefault : 2000;
-      linha.push(getPartValue(midx, pk, 'ult'));
+      // v31 item 8: campo manual removido da UI — calcular fallback pela
+      // mesma fórmula usada nos payloads/PDF quando não há valor salvo.
+      let ultCSV = getPartValue(midx, pk, 'ult');
+      if (!ultCSV) {
+        const calcUlt = calcUltimaTroca(
+          vg(midx, 'horimetro'),
+          getPartValue(midx, pk, 'valor_mostrado'),
+          getPartValue(midx, pk, 'int') || intDefault,
+          getPartValue(midx, pk, 'contador')
+        );
+        if (calcUlt !== null) ultCSV = String(Math.max(0, calcUlt).toFixed(0));
+      }
+      linha.push(ultCSV);
       linha.push(getPartValue(midx, pk, 'int') || intDefault);
       linha.push(getPartValue(midx, pk, 'ref'));
       // Aplica?
@@ -3310,10 +3433,20 @@ function renderPGPFields() {
       const intEl = document.getElementById('m'+i+'_'+pt.k+'_int');
       const refEl = document.getElementById('m'+i+'_'+pt.k+'_ref');
       const obsEl = document.getElementById('m'+i+'_'+pt.k+'_obs');
-      const ult = ultEl ? ultEl.value.trim() : '';
+      let ult = ultEl ? ultEl.value.trim() : '';
       const intV = intEl ? intEl.value.trim() : '';
       const ref = refEl ? refEl.value.trim() : '';
       const obs = obsEl ? obsEl.value.trim() : '';
+      // v31 item 8: campo manual removido da UI — calcular fallback pela
+      // mesma fórmula usada nos payloads/PDF quando não há valor salvo.
+      if (!ult) {
+        const vmEl2 = document.getElementById('m'+i+'_'+pt.k+'_valor_mostrado');
+        const contEl2 = document.getElementById('m'+i+'_'+pt.k+'_contador');
+        const partDef = PARTS.find(p => p.k === pt.k);
+        const intervalo = intV || (partDef ? partDef.intDefault : '');
+        const calcUlt = calcUltimaTroca(pgpVal(i,'horimetro'), vmEl2?.value, intervalo, contEl2?.value);
+        if (calcUlt !== null) ult = String(Math.max(0, calcUlt).toFixed(0));
+      }
       if (ult) html += makeRow(pt.label + ' – Últ.troca (h)', ult);
       if (intV) html += makeRow(pt.label + ' – Intervalo (h)', intV);
       if (ref) html += makeRow(pt.label + ' – Referência', ref);
@@ -3537,6 +3670,32 @@ function restoreState(state) {
     const fakeEvt = {stopPropagation:()=>{}};
     selectScenario(p, scId, parseInt(midx), fakeEvt);
   });
+
+  // v31 item 6: recriar faixas extras de regime de trabalho (2ª faixa em
+  // diante) ANTES de repovoar state.fields — addTurno() só é chamado quando o
+  // técnico clica manualmente em "+ Adicionar faixa", então sem isso os
+  // inputs de turno1/turno2/etc. nunca existiam no DOM neste ponto e
+  // document.querySelector abaixo retornava null, perdendo os dados
+  // silenciosamente ao salvar/reabrir a coleta.
+  (() => {
+    const maxTurnoByMachine = {};
+    Object.keys(state.fields || {}).forEach(key => {
+      const m = key.match(/^m(\d+)_turno(\d+)_(?:dias|inicio|fim)$/);
+      if (!m) return;
+      const midx = parseInt(m[1]), tIdx = parseInt(m[2]);
+      if (!(midx in maxTurnoByMachine) || tIdx > maxTurnoByMachine[midx]) maxTurnoByMachine[midx] = tIdx;
+    });
+    Object.entries(maxTurnoByMachine).forEach(([midx, maxT]) => {
+      const p = 'm'+midx+'_';
+      const container = document.getElementById(p+'turnos');
+      if (!container) return;
+      let existing = container.querySelectorAll('.turno-row').length;
+      while (existing <= maxT) {
+        addTurno(parseInt(midx), {stopPropagation:()=>{}});
+        existing++;
+      }
+    });
+  })();
 
   // Depois restaurar valores dos campos
   Object.entries(state.fields || {}).forEach(([key, val]) => {
@@ -4066,6 +4225,10 @@ function pgpCreateReportBuilder() {
   }
 
   // ── Helpers de desenho ──────────────────────────────
+  // v31 item 10: parâmetro "icon" (ex. '[C]', '[M]', '[F]') deixou de ser
+  // impresso no cabeçalho da seção — vinha aparecendo como "[C] 1. DADOS DO
+  // CLIENTE". Assinatura da função e as 8 chamadas existentes mantidas
+  // intactas (mudança de uma linha só).
   function sectionTitle(y, icon, title) {
     y = checkY(y, 10);
     doc.setFillColor(...BLACK);
@@ -4073,7 +4236,7 @@ function pgpCreateReportBuilder() {
     doc.setFont('helvetica','bold');
     doc.setFontSize(9);
     doc.setTextColor(...WHITE);
-    doc.text(limparTextoPDF(icon + ' ' + title.toUpperCase()), ML + 3, y + 5.5);
+    doc.text(limparTextoPDF(title.toUpperCase()), ML + 3, y + 5.5);
     return y + 10;
   }
 
@@ -4283,9 +4446,17 @@ function pgpCreateReportBuilder() {
       } else {
         const vm  = (document.getElementById(pk + '_valor_mostrado') || {}).value || '';
         const intV = (document.getElementById(pk + '_int') || {}).value || String(pt.intDefault);
-        const ult = (document.getElementById(pk + '_ult') || {}).value || '';
         const cont = (document.getElementById(pk + '_contador') || {}).value || '';
         const ref  = (document.getElementById(pk + '_ref') || {}).value || '';
+        // v31 item 8: campo "Última troca" foi removido da UI (item 3) — o
+        // input hidden só carrega valor se veio de uma coleta/rascunho antigo
+        // com edição manual; caso contrário, calcular sempre pela mesma
+        // fórmula usada nos payloads (calcUltimaTroca).
+        let ult = (document.getElementById(pk + '_ult') || {}).value || '';
+        if (!ult) {
+          const calcUlt = calcUltimaTroca(g('horimetro'), vm, intV, cont);
+          if (calcUlt !== null) ult = String(Math.max(0, calcUlt).toFixed(0));
+        }
 
         let rodadas = '', restantes = '', status = '', statusColor = DARK;
         const vmN = parseFloat(vm), intN = parseFloat(intV);
@@ -4405,10 +4576,14 @@ function pgpCreateReportBuilder() {
         const naBtn = document.getElementById('m' + midx + '_' + linkedPartK + '_na');
         linkedPartNA = !!(naBtn && naBtn.classList.contains('active'));
       }
-      const stat = item.classList.contains('photo-checked') ? '✔ Fotografado'
-                 : linkedPartNA ? '➖ Não Aplicável'
-                 : item.classList.contains('photo-nd') ? '✗ Não disponível'
-                 : '○ Pendente';
+      // v31 item 11: símbolos ✔/➖/✗/○ fora do charset padrão do jsPDF
+      // (helvetica/WinAnsi) renderizavam como caracteres corrompidos —
+      // trocados por texto simples, seguindo o mesmo padrão já usado sem
+      // problema na coluna "Status" da tabela de peças (seção 4).
+      const stat = item.classList.contains('photo-checked') ? 'Fotografado'
+                 : linkedPartNA ? 'Não Aplicável'
+                 : item.classList.contains('photo-nd') ? 'Não disponível'
+                 : 'Pendente';
       const col = item.classList.contains('photo-checked') ? GREEN
                 : linkedPartNA ? [150,150,150]
                 : item.classList.contains('photo-nd') ? [150,150,150] : [192,57,43];
@@ -5088,13 +5263,19 @@ async function pgpTestGs(){
 }
 
 function pgpUpdateGsStatusDisplay(){
-  const el=document.getElementById('pgpGsStatusText');
-  if(!el) return;
   const pending=pgpGetPending().length;
-  el.textContent=_pgpGsConnected
+  const txt=_pgpGsConnected
     ?'✅ Conectado ao Google Sheets'+(pending?` · ${pending}/${QUEUE_LIMIT} pendente${pending>1?'s':''}`:' · tudo sincronizado')
     :'⚠ Sem conexão — dados salvos localmente'+(pending?` · ${pending}/${QUEUE_LIMIT} na fila`:'');
-  el.style.color=_pgpGsConnected?'var(--green)':'var(--orange)';
+  const color=_pgpGsConnected?'var(--green)':'var(--orange)';
+  // v31 item 7: mesma lógica de status reaproveitada no botão novo da tela
+  // principal (pgpGsStatusTextMain), além do texto já existente no modal.
+  ['pgpGsStatusText','pgpGsStatusTextMain'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    el.textContent=txt;
+    el.style.color=color;
+  });
 }
 
 function abrirConfig(){
@@ -6057,6 +6238,20 @@ function pgpSetTipoVisita(tipo){
   if(prevWrap) prevWrap.style.display=tipo==='preventiva'?'':'none';
 }
 
+// v31 item 8: fórmula única de "Última troca (h total)" — antes duplicada
+// (com o mesmo código colado 2x) em pgpBuildPreventivaPayload e pgpBuildPayload,
+// e nunca calculada no PDF (que só lia o input manual removido no item 3).
+// Reusada aqui e em gerarPDF/gerarResumo/renderPGPFields/exportarCSV para não
+// ter implementações divergentes da mesma conta.
+function calcUltimaTroca(horimetroTotal, valorMostrado, intervalo, contador) {
+  const ht = parseFloat(horimetroTotal);
+  const vm = parseFloat(valorMostrado);
+  const iv = parseFloat(intervalo);
+  if (isNaN(ht) || isNaN(vm) || isNaN(iv) || (contador !== 'progressivo' && contador !== 'regressivo')) return null;
+  const horasRodadas = contador === 'progressivo' ? vm : (iv - vm);
+  return ht - horasRodadas;
+}
+
 function pgpBuildPreventivaPayload(midx=currentMachine){
   const idx=pgpGetMachineIndex(midx);
   const base=pgpBuildPayload(idx);
@@ -6097,23 +6292,14 @@ function pgpBuildPreventivaPayload(midx=currentMachine){
     const hasValorMostrado = vmEl?.value && vmEl.value.trim() !== '';
     const contadorConhecido = contVal === 'progressivo' || contVal === 'regressivo';
     const _hourTotal = parseInt(base.hourTotal) || 0;
+    const _intervalResolved = parseInt(intEl?.value) || pt.intDefault;
     let lastChange = 0;
     if (hasValorMostrado && contadorConhecido && !ultUserEdited) {
-      if (contVal === 'progressivo') {
-        lastChange = _hourTotal - (parseFloat(vmEl.value) || 0);
-      } else {
-        const _horasRodadasLc = (parseInt(intEl?.value) || pt.intDefault) - (parseFloat(vmEl.value) || 0);
-        lastChange = _hourTotal - _horasRodadasLc;
-      }
+      lastChange = calcUltimaTroca(_hourTotal, vmEl.value, _intervalResolved, contVal) ?? 0;
     } else if (ultUserEdited && ultEl?.value) {
       lastChange = parseInt(ultEl.value) || 0;
     } else if (hasValorMostrado && contadorConhecido) {
-      if (contVal === 'progressivo') {
-        lastChange = _hourTotal - (parseFloat(vmEl.value) || 0);
-      } else {
-        const _horasRodadasLc = (parseInt(intEl?.value) || pt.intDefault) - (parseFloat(vmEl.value) || 0);
-        lastChange = _hourTotal - _horasRodadasLc;
-      }
+      lastChange = calcUltimaTroca(_hourTotal, vmEl.value, _intervalResolved, contVal) ?? 0;
     } else if (ultEl?.value) {
       lastChange = parseInt(ultEl.value) || 0;
     } else {
@@ -6221,12 +6407,41 @@ async function pgpEnviarPreventiva(midx=currentMachine){
     return;
   }
 
-  const payload=pgpBuildPreventivaPayload(idx);
-  const nTrocadas=Object.values(payload.parts).filter(p=>p.acao==='trocada').length;
-
-  pgpUpdateAdminLocal(payload);
-
+  // v31 item 1: a partir daqui qualquer falha inesperada (ex. payload
+  // malformado) precisa cair no mesmo caminho de "salvar na fila" — antes,
+  // um erro aqui (antes do try de rede mais abaixo) derrubava a função sem
+  // enfileirar nada, perdendo os dados da coleta silenciosamente.
+  let payload, nTrocadas;
   const btn=document.querySelector('.btn-preventiva');
+  try{
+    payload=pgpBuildPreventivaPayload(idx);
+    nTrocadas=Object.values(payload.parts).filter(p=>p.acao==='trocada').length;
+    pgpUpdateAdminLocal(payload);
+  }catch(e){
+    showNotification('🚫 Falha ao montar os dados da preventiva. Nada foi enviado — tente novamente.');
+    return;
+  }
+
+  // v31 item 1: guarda contra payload grande (muitas fotos/observações longas)
+  // que poderia estourar o limite de tamanho/tempo do Google Apps Script
+  // (doPost) e falhar sem aviso — em vez de deixar o fetch falhar
+  // silenciosamente, avisa o técnico com mensagem clara e enfileira para
+  // reenvio (mesmo tratamento de uma falha de rede comum).
+  const PAYLOAD_SIZE_LIMIT = 900000; // ~900KB, folga sob o limite prático do GAS doPost
+  const payloadSize = JSON.stringify(payload).length;
+  if (payloadSize > PAYLOAD_SIZE_LIMIT) {
+    const listSize=pgpGetPending();
+    if(listSize.length >= QUEUE_LIMIT){
+      showNotification('🚫 Muitas fotos/observações e fila cheia. Envie em partes ou libere espaço na fila.');
+    } else {
+      listSize.push({action:'savePreventiva',body:payload,signature:payload.visit_id,ts:Date.now()});
+      const qResultSize = savePendingQueue(listSize);
+      pgpUpdatePendingBadge();
+      showNotification('⚠ Muitas fotos/observações — dados salvos na fila (' + qResultSize.count + '/' + QUEUE_LIMIT + '). Envie em partes ou reduza fotos.');
+    }
+    return;
+  }
+
   if(btn){btn.disabled=true;btn.textContent='Enviando...';}
 
   if(!_pgpGsConnected){
@@ -6403,27 +6618,17 @@ function pgpBuildPayload(midx=currentMachine){
     const ultUserEdited = ultEl?.dataset?.userEdited === 'true';
     const hasValorMostrado = valorEl?.value && valorEl.value.trim() !== '';
     const contadorConhecido = contVal === 'progressivo' || contVal === 'regressivo';
+    const interval=parseInt(intEl?.value)||pt.intDefault;
     let lastChange = 0;
     if (hasValorMostrado && contadorConhecido && !ultUserEdited) {
-      if (contVal === 'progressivo') {
-        lastChange = hourTotal - (parseFloat(valorEl.value) || 0);
-      } else {
-        const horasRodadas = (parseInt(intEl?.value) || pt.intDefault) - (parseFloat(valorEl.value) || 0);
-        lastChange = hourTotal - horasRodadas;
-      }
+      lastChange = calcUltimaTroca(hourTotal, valorEl.value, interval, contVal) ?? 0;
     } else if (ultUserEdited && ultEl?.value) {
       lastChange = parseInt(ultEl.value) || 0;
     } else if (hasValorMostrado && contadorConhecido) {
-      if (contVal === 'progressivo') {
-        lastChange = hourTotal - (parseFloat(valorEl.value) || 0);
-      } else {
-        const horasRodadas = (parseInt(intEl?.value) || pt.intDefault) - (parseFloat(valorEl.value) || 0);
-        lastChange = hourTotal - horasRodadas;
-      }
+      lastChange = calcUltimaTroca(hourTotal, valorEl.value, interval, contVal) ?? 0;
     } else if (ultEl?.value) {
       lastChange = parseInt(ultEl.value) || 0;
     }
-    const interval=parseInt(intEl?.value)||pt.intDefault;
     // v8.6: calcular horasRodadas/horasRestantes/status para o payload (contVal já resolvido acima)
     const vmN = parseFloat(vmEl?.value||'');
     let horasRodadas='', horasRestantes='', partStatus='';
