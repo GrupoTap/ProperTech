@@ -1265,6 +1265,19 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 
 <script>
 // ══════════════════════════════════════════════════════════════════════════
+// CHANGELOG v35 (Fix PCF: rótulo de OS exibe numero_os)
+// ══════════════════════════════════════════════════════════════════════════
+// 1. Rótulos persistentes da OS no PCF passam a priorizar numero_os, com
+//    fallback para id_os, alinhando lista, topo do pipeline e notificações ao
+//    número de negócio exibido no PCM.
+// 2. Identificadores funcionais continuam usando id_os para _pfOsId e chamadas
+//    ao GAS (getPipelineByOS, getMaquinasByOS e demais fluxos), sem alterar o
+//    valor operacional da OS.
+// 3. Toast de preventiva iniciada por OS também usa numero_os quando disponível,
+//    mantendo id_os como fallback.
+// ══════════════════════════════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════════════════════════
 // CHANGELOG v32 (Sprint PCF: filtro por usuário, OS externa/interna e fallback manual)
 // ══════════════════════════════════════════════════════════════════════════
 // 1. pfLoadOS: quando há window.PROPER_SESSION.tecnico.id, getOS passa a receber
@@ -6233,7 +6246,8 @@ async function pgpIniciarPreventivaDeOS(osId){
 
     const found = document.getElementById('pgpFound');
     if(found){
-      found.textContent = '✓ ' + osMachines.length + ' máquina(s) carregada(s) da OS #' + osId;
+      var osDisplay = (r.os && r.os.numero_os) || osId;
+      found.textContent = '✓ ' + osMachines.length + ' máquina(s) carregada(s) da OS #' + osDisplay;
       found.classList.add('show');
     }
   }catch(e){
@@ -7161,15 +7175,16 @@ function pfRenderOS() {
   }
   statusEl.style.display = 'none';
   listaEl.innerHTML = filtered.map(function(o) {
-    var num   = o.id_os || o.numero_os || '—';
+    var numeroDisplay = o.numero_os || o.id_os || '—';
+    var idOperacional = o.id_os || o.numero_os || '—';
     var cli   = o.cliente || '';
     var tipo  = o.tipo_os ? (' · ' + o.tipo_os) : '';
     var st    = String(o.status || 'aberta').toLowerCase();
     var stLbl = st === 'em_andamento' ? 'Em andamento' : (st.charAt(0).toUpperCase() + st.slice(1));
     var stCls = st.replace(/_/g, '_');
-    return '<div class="pf-os-card" onclick="pfSelecionarOS(\'' + String(num).replace(/'/g, "\\'") + '\',\'' + (cli + tipo).replace(/'/g, "\\'") + '\')">' +
+    return '<div class="pf-os-card" onclick="pfSelecionarOS(\'' + String(idOperacional).replace(/'/g, "\\'") + '\',\'' + (cli + tipo).replace(/'/g, "\\'") + '\')">' +
       '<div>' +
-        '<div class="pf-os-numero">OS #' + num + '</div>' +
+        '<div class="pf-os-numero">OS #' + numeroDisplay + '</div>' +
         '<div class="pf-os-cliente">' + (cli ? cli : '—') + tipo + '</div>' +
       '</div>' +
       '<span class="pf-os-status ' + stCls + '">' + stLbl + '</span>' +
@@ -7181,7 +7196,11 @@ function pfRenderOS() {
 async function pfSelecionarOS(osId, osNome) {
   _pfOsId   = osId;
   _pfOsNome = osNome;
-  document.getElementById('pfOsLabel').textContent = 'OS #' + osId + (osNome ? ' · ' + osNome : '');
+  var osObj = _pfOsList.find(function(o) {
+    return String(o.id_os || '') === String(osId);
+  });
+  var osDisplay = (osObj && osObj.numero_os) || osId;
+  document.getElementById('pfOsLabel').textContent = 'OS #' + osDisplay + (osNome ? ' · ' + osNome : '');
   document.getElementById('pfScreenOS').style.display = 'none';
   document.getElementById('pfScreenPipeline').style.display = 'block';
   pfLoadPipeline();
@@ -7550,7 +7569,8 @@ async function pfOnNotifClick(notifId, osId) {
       return String(o.id_os || o.numero_os || '') === String(osId);
     });
     _pfOsNome = osObj ? (osObj.cliente || '') : '';
-    document.getElementById('pfOsLabel').textContent = 'OS #' + osId + (_pfOsNome ? ' · ' + _pfOsNome : '');
+    var osDisplay = (osObj && osObj.numero_os) || osId;
+    document.getElementById('pfOsLabel').textContent = 'OS #' + osDisplay + (_pfOsNome ? ' · ' + _pfOsNome : '');
     document.getElementById('pfScreenOS').style.display = 'none';
     document.getElementById('pfScreenPipeline').style.display = 'block';
     pfLoadPipeline();
