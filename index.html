@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>ProperCare Field · PGP Preventivas v31</title>
+<title>ProperCare Field · PGP Preventivas v32</title>
 <meta name="theme-color" content="#0f172a">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -652,6 +652,33 @@
 .pf-os-status.aberta       { background: #1e3a5f; color: #60a5fa; }
 .pf-os-status.em_andamento { background: #1e3a5f; color: #60a5fa; }
 .pf-os-status.concluida    { background: #14532d; color: #4ade80; }
+.pf-os-filter {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.pf-os-filter::-webkit-scrollbar { display: none; }
+.pf-os-filter-chip {
+  border: 1px solid #334155;
+  border-radius: 999px;
+  background: #1e293b;
+  color: #94a3b8;
+  padding: 7px 12px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.pf-os-filter-chip.active {
+  background: #3b82f6;
+  border-color: #60a5fa;
+  color: white;
+}
 .pf-notif-item {
   padding: 10px 14px;
   border-bottom: 1px solid #334155;
@@ -1217,6 +1244,21 @@
 </div>
 
 <script>
+// ══════════════════════════════════════════════════════════════════════════
+// CHANGELOG v32 (Sprint PCF: filtro por usuário, OS externa/interna e fallback manual)
+// ══════════════════════════════════════════════════════════════════════════
+// 1. pfLoadOS: quando há window.PROPER_SESSION.tecnico.id, getOS passa a receber
+//    { id_usuario: <id> } para listar as OS do usuário logado; se a sessão não
+//    trouxer o id, mantém a chamada sem filtro para não quebrar a tela.
+// 2. Tela pfScreenOS: adicionados chips Todas/Externas/Internas, filtrando
+//    client-side sobre _pfOsList pelo campo local_atendimento retornado por
+//    getOS, sem chamada extra ao GAS. A tela abre em Todas.
+// 3. pgpIniciarPreventivaDeOS: se getMaquinasByOS não trouxer máquinas, mas
+//    trouxer o cliente em r.os.cliente, reaproveita pgpSelectClient(cliente)
+//    para cair no fluxo manual existente de lista de máquinas do cliente + card
+//    "+ Esta máquina não está na lista"; erro só aparece se o cliente faltar.
+// ══════════════════════════════════════════════════════════════════════════
+
 // ══════════════════════════════════════════════════════════════════════════
 // CHANGELOG v31 (Sprint: 11 correções cirúrgicas — prompt_correcoes_PCF_v30.md)
 // ══════════════════════════════════════════════════════════════════════════
@@ -6152,7 +6194,12 @@ async function pgpIniciarPreventivaDeOS(osId){
     const osMachines = r.machines || [];
 
     if(osMachines.length === 0){
-      showNotification('⚠ Esta OS não tem máquinas vinculadas. Vincule ao menos uma máquina no ProperAdmin antes de abrir a preventiva.');
+      const clienteOS = r.os && r.os.cliente ? String(r.os.cliente).trim() : '';
+      if(!clienteOS){
+        showNotification('⚠ Esta OS não tem máquinas vinculadas e não foi possível identificar o usuário/cliente para seguir no fluxo manual.');
+        return;
+      }
+      await pgpSelectClient(clienteOS);
       return;
     }
 
@@ -6957,6 +7004,7 @@ async function pfGet(action, params) {
 
 // ── PIPELINE STATE ────────────────────────────────────────────────────────────
 var _pfOsList = [];
+var _pfOsFilter = 'todas';
 var _pfOsId = null;
 var _pfOsNome = '';
 var _pfTarefas = [];
@@ -6971,6 +7019,7 @@ function pfAbrir() {
   ov.style.display = 'flex';
   document.getElementById('pfScreenOS').style.display = 'block';
   document.getElementById('pfScreenPipeline').style.display = 'none';
+  _pfOsFilter = 'todas';
   pfLoadOS();
   if (!_pfNotifInterval) {
     _pfNotifInterval = setInterval(pollPfNotificacoes, 60000);
@@ -7010,37 +7059,72 @@ async function pfLoadOS() {
   listaEl.innerHTML = '';
 
   try {
-    var r = await pfGet('getOS', {});
+    var usuarioId = window.PROPER_SESSION && window.PROPER_SESSION.tecnico
+      ? window.PROPER_SESSION.tecnico.id
+      : null;
+    var params = usuarioId ? { id_usuario: usuarioId } : {};
+    var r = await pfGet('getOS', params);
     _pfOsList = (r.os || []).filter(function(o) {
       var st = String(o.status || '').toLowerCase();
       return st !== 'cancelada' && st !== 'concluida';
     });
     _pfGsConnected = true;
-
-    if (_pfOsList.length === 0) {
-      statusEl.textContent = 'Nenhuma OS aberta no momento.';
-      return;
-    }
-    statusEl.style.display = 'none';
-    listaEl.innerHTML = _pfOsList.map(function(o) {
-      var num   = o.id_os || o.numero_os || '—';
-      var cli   = o.cliente || '';
-      var tipo  = o.tipo_os ? (' · ' + o.tipo_os) : '';
-      var st    = String(o.status || 'aberta').toLowerCase();
-      var stLbl = st === 'em_andamento' ? 'Em andamento' : (st.charAt(0).toUpperCase() + st.slice(1));
-      var stCls = st.replace(/_/g, '_');
-      return '<div class="pf-os-card" onclick="pfSelecionarOS(\'' + num.replace(/'/g, "\\'") + '\',\'' + (cli + tipo).replace(/'/g, "\\'") + '\')">' +
-        '<div>' +
-          '<div class="pf-os-numero">OS #' + num + '</div>' +
-          '<div class="pf-os-cliente">' + (cli ? cli : '—') + tipo + '</div>' +
-        '</div>' +
-        '<span class="pf-os-status ' + stCls + '">' + stLbl + '</span>' +
-      '</div>';
-    }).join('');
+    pfRenderOS();
   } catch(e) {
     if (e.message && e.message.includes('AUTH_GOOGLE')) { pfHubLogout(); return; }
     statusEl.textContent = '⚠ Erro ao carregar OS: ' + e.message;
   }
+}
+
+
+function pfSetOSFilter(filtro) {
+  _pfOsFilter = filtro || 'todas';
+  pfRenderOS();
+}
+
+function pfRenderOS() {
+  var statusEl = document.getElementById('pfOsStatus');
+  var listaEl  = document.getElementById('pfOsLista');
+  var chips = document.querySelectorAll('.pf-os-filter-chip');
+  Array.prototype.forEach.call(chips, function(chip) {
+    chip.classList.toggle('active', chip.getAttribute('data-filter') === _pfOsFilter);
+  });
+
+  var filtered = _pfOsList.filter(function(o) {
+    var local = String(o.local_atendimento || '').toLowerCase();
+    if (_pfOsFilter === 'externas') return local === 'externa' || local === 'externo';
+    if (_pfOsFilter === 'internas') return local === 'interna' || local === 'interno';
+    return true;
+  });
+
+  if (_pfOsList.length === 0) {
+    statusEl.textContent = 'Nenhuma OS aberta no momento.';
+    statusEl.style.display = 'block';
+    listaEl.innerHTML = '';
+    return;
+  }
+  if (filtered.length === 0) {
+    statusEl.textContent = 'Nenhuma OS para este filtro.';
+    statusEl.style.display = 'block';
+    listaEl.innerHTML = '';
+    return;
+  }
+  statusEl.style.display = 'none';
+  listaEl.innerHTML = filtered.map(function(o) {
+    var num   = o.id_os || o.numero_os || '—';
+    var cli   = o.cliente || '';
+    var tipo  = o.tipo_os ? (' · ' + o.tipo_os) : '';
+    var st    = String(o.status || 'aberta').toLowerCase();
+    var stLbl = st === 'em_andamento' ? 'Em andamento' : (st.charAt(0).toUpperCase() + st.slice(1));
+    var stCls = st.replace(/_/g, '_');
+    return '<div class="pf-os-card" onclick="pfSelecionarOS(\'' + String(num).replace(/'/g, "\\'") + '\',\'' + (cli + tipo).replace(/'/g, "\\'") + '\')">' +
+      '<div>' +
+        '<div class="pf-os-numero">OS #' + num + '</div>' +
+        '<div class="pf-os-cliente">' + (cli ? cli : '—') + tipo + '</div>' +
+      '</div>' +
+      '<span class="pf-os-status ' + stCls + '">' + stLbl + '</span>' +
+    '</div>';
+  }).join('');
 }
 
 // ── Selecionar OS e carregar pipeline ─────────────────────────────────────────
@@ -7486,6 +7570,11 @@ function pfShowUnlockBanner(msg, isError) {
   <!-- Tela A: seleção de OS -->
   <div id="pfScreenOS" style="flex:1;overflow-y:auto;padding:16px">
     <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Selecionar Ordem de Serviço</div>
+    <div class="pf-os-filter" aria-label="Filtro de local de atendimento">
+      <button type="button" class="pf-os-filter-chip active" data-filter="todas" onclick="pfSetOSFilter('todas')">Todas</button>
+      <button type="button" class="pf-os-filter-chip" data-filter="externas" onclick="pfSetOSFilter('externas')">Externas</button>
+      <button type="button" class="pf-os-filter-chip" data-filter="internas" onclick="pfSetOSFilter('internas')">Internas</button>
+    </div>
     <div id="pfOsStatus" style="font-size:13px;color:#94a3b8;text-align:center;padding:20px 0">Conectando ao Sheets…</div>
     <div id="pfOsLista"></div>
   </div>
