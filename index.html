@@ -1,4 +1,14 @@
 <!--
+PCF_index_v34.html
+v34 — Instabilidade "GAS retornou HTML" em campo: resposta HTML do
+       Apps Script (cold start / hiccup momentâneo de rede) estava
+       sendo tratada como erro permanente de config e não era
+       retentada, quebrando o Pipeline na primeira tentativa.
+  - _pgpFetchComRetry_: resposta HTML agora entra no mesmo retry com
+    backoff (1000ms/2500ms) já usado para falhas de rede. Continua
+    falhando (sem mascarar) se persistir após esgotar as tentativas —
+    aí sim é config real do Web App.
+
 PCF_index_v33.html
 v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
        abertura do Pipeline
@@ -7017,8 +7027,12 @@ async function _pgpFetchComRetry_(url, options, maxRetries) {
       }
     } catch (e) {
       lastErr = e;
+      // v34: resposta HTML entra como falha transitória (cold start /
+      // hiccup de rede) — se persistir após esgotar as tentativas, o erro
+      // ainda sobe normalmente e revela uma config real quebrada.
       var infraTransitoria = /^HTTP \d+$/.test(e.message) ||
-        /Failed to fetch|NetworkError|Load failed/i.test(e.message);
+        /Failed to fetch|NetworkError|Load failed/i.test(e.message) ||
+        /GAS retornou HTML/.test(e.message);
       if (!infraTransitoria || tentativa === maxRetries) throw e;
       var delayMs = tentativa === 0 ? 1000 : 2500;
       console.warn('[pgpFetch] tentativa ' + (tentativa + 1) + ' falhou (' +
