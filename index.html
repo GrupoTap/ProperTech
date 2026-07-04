@@ -1,3 +1,4 @@
+<!-- v37/v58 sprint: PCF/OS/preventiva updates. -->
 <!--
 PCF_index_v36.html
 v36 — Fix persistência PCF↔GAS: Tipo de Equipamento, Regime de trabalho e
@@ -303,11 +304,11 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
   .sc-btn.active .sc-title{color:var(--blue)}
 
   /* tabela de peças */
-  .parts-table-wrap{padding:0 12px 10px;display:none}
+  .parts-table-wrap{padding:0 12px 10px;display:none;max-width:100%;box-sizing:border-box;overflow-x:hidden}
   .parts-table-wrap.visible{display:block}
   .parts-obs-global{width:100%;border:1.5px solid var(--gray-mid);border-radius:7px;padding:7px 9px;font-family:'Barlow',sans-serif;font-size:13px;color:var(--text);background:var(--gray);outline:none;resize:none;min-height:44px;margin-top:6px}
   .parts-obs-global:focus{border-color:var(--blue-mid);background:white}
-  .pt-table{width:100%;border-collapse:collapse;margin-bottom:6px}
+  .pt-table{width:100%;border-collapse:collapse;margin-bottom:6px;table-layout:fixed}
   .pt-table thead th{font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text-light);padding:5px 4px;border-bottom:2px solid var(--gray-mid);text-align:left;letter-spacing:.3px}
   .pt-table thead th.th-center{text-align:center}
   .pt-table tbody tr{border-bottom:1px solid #f0f2f5;cursor:pointer;transition:background .1s}
@@ -318,16 +319,16 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
   .pt-name{font-size:12px;font-weight:700;color:var(--text);padding:7px 4px 4px;white-space:nowrap;vertical-align:top}
   .pt-name small{display:block;font-size:9px;font-weight:400;color:var(--text-light);margin-top:1px}
   .pt-inp{padding:4px 3px;vertical-align:middle}
-  .pt-inp input[type=number],.pt-inp input[type=text]{width:100%;border:1.5px solid var(--gray-mid);border-radius:6px;padding:5px 5px;font-size:13px;font-family:'Barlow',sans-serif;background:var(--gray);color:var(--text);outline:none;min-width:60px}
+  .pt-inp input[type=number],.pt-inp input[type=text]{width:100%;border:1.5px solid var(--gray-mid);border-radius:6px;padding:5px 5px;font-size:13px;font-family:'Barlow',sans-serif;background:var(--gray);color:var(--text);outline:none;min-width:0}
   .pt-inp input[type=number]::placeholder,.pt-inp input[type=text]::placeholder{color:#bfc5d0;font-style:italic;font-weight:400;opacity:1}
   .pt-inp input:focus{border-color:var(--blue-mid);background:white}
   .pt-inp select{width:100%;border:1.5px solid var(--gray-mid);border-radius:6px;padding:5px 3px;font-size:12px;font-family:'Barlow',sans-serif;background:var(--gray);color:var(--text);outline:none}
   .pt-inp select:focus{border-color:var(--blue-mid);background:white}
-  .td-na{text-align:center;padding:4px 3px;vertical-align:middle}
-  .btn-pt-na{font-size:10px;font-weight:700;padding:4px 7px;border-radius:6px;border:1.5px solid var(--gray-mid);background:white;color:var(--text-light);cursor:pointer;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;white-space:nowrap;transition:all .15s}
+  .td-na{text-align:center;padding:4px 3px;vertical-align:middle;width:44px}
+  .btn-pt-na{font-size:11px;font-weight:700;padding:6px 6px;border-radius:6px;border:1.5px solid var(--gray-mid);background:white;color:var(--text-light);cursor:pointer;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;white-space:nowrap;transition:all .15s}
   .btn-pt-na.active{background:var(--purple-light);border-color:var(--purple);color:var(--purple)}
-  .td-detail{text-align:center;padding:4px 2px;vertical-align:middle}
-  .btn-pt-detail{font-size:13px;padding:4px 6px;border-radius:6px;border:1.5px solid var(--gray-mid);background:white;cursor:pointer;line-height:1;transition:all .15s}
+  .td-detail{text-align:center;padding:4px 2px;vertical-align:middle;width:44px}
+  .btn-pt-detail{font-size:13px;padding:6px 8px;border-radius:6px;border:1.5px solid var(--gray-mid);background:white;cursor:pointer;line-height:1;transition:all .15s}
   .btn-pt-detail.open{background:var(--blue-light);border-color:var(--blue-mid)}
   .pt-detail-row td{padding:0!important;border-bottom:1px solid #e8f0fb!important}
   /* v27: linha sempre visível (referência + fotos) — não depende de tocar
@@ -358,6 +359,21 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
   .pt-calc-err{background:#fdecea;color:#922b21;border-left:3px solid var(--red)}
   .sc-hint{font-size:11px;color:#7B4000;background:#fff7e6;border-left:3px solid var(--orange);border-radius:0 6px 6px 0;padding:7px 10px;margin:0 0 8px;line-height:1.5}
 
+
+  .pt-table tbody tr.pt-group > td{border-top:3px solid var(--blue)}
+  .pt-table tbody tr.pt-group > td:first-child{box-shadow:inset 4px 0 0 var(--blue)}
+  .pt-table tbody tr.pt-group-cont > td{background:#fbfcfe}
+  .pt-table tbody tr.pt-detail-row.pt-group-cont > td{background:var(--blue-light)}
+  .pt-status-badge{display:inline-block;margin-top:3px;font-size:9px;font-weight:700;padding:2px 6px;border-radius:6px;letter-spacing:.3px}
+  .pt-badge-pend{background:#eef0f4;color:#6b7280}
+  .pt-badge-semi{background:#fff3d6;color:#a16207}
+  .pt-badge-ok{background:#dcfce7;color:#15803d}
+  .pt-badge-na{background:#ede9fe;color:#6d28d9}
+  .pgp-return-os-card{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:10px 12px;padding:14px;border-radius:12px;background:var(--gray);border-left:5px solid var(--green);box-shadow:0 2px 8px rgba(0,0,0,.15)}
+  .pgp-return-os-txt strong{display:block;font-size:14px;color:var(--text)}
+  .pgp-return-os-txt small{display:block;font-size:11px;color:var(--text-light);margin-top:2px}
+  .pgp-return-os-card button{flex-shrink:0;background:var(--green);color:#fff;border:none;border-radius:10px;padding:12px 16px;font-weight:800;font-size:14px;min-height:var(--touch-min);cursor:pointer}
+
   /* legado compatibilidade */
   .part-card{display:none}
   .part-disabled{opacity:.35;pointer-events:none}
@@ -379,7 +395,7 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
   .inp-foto-inline{display:none}
 
   /* ── Foto por linha de peça (no detalhe expandido) ── */
-  .btn-foto-peca{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;color:var(--blue-mid);border:1.5px solid var(--blue-mid);background:white;border-radius:6px;padding:3px 7px;cursor:pointer;white-space:nowrap;font-family:'Barlow Condensed',sans-serif;transition:all .15s;-webkit-tap-highlight-color:transparent}
+  .btn-foto-peca{display:inline-flex;align-items:center;justify-content:center;gap:4px;font-size:10px;font-weight:700;color:var(--blue-mid);border:1.5px solid var(--blue-mid);background:white;border-radius:6px;padding:10px 8px;cursor:pointer;white-space:normal;overflow-wrap:anywhere;line-height:1.15;text-align:center;min-height:52px;font-family:'Barlow Condensed',sans-serif;transition:all .15s;-webkit-tap-highlight-color:transparent}
   .btn-foto-peca:active{background:var(--blue-light)}
   .btn-foto-peca.done{color:var(--green);border-color:var(--green)}
 
@@ -1209,6 +1225,8 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
   Status: <span id="pgpGsStatusTextMain">verificando...</span>
 </div>
 
+<div id="pgpReturnToOSContainer" style="display:none"></div>
+
 <div id="pgpPrevActionsWrap" class="pgp-prev-actions" style="display:none">
   <button class="btn-preventiva" onclick="pgpEnviarPreventiva()">
     🔧 Registrar Preventiva
@@ -1516,6 +1534,8 @@ function limparSessaoStorage() {
     // v28 — Preventiva↔Pipeline: os_id presente na URL indica que o formulário foi aberto
     // a partir de uma tarefa do pipeline de uma OS (não é uma preventiva avulsa).
     window._PGP_OS_ID = urlParams.get('os_id') || null;
+    window._PGP_TAREFA_ID = urlParams.get('tarefa_id') || null;
+    window._PGP_PREVENTIVA_INICIO_ISO = urlParams.get('inicio_preventiva_iso') || null;
     if (modoUrl === 'preventiva') {
       // pgpSetTipoVisita (ou pgpIniciarPreventivaDeOS, se vier de uma OS) será chamado
       // após DOM pronto
@@ -2068,8 +2088,8 @@ function buildPartsTable(p, midx, scenario) {
     `;
 
     return `
-    <tr id="${pk}_tr" onclick="togglePartDetail('${pk}',${pt.intDefault},event)">
-      <td class="pt-name">${pt.label}<small>Padrão: ${pt.intDefault}h</small>${hiddenFields}</td>
+    <tr class="pt-group" id="${pk}_tr" onclick="togglePartDetail('${pk}',${pt.intDefault},event)">
+      <td class="pt-name">${pt.label}<small>Padrão: ${pt.intDefault}h</small><span class="pt-status-badge pt-badge-pend" id="${pk}_status_badge">Pendente</span>${hiddenFields}</td>
       ${mainCell}
       ${extraCols}
       <td class="td-na"><button class="btn-pt-na" id="${pk}_na" onclick="togglePtNA('${pk}',event)">N/A</button></td>
@@ -2079,20 +2099,20 @@ function buildPartsTable(p, midx, scenario) {
          para expandir (antes viviam dentro de .pt-detail-row, escondidas
          até togglePartDetail). Última troca/intervalo/observação/ação
          continuam dentro do accordion colapsável abaixo. -->
-    <tr class="pt-quick-row" id="${pk}_quick_row">
+    <tr class="pt-quick-row pt-group-cont" id="${pk}_quick_row">
       <td colspan="10">
         <div class="pt-quick-box">
           <div class="pt-box-partname">${pt.label}</div>
           <div class="pt-det-field">
             <label>Referência / Código</label>
-            <input type="text" placeholder="Código da peça" id="${pk}_ref" data-key="${pk}_ref" onclick="event.stopPropagation()">
+            <input type="text" placeholder="Código da peça" id="${pk}_ref" data-key="${pk}_ref" oninput="updatePartCompletionStatus('${pk}')" onclick="event.stopPropagation()">
           </div>
           <div class="pt-photo-cols">
             <div class="pt-photo-col">
-              <button class="btn-foto-peca" id="${pk}_hori_btn" data-done-label="✅ Horímetro ok" data-orig-label="📷 Foto horímetro desta peça"
+              <button class="btn-foto-peca" id="${pk}_hori_btn" data-done-label="✅ Horímetro ok" data-orig-label="📷 Foto horímetro"
                       data-photokey="hori_${pt.k}"
                       onclick="event.stopPropagation();abrirFotoPicker(this,'linked',${midx},'hori_${pt.k}')">
-                  📷 Foto horímetro desta peça
+                  📷 Foto horímetro
               </button>
               <div class="photo-thumbs-mini" data-midx="${midx}" data-pkey="hori_${pt.k}"></div>
             </div>
@@ -2110,7 +2130,7 @@ function buildPartsTable(p, midx, scenario) {
         </div>
       </td>
     </tr>
-    <tr class="pt-detail-row" id="${pk}_detail_row" style="display:none">
+    <tr class="pt-detail-row pt-group-cont" id="${pk}_detail_row" style="display:none">
       <td colspan="10">
         <div class="pt-detail-box">
           <div class="pt-box-partname">${pt.label}</div>
@@ -2181,6 +2201,7 @@ function buildPartsSection(p, midx) {
     <div class="scenario-btns">${buildScenarioSelector(p, midx)}</div>
   </div>
   <div class="parts-table-wrap" id="${p}parts_table_wrap">
+    <button type="button" class="btn btn-reset" style="margin:0 0 8px;padding:8px 10px;font-size:12px" onclick="collapseCompletedParts(${midx})">▴ Recolher peças completas</button>
     <div id="${p}parts_table_content"></div>
   </div>
   ${buildHiddenPartIds(p)}`;
@@ -2246,6 +2267,9 @@ function pgpRestoreLoadedParts(p, midx) {
         if (tr) tr.classList.add('pt-na');
       }
     }
+    updatePartCompletionStatus(pk);
+    const quick = document.getElementById(`${pk}_quick_row`);
+    if (sp.na && quick) quick.style.display = 'none';
   });
 }
 
@@ -2287,6 +2311,8 @@ function selectScenario(p, scId, midx, e) {
   // Necessário porque pgpLoadMachine roda antes do cenário ser escolhido, e nesse
   // momento os IDs da tabela ainda não existem. Aqui a tabela já foi construída.
   pgpRestoreLoadedParts(p, midx);
+  PARTS.forEach(pt => updatePartCompletionStatus(`${p}${pt.k}`));
+  pgpAtualizarAcoesPorTipoVisita();
   // A tabela acabou de ser recriada. Aplicar os destaques depois que os inputs existem no DOM.
   requestAnimationFrame(() => {
     pgpMarkDynamicFieldsForUpdate(midx);
@@ -2305,10 +2331,16 @@ function togglePtNA(pk, e) {
   const btn = document.getElementById(`${pk}_na`);
   const tr  = document.getElementById(`${pk}_tr`);
   const det = document.getElementById(`${pk}_detail_row`);
+  const quick = document.getElementById(`${pk}_quick_row`);
+  if(!btn) return;
   const active = btn.classList.toggle('active');
   btn.textContent = active ? '✕ N/A' : 'N/A';
   if (tr) tr.classList.toggle('pt-na', active);
-  if (det && active) det.style.display = 'none';
+  if (det) det.style.display = 'none';
+  if (quick) quick.style.display = active ? 'none' : '';
+  const hidden = document.getElementById(`${pk}_acao`);
+  if(hidden) hidden.value = active ? 'na' : (hidden.value === 'na' ? '' : hidden.value);
+  updatePartCompletionStatus(pk);
 }
 
 function togglePartDetail(pk, intDefault, e) {
@@ -2322,12 +2354,16 @@ function togglePartDetail(pk, intDefault, e) {
   det.style.display = open ? 'table-row' : 'none';
   if (btn) btn.classList.toggle('open', open);
   if (tr)  tr.classList.toggle('pt-detail-open', open);
-  if (open) calcPartRow(pk, intDefault);
+  if (open) {
+    calcPartRow(pk, intDefault);
+    const trMain = document.getElementById(`${pk}_tr`);
+    if(trMain && trMain.scrollIntoView) trMain.scrollIntoView({block:'nearest', behavior:'smooth'});
+  }
 }
 
 function calcPartRow(pk, intDefault) {
   const calcBox  = document.getElementById(`${pk}_calc_box`);
-  if (!calcBox) return;
+  if (!calcBox) { updatePartCompletionStatus(pk); return; }
   const contEl   = document.getElementById(`${pk}_contador`);
   const valorEl  = document.getElementById(`${pk}_valor_mostrado`);
   const intEl    = document.getElementById(`${pk}_int`);
@@ -2338,6 +2374,7 @@ function calcPartRow(pk, intDefault) {
   if (!contador || contador === 'nao_sei' || contador === 'nao_informado' || isNaN(valor)) {
     calcBox.innerHTML = contador === 'nao_sei'
       ? `<div class="pt-calc-line pt-calc-warn">⚠️ Tipo de contador não identificado — exige conferência.</div>` : '';
+    updatePartCompletionStatus(pk);
     return;
   }
   let rodadas, restantes;
@@ -2346,6 +2383,7 @@ function calcPartRow(pk, intDefault) {
 
   if (restantes < 0 || rodadas < 0) {
     calcBox.innerHTML = `<div class="pt-calc-line pt-calc-err">⚠️ Inconsistência — verifique o intervalo ou o valor mostrado.</div>`;
+    updatePartCompletionStatus(pk);
     return;
   }
   const pct = Math.round((rodadas/intervalo)*100);
@@ -2355,6 +2393,36 @@ function calcPartRow(pk, intDefault) {
   calcBox.innerHTML = `<div class="pt-calc-line ${cls}">
     🔄 Rodadas: <b>${rodadas.toFixed(0)} h</b> &nbsp;|&nbsp; ⏳ Restam: <b>${restantes.toFixed(0)} h</b> &nbsp;|&nbsp; ${pct}% do intervalo (${intervalo} h)
   </div>`;
+  updatePartCompletionStatus(pk);
+}
+
+function updatePartCompletionStatus(pk){
+  const badge = document.getElementById(`${pk}_status_badge`);
+  if(!badge) return;
+  const acao = (document.getElementById(`${pk}_acao`)||{}).value || '';
+  const ref  = (document.getElementById(`${pk}_ref`)||{}).value || '';
+  const naBtn = document.getElementById(`${pk}_na`);
+  const isNa = naBtn && naBtn.classList.contains('active');
+  const vm = (document.getElementById(`${pk}_valor_mostrado`)||{}).value || '';
+  let label='Pendente', cls='pt-badge-pend';
+  if(isNa){ label='N/A'; cls='pt-badge-na'; }
+  else if(!acao && !ref && !vm){ label='Pendente'; cls='pt-badge-pend'; }
+  else if(acao==='trocada' && ref){ label='Completa'; cls='pt-badge-ok'; }
+  else if(acao==='conferida'){ label='Completa'; cls='pt-badge-ok'; }
+  else { label='Semi completa'; cls='pt-badge-semi'; }
+  badge.textContent = label;
+  badge.className = 'pt-status-badge ' + cls;
+}
+
+function collapseCompletedParts(midx){
+  const p = 'm' + midx + '_';
+  document.querySelectorAll('[id$="_status_badge"]').forEach(function(b){
+    if(b.id.indexOf(p)!==0) return;
+    const pk = b.id.replace('_status_badge','');
+    const st = b.textContent;
+    const det = document.getElementById(pk+'_detail_row');
+    if((st==='Completa'||st==='N/A') && det) det.style.display='none';
+  });
 }
 
 // ── BUILD PANEL HTML ──────────────────────────────────
@@ -2594,7 +2662,7 @@ function buildPanelHTML(idx) {
             <label>Auxiliar (opcional)</label>
             <input type="text" placeholder="Nome do auxiliar de mecânico" data-key="${p}auxiliar" onclick="event.stopPropagation()">
           </div>
-          <div class="row2" style="margin-top:6px">
+          <div class="row2" data-key="${p}hora_wrap" style="margin-top:6px">
             <div class="sub-group">
               <label>Hora Início</label>
               <input type="time" data-key="${p}hora_inicio" onclick="event.stopPropagation()">
@@ -2639,6 +2707,7 @@ function addMachine() {
   }
   // v8.5.4: copiar regime de trabalho da máquina 0 se preenchido
   copyRegimeFromFirst(idx);
+  pgpAtualizarAcoesPorTipoVisita();
 }
 
 function switchMachine(idx) {
@@ -4093,6 +4162,8 @@ renderTabs();
 updateProgress();
 setupBackGuard();
 checkRestoreDraft();
+pgpAtualizarAcoesPorTipoVisita();
+if(window._PGP_OS_ID && (function(){ try { return localStorage.getItem('proper_pcf_return_os_'+window._PGP_OS_ID)==='1'; } catch(e){ return false; } })()){ pgpMostrarVoltarParaOS(); }
 
 // Event delegation: auto-save rascunho e atualizar nome da aba
 document.addEventListener('input', function(e) {
@@ -4107,6 +4178,7 @@ document.addEventListener('input', function(e) {
       const pkPrefix = pk[1];
       const pt = PARTS.find(p => pkPrefix.endsWith('_'+p.k));
       calcPartRow(pkPrefix, pt ? pt.intDefault : 2000);
+      updatePartCompletionStatus(pkPrefix);
     }
   }
 });
@@ -4114,10 +4186,11 @@ document.addEventListener('change', function(e) {
   autoSaveDraft();
   autoSaveSession();
   if (e.target.dataset && e.target.dataset.key) {
-    const pk = e.target.dataset.key.match(/^(m\d+_p\d+)_(contador|historico)$/);
+    const pk = e.target.dataset.key.match(/^(m\d+_p\d+)_(contador|historico|ref)$/);
     if (pk) {
       const pt = PARTS.find(p => pk[1].endsWith('_'+p.k));
       calcPartRow(pk[1], pt ? pt.intDefault : 2000);
+      updatePartCompletionStatus(pk[1]);
     }
   }
 });
@@ -6270,6 +6343,12 @@ async function pgpIniciarPreventivaDeOS(osId){
     switchMachine(0);
     renderTabs();
     if(typeof updateAllTabNames === 'function') updateAllTabNames();
+    if(window._PGP_OS_ID){
+      var hi = pgpIsoToHHMMLocal(window._PGP_PREVENTIVA_INICIO_ISO) || pgpNowHHMMLocal();
+      var elHi = document.querySelector('[data-key="m0_hora_inicio"]');
+      if(elHi && !elHi.value) elHi.value = hi;
+    }
+    pgpAtualizarAcoesPorTipoVisita();
 
     const found = document.getElementById('pgpFound');
     if(found){
@@ -6317,6 +6396,29 @@ function pgpSetAcao(pk, acao){
     const btn=document.getElementById(pk+'_acao_'+a);
     if(btn) btn.classList.toggle('active', a===acao);
   });
+  updatePartCompletionStatus(pk);
+}
+
+function pgpIsoToHHMMLocal(iso){
+  if(!iso) return '';
+  var d = new Date(iso);
+  if(isNaN(d.getTime())) return '';
+  return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
+function pgpNowHHMMLocal(){
+  var d = new Date();
+  return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
+function pgpAtualizarAcoesPorTipoVisita(){
+  var isPrev = (_pgpTipoVisita === 'preventiva');
+  var btnResumo = document.getElementById('btnDone');
+  if(btnResumo) btnResumo.style.display = isPrev ? 'none' : '';
+  var btnSheets = document.getElementById('btnEnviarGSMain');
+  if(btnSheets){ var row = btnSheets.closest('.actions'); if(row) row.style.display = isPrev ? 'none' : ''; else btnSheets.style.display = isPrev ? 'none' : ''; }
+  var statusMain = document.getElementById('pgpGsStatusMain');
+  if(statusMain) statusMain.style.display = isPrev ? 'none' : '';
+  var esconderHora = (isPrev && !!window._PGP_OS_ID);
+  document.querySelectorAll('[data-key$="_hora_wrap"]').forEach(function(el){ el.style.display = esconderHora ? 'none' : ''; });
 }
 
 function pgpSetTipoVisita(tipo){
@@ -6338,6 +6440,7 @@ function pgpSetTipoVisita(tipo){
 
   const prevWrap=document.getElementById('pgpPrevActionsWrap');
   if(prevWrap) prevWrap.style.display=tipo==='preventiva'?'':'none';
+  pgpAtualizarAcoesPorTipoVisita();
 }
 
 // v31 item 8: fórmula única de "Última troca (h total)" — antes duplicada
@@ -6484,6 +6587,10 @@ async function pgpEnviarPreventiva(midx=currentMachine){
     const el=document.querySelector(`[data-key="${p}${key}"]`);
     return el?el.value.trim():'';
   };
+  if(window._PGP_OS_ID){
+    var elHf = document.querySelector('[data-key="m0_hora_fim"]');
+    if(elHf) elHf.value = pgpNowHHMMLocal();
+  }
   const hourTotal=parseInt(gv('horimetro'))||0;
   if(!hourTotal){
     showNotification('⚠ Informe o horímetro antes de registrar');
@@ -6553,7 +6660,9 @@ async function pgpEnviarPreventiva(midx=currentMachine){
     return;
   }
 
-  if(btn){btn.disabled=true;btn.textContent='Enviando...';}
+  let _slow = null;
+  if(btn){btn.disabled=true;btn.textContent='Enviando preventiva…';}
+  _slow = setTimeout(function(){ if(btn) btn.textContent = 'Ainda enviando. Não feche a tela.'; }, 8000);
 
   if(!_pgpGsConnected){
     const list=pgpGetPending();
@@ -6575,13 +6684,7 @@ async function pgpEnviarPreventiva(midx=currentMachine){
   }
 
   try{
-    const r=await fetch(_pgpGsUrl,{
-      method:'POST',
-      body:gcBody({action:'savePreventiva',key:_AUTH_HASH,...payload})
-    });
-    const txt=await r.text();
-    if(txt.trim().startsWith('<')) throw new Error('Resposta inválida do GAS');
-    const d=JSON.parse(txt);
+    const d = await pgpPostJson('savePreventiva', payload);
 
     if(d.duplicate){
       showNotification('ℹ Esta preventiva já foi registrada');
@@ -6613,6 +6716,7 @@ async function pgpEnviarPreventiva(midx=currentMachine){
       }
     }
   }finally{
+    if(_slow) clearTimeout(_slow);
     if(btn){btn.disabled=false;btn.textContent='🔧 Registrar Preventiva';}
   }
 }
@@ -6622,22 +6726,23 @@ async function pgpEnviarPreventiva(midx=currentMachine){
 // preferir continuar preenchendo outras máquinas da mesma OS antes de voltar.
 function pgpMostrarVoltarParaOS(){
   if(!window._PGP_OS_ID) return;
-  if(document.getElementById('pgpVoltarOsBanner')) return; // já exibido, não duplica
-  const b = document.createElement('div');
-  b.id = 'pgpVoltarOsBanner';
-  b.style.cssText = 'position:fixed;left:12px;right:12px;bottom:76px;z-index:500;' +
-    'background:linear-gradient(180deg,var(--brand-start),var(--brand-end));color:#fff;' +
-    'border-radius:12px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;' +
-    'gap:10px;box-shadow:0 4px 16px rgba(0,0,0,.35);font-family:"Barlow Condensed",sans-serif;';
-  b.innerHTML =
-    '<span style="font-weight:700;font-size:14px">✅ Preventiva registrada — voltar para a OS?</span>' +
-    '<button onclick="pgpVoltarParaOS()" style="background:#fff;color:#e85d1f;border:none;border-radius:8px;' +
-    'padding:8px 14px;font-weight:800;font-size:13px;cursor:pointer;white-space:nowrap;flex-shrink:0">🔧 Voltar para OS</button>';
-  document.body.appendChild(b);
+  var wrap = document.getElementById('pgpReturnToOSContainer');
+  if(!wrap) return;
+  wrap.innerHTML =
+    '<div class="pgp-return-os-card">' +
+      '<div class="pgp-return-os-txt">' +
+        '<strong>✅ Preventiva registrada</strong>' +
+        '<small>Você pode revisar/editar. Ao terminar, volte para a OS.</small>' +
+      '</div>' +
+      '<button type="button" onclick="pgpVoltarParaOS()">🔧 Voltar para OS</button>' +
+    '</div>';
+  wrap.style.display = 'block';
+  try { localStorage.setItem('proper_pcf_return_os_' + window._PGP_OS_ID, '1'); } catch(e){}
 }
 
 function pgpVoltarParaOS(){
   if(!window._PGP_OS_ID) return;
+  try { localStorage.removeItem('proper_pcf_return_os_' + window._PGP_OS_ID); } catch(e){}
   window.location.href = window.location.origin + window.location.pathname +
     '?modo=pipeline&os_id=' + encodeURIComponent(window._PGP_OS_ID);
 }
@@ -6701,6 +6806,10 @@ function pgpBuildPayload(midx=currentMachine){
   const p=`m${idx}_`;
   const loadedMachine=pgpGetLoadedMachineForIndex(idx);
   const gv=key=>{const el=document.querySelector(`[data-key="${p}${key}"]`);return el?el.value.trim():'';};
+  if(window._PGP_OS_ID){
+    var elHf = document.querySelector('[data-key="m0_hora_fim"]');
+    if(elHf) elHf.value = pgpNowHHMMLocal();
+  }
   const hourTotal=parseInt(gv('horimetro'))||0;
   const hpwEl=document.getElementById(`${p}h_sem_total`);
   const hpw=parseInt(hpwEl?.value)||0;
@@ -7110,6 +7219,7 @@ async function pfGet(action, params) {
 // ── PIPELINE STATE ────────────────────────────────────────────────────────────
 var _pfOsList = [];
 var _pfOsFilter = 'todas';
+var _pfOsStatusFilter = 'ativas';
 var _pfOsId = null;
 var _pfOsNome = '';
 var _pfTarefas = [];
@@ -7125,6 +7235,7 @@ async function pfAbrir() {
   document.getElementById('pfScreenOS').style.display = 'block';
   document.getElementById('pfScreenPipeline').style.display = 'none';
   _pfOsFilter = 'todas';
+  _pfOsStatusFilter = 'ativas';
   await pfLoadOS();
   if (!_pfNotifInterval) {
     _pfNotifInterval = setInterval(pollPfNotificacoes, 60000);
@@ -7168,10 +7279,11 @@ async function pfLoadOS() {
       ? window.PROPER_SESSION.tecnico.id
       : null;
     var params = usuarioId ? { id_usuario: usuarioId } : {};
+    params.includeClosed = 'true';
     var r = await pfGet('getOS', params);
     _pfOsList = (r.os || []).filter(function(o) {
       var st = String(o.status || '').toLowerCase();
-      return st !== 'cancelada' && st !== 'concluida';
+      return st !== 'cancelada';
     });
     _pfGsConnected = true;
     pfRenderOS();
@@ -7187,6 +7299,11 @@ function pfSetOSFilter(filtro) {
   pfRenderOS();
 }
 
+function pfSetOSStatusFilter(filtro) {
+  _pfOsStatusFilter = filtro || 'ativas';
+  pfRenderOS();
+}
+
 function pfRenderOS() {
   var statusEl = document.getElementById('pfOsStatus');
   var listaEl  = document.getElementById('pfOsLista');
@@ -7194,11 +7311,20 @@ function pfRenderOS() {
   Array.prototype.forEach.call(chips, function(chip) {
     chip.classList.toggle('active', chip.getAttribute('data-filter') === _pfOsFilter);
   });
+  var stChips = document.querySelectorAll('.pf-os-status-filter-chip');
+  Array.prototype.forEach.call(stChips, function(chip) {
+    chip.classList.toggle('active', chip.getAttribute('data-status-filter') === _pfOsStatusFilter);
+  });
 
   var filtered = _pfOsList.filter(function(o) {
     var local = String(o.local_atendimento || '').toLowerCase();
-    if (_pfOsFilter === 'externas') return local === 'externa' || local === 'externo';
-    if (_pfOsFilter === 'internas') return local === 'interna' || local === 'interno';
+    var st = String(o.status || 'aberta').toLowerCase();
+    var okLocal = true;
+    if (_pfOsFilter === 'externas') okLocal = local === 'externa' || local === 'externo';
+    if (_pfOsFilter === 'internas') okLocal = local === 'interna' || local === 'interno';
+    if (!okLocal) return false;
+    if (_pfOsStatusFilter === 'ativas') return st === 'aberta' || st === 'em_andamento';
+    if (_pfOsStatusFilter === 'concluidas') return st === 'concluida';
     return true;
   });
 
@@ -7498,8 +7624,11 @@ async function pfAbrirForm(tarefaId, formUrl) {
   // v28 — Preventiva↔Pipeline: acrescenta os_id na URL de navegação em tempo de execução —
   // o Form_URL salvo no template continua estático e compartilhado entre todas as OS; é aqui,
   // por instância de tarefa, que sabemos a qual OS ela pertence.
+  var inicioPreventivaISO = new Date().toISOString();
   var separador = formUrl.indexOf('?') >= 0 ? '&' : '?';
-  var urlComOs = formUrl + separador + 'os_id=' + encodeURIComponent(_pfOsId);
+  var urlComOs = formUrl + separador + 'os_id=' + encodeURIComponent(_pfOsId)
+    + '&tarefa_id=' + encodeURIComponent(tarefaId)
+    + '&inicio_preventiva_iso=' + encodeURIComponent(inicioPreventivaISO);
   window.location.href = urlComOs;
 }
 
@@ -7685,6 +7814,11 @@ function pfShowUnlockBanner(msg, isError) {
       <button type="button" class="pf-os-filter-chip active" data-filter="todas" onclick="pfSetOSFilter('todas')">Todas</button>
       <button type="button" class="pf-os-filter-chip" data-filter="externas" onclick="pfSetOSFilter('externas')">Externas</button>
       <button type="button" class="pf-os-filter-chip" data-filter="internas" onclick="pfSetOSFilter('internas')">Internas</button>
+    </div>
+    <div class="pf-os-filter" aria-label="Filtro de status da OS" style="margin-top:8px">
+      <button type="button" class="pf-os-filter-chip pf-os-status-filter-chip active" data-status-filter="ativas" onclick="pfSetOSStatusFilter('ativas')">Ativas</button>
+      <button type="button" class="pf-os-filter-chip pf-os-status-filter-chip" data-status-filter="concluidas" onclick="pfSetOSStatusFilter('concluidas')">Concluídas</button>
+      <button type="button" class="pf-os-filter-chip pf-os-status-filter-chip" data-status-filter="todas" onclick="pfSetOSStatusFilter('todas')">Todas</button>
     </div>
     <div id="pfOsStatus" style="font-size:13px;color:#94a3b8;text-align:center;padding:20px 0">Conectando ao Sheets…</div>
     <div id="pfOsLista"></div>
