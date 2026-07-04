@@ -1,4 +1,28 @@
 <!--
+PCF_index_v36.html
+v36 — Fix persistência PCF↔GAS: Tipo de Equipamento, Regime de trabalho e
+       horímetros por peça (valor mostrado/contador) não sobreviviam a
+       fechar o app / trocar de dispositivo, especialmente no fluxo de
+       preventiva.
+  Nota: "v35" nunca existiu como versão com conteúdo próprio — o arquivo
+  chegou a ser criado com esse nome mas sem changelog nem mudanças, sendo
+  funcionalmente idêntico ao v34. Esta v36 parte do conteúdo do v34.
+  - pgpBuildPayload: novo campo tipoEquip (alias explícito de 'tipo', que
+    já existia) para não ser confundido com "tipo de visita" nos payloads
+    derivados.
+  - pgpBuildVisitRequest: tipoEquip agora prioriza o alias; passam a
+    viajar também year e regimeData (nunca eram enviados na visita normal).
+  - pgpBuildPreventivaPayload: mantido tipo:'preventiva' (tipo de visita,
+    correto), mas agora também envia tipoEquip, potencia, year, location,
+    regimeData, obsOp e os_id — campos que a preventiva nunca enviava,
+    fazendo o app "esquecer" tipo de equipamento/regime ao recarregar e
+    a OS de origem (os_id) nunca fechar automaticamente a tarefa do
+    pipeline.
+  - pgpUpdateAdminLocal: passa a ler payload.tipoEquip em vez de
+    payload.tipo ao gravar eq.tipo no cache local — antes, ao salvar uma
+    preventiva, a string 'preventiva' (tipo de visita) sobrescrevia o
+    tipo do equipamento no cache.
+
 PCF_index_v34.html
 v34 — Instabilidade "GAS retornou HTML" em campo: resposta HTML do
        Apps Script (cold start / hiccup momentâneo de rede) estava
@@ -5049,7 +5073,10 @@ function pgpBuildVisitRequest(payload){
     // v8.7:
     obsOp:     payload.obsOp     || '',
     potencia:  payload.potencia  || '',
-    tipoEquip: payload.tipo      || '',  // tipo de equipamento (não confundir com tipo de visita)
+    tipoEquip: payload.tipoEquip || payload.tipo || '',  // tipo de equipamento (não confundir com tipo de visita)
+    // v36 — faltavam no payload de visita normal (nunca chegavam ao GAS/MAQUINAS.Regime_JSON):
+    year:      payload.year || '',
+    regimeData: payload.regimeData || [],
     // v27: Dados da Preventiva
     auxiliar:   payload.auxiliar   || '',
     horaInicio: payload.horaInicio || '',
@@ -6429,7 +6456,7 @@ function pgpBuildPreventivaPayload(midx=currentMachine){
     hourTotal:base.hourTotal,
     hpw:base.hpw,
     tech:base.tech,
-    tipo:'preventiva',
+    tipo:'preventiva', // tipo de VISITA (usado pelo GAS p/ VISITAS.Tipo) — não confundir com tipoEquip abaixo
     scenario:base.scenario,
     generalObs:base.generalObs,
     cnpj:base.cnpj||'',phone:base.phone||'',email:base.email||'',city:base.city||'',
@@ -6437,6 +6464,15 @@ function pgpBuildPreventivaPayload(midx=currentMachine){
     contact:base.contact||'',nextVisit:base.nextVisit||'',lastVisit:base.lastVisit||'',
     // v27: Dados da Preventiva
     auxiliar:base.auxiliar||'',horaInicio:base.horaInicio||'',horaFim:base.horaFim||'',
+    // v36 — campos que a preventiva nunca enviava (tipo do equipamento estava sendo
+    // sobrescrito pela string 'preventiva' acima; regime/potencia/year/os_id nem viajavam):
+    tipoEquip:  base.tipoEquip || base.tipo || '',
+    potencia:   base.potencia || '',
+    year:       base.year || '',
+    location:   base.location || '',
+    regimeData: base.regimeData || [],
+    obsOp:      base.obsOp || '',
+    os_id:      base.os_id || window._PGP_OS_ID || '',
     parts
   };
 }
@@ -6749,6 +6785,9 @@ function pgpBuildPayload(midx=currentMachine){
     brand:gv('marca'),model:gv('modelo'),serial:gv('ns'),tag:gv('tag'),
     location:gv('localizacao'),tech:gv('tecnico'),hourTotal,hpw,
     tipo: gv('tipo') || '',
+    // v36 — alias inequívoco de tipo de equipamento (mesmo campo que 'tipo' acima),
+    // para não ser confundido com "tipo de visita" nos payloads derivados (preventiva/visita)
+    tipoEquip: gv('tipo') || '',
     potencia: gv('potencia') || '',
     year: gv('ano') || '',
     regimeData: (()=>{
@@ -6966,7 +7005,9 @@ function pgpUpdateAdminLocal(payload){
     if(payload.phone) eq.phone = payload.phone;
     if(payload.email) eq.email = payload.email;
     if(payload.city)  eq.city  = payload.city;
-    if(payload.tipo)     eq.tipo     = payload.tipo;
+    // v36 — antes lia payload.tipo, que na preventiva é a string 'preventiva' (tipo de visita),
+    // corrompendo eq.tipo (tipo de equipamento). Agora sempre lê o alias tipoEquip.
+    if(payload.tipoEquip) eq.tipo     = payload.tipoEquip;
     if(payload.potencia) eq.potencia = payload.potencia;
     if(payload.year)     eq.year     = payload.year;
     if(payload.regimeData && payload.regimeData.length) eq.regimeData = payload.regimeData;
