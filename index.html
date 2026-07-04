@@ -1,5 +1,24 @@
-<!-- v37/v58 sprint: PCF/OS/preventiva updates. -->
+<!-- v38 sprint: Gestão de Documentos (fotos/PDFs) — Cliente › OS › Máquina no Drive. -->
 <!--
+PCF_index_v38.html
+v38 — Sprint Gestão de Documentos: fotos e PDFs passam a carregar os dados de
+       taxonomia (OS/Máquina) que o backend (GAS v57) usa para organizar o
+       Drive em Cliente › OS › Máquina.
+  - uploadPhotoToDrive: trocou osNumero:'' (sempre vazio) por os_id (de
+    window._PGP_OS_ID, já existente) + maquina_id/maquina_label. A resolução
+    de os_id → número da OS fica no GAS (_resolveNumeroOsById_); o PCF não
+    tenta resolver isso no cliente. Fila/compressão (queuePhotoDriveUpload,
+    compressPhotoForDrive) intocadas.
+  - Novas pgpDriveMaquinaId/pgpDriveMaquinaLabel: rótulo/serial da máquina
+    reaproveitados por foto e PDF (mesma fonte de verdade).
+  - gerarPDF (preventiva por máquina) e gerarPDFConsolidado passam a subir o
+    PDF gerado (jsPDF) no Drive via nova ação salvarPdfDrive — captura
+    b.doc.output('datauristring') após o doc.save() local (o PDF local
+    continua sendo gerado e salvo mesmo se o upload falhar/estiver offline).
+  - Novo par queuePdfDriveUpload/uploadPdfToDrive, espelhando
+    queuePhotoDriveUpload/uploadPhotoToDrive: fire-and-forget, fila própria
+    (_pendingPdfUploads) reenviada em pgpFlushPending.
+
 PCF_index_v36.html
 v36 — Fix persistência PCF↔GAS: Tipo de Equipamento, Regime de trabalho e
        horímetros por peça (valor mostrado/contador) não sobreviviam a
@@ -1677,6 +1696,27 @@ function pgpDriveStatusLabel(status) {
   return 'Backup no Drive: enviando...';
 }
 
+// v38 — identificador/rótulo de máquina para a taxonomia Cliente›OS›Máquina
+// do Drive (Gestão de Documentos). Reaproveitados por foto e PDF.
+function pgpDriveMaquinaId(midx) {
+  return pgpFieldVal(midx, 'ns') || pgpFieldVal(midx, 'tag');
+}
+function pgpDriveMaquinaLabel(midx) {
+  const modeloRaw = vg(midx, 'modelo');
+  const modelo = modeloRaw !== '—' ? modeloRaw : '';
+  const serie = pgpFieldVal(midx, 'ns');
+  if (serie) return (modelo + ' (Série ' + serie + ')').trim();
+  const tag = pgpFieldVal(midx, 'tag');
+  if (tag) return (modelo + ' (' + tag + ')').trim();
+  return modelo;
+}
+// v38 — nome do cliente para o payload do Drive (mesmo padrão de fallback já
+// usado em uploadPhotoToDrive: vg() devolve '—' quando o campo está vazio).
+function pgpDriveClientName(midx) {
+  const raw = vg(midx, 'razao_social');
+  return raw !== '—' ? raw : 'SemCliente';
+}
+
 // Faz o upload em si (compressão 1600px/0.88 + salvarFotosDrivePGP no GAS).
 // Atualiza fotoObj.driveStatus e re-renderiza a miniatura ao final.
 async function uploadPhotoToDrive(item) {
@@ -1684,11 +1724,11 @@ async function uploadPhotoToDrive(item) {
   try {
     const { dataUrl: driveDataUrl } = await compressPhotoForDrive(file);
     const base64 = driveDataUrl.split(',')[1] || '';
-    const clientNameRaw = vg(0, 'razao_social');
-    const clientName = clientNameRaw !== '—' ? clientNameRaw : 'SemCliente';
     await pgpPostJson('salvarFotosDrivePGP', {
-      clientName,
-      osNumero: '',
+      clientName: pgpDriveClientName(0),
+      os_id: window._PGP_OS_ID || '',
+      maquina_id: pgpDriveMaquinaId(midx),
+      maquina_label: pgpDriveMaquinaLabel(midx),
       dataBase64: base64,
       mime: 'image/jpeg',
       fileName: photoKey + '_' + Date.now() + '.jpg',
@@ -1731,6 +1771,36 @@ async function flushPendingPhotoUploads() {
   for (const item of pending) {
     try { await uploadPhotoToDrive(item); }
     catch (e) { _pendingPhotoUploads.push(item); }
+  }
+}
+
+// v38 — BACKUP DE PDF NO GOOGLE DRIVE (Gestão de Documentos), espelhando o
+// padrão de queuePhotoDriveUpload/uploadPhotoToDrive acima. Fila separada
+// (só em memória, mesma limitação de _pendingPhotoUploads): o PDF local
+// (doc.save) já foi gerado e salvo independentemente deste upload.
+let _pendingPdfUploads = [];
+
+async function uploadPdfToDrive(item) {
+  await pgpPostJson('salvarPdfDrive', item);
+}
+
+// Ponto de entrada chamado por gerarPDF/gerarPDFConsolidado — fire-and-forget,
+// nunca trava a UI nem impede o doc.save() local.
+function queuePdfDriveUpload(item) {
+  if (_pgpGsConnected) {
+    uploadPdfToDrive(item).catch(() => { _pendingPdfUploads.push(item); });
+  } else {
+    _pendingPdfUploads.push(item);
+  }
+}
+
+async function flushPendingPdfUploads() {
+  if (!_pgpGsConnected || !_pendingPdfUploads.length) return;
+  const pending = _pendingPdfUploads;
+  _pendingPdfUploads = [];
+  for (const item of pending) {
+    try { await uploadPdfToDrive(item); }
+    catch (e) { _pendingPdfUploads.push(item); }
   }
 }
 
@@ -4899,6 +4969,22 @@ async function gerarPDF() {
     b.renderMachine(midx, true, null);
     const nomeArq = montarNomeArquivo(vg(midx, 'razao_social'), vg(midx, 'modelo'), vg(midx, 'ns'), dataStr);
     b.doc.save(nomeArq);
+
+    // v38 — Gestão de Documentos: backup do PDF no Drive (Cliente›OS›Máquina),
+    // fire-and-forget; o doc.save() acima já garantiu o PDF local mesmo se
+    // este upload falhar/estiver offline.
+    const pdfBase64 = b.doc.output('datauristring').split(',')[1] || '';
+    queuePdfDriveUpload({
+      cliente: pgpDriveClientName(midx),
+      os_id: window._PGP_OS_ID || '',
+      maquina_id: pgpDriveMaquinaId(midx),
+      maquina_label: pgpDriveMaquinaLabel(midx),
+      base64: pdfBase64,
+      fileName: nomeArq,
+      categoria: 'pdf_preventiva',
+      createdBy: pgpFieldVal(midx, 'tecnico')
+    });
+
     count++;
   }
 
@@ -4968,6 +5054,20 @@ async function gerarPDFConsolidado() {
   const dataStr = b.agora.toLocaleDateString('pt-BR').replace(/\//g, '-');
   const nomeConsolidado = `Relatorio_Consolidado_${razao}_${dataStr}.pdf`.replace(/\s+/g, '_');
   doc.save(nomeConsolidado);
+
+  // v38 — Gestão de Documentos: backup do consolidado no Drive (categoria
+  // pdf_relatorio, "máquina" = CONSOLIDADO, já que cobre todas as máquinas).
+  const consolidadoBase64 = doc.output('datauristring').split(',')[1] || '';
+  queuePdfDriveUpload({
+    cliente: pgpDriveClientName(0),
+    os_id: window._PGP_OS_ID || '',
+    maquina_label: 'CONSOLIDADO',
+    base64: consolidadoBase64,
+    fileName: nomeConsolidado,
+    categoria: 'pdf_relatorio',
+    createdBy: pgpFieldVal(0, 'tecnico')
+  });
+
   showNotification('✅ PDF consolidado gerado: ' + nomeConsolidado);
 }
 
@@ -5356,6 +5456,8 @@ async function pgpFlushPending(){
   if(!_pgpGsConnected||!_pgpGsUrl) return;
   // v25: reenvia backups de foto pendentes (fila separada, não bloqueia o resto)
   flushPendingPhotoUploads();
+  // v38: idem para PDFs pendentes (Gestão de Documentos)
+  flushPendingPdfUploads();
   const list = pgpGetPending();
   if(!list.length) return;
   const failed = [];
