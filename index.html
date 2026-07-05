@@ -1171,6 +1171,63 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
   .section{animation:v24-fadeup .3s ease both}
   .pgp-loaded-card{animation:v24-fadeup .3s ease both}
 
+
+  /* ============================================================
+     v42 — UX polish: tabela de peças + fluxo de fotos + AppDialog
+     100% aditivo. Nada aqui altera IDs, data-key, callbacks GAS.
+     ============================================================ */
+  /* Linha em N/A: nome riscado + row esmaecida (togglePtNA já adiciona .pt-na) */
+  .pt-group.pt-na .pt-name{ text-decoration:line-through; color:#94a3b8 }
+  .pt-group.pt-na .pt-name small,
+  .pt-group.pt-na .pt-name .pt-status-badge{ opacity:.6 }
+  .pt-group.pt-na .pt-inp input,
+  .pt-group.pt-na .pt-inp select{ background:#f3f4f6; color:#9ca3af }
+  .pt-group.pt-na td{ background:#fafafa }
+  /* Estado "on" do botão N/A: cor vermelha clara ao invés de neutra */
+  .btn-pt-na.active{ background:#fee2e2; color:#b91c1c; border-color:#fca5a5 }
+  /* Detalhe: rotacionar chevron quando aberto */
+  .btn-pt-detail{ transition:transform .2s ease }
+  .btn-pt-detail.open{ transform:rotate(90deg) }
+  /* Linha marcada como "pendente" ou preenchida: hint lateral */
+  .pt-group td.pt-name{ border-left:3px solid transparent; transition:border-color .2s }
+  .pt-group.pt-filled td.pt-name{ border-left-color:#22c55e }
+  .pt-group.pt-na td.pt-name{ border-left-color:#cbd5e1 }
+  /* Focus ring da linha ativa */
+  .pt-group:focus-within td{ background:#fff7ed }
+  .pt-group.pt-na:focus-within td{ background:#f3f4f6 }
+  /* Hint de input numérico maior no mobile */
+  .pt-table input[type=number]{ text-align:right; font-variant-numeric:tabular-nums; font-weight:600 }
+  /* Foto: badge de contagem embutido no botão + micro-status nas thumbs */
+  .btn-foto-peca .pt-count{ display:inline-block; background:#22c55e; color:#fff; border-radius:10px; padding:1px 7px; font-size:10px; margin-left:6px; font-weight:800; letter-spacing:.02em }
+  .photo-thumbs-mini img{ position:relative }
+  .photo-thumb-wrap{ position:relative; display:inline-block }
+  .thumb-status{ position:absolute; right:2px; bottom:2px; width:9px; height:9px; border-radius:50%; box-shadow:0 0 0 2px #fff; pointer-events:none }
+  .thumb-status.pending{ background:#f59e0b; animation:tsPulse 1.2s ease-in-out infinite }
+  .thumb-status.done{ background:#22c55e }
+  .thumb-status.failed{ background:#ef4444 }
+  @keyframes tsPulse{ 0%,100%{ transform:scale(1); opacity:.85 } 50%{ transform:scale(1.35); opacity:1 } }
+  /* Toast: fila vertical + tipos */
+  .foto-toast{ z-index:9500 }
+  .foto-toast.type-success{ background:#065f46 }
+  .foto-toast.type-error{ background:#7f1d1d }
+  .foto-toast.type-info{ background:#1e293b }
+  /* AppDialog (substitui alert/confirm nativos) */
+  .app-dlg-backdrop{ position:fixed; inset:0; background:rgba(15,23,42,.55); backdrop-filter:blur(2px); z-index:10000; display:flex; align-items:center; justify-content:center; padding:16px; opacity:0; transition:opacity .18s ease; -webkit-tap-highlight-color:transparent }
+  .app-dlg-backdrop.show{ opacity:1 }
+  .app-dlg-card{ background:#fff; color:#0f172a; width:100%; max-width:380px; border-radius:14px; box-shadow:0 20px 60px rgba(0,0,0,.35); padding:20px 20px 16px; transform:translateY(8px) scale(.98); transition:transform .18s ease; font-family:'Barlow',sans-serif }
+  .app-dlg-backdrop.show .app-dlg-card{ transform:translateY(0) scale(1) }
+  .app-dlg-title{ font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:18px; text-transform:uppercase; letter-spacing:.4px; margin-bottom:8px; color:#0f172a }
+  .app-dlg-msg{ font-size:14px; line-height:1.45; white-space:pre-wrap; color:#334155; margin-bottom:16px }
+  .app-dlg-actions{ display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap }
+  .app-dlg-btn{ min-height:44px; padding:10px 16px; border-radius:10px; border:1.5px solid transparent; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:14px; text-transform:uppercase; letter-spacing:.5px; cursor:pointer; transition:transform .12s, box-shadow .12s }
+  .app-dlg-btn:active{ transform:scale(.97) }
+  .app-dlg-btn-primary{ background:linear-gradient(135deg,var(--brand-start),var(--brand-end)); color:#fff; box-shadow:0 4px 12px rgba(232,93,31,.35) }
+  .app-dlg-btn-secondary{ background:#f1f5f9; color:#334155; border-color:#e2e8f0 }
+  .app-dlg-btn-danger{ background:#dc2626; color:#fff }
+  .app-dlg-card.variant-warn .app-dlg-title{ color:#b45309 }
+  .app-dlg-card.variant-danger .app-dlg-title{ color:#b91c1c }
+  .app-dlg-card.variant-success .app-dlg-title{ color:#047857 }
+
 </style>
 </head>
 <body>
@@ -2033,6 +2090,7 @@ function removePhotoDoStore(midx, photoKey, i) {
 
 // Atualiza o texto/estado visual de todos os botões "📷 ..." vinculados a um photoKey
 function syncDoneButtonsForKey(midx, photoKey) {
+  try{ if(window._v42_refreshThumbStatus) _v42_refreshThumbStatus(midx, photoKey); }catch(_){ }
   const panel = document.getElementById('panel-' + midx);
   if (!panel) return;
   const count = (photoStore[midx] && photoStore[midx][photoKey]) ? photoStore[midx][photoKey].length : 0;
@@ -2646,6 +2704,7 @@ function updatePartCompletionStatus(pk){
   else { label='Semi completa'; cls='pt-badge-semi'; }
   badge.textContent = label;
   badge.className = 'pt-status-badge ' + cls;
+  try{ const _tr=document.getElementById(pk+'_tr'); if(_tr){ _tr.classList.toggle('pt-filled', cls==='pt-badge-ok'||cls==='pt-badge-done'||cls==='pt-badge-trocada'||cls==='pt-badge-conferida'); } }catch(_){ }
 }
 
 function collapseCompletedParts(midx){
@@ -3382,7 +3441,7 @@ ${vg(i,'obs_gerais')}
 
 function exportarCSV() {
   if (machines.length === 0) {
-    alert('Nenhuma máquina para exportar!');
+    AppDialog.alert('Nenhuma máquina para exportar.', {variant:'warn', title:'Exportar'});
     return;
   }
 
@@ -3589,8 +3648,8 @@ function fecharModal(e) {
     fecharModalBtn();
 }
 
-function resetCurrent() {
-  if (!confirm('Limpar esta máquina e recomeçar?')) return;
+async function resetCurrent() {
+  if (!(await AppDialog.confirm('Limpar esta máquina e recomeçar?', {title:'Limpar máquina', okLabel:'Limpar', danger:true}))) return;
   const panel = document.getElementById('panel-'+currentMachine);
   panel.querySelectorAll('.field-item').forEach(el => el.classList.remove('checked','expanded'));
   panel.querySelectorAll('.photo-item').forEach(el => {
@@ -3622,18 +3681,18 @@ function resetCurrent() {
   updateProgress();
 }
 
-function salvarColeta() {
+async function salvarColeta() {
   if (!temDadosPreenchidos()) {
-    alert('Nenhum dado preenchido para salvar.');
+    AppDialog.alert('Nenhum dado preenchido para salvar.', {variant:'warn', title:'Salvar coleta'});
     return;
   }
   saveCurrentSession();
-  alert('✅ Coleta salva com sucesso!');
+  AppDialog.alert('Coleta salva com sucesso.', {variant:'success', title:'Salvo'});
 }
 
-function novaColeta() {
+async function novaColeta() {
   if (temDadosPreenchidos()) {
-    const salvar = confirm('Deseja salvar a coleta atual antes de começar uma nova?');
+    const salvar = await AppDialog.confirm('Deseja salvar a coleta atual antes de começar uma nova?', {title:'Nova coleta', okLabel:'Salvar antes', cancelLabel:'Descartar'});
     if (salvar) {
       saveCurrentSession();
     }
@@ -4259,7 +4318,7 @@ function getDraft() {
 // ID único da coleta atual — evita duplicatas ao abrir o resumo várias vezes
 let _currentSessionId = null;
 
-function saveCurrentSession() {
+async function saveCurrentSession() {
   const state = captureState();
   state.clientName = vg(0, 'razao_social');
   state.label = state.clientName !== '—' ? state.clientName : 'Sem nome';
@@ -4284,7 +4343,7 @@ function saveCurrentSession() {
     if (existingIdxById >= 0) {
       sessions[existingIdxById] = state;
     } else if (existingIdxBySignature >= 0) {
-      const overwrite = confirm('Já existe uma coleta salva para esta mesma máquina deste cliente. Deseja sobrescrever a anterior?');
+      const overwrite = await AppDialog.confirm('Já existe uma coleta salva para esta mesma máquina deste cliente. Deseja sobrescrever a anterior?', {title:'Sobrescrever coleta', okLabel:'Sobrescrever', danger:true});
       if (!overwrite) return;
       state.sessionId = sessions[existingIdxBySignature].sessionId || state.sessionId;
       _currentSessionId = state.sessionId;
@@ -4361,10 +4420,10 @@ function renderSessoesList() {
     </div>`).join('') + '</div>';
 }
 
-function restaurarSessao(idx) {
+async function restaurarSessao(idx) {
   const sessions = getSessions();
   if (!sessions[idx]) return;
-  if (temDadosPreenchidos() && !confirm('Substituir dados atuais pela coleta salva?')) return;
+  if (temDadosPreenchidos() && !(await AppDialog.confirm('Substituir dados atuais pela coleta salva?', {title:'Restaurar coleta', okLabel:'Substituir'}))) return;
   document.querySelectorAll('.machine-panel').forEach(p => p.remove());
   machines = [{}];
   createPanel(0);
@@ -4374,8 +4433,8 @@ function restaurarSessao(idx) {
   fecharSessoes();
 }
 
-function deletarSessao(idx) {
-  if (!confirm('Excluir esta coleta salva?')) return;
+async function deletarSessao(idx) {
+  if (!(await AppDialog.confirm('Excluir esta coleta salva?', {title:'Excluir coleta', okLabel:'Excluir', danger:true}))) return;
   const sessions = getSessions();
   sessions.splice(idx, 1);
   persistSessions(sessions);
@@ -5109,9 +5168,9 @@ function montarNomeArquivo(razao, modelo, serial, dataStr) {
 }
 
 async function gerarPDF() {
-  if (machines.length === 0) { alert('Nenhuma máquina para gerar relatório.'); return; }
+  if (machines.length === 0) { AppDialog.alert('Nenhuma máquina para gerar relatório.', {variant:'warn', title:'Relatório'}); return; }
   const { jsPDF } = window.jspdf;
-  if (!jsPDF) { alert('Biblioteca PDF não carregada. Verifique a conexão e tente novamente.'); return; }
+  if (!jsPDF) { AppDialog.alert('Biblioteca PDF não carregada. Verifique a conexão e tente novamente.', {variant:'danger', title:'PDF'}); return; }
 
   showNotification('⏳ Gerando PDF' + (machines.length > 1 ? 's' : '') + '...');
   await new Promise(r => setTimeout(r, 80));
@@ -8111,6 +8170,92 @@ if(window._PGP_OS_ID && (function(){ try { return localStorage.getItem('proper_p
   <div id="pfUnlockBanner" style="display:none;position:fixed;top:70px;left:50%;transform:translateX(-50%);background:#1e40af;color:white;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.4);z-index:700;max-width:90vw;text-align:center"></div>
 
 </div>
+
+
+<script>
+/* v42 — AppDialog + thumb status + toast typing. Aditivo, sem tocar em GAS. */
+(function(){
+  if(window.AppDialog) return;
+  function el(tag, cls, html){ const n=document.createElement(tag); if(cls)n.className=cls; if(html!=null)n.innerHTML=html; return n; }
+  function open(opts){
+    return new Promise(resolve => {
+      const {kind='alert', title, message='', okLabel, cancelLabel='Cancelar', variant='info', danger=false} = opts||{};
+      const bd = el('div','app-dlg-backdrop');
+      const card = el('div','app-dlg-card' + (variant?' variant-'+variant:''));
+      const t = title || (kind==='confirm' ? 'Confirmar' : 'Aviso');
+      card.appendChild(el('div','app-dlg-title', String(t)));
+      card.appendChild(el('div','app-dlg-msg', String(message).replace(/</g,'&lt;')));
+      const actions = el('div','app-dlg-actions');
+      if(kind==='confirm'){
+        const btnC = el('button','app-dlg-btn app-dlg-btn-secondary', String(cancelLabel||'Cancelar'));
+        btnC.onclick = () => close(false);
+        actions.appendChild(btnC);
+      }
+      const btnO = el('button','app-dlg-btn ' + (danger?'app-dlg-btn-danger':'app-dlg-btn-primary'), String(okLabel || (kind==='confirm'?'Confirmar':'OK')));
+      btnO.onclick = () => close(true);
+      actions.appendChild(btnO);
+      card.appendChild(actions);
+      bd.appendChild(card);
+      document.body.appendChild(bd);
+      requestAnimationFrame(()=> bd.classList.add('show'));
+      function onKey(e){ if(e.key==='Escape') close(kind!=='confirm'); if(e.key==='Enter'){ e.preventDefault(); close(true); } }
+      document.addEventListener('keydown', onKey);
+      bd.addEventListener('click', e => { if(e.target===bd && kind!=='confirm') close(true); });
+      function close(v){ document.removeEventListener('keydown', onKey); bd.classList.remove('show'); setTimeout(()=>{ bd.remove(); resolve(v); }, 180); }
+      setTimeout(()=> btnO.focus(), 30);
+    });
+  }
+  window.AppDialog = {
+    alert: (msg, opts={}) => open(Object.assign({kind:'alert', message:msg}, opts)),
+    confirm: (msg, opts={}) => open(Object.assign({kind:'confirm', message:msg}, opts)),
+  };
+  /* Manter compat: window.alert vira modal (não-bloqueante). Callers que só informam final estão OK. */
+  const _nativeAlert = window.alert.bind(window);
+  window.alert = function(msg){ try{ AppDialog.alert(String(msg)); }catch(_){ _nativeAlert(msg); } };
+
+  /* Thumb status hook: procura fotos no photoStore e desenha um dot por thumb. */
+  window._v42_refreshThumbStatus = function(midx, photoKey){
+    try{
+      const list = (window.photoStore && photoStore[midx] && photoStore[midx][photoKey]) || [];
+      const sel = '.photo-thumbs-mini[data-midx="'+midx+'"][data-pkey="'+CSS.escape(photoKey)+'"]';
+      document.querySelectorAll(sel).forEach(cont => {
+        const imgs = cont.querySelectorAll('img');
+        imgs.forEach((img,i) => {
+          // Envolve img em wrapper se ainda não estiver
+          let wrap = img.parentElement;
+          if(!wrap || !wrap.classList.contains('photo-thumb-wrap')){
+            wrap = document.createElement('span');
+            wrap.className = 'photo-thumb-wrap';
+            img.parentNode.insertBefore(wrap, img);
+            wrap.appendChild(img);
+          }
+          let dot = wrap.querySelector('.thumb-status');
+          if(!dot){ dot = document.createElement('span'); dot.className='thumb-status'; wrap.appendChild(dot); }
+          const st = (list[i] && list[i].driveStatus) || 'done';
+          dot.className = 'thumb-status ' + (st==='pending'?'pending': st==='failed'?'failed':'done');
+          dot.title = 'Drive: ' + st;
+        });
+      });
+    }catch(e){ /* silencioso */ }
+  };
+
+  /* Toast tipado: showFotoToast(msg,{type}) — retrocompat com uma string. */
+  const _origToast = window.showFotoToast;
+  if(typeof _origToast === 'function'){
+    window.showFotoToast = function(msg, opts){
+      _origToast(msg);
+      try{
+        const el = document.getElementById('fotoToast');
+        if(el){
+          el.classList.remove('type-success','type-error','type-info');
+          const t = (opts && opts.type) || (String(msg).match(/erro|falh/i) ? 'error' : String(msg).match(/✅|salv|ok/i) ? 'success' : 'info');
+          el.classList.add('type-'+t);
+        }
+      }catch(_){ }
+    };
+  }
+})();
+</script>
 
 </body>
 </html>
