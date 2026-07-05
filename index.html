@@ -1,5 +1,20 @@
+<!-- v41: fix cirúrgico (layout) tabela de horímetro por peça (.pt-table) — colgroup por cenário + colunas compactas sem sobreposição. -->
 <!-- v40: fix (layout) tabela de horímetro por peça (.pt-table) — reescopo CSS compacto, sem digitação bloqueada. -->
 <!--
+PCF_index_v41.html
+v41 — Fix cirúrgico (layout): a correção v40 reduziu inputs e liberou
+       overflow, mas a tabela continuava em table-layout:fixed sem larguras
+       reais por coluna. No cenário D (5 colunas: Peça, Valor mostrado,
+       Interv., N/A, detalhe), o navegador continuava comprimindo as colunas
+       de forma agressiva; além disso, os botões N/A/detalhe tinham min-width
+       de tap target maior que a célula. Resultado: nome da peça quebrando
+       letra por letra e inputs/botões sobrepostos.
+  - Correção apenas visual: buildPartsTable agora adiciona classe
+    pt-scenario-{A..E} e <colgroup> sem mudar IDs, data-key, eventos ou lógica.
+    CSS v41 fixa a distribuição de colunas por cenário, remove min-width
+    rígido de N/A/detalhe somente dentro da .pt-table, preserva tap target
+    compacto e impede quebra letra-a-letra em .pt-name. Backend/GAS intacto.
+
 PCF_index_v40.html
 v40 — Fix (layout): tabela de horímetro por peça (.pt-table) — regras
        genéricas .section-body input estouravam as células compactas
@@ -958,6 +973,76 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
   .td-na{text-align:center}
   .btn-pt-detail{background:var(--bg-elev)!important;color:var(--brand-start)!important;border:1.5px solid rgba(245,130,32,.25)!important;border-radius:9px!important;font-weight:800!important;font-size:16px!important;min-height:44px!important;min-width:44px!important;line-height:1;transition:all .15s}
   .btn-pt-detail:active{transform:scale(.9);background:var(--brand-start)!important;color:#fff!important}
+
+  /* v41 FIX — distribuição real de colunas da tabela de peças ---------------
+     A v40 compactou inputs, mas a .pt-table continuava sem colgroup/larguras:
+     em cenários com 5 colunas (especialmente D), table-layout:fixed + botões
+     com min-width maior que a célula comprimiam o nome da peça e os inputs.
+     Escopo restrito à .pt-table; sem mudança de IDs, data-key ou lógica. */
+  .pt-table{table-layout:fixed!important;width:100%!important;min-width:0!important}
+  .pt-table col.pt-col-name{width:auto}
+  .pt-table col.pt-col-main{width:auto}
+  .pt-table col.pt-col-extra{width:auto}
+  .pt-table col.pt-col-na{width:auto}
+  .pt-table col.pt-col-detail{width:auto}
+  .pt-table.pt-scenario-A col.pt-col-name{width:70%}
+  .pt-table.pt-scenario-A col.pt-col-na{width:16%}
+  .pt-table.pt-scenario-A col.pt-col-detail{width:14%}
+  .pt-table.pt-scenario-B col.pt-col-name,
+  .pt-table.pt-scenario-E col.pt-col-name{width:44%}
+  .pt-table.pt-scenario-B col.pt-col-main,
+  .pt-table.pt-scenario-E col.pt-col-main{width:27%}
+  .pt-table.pt-scenario-B col.pt-col-na,
+  .pt-table.pt-scenario-E col.pt-col-na{width:15%}
+  .pt-table.pt-scenario-B col.pt-col-detail,
+  .pt-table.pt-scenario-E col.pt-col-detail{width:14%}
+  .pt-table.pt-scenario-C col.pt-col-name,
+  .pt-table.pt-scenario-D col.pt-col-name{width:36%}
+  .pt-table.pt-scenario-C col.pt-col-main,
+  .pt-table.pt-scenario-D col.pt-col-main{width:22%}
+  .pt-table.pt-scenario-C col.pt-col-extra,
+  .pt-table.pt-scenario-D col.pt-col-extra{width:18%}
+  .pt-table.pt-scenario-C col.pt-col-na,
+  .pt-table.pt-scenario-D col.pt-col-na{width:13%}
+  .pt-table.pt-scenario-C col.pt-col-detail,
+  .pt-table.pt-scenario-D col.pt-col-detail{width:11%}
+  .pt-table .pt-name{
+    white-space:normal!important;
+    word-break:normal!important;
+    overflow-wrap:break-word!important;
+    line-height:1.18!important;
+    padding-right:6px!important;
+  }
+  .pt-table .pt-name small{line-height:1.15!important}
+  .pt-table .pt-inp{min-width:0!important;padding:4px 2px!important}
+  .pt-table .pt-inp input[type="number"],
+  .pt-table .pt-inp input[type="text"],
+  .pt-table .pt-inp select{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    min-height:38px!important;
+    padding:5px 4px!important;
+    font-size:12px!important;
+    line-height:1.1!important;
+    box-sizing:border-box!important;
+  }
+  .pt-table .td-na,.pt-table .td-detail{width:auto!important;min-width:0!important;padding:4px 2px!important}
+  .pt-table .btn-pt-na{
+    width:100%!important;
+    min-width:0!important;
+    min-height:38px!important;
+    padding:0 3px!important;
+    font-size:10px!important;
+    letter-spacing:.03em!important;
+  }
+  .pt-table .btn-pt-detail{
+    width:100%!important;
+    min-width:0!important;
+    min-height:38px!important;
+    padding:0!important;
+  }
+
 
   /* Observation buttons on rows */
   .obs-btn{background:var(--bg-elev)!important;color:var(--text-light)!important;border:1.5px solid rgba(255,255,255,.1)!important;border-radius:9px!important;font-size:12px!important;font-weight:700!important;min-height:44px!important;padding:8px 6px!important;transition:all .15s}
@@ -2197,6 +2282,15 @@ function buildPartsTable(p, midx, scenario) {
     E: '⬇️ Contador regressivo: o valor mostrado já é o tempo restante. Informe o valor e confirmaremos o intervalo nos detalhes.',
   };
 
+  const colClassesMap = {
+    A: ['pt-col-name','pt-col-na','pt-col-detail'],
+    B: ['pt-col-name','pt-col-main','pt-col-na','pt-col-detail'],
+    C: ['pt-col-name','pt-col-main','pt-col-extra','pt-col-na','pt-col-detail'],
+    D: ['pt-col-name','pt-col-main','pt-col-extra','pt-col-na','pt-col-detail'],
+    E: ['pt-col-name','pt-col-main','pt-col-na','pt-col-detail'],
+  };
+  const colgroup = `<colgroup>${(colClassesMap[scenario] || colClassesMap.A).map(cls => `<col class="${cls}">`).join('')}</colgroup>`;
+
   const rows = PARTS.map(pt => {
     const pk = `${p}${pt.k}`;
     let mainCell = '';
@@ -2318,7 +2412,8 @@ function buildPartsTable(p, midx, scenario) {
 
   return `
   <div class="sc-hint">${hintMap[scenario]}</div>
-  <table class="pt-table">
+  <table class="pt-table pt-scenario-${scenario}">
+    ${colgroup}
     <thead><tr>
       <th>${cfg.heads[0]}</th>
       ${thExtra}
