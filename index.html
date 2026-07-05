@@ -1,5 +1,32 @@
-<!-- v39: fix TDZ de boot (bloco START movido para o fim) — pipeline voltou a carregar OS. -->
+<!-- v40: fix (layout) tabela de horímetro por peça (.pt-table) — reescopo CSS compacto, sem digitação bloqueada. -->
 <!--
+PCF_index_v40.html
+v40 — Fix (layout): tabela de horímetro por peça (.pt-table) — regras
+       genéricas .section-body input estouravam as células compactas
+       (cenário D, 5 colunas), sobrepondo o nome da peça aos inputs e
+       impedindo digitação. Reescopo CSS compacto + .pt-name com quebra
+       de linha + overflow-x:auto de segurança. Sem mudança de
+       IDs/estrutura/lógica.
+  - Causa-raiz: a .pt-table (table-layout:fixed, sem larguras de coluna
+    fixas) mora dentro de .section-body (~2704) e herdava a regra
+    genérica .section-body input[...] (min-height:44px, padding:10px
+    12px, font-size:14px!important, ~898). Combinado com .pt-name em
+    white-space:nowrap (~355) e .parts-table-wrap em overflow-x:hidden
+    (~343), o nome da peça transbordava sobre os inputs e as colunas
+    colidiam, cortando a área de toque/digitação dos campos.
+  - Correção 100% CSS aditiva (inserida ~900, antes do comentário
+    "N/A part button"): .pt-name passa a white-space:normal (quebra de
+    linha); .pt-table .pt-inp input/select ganham reescopo compacto
+    (padding 6px, min-height 40px, font-size 13px, min-width:0,
+    position:relative+z-index:1) que vence a regra genérica por
+    especificidade, mas só dentro de .pt-table; .btn-pt-na ganha
+    min-width:48px; .parts-table-wrap volta a overflow-x:auto (rede de
+    segurança). table-layout:fixed, estrutura de <tr>/<td>, IDs e
+    data-key (${pk}_valor_mostrado, _int, _contador, _na, _ref, _tr)
+    permanecem idênticos. Inputs fora da .pt-table mantêm min-height
+    44px. Badge de versão visível ("V26") não alterado (cosmético,
+    adiado). 100% frontend; nenhuma alteração no GAS.
+
 PCF_index_v39.html
 v39 — Fix P0 (TDZ de boot): o bloco imperativo "// ── START" rodava em
        tempo de parse (linha ~4228), mas os `let` de estado do módulo que
@@ -898,6 +925,31 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
   .section-body input[type="text"],.section-body input[type="number"],.section-body input[type="date"],.section-body input[type="time"],.section-body select,.section-body textarea{background:var(--bg-app)!important;color:var(--text)!important;border:1.5px solid rgba(255,255,255,.08)!important;border-radius:8px!important;padding:10px 12px!important;font-size:14px!important;min-height:44px!important;font-family:'Inter',sans-serif;width:100%}
   .section-body input:focus,.section-body select:focus,.section-body textarea:focus{border-color:var(--brand-start)!important;box-shadow:0 0 0 3px var(--brand-glow)!important;outline:none;background:var(--bg-surface)!important}
   .section-body input::placeholder,.section-body textarea::placeholder{color:var(--text-light)!important;opacity:.5}
+
+  /* v40 FIX — Tabela de peças (horímetro por peça) --------------------------
+     As regras genéricas .section-body input/select/textarea (min-height:44px,
+     padding:10px 12px, font-size:14px) se aplicavam também às células compactas
+     da .pt-table (table-layout:fixed, até 5 colunas no cenário D). Isso, somado
+     ao .pt-name em white-space:nowrap e ao wrapper overflow-x:hidden, fazia as
+     colunas colidirem, o nome da peça transbordar sobre os inputs e os campos
+     de horímetro ficarem sem área utilizável de toque/digitação. Reescopo
+     compacto para a tabela de peças + nome que quebra linha. Não altera
+     IDs, data-keys, estrutura de <tr>/<td> nem lógica. */
+  .pt-name{white-space:normal;word-break:break-word}
+  .pt-table .pt-inp{padding:4px 3px!important;vertical-align:middle}
+  .pt-table .pt-inp input[type="number"],
+  .pt-table .pt-inp input[type="text"],
+  .pt-table .pt-inp select{
+    padding:6px 6px!important;
+    min-height:40px!important;
+    font-size:13px!important;
+    min-width:0!important;
+    width:100%;
+    position:relative;
+    z-index:1;
+  }
+  .pt-table .btn-pt-na{min-width:48px!important;padding:0 6px!important}
+  .parts-table-wrap{overflow-x:auto}
 
   /* N/A part button — enlarged tap target */
   .btn-pt-na{background:var(--bg-elev)!important;color:var(--text-light)!important;border:1.5px solid rgba(255,255,255,.1)!important;border-radius:9px!important;font-weight:800!important;font-size:11px!important;padding:0 10px!important;min-height:44px!important;min-width:56px!important;letter-spacing:.06em;text-transform:uppercase;font-family:'Inter',sans-serif!important;transition:all .15s;cursor:pointer}
