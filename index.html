@@ -1,5 +1,22 @@
-<!-- v38 sprint: Gestão de Documentos (fotos/PDFs) — Cliente › OS › Máquina no Drive. -->
+<!-- v39: fix TDZ de boot (bloco START movido para o fim) — pipeline voltou a carregar OS. -->
 <!--
+PCF_index_v39.html
+v39 — Fix P0 (TDZ de boot): o bloco imperativo "// ── START" rodava em
+       tempo de parse (linha ~4228), mas os `let` de estado do módulo que
+       ele usa (_pgpTipoVisita, _pgpGsUrl, etc.) só eram declarados ~865
+       linhas depois. A 7ª chamada do boot, pgpAtualizarAcoesPorTipoVisita(),
+       lia _pgpTipoVisita antes da declaração → ReferenceError não
+       capturado → abortava todo o resto da execução top-level, deixando
+       _pgpGsUrl eternamente não inicializado (erro visível no Pipeline:
+       "Erro ao carregar OS: Cannot access '_pgpGsUrl' before
+       initialization"). Também quebrava: init da conexão GS, listener de
+       autosave, cache de clientes.
+  - Bloco de boot (addMachineData/createPanel/renderTabs/updateProgress/
+    setupBackGuard/checkRestoreDraft/pgpAtualizarAcoesPorTipoVisita/
+    pgpMostrarVoltarParaOS) movido de antes da linha 4228 para o fim do
+    bloco de script principal, após todas as declarações let/const de
+    estado. Nenhuma outra mudança de lógica.
+
 PCF_index_v38.html
 v38 — Sprint Gestão de Documentos: fotos e PDFs passam a carregar os dados de
        taxonomia (OS/Máquina) que o backend (GAS v57) usa para organizar o
@@ -4225,16 +4242,6 @@ function salvarSessaoManual() {
   setTimeout(() => renderSessoesList(), 1400);
 }
 
-// ── START ─────────────────────────────────────────────
-addMachineData();
-createPanel(0);
-renderTabs();
-updateProgress();
-setupBackGuard();
-checkRestoreDraft();
-pgpAtualizarAcoesPorTipoVisita();
-if(window._PGP_OS_ID && (function(){ try { return localStorage.getItem('proper_pcf_return_os_'+window._PGP_OS_ID)==='1'; } catch(e){ return false; } })()){ pgpMostrarVoltarParaOS(); }
-
 // Event delegation: auto-save rascunho e atualizar nome da aba
 document.addEventListener('input', function(e) {
   autoSaveDraft();
@@ -7861,6 +7868,18 @@ function pfShowUnlockBanner(msg, isError) {
 }
 
 // ── END SPRINT 4E-D ──────────────────────────────────────────────────────────
+
+// ── BOOT (relocado para o fim: precisa rodar DEPOIS de todas as
+//    declarações let/const de estado do módulo — _pgpTipoVisita,
+//    _pgpGsUrl, _pgpAllClientsCache, etc. — senão TDZ aborta o init). ──
+addMachineData();
+createPanel(0);
+renderTabs();
+updateProgress();
+setupBackGuard();
+checkRestoreDraft();
+pgpAtualizarAcoesPorTipoVisita();
+if(window._PGP_OS_ID && (function(){ try { return localStorage.getItem('proper_pcf_return_os_'+window._PGP_OS_ID)==='1'; } catch(e){ return false; } })()){ pgpMostrarVoltarParaOS(); }
 
 </script>
 
