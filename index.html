@@ -1,3 +1,4 @@
+<!-- v44 : OFF-1 PWA. Adiciona manifest, apple-touch-icon e registro do service worker no head. Aditivo, sem mudanca de logica/IDs. -->
 <!-- v43: FIX 2b Sprint FormsPipeline — pfGetFormUrl (~L7774) fallback de 'auto:form08' trocado da versão antiga aposentada para form08.html (novo path publicado). Troca de 1 linha de string, sem tocar id/função/lógica. -->
 <!-- v41: fix cirúrgico (layout) tabela de horímetro por peça (.pt-table) — colgroup por cenário + colunas compactas sem sobreposição. -->
 <!-- v40: fix (layout) tabela de horímetro por peça (.pt-table) — reescopo CSS compacto, sem digitação bloqueada. -->
@@ -129,6 +130,12 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>ProperCare Field · PGP Preventivas v32</title>
 <meta name="theme-color" content="#0f172a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ProperTech">
+<script src="proper-pwa.js" defer></script>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
