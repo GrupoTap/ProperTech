@@ -1,3 +1,4 @@
+<!-- v43: FIX 2b Sprint FormsPipeline — pfGetFormUrl (~L7774) fallback de 'auto:form08' trocado da versão antiga aposentada para form08.html (novo path publicado). Troca de 1 linha de string, sem tocar id/função/lógica. -->
 <!-- v41: fix cirúrgico (layout) tabela de horímetro por peça (.pt-table) — colgroup por cenário + colunas compactas sem sobreposição. -->
 <!-- v40: fix (layout) tabela de horímetro por peça (.pt-table) — reescopo CSS compacto, sem digitação bloqueada. -->
 <!--
@@ -7771,7 +7772,7 @@ function pfGetFormUrl(tipo, tarefa) {
   // Prioridade 2 (fallback de compatibilidade): tarefas instanciadas antes desta
   // sessão, sem Form_URL preenchido — mantém o comportamento exato de antes.
   switch(tipo) {
-    case 'auto:form08':     return 'https://grupotap.github.io/ProperForms/form08_v1_3.html';
+    case 'auto:form08':     return 'https://grupotap.github.io/ProperForms/form08.html';
     case 'auto:rotores':    return 'https://grupotap.github.io/ProperRotores/index.html';
     case 'auto:inspecao':   return 'https://grupotap.github.io/ProperTech/index.html';
     case 'auto:preventiva': return 'https://grupotap.github.io/ProperTech/index.html?modo=preventiva';
