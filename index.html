@@ -1,4 +1,5 @@
-<!-- v44 : OFF-1 PWA. Adiciona manifest, apple-touch-icon e registro do service worker no head. Aditivo, sem mudanca de logica/IDs. -->
+<!-- v45: Card verde de máquina carregada passa a seguir a aba ativa e nova coleta limpa o estado carregado da OS anterior. -->
+<!-- v44: Registrar Preventiva agora orquestra todas as máquinas da coleta quando há múltiplas máquinas, mantendo caminho legado para máquina única e usando savePreventiva por máquina. -->
 <!-- v43: FIX 2b Sprint FormsPipeline — pfGetFormUrl (~L7774) fallback de 'auto:form08' trocado da versão antiga aposentada para form08.html (novo path publicado). Troca de 1 linha de string, sem tocar id/função/lógica. -->
 <!-- v41: fix cirúrgico (layout) tabela de horímetro por peça (.pt-table) — colgroup por cenário + colunas compactas sem sobreposição. -->
 <!-- v40: fix (layout) tabela de horímetro por peça (.pt-table) — reescopo CSS compacto, sem digitação bloqueada. -->
@@ -130,12 +131,6 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>ProperCare Field · PGP Preventivas v32</title>
 <meta name="theme-color" content="#0f172a">
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="ProperTech">
-<script src="proper-pwa.js" defer></script>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
@@ -1466,7 +1461,7 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <div id="pgpReturnToOSContainer" style="display:none"></div>
 
 <div id="pgpPrevActionsWrap" class="pgp-prev-actions" style="display:none">
-  <button class="btn-preventiva" onclick="pgpEnviarPreventiva()">
+  <button class="btn-preventiva" onclick="pgpEnviarTodasPreventivas()">
     🔧 Registrar Preventiva
   </button>
 </div>
@@ -3020,6 +3015,7 @@ function switchMachine(idx) {
   const tab = document.getElementById('tab-'+idx);
   if (tab) tab.classList.add('active');
   document.getElementById('machineCounter').textContent = 'Máquina '+(idx+1)+' de '+machines.length;
+  pgpRenderLoadedCard(idx);
   updateProgress();
   checkDone();
 }
@@ -3708,6 +3704,11 @@ async function novaColeta() {
   document.querySelectorAll('.machine-panel').forEach(p => p.remove());
   machines = [{}];
   currentMachine = 0;
+  // v45 — limpar máquina(s) carregada(s) da coleta/OS anterior, senão o card verde
+  // continua exibindo uma máquina de outro cliente na nova coleta.
+  _pgpLoadedMachine = null;
+  _pgpLoadedMachinesByIndex = {};
+  pgpRenderLoadedCard(0);
   Object.keys(photoStore).forEach(k => delete photoStore[k]); // v23: limpar fotos da coleta anterior
   createPanel(0);
   renderTabs();
@@ -5334,6 +5335,29 @@ function pgpGetLoadedMachineForIndex(midx){
   return _pgpLoadedMachinesByIndex[idx] || null;
 }
 
+// v45 — card da máquina carregada como função reutilizável: reflete
+// _pgpLoadedMachinesByIndex[idx] e é chamada tanto na carga quanto na troca de aba.
+function pgpRenderLoadedCard(midx=currentMachine){
+  const idx = pgpGetMachineIndex(midx);
+  const eq = _pgpLoadedMachinesByIndex[idx] || null;
+  const card = document.getElementById('pgpLoadedCard');
+  const info = document.getElementById('pgpLoadedInfo');
+  const histEl = document.getElementById('machineHistoryPanel');
+  if(!card) return;
+  if(!eq){
+    card.classList.remove('show');
+    if(histEl) histEl.style.display = 'none';
+    return;
+  }
+  if(info){
+    document.getElementById('pgpLoadedInfo').innerHTML =
+      `${eq.brand||''} ${eq.model||''} — ${eq.client||''}<small>Série: ${eq.serial||'—'} · TAG: ${eq.tag||'—'} · ${(eq.hourTotal||0).toLocaleString('pt-BR')}h</small>`;
+  }
+  card.classList.add('show');
+  renderMachineHistory(null, true);
+  fetchMachineHistory(eq.id || eq.machine_id || '').then(hist => renderMachineHistory(hist, false));
+}
+
 // ── FILA DE PENDÊNCIAS ────────────────────────────────────
 // Armazena payloads que falharam para reenviar quando reconectar
 const PENDING_KEY = 'pgp_pending_sync';
@@ -6235,10 +6259,7 @@ function pgpLoadMachine(eq,localDb,midx=currentMachine,clientData=null){
     });
   }
 
-  const card=document.getElementById('pgpLoadedCard');
-  document.getElementById('pgpLoadedInfo').innerHTML=
-    `${eq.brand} ${eq.model} — ${eq.client}<small>Série: ${eq.serial||'—'} · TAG: ${eq.tag||'—'} · ${(eq.hourTotal||0).toLocaleString('pt-BR')}h</small>`;
-  card.classList.add('show');
+  pgpRenderLoadedCard(idx);
   document.querySelectorAll('[data-section]').forEach(s=>refreshSection(s));
   updateProgress(); updateAllTabNames();
   // v8.4.4 — destacar campos faltantes e campos variáveis após carga
@@ -6246,9 +6267,6 @@ function pgpLoadMachine(eq,localDb,midx=currentMachine,clientData=null){
     pgpHighlightMissingClientFields(idx);
     pgpMarkDynamicFieldsForUpdate(idx);
   }, 100);
-
-  renderMachineHistory(null, true);
-  fetchMachineHistory(eq.id || eq.machine_id || '').then(hist => renderMachineHistory(hist, false));
 }
 
 function pgpClearMachine(){
@@ -6903,7 +6921,63 @@ function pgpBuildPreventivaPayload(midx=currentMachine){
   };
 }
 
-async function pgpEnviarPreventiva(midx=currentMachine){
+async function pgpEnviarTodasPreventivas(){
+  if(!Array.isArray(machines) || machines.length <= 1){
+    return pgpEnviarPreventiva(currentMachine);
+  }
+  const total = machines.length;
+  const ok = await AppDialog.confirm(
+    'Registrar as ' + total + ' máquinas desta coleta agora?',
+    { title:'Registrar preventivas', okLabel:'Registrar todas' }
+  );
+  if(!ok) return;
+
+  const btn = document.querySelector('.btn-preventiva');
+  let _slow = null;
+  if(btn){ btn.disabled = true; btn.textContent = 'Registrando ' + total + ' máquinas…'; }
+  _slow = setTimeout(function(){ if(btn) btn.textContent = 'Ainda enviando. Não feche a tela.'; }, 8000);
+
+  let enviadas = 0, filas = 0, dups = 0;
+  const puladas = [];
+  try{
+    for(let i = 0; i < machines.length; i++){
+      const res = await pgpEnviarPreventiva(i, { silent:true });
+      if(!res || res.status === 'skipped'){
+        puladas.push('Máq. ' + (i+1) + (res && res.reason ? ' — ' + res.reason : ''));
+      } else if(res.status === 'queued'){ filas++; }
+      else if(res.status === 'duplicate'){ dups++; }
+      else if(res.status === 'ok'){ enviadas++; }
+      else { puladas.push('Máq. ' + (i+1) + (res.error ? ' — ' + res.error : ' — falha')); }
+    }
+  } finally {
+    if(_slow) clearTimeout(_slow);
+    if(btn){ btn.disabled = false; btn.textContent = '🔧 Registrar Preventiva'; }
+  }
+
+  // Side-effects UMA vez, ao final. Para OS: sempre mostra o caminho de volta.
+  // Fora de OS: só volta para 'inspecao' se TODAS foram registradas (senão
+  // mantém a view de preventiva para o técnico completar as pendentes).
+  if(window._PGP_OS_ID){ pgpMostrarVoltarParaOS(); }
+  else if(puladas.length === 0){ pgpSetTipoVisita('inspecao'); }
+
+  let msg = '✅ ' + enviadas + ' preventiva(s) registrada(s)';
+  if(filas) msg += ' · ' + filas + ' na fila';
+  if(dups)  msg += ' · ' + dups + ' já existia(m)';
+  if(puladas.length) msg += ' · ' + puladas.length + ' não enviada(s)';
+  showNotification(msg);
+
+  if(puladas.length){
+    AppDialog.alert(
+      'Estas máquinas NÃO foram registradas (dados incompletos ou falha):\n\n' + puladas.join('\n') +
+      '\n\nComplete os campos pendentes e registre novamente.',
+      { variant:'warn', title:'Pendências' }
+    );
+  }
+}
+
+async function pgpEnviarPreventiva(midx=currentMachine, opts){
+  opts = opts || {};
+  const silent = !!opts.silent;
   const idx=pgpGetMachineIndex(midx);
   const p=`m${idx}_`;
   const gv=key=>{
@@ -6911,11 +6985,12 @@ async function pgpEnviarPreventiva(midx=currentMachine){
     return el?el.value.trim():'';
   };
   if(window._PGP_OS_ID){
-    var elHf = document.querySelector('[data-key="m0_hora_fim"]');
+    var elHf = document.querySelector('[data-key="m'+idx+'_hora_fim"]');
     if(elHf) elHf.value = pgpNowHHMMLocal();
   }
   const hourTotal=parseInt(gv('horimetro'))||0;
   if(!hourTotal){
+    if(silent) return { status:'skipped', reason:'horímetro não informado' };
     showNotification('⚠ Informe o horímetro antes de registrar');
     return;
   }
@@ -6940,98 +7015,95 @@ async function pgpEnviarPreventiva(midx=currentMachine){
   });
 
   if(!todasComAcao){
+    if(silent) return { status:'skipped', reason:'peça(s) sem ação selecionada' };
     showNotification('⚠ Selecione uma ação para todas as peças');
     return;
   }
   if(algumaTrocadaSemRef){
+    if(silent) return { status:'skipped', reason:'peça Trocada sem referência' };
     showNotification('⚠ Informe a referência das peças marcadas como Trocada');
     return;
   }
 
-  // v31 item 1: a partir daqui qualquer falha inesperada (ex. payload
-  // malformado) precisa cair no mesmo caminho de "salvar na fila" — antes,
-  // um erro aqui (antes do try de rede mais abaixo) derrubava a função sem
-  // enfileirar nada, perdendo os dados da coleta silenciosamente.
   let payload, nTrocadas;
-  const btn=document.querySelector('.btn-preventiva');
+  const btn = silent ? null : document.querySelector('.btn-preventiva');
   try{
     payload=pgpBuildPreventivaPayload(idx);
     nTrocadas=Object.values(payload.parts).filter(p=>p.acao==='trocada').length;
     pgpUpdateAdminLocal(payload);
   }catch(e){
+    if(silent) return { status:'skipped', reason:'falha ao montar os dados' };
     showNotification('🚫 Falha ao montar os dados da preventiva. Nada foi enviado — tente novamente.');
     return;
   }
 
-  // v31 item 1: guarda contra payload grande (muitas fotos/observações longas)
-  // que poderia estourar o limite de tamanho/tempo do Google Apps Script
-  // (doPost) e falhar sem aviso — em vez de deixar o fetch falhar
-  // silenciosamente, avisa o técnico com mensagem clara e enfileira para
-  // reenvio (mesmo tratamento de uma falha de rede comum).
-  const PAYLOAD_SIZE_LIMIT = 900000; // ~900KB, folga sob o limite prático do GAS doPost
+  const PAYLOAD_SIZE_LIMIT = 900000;
   const payloadSize = JSON.stringify(payload).length;
   if (payloadSize > PAYLOAD_SIZE_LIMIT) {
     const listSize=pgpGetPending();
     if(listSize.length >= QUEUE_LIMIT){
+      if(silent) return { status:'error', error:'fila cheia (payload grande)' };
       showNotification('🚫 Muitas fotos/observações e fila cheia. Envie em partes ou libere espaço na fila.');
-    } else {
-      listSize.push({action:'savePreventiva',body:payload,signature:payload.visit_id,ts:Date.now()});
-      const qResultSize = savePendingQueue(listSize);
-      pgpUpdatePendingBadge();
-      showNotification('⚠ Muitas fotos/observações — dados salvos na fila (' + qResultSize.count + '/' + QUEUE_LIMIT + '). Envie em partes ou reduza fotos.');
+      return;
     }
+    listSize.push({action:'savePreventiva',body:payload,signature:payload.visit_id,ts:Date.now()});
+    const qResultSize = savePendingQueue(listSize);
+    pgpUpdatePendingBadge();
+    if(silent) return { status:'queued' };
+    showNotification('⚠ Muitas fotos/observações — dados salvos na fila (' + qResultSize.count + '/' + QUEUE_LIMIT + '). Envie em partes ou reduza fotos.');
     return;
   }
 
   let _slow = null;
   if(btn){btn.disabled=true;btn.textContent='Enviando preventiva…';}
-  _slow = setTimeout(function(){ if(btn) btn.textContent = 'Ainda enviando. Não feche a tela.'; }, 8000);
+  if(!silent) _slow = setTimeout(function(){ if(btn) btn.textContent = 'Ainda enviando. Não feche a tela.'; }, 8000);
 
   if(!_pgpGsConnected){
     const list=pgpGetPending();
     if(list.length >= QUEUE_LIMIT){
-      showNotification('🚫 Fila offline cheia (' + list.length + '/' + QUEUE_LIMIT + ' itens). Conecte-se primeiro.');
+      if(_slow) clearTimeout(_slow);
       if(btn){btn.disabled=false;btn.textContent='🔧 Registrar Preventiva';}
+      if(silent) return { status:'error', error:'fila offline cheia' };
+      showNotification('🚫 Fila offline cheia (' + list.length + '/' + QUEUE_LIMIT + ' itens). Conecte-se primeiro.');
       return;
     }
     list.push({action:'savePreventiva',body:payload,signature:payload.visit_id,ts:Date.now()});
     const qResult = savePendingQueue(list);
     pgpUpdatePendingBadge();
+    if(_slow) clearTimeout(_slow);
+    if(btn){btn.disabled=false;btn.textContent='🔧 Registrar Preventiva';}
+    if(silent) return qResult.blocked ? { status:'error', error:'fila cheia' } : { status:'queued' };
     if(qResult.blocked){
       showNotification('🚫 Não foi possível salvar — fila cheia. Conecte-se primeiro.');
     } else {
       showNotification('📋 Preventiva salva na fila (' + qResult.count + '/' + QUEUE_LIMIT + ') — enviada ao conectar');
     }
-    if(btn){btn.disabled=false;btn.textContent='🔧 Registrar Preventiva';}
     return;
   }
 
   try{
     const d = await pgpPostJson('savePreventiva', payload);
-
     if(d.duplicate){
+      if(silent) return { status:'duplicate' };
       showNotification('ℹ Esta preventiva já foi registrada');
     } else if(d.status==='ok'){
+      if(silent) return { status:'ok' };
       showNotification('✅ Preventiva registrada — '+nTrocadas+' peça(s) atualizada(s)');
-      // v28 — Preventiva↔Pipeline: se a sessão veio de uma OS, não reseta o tipo de visita
-      // (evita esconder as ações de preventiva de outras máquinas ainda pendentes na mesma
-      // OS/sessão) e mostra o caminho de volta para o pipeline.
-      if(window._PGP_OS_ID){
-        pgpMostrarVoltarParaOS();
-      } else {
-        pgpSetTipoVisita('inspecao');
-      }
+      if(window._PGP_OS_ID){ pgpMostrarVoltarParaOS(); }
+      else { pgpSetTipoVisita('inspecao'); }
     } else {
       throw new Error(d.error||'Erro desconhecido');
     }
   }catch(e){
     const list=pgpGetPending();
     if(list.length >= QUEUE_LIMIT){
+      if(silent) return { status:'error', error:'falha no envio e fila cheia' };
       showNotification('🚫 Falha no envio e fila cheia. Conecte-se para liberar espaço.');
     } else {
       list.push({action:'savePreventiva',body:payload,signature:payload.visit_id,ts:Date.now()});
       const qResult = savePendingQueue(list);
       pgpUpdatePendingBadge();
+      if(silent) return qResult.blocked ? { status:'error', error:'fila cheia' } : { status:'queued' };
       if(qResult.blocked){
         showNotification('🚫 Falha no envio e fila cheia. Conecte-se para liberar espaço.');
       } else {
