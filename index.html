@@ -1568,6 +1568,20 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 // ══════════════════════════════════════════════════════════════════════════
 
 // ══════════════════════════════════════════════════════════════════════════
+// CHANGELOG v46 (Reformulação cirúrgica da seção de peças)
+// ══════════════════════════════════════════════════════════════════════════
+// - Ação da peça movida para a pt-quick-row, ficando sempre visível junto de
+//   referência/código e fotos; IDs/hidden ${pk}_acao e botões preservados.
+// - Seta da peça agora abre/fecha apenas observação e cálculo
+//   Rodadas/Restam/percentual, exceto quando reabre peça recolhida completa.
+// - Status "Completa" passa a exigir fotos de horímetro e da peça, campos
+//   obrigatórios do cenário e ação preenchida; referência/código não completa
+//   a peça sozinha.
+// - "Recolher peças completas" esconde quick/detail das peças completas ou
+//   N/A, mantendo somente a linha principal e permitindo reabrir pela seta.
+// ══════════════════════════════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════════════════════════
 // CHANGELOG v31 (Sprint: 11 correções cirúrgicas — prompt_correcoes_PCF_v30.md)
 // ══════════════════════════════════════════════════════════════════════════
 // 1. Registrar Preventiva falha com muitas fotos: pgpEnviarPreventiva() agora
@@ -2088,6 +2102,7 @@ function removePhotoDoStore(midx, photoKey, i) {
   photoStore[midx][photoKey].splice(i, 1);
   renderPhotoThumbs(midx, photoKey);
   syncDoneButtonsForKey(midx, photoKey);
+  updatePartStatusForPhotoKey(midx, photoKey);
   autoSaveDraft();
 }
 
@@ -2097,6 +2112,7 @@ function syncDoneButtonsForKey(midx, photoKey) {
   const panel = document.getElementById('panel-' + midx);
   if (!panel) return;
   const count = (photoStore[midx] && photoStore[midx][photoKey]) ? photoStore[midx][photoKey].length : 0;
+  updatePartStatusForPhotoKey(midx, photoKey);
   panel.querySelectorAll('[data-photokey="' + cssEscapeKey(photoKey) + '"]').forEach(btn => {
     if (count > 0) {
       btn.classList.add('done');
@@ -2107,6 +2123,13 @@ function syncDoneButtonsForKey(midx, photoKey) {
       btn.innerHTML = btn.dataset.origLabel || btn.innerHTML;
     }
   });
+}
+
+
+function updatePartStatusForPhotoKey(midx, photoKey) {
+  const suffix = String(photoKey || '').match(/^hori_(p\d+)$/);
+  const partK = suffix ? suffix[1] : PART_PHOTO_MAP_REV[photoKey];
+  if (partK) updatePartCompletionStatus('m' + midx + '_' + partK);
 }
 
 function savePhotoToDevice(dataUrl, photoKey, label) {
@@ -2421,17 +2444,10 @@ function buildPartsTable(p, midx, scenario) {
               <div class="photo-thumbs-mini" data-midx="${midx}" data-pkey="${PART_PHOTO_MAP[pt.k]}"></div>
             </div>` : ''}
           </div>
-        </div>
-      </td>
-    </tr>
-    <tr class="pt-detail-row pt-group-cont" id="${pk}_detail_row" style="display:none">
-      <td colspan="10">
-        <div class="pt-detail-box">
-          <div class="pt-box-partname">${pt.label}</div>
           <input type="hidden" id="${pk}_acao" value="">
           <div class="pgp-acao-wrap" style="display:${_pgpTipoVisita==='preventiva'?'':'none'}">
             <label class="pgp-acao-label">Ação desta peça</label>
-            <div style="display:flex;gap:8px">
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
               <button class="pgp-acao-pill" id="${pk}_acao_conferida"
                       onclick="event.stopPropagation();pgpSetAcao('${pk}','conferida')">Conferida</button>
               <button class="pgp-acao-pill" id="${pk}_acao_trocada"
@@ -2440,6 +2456,13 @@ function buildPartsTable(p, midx, scenario) {
                       onclick="event.stopPropagation();pgpSetAcao('${pk}','na')">N/A</button>
             </div>
           </div>
+        </div>
+      </td>
+    </tr>
+    <tr class="pt-detail-row pt-group-cont" id="${pk}_detail_row" style="display:none">
+      <td colspan="10">
+        <div class="pt-detail-box">
+          <div class="pt-box-partname">${pt.label} — observação e cálculo</div>
           <!-- v31 item 3: campo "Última troca (h total)" removido da UI — o valor
                passa a ser sempre calculado (ver calcUltimaTroca), nunca digitado
                manualmente. Input mantido como hidden com o mesmo id/data-key
@@ -2633,6 +2656,7 @@ function togglePtNA(pk, e) {
   if (tr) tr.classList.toggle('pt-na', active);
   if (det) det.style.display = 'none';
   if (quick) quick.style.display = active ? 'none' : '';
+  if (tr) tr.classList.remove('pt-collapsed-complete');
   const hidden = document.getElementById(`${pk}_acao`);
   if(hidden) hidden.value = active ? 'na' : (hidden.value === 'na' ? '' : hidden.value);
   updatePartCompletionStatus(pk);
@@ -2642,17 +2666,35 @@ function togglePartDetail(pk, intDefault, e) {
   e.stopPropagation();
   if (['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName)) return;
   const det = document.getElementById(`${pk}_detail_row`);
+  const quick = document.getElementById(`${pk}_quick_row`);
   const btn = document.getElementById(`${pk}_detail_btn`);
   const tr  = document.getElementById(`${pk}_tr`);
+  const naBtn = document.getElementById(`${pk}_na`);
   if (!det) return;
+
+  // v46: em uso normal a seta controla só detalhe (observação + cálculo).
+  // Se a peça foi recolhida pelo botão "Recolher peças completas", a seta
+  // reabre também a quick-row daquela peça para permitir edição sem apagar dados.
+  const wasCollapsedComplete = tr && tr.classList.contains('pt-collapsed-complete');
+  const isNa = naBtn && naBtn.classList.contains('active');
+  if (wasCollapsedComplete) {
+    if (quick && !isNa) quick.style.display = 'table-row';
+    if (tr) tr.classList.remove('pt-collapsed-complete');
+    det.style.display = 'table-row';
+    if (btn) btn.classList.add('open');
+    if (tr) tr.classList.add('pt-detail-open');
+    calcPartRow(pk, intDefault);
+    if(tr && tr.scrollIntoView) tr.scrollIntoView({block:'nearest', behavior:'smooth'});
+    return;
+  }
+
   const open = det.style.display === 'none' || det.style.display === '';
   det.style.display = open ? 'table-row' : 'none';
   if (btn) btn.classList.toggle('open', open);
   if (tr)  tr.classList.toggle('pt-detail-open', open);
   if (open) {
     calcPartRow(pk, intDefault);
-    const trMain = document.getElementById(`${pk}_tr`);
-    if(trMain && trMain.scrollIntoView) trMain.scrollIntoView({block:'nearest', behavior:'smooth'});
+    if(tr && tr.scrollIntoView) tr.scrollIntoView({block:'nearest', behavior:'smooth'});
   }
 }
 
@@ -2691,23 +2733,46 @@ function calcPartRow(pk, intDefault) {
   updatePartCompletionStatus(pk);
 }
 
+function pgpPartPhotoCount(midx, photoKey){
+  return (photoStore[midx] && photoStore[midx][photoKey]) ? photoStore[midx][photoKey].length : 0;
+}
+
+function pgpPartKeyInfo(pk){
+  const m = String(pk).match(/^m(\d+)_(p\d+)$/);
+  if(!m) return null;
+  return { midx: parseInt(m[1],10), partK: m[2] };
+}
+
 function updatePartCompletionStatus(pk){
   const badge = document.getElementById(`${pk}_status_badge`);
   if(!badge) return;
   const acao = (document.getElementById(`${pk}_acao`)||{}).value || '';
-  const ref  = (document.getElementById(`${pk}_ref`)||{}).value || '';
   const naBtn = document.getElementById(`${pk}_na`);
   const isNa = naBtn && naBtn.classList.contains('active');
-  const vm = (document.getElementById(`${pk}_valor_mostrado`)||{}).value || '';
+  const valorEl = document.getElementById(`${pk}_valor_mostrado`);
+  const intEl = document.getElementById(`${pk}_int`);
+  const info = pgpPartKeyInfo(pk);
+  const hasHoriPhoto = info ? pgpPartPhotoCount(info.midx, `hori_${info.partK}`) > 0 : false;
+  const partPhotoKey = info ? PART_PHOTO_MAP[info.partK] : '';
+  const hasMappedPartPhoto = !!partPhotoKey && pgpPartPhotoCount(info.midx, partPhotoKey) > 0;
+  const hasPartPhoto = partPhotoKey ? hasMappedPartPhoto : true;
+  const valorFilled = !!valorEl && String(valorEl.value || '').trim() !== '';
+  const intervaloFilled = !!intEl && String(intEl.value || '').trim() !== '';
+  const hasValor = !valorEl || valorFilled;
+  const hasIntervalo = !intEl || intervaloFilled || String(intEl.getAttribute('placeholder') || '').trim() !== '';
+  const hasAcao = ['conferida','trocada','na'].includes(acao);
+  const complete = hasHoriPhoto && hasPartPhoto && hasValor && hasIntervalo && hasAcao;
+  const started = hasHoriPhoto || hasMappedPartPhoto || valorFilled || intervaloFilled || hasAcao;
   let label='Pendente', cls='pt-badge-pend';
   if(isNa){ label='N/A'; cls='pt-badge-na'; }
-  else if(!acao && !ref && !vm){ label='Pendente'; cls='pt-badge-pend'; }
-  else if(acao==='trocada' && ref){ label='Completa'; cls='pt-badge-ok'; }
-  else if(acao==='conferida'){ label='Completa'; cls='pt-badge-ok'; }
-  else { label='Semi completa'; cls='pt-badge-semi'; }
+  else if(complete){ label='Completa'; cls='pt-badge-ok'; }
+  else if(started){ label='Semi completa'; cls='pt-badge-semi'; }
   badge.textContent = label;
   badge.className = 'pt-status-badge ' + cls;
-  try{ const _tr=document.getElementById(pk+'_tr'); if(_tr){ _tr.classList.toggle('pt-filled', cls==='pt-badge-ok'||cls==='pt-badge-done'||cls==='pt-badge-trocada'||cls==='pt-badge-conferida'); } }catch(_){ }
+  try{
+    const _tr=document.getElementById(pk+'_tr');
+    if(_tr){ _tr.classList.toggle('pt-filled', cls==='pt-badge-ok'); }
+  }catch(_){ }
 }
 
 function collapseCompletedParts(midx){
@@ -2715,9 +2780,18 @@ function collapseCompletedParts(midx){
   document.querySelectorAll('[id$="_status_badge"]').forEach(function(b){
     if(b.id.indexOf(p)!==0) return;
     const pk = b.id.replace('_status_badge','');
+    updatePartCompletionStatus(pk);
     const st = b.textContent;
+    const tr = document.getElementById(pk+'_tr');
     const det = document.getElementById(pk+'_detail_row');
-    if((st==='Completa'||st==='N/A') && det) det.style.display='none';
+    const quick = document.getElementById(pk+'_quick_row');
+    const btn = document.getElementById(pk+'_detail_btn');
+    if(st==='Completa'||st==='N/A'){
+      if(det) det.style.display='none';
+      if(quick) quick.style.display='none';
+      if(btn) btn.classList.remove('open');
+      if(tr){ tr.classList.remove('pt-detail-open'); tr.classList.add('pt-collapsed-complete'); }
+    }
   });
 }
 
