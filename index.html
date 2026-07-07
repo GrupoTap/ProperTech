@@ -1,8 +1,50 @@
+<!-- v47: P0 contaminação cruzada de identidade/peças de máquinas entre clientes (Fixes C-F) — ver bloco de changelog completo abaixo e GAS_properCare_v59.js para as causas raiz A/B do lado servidor. -->
 <!-- v45: Card verde de máquina carregada passa a seguir a aba ativa e nova coleta limpa o estado carregado da OS anterior. -->
 <!-- v44: Registrar Preventiva agora orquestra todas as máquinas da coleta quando há múltiplas máquinas, mantendo caminho legado para máquina única e usando savePreventiva por máquina. -->
 <!-- v43: FIX 2b Sprint FormsPipeline — pfGetFormUrl (~L7774) fallback de 'auto:form08' trocado da versão antiga aposentada para form08.html (novo path publicado). Troca de 1 linha de string, sem tocar id/função/lógica. -->
 <!-- v41: fix cirúrgico (layout) tabela de horímetro por peça (.pt-table) — colgroup por cenário + colunas compactas sem sobreposição. -->
 <!-- v40: fix (layout) tabela de horímetro por peça (.pt-table) — reescopo CSS compacto, sem digitação bloqueada. -->
+<!--
+PCF_index_v47.html — 07/07/2026 — P0 Contaminação cruzada de identidade/peças de
+máquinas entre clientes (PCF→GAS→PCM). Causas raiz A/B são no GAS (ver
+GAS_properCare_v59.js); esta versão cobre as causas raiz C/D/E/F do lado PCF.
+PCM_v66.html NÃO foi alterado (só lê getMaquinasByOS).
+
+  Fix C — pgpCarregarMaquinaOS (matching contra cache local 'proper_admin_v2'):
+    removido o match por série sozinha (era o mais perigoso — único critério,
+    podia colidir entre registros mal cadastrados de clientes diferentes). Match
+    por id e por tag+cliente agora exigem também marca/modelo compatíveis
+    (compactKey) quando ambos os lados têm esses campos preenchidos; candidato
+    rejeitado loga console.warn e o carregamento usa só `eq` (dado vindo do GAS/
+    OS). Mesmo quando o cache local é aceito, eq.parts (quando existir) sempre
+    vence sobre found.parts — peças da OS têm prioridade absoluta.
+
+  Fix D — pgpBuildPayload (bloco machine_id): antes de usar loadedMachine.id,
+    compara (compactKey) loadedMachine.brand/model/serial contra os campos
+    visíveis do formulário (marca/modelo/ns). Se algum divergir, loadedMachine
+    está desatualizado/contaminado por um fluxo anterior (ex.: Inspeção avulsa)
+    — ignora loadedMachine.id, loga console.warn e cai no fallback já existente
+    (pgpMachineKey a partir dos campos visíveis).
+
+  Fix E — pgpUpdateAdminLocal (cache local 'proper_admin_v2'): match por serial
+    sozinho ou tag sozinha agora exige também clientKey(cliente do registro
+    candidato) compatível com clientKey(payload.client); divergência é tratada
+    como "não encontrado" (cai no bloco de criação de novo registro) em vez de
+    sobrescrever o registro de outro cliente. Quando o match é aceito mas
+    brand/model/serial do payload divergem do registro existente (identidade
+    mudando de fato), as peças antigas (eq.parts) são zeradas antes de aplicar
+    payload.parts — evita misturar peças de identidades diferentes que
+    colidiram por acaso no mesmo id/serial/tag.
+
+  Fix F — pgpIniciarPreventivaDeOS: reset de `_pgpLoadedMachine`/
+    `_pgpLoadedMachinesByIndex` logo no início da função (mesmo padrão já usado
+    em novaColeta(), v45) — garante que estado deixado por um fluxo de Inspeção
+    avulsa anterior na mesma sessão nunca vaze para o carregamento das máquinas
+    da OS.
+
+  Sem hard-delete de dados, sem alteração de PCM_v66.html, sem renomear
+  id/data-view/data-key/nome de função.
+-->
 <!--
 PCF_index_v41.html
 v41 — Fix cirúrgico (layout): a correção v40 reduziu inputs e liberou
@@ -6726,6 +6768,12 @@ function pgpClientSearchFallback(){
 async function pgpIniciarPreventivaDeOS(osId){
   pgpSetTipoVisita('preventiva');
 
+  // v47 — Fix F (P0 contaminação cruzada): mesmo padrão de novaColeta() — garante que
+  // estado deixado por um fluxo de Inspeção avulsa anterior (mesma sessão/painel) nunca
+  // vaze para o carregamento das máquinas da OS.
+  _pgpLoadedMachine = null;
+  _pgpLoadedMachinesByIndex = {};
+
   const step1 = document.getElementById('pgpStep1');
   const step2 = document.getElementById('pgpStep2');
   if(step1) step1.style.display = 'none';
@@ -6783,14 +6831,37 @@ async function pgpIniciarPreventivaDeOS(osId){
 // (ex: priorizar registro local mais completo quando existir).
 async function pgpCarregarMaquinaOS(eq, idx){
   const localDb = pgpGetLocalMachines();
+
+  // v47 — Fix C (P0 contaminação cruzada): a OS é autoritativa; o cache local
+  // (proper_admin_v2) só complementa quando a identidade bate com folga. Match por
+  // série sozinha foi removido (era o mais perigoso — único critério, pode colidir
+  // entre registros mal cadastrados de clientes diferentes).
+  const compatible = (a, b) => {
+    const ka = compactKey(a || ''); const kb = compactKey(b || '');
+    return !ka || !kb || ka === kb;
+  };
+  const brandModelCompatible = (m) => compatible(m.brand, eq.brand) && compatible(m.model, eq.model);
+
   let found = null;
-  if(eq.id) found = localDb.find(m => m.id === eq.id);
-  if(!found && eq.serial) found = localDb.find(m => compactKey(m.serial||'') === compactKey(eq.serial));
-  if(!found && eq.tag && eq.client)
-    found = localDb.find(m => clientKey(m.client||'') === clientKey(eq.client) && compactKey(m.tag||'') === compactKey(eq.tag));
+  let candidate = null;
+  if(eq.id) candidate = localDb.find(m => m.id === eq.id);
+  if(candidate){
+    if(compatible(candidate.serial, eq.serial) && brandModelCompatible(candidate)) found = candidate;
+    else console.warn('[PCF][OS] cache local ignorado por conflito (id)', {eq, found: candidate});
+  }
+  if(!found && eq.tag && eq.client){
+    candidate = localDb.find(m => clientKey(m.client||'') === clientKey(eq.client) && compactKey(m.tag||'') === compactKey(eq.tag));
+    if(candidate){
+      if(brandModelCompatible(candidate)) found = candidate;
+      else console.warn('[PCF][OS] cache local ignorado por conflito (tag+cliente)', {eq, found: candidate});
+    }
+  }
 
   const machineToLoad = pgpMergeClientDataForLoad(found || eq, eq?.clientData || null);
   if(eq.client) machineToLoad.client = eq.client;
+  // Peças vindas da OS têm prioridade absoluta — mesmo quando found foi aceito, nunca
+  // deixar peças do cache local sobrescreverem as peças reais da OS.
+  if(eq.parts) machineToLoad.parts = eq.parts;
 
   try{
     const fullDb = JSON.parse(localStorage.getItem('proper_admin_v2') || 'null');
@@ -7335,8 +7406,19 @@ function pgpBuildPayload(midx=currentMachine){
   });
   return{
     machine_id:(()=>{
-      if(loadedMachine?.id) return loadedMachine.id;
-      // Gerar chave determinística quando não há máquina carregada do banco
+      // v47 — Fix D (P0 contaminação cruzada): loadedMachine pode estar desatualizado/
+      // contaminado por um fluxo anterior (ex.: Inspeção avulsa). Antes de confiar no
+      // .id dele, exige que brand/model/serial batam com os campos visíveis do formulário.
+      if(loadedMachine?.id){
+        const visMarca=gv('marca'), visModelo=gv('modelo'), visNs=gv('ns');
+        const compatible=(a,b)=>{const ka=compactKey(a||''); const kb=compactKey(b||''); return !ka||!kb||ka===kb;};
+        const divergente = !compatible(loadedMachine.brand, visMarca)
+          || !compatible(loadedMachine.model, visModelo)
+          || !compatible(loadedMachine.serial, visNs);
+        if(!divergente) return loadedMachine.id;
+        console.warn('[PCF] pgpBuildPayload: loadedMachine divergente dos campos visíveis, ignorando loadedMachine.id', {loadedMachine, visMarca, visModelo, visNs});
+      }
+      // Gerar chave determinística quando não há máquina carregada do banco (ou ela divergiu)
       return pgpMachineKey(gv('razao_social'),gv('marca'),gv('modelo'),gv('ns'));
     })(),
     client: (() => {
@@ -7559,8 +7641,33 @@ function pgpUpdateAdminLocal(payload){
     const payloadSerial = pgpNormalizeValue(payload.serial);
     const payloadTag = pgpNormalizeValue(payload.tag);
     if(payloadId) eq=db.machines.find(m=>String(m.id||'').trim()===payloadId);
-    if(!eq&&payloadSerial) eq=db.machines.find(m=>pgpNormalizeValue(m.serial)===payloadSerial);
-    if(!eq&&payloadTag)    eq=db.machines.find(m=>pgpNormalizeValue(m.tag)===payloadTag);
+    // v47 — Fix E (P0 contaminação cruzada): match por serial/tag sozinhos exige também
+    // cliente compatível (clientKey) — se divergir, trata como "não encontrado" e cai no
+    // bloco de criação, em vez de sobrescrever o registro de outro cliente.
+    const payloadClientKey = clientKey(payload.client||'');
+    if(!eq&&payloadSerial){
+      const cand=db.machines.find(m=>pgpNormalizeValue(m.serial)===payloadSerial);
+      if(cand){
+        const candClientKey=clientKey(cand.client||'');
+        if(!payloadClientKey || !candClientKey || candClientKey===payloadClientKey) eq=cand;
+        else console.warn('[PCF] pgpUpdateAdminLocal: match por serial ignorado por conflito de cliente', {payload, cand});
+      }
+    }
+    if(!eq&&payloadTag){
+      const cand=db.machines.find(m=>pgpNormalizeValue(m.tag)===payloadTag);
+      if(cand){
+        const candClientKey=clientKey(cand.client||'');
+        if(!payloadClientKey || !candClientKey || candClientKey===payloadClientKey) eq=cand;
+        else console.warn('[PCF] pgpUpdateAdminLocal: match por tag ignorado por conflito de cliente', {payload, cand});
+      }
+    }
+    // v47 — Fix E: se o match foi aceito mas brand/model/serial do payload divergem do
+    // registro existente, a identidade está de fato mudando — não preservar peças antigas.
+    let identityChanging = false;
+    if(eq){
+      const diverges=(a,b)=>{const ka=compactKey(a||''); const kb=compactKey(b||''); return !!ka && !!kb && ka!==kb;};
+      identityChanging = diverges(payload.brand, eq.brand) || diverges(payload.model, eq.model) || diverges(payload.serial, eq.serial);
+    }
     if(!eq){
       eq={id:payloadId||('EQ-'+Date.now()),client:payload.client||'',branch:payload.branch||'',
         brand:payload.brand||'',model:payload.model||'',serial:payload.serial||'',tag:payload.tag||'',
@@ -7591,6 +7698,9 @@ function pgpUpdateAdminLocal(payload){
     if(payload.regimeData && payload.regimeData.length) eq.regimeData = payload.regimeData;
     if(payload.generalObs) eq.obs = payload.generalObs;
     if(payload.parts){
+      // v47 — Fix E: identidade mudou de fato (brand/model/serial divergentes) — zera peças
+      // antigas para não misturar peças de identidades diferentes que colidiram por acaso.
+      if(identityChanging) eq.parts={};
       if(!eq.parts) eq.parts={};
       Object.entries(payload.parts).forEach(([pid,ps])=>{
         const ex=eq.parts[pid]||{};
