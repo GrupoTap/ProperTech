@@ -1,3 +1,4 @@
+<!-- v48: A1 (auditoria 08/07/2026) — filas de backup de foto/PDF no Drive agora são PERSISTENTES (localStorage 'pgp_pending_drive'), não mais só em memória. Antes, se o app fechasse/recarregasse offline antes do flush, o anexo se perdia (a foto seguia no PDF local, mas não entrava no Drive nem no índice TECH_ATTACHMENTS). Agora o payload completo é montado na captura (DOM válido) e persistido; reenvio automático no boot/reconexão. Fila separada e com limite próprio — nunca compete com a fila crítica 'pgp_pending_sync'. Frontend-only; nenhuma mudança de GAS/contrato; nenhum id/data-key/função de negócio renomeado. -->
 <!-- v47: P0 contaminação cruzada de identidade/peças de máquinas entre clientes (Fixes C-F) — ver bloco de changelog completo abaixo e GAS_properCare_v59.js para as causas raiz A/B do lado servidor. -->
 <!-- v45: Card verde de máquina carregada passa a seguir a aba ativa e nova coleta limpa o estado carregado da OS anterior. -->
 <!-- v44: Registrar Preventiva agora orquestra todas as máquinas da coleta quando há múltiplas máquinas, mantendo caminho legado para máquina única e usando savePreventiva por máquina. -->
@@ -1936,11 +1937,31 @@ function compressPhotoForDrive(file) {
   });
 }
 
-// Fila SEPARADA da pgp_pending_sync (dados críticos, QUEUE_LIMIT=40 compartilhado
-// entre saveMachine/saveVisit/updateMachineParts). Backups de foto são um "extra":
-// vivem só em memória, sem tocar localStorage — se a página recarregar com
-// uploads pendentes aqui, eles são perdidos (a foto continua no PDF normalmente).
-let _pendingPhotoUploads = [];
+// v48 (A1) — Fila PERSISTENTE de backups de foto/PDF no Drive (Gestão de
+// Documentos). Separada da 'pgp_pending_sync' (dados críticos): tem chave e
+// limite próprios e NUNCA bloqueia o fluxo crítico de preventivas. Antes essa
+// fila vivia só em memória e se perdia ao recarregar; agora o payload completo
+// (já com base64) é persistido no localStorage e reenviado no boot/reconexão.
+const DRIVE_PENDING_KEY = 'pgp_pending_drive';
+const DRIVE_QUEUE_LIMIT = 30; // backups são "extra"; ao exceder, descarta o mais antigo
+
+function pgpGetDriveQueue(){
+  try { return JSON.parse(localStorage.getItem(DRIVE_PENDING_KEY) || '[]'); }
+  catch(e){ return []; }
+}
+// Persiste a fila. À prova de cota: base64 é pesado; se o localStorage estourar,
+// não quebra o app — apenas loga (o item já tentou subir na hora da captura).
+function pgpSaveDriveQueue(list){
+  try { localStorage.setItem(DRIVE_PENDING_KEY, JSON.stringify(list)); return true; }
+  catch(e){ console.warn('pgp_pending_drive: falha ao persistir (cota do localStorage?):', e && e.message); return false; }
+}
+// Enfileira um upload de Drive pendente. entry = { kind, action, body, ts }.
+function pgpEnqueueDriveUpload(entry){
+  const list = pgpGetDriveQueue();
+  while (list.length >= DRIVE_QUEUE_LIMIT) list.shift(); // mantém os mais recentes
+  list.push(entry);
+  pgpSaveDriveQueue(list);
+}
 
 // Lê um campo de uma máquina específica pelo data-key (mesmo padrão usado em
 // pgpBuildPayload/vg, mas sem o fallback '—' — aqui queremos string vazia mesmo).
@@ -1987,14 +2008,49 @@ function pgpDriveClientName(midx) {
   return raw !== '—' ? raw : 'SemCliente';
 }
 
-// Faz o upload em si (compressão 1600px/0.88 + salvarFotosDrivePGP no GAS).
-// Atualiza fotoObj.driveStatus e re-renderiza a miniatura ao final.
-async function uploadPhotoToDrive(item) {
-  const { midx, photoKey, label, fotoObj, file } = item;
+// v48 (A1) — Sender unificado de uploads de Drive (foto/PDF). Tenta enviar agora
+// se conectado; em falha/offline, PERSISTE o payload na fila 'pgp_pending_drive'
+// (reenvio no boot/reconexão). ui (opcional) = { fotoObj, midx, photoKey } só
+// para atualizar o status/miniatura da foto na sessão atual.
+async function pgpSendOrQueueDrive(kind, action, body, ui) {
+  if (_pgpGsConnected) {
+    try {
+      await pgpPostJson(action, body);
+      if (ui && ui.fotoObj) { ui.fotoObj.driveStatus = 'ok'; renderPhotoThumbs(ui.midx, ui.photoKey); }
+      return;
+    } catch (e) {
+      // envio falhou — cai para persistência abaixo
+    }
+  }
+  if (ui && ui.fotoObj) { ui.fotoObj.driveStatus = 'pending'; renderPhotoThumbs(ui.midx, ui.photoKey); }
+  pgpEnqueueDriveUpload({ kind: kind, action: action, body: body, ts: Date.now() });
+}
+
+// Reenvia todos os backups de Drive pendentes (foto e PDF). Chamado por
+// pgpFlushPending() no boot e a cada reconexão / clique no badge ⏳. Itens que
+// continuarem falhando permanecem na fila; não bloqueia o fluxo crítico.
+async function flushPendingDriveUploads() {
+  if (!_pgpGsConnected) return;
+  const list = pgpGetDriveQueue();
+  if (!list.length) return;
+  const failed = [];
+  for (const entry of list) {
+    try { await pgpPostJson(entry.action, entry.body || {}); }
+    catch (e) { failed.push(entry); }
+  }
+  pgpSaveDriveQueue(failed);
+}
+
+// Ponto de entrada chamado pela captura de foto — fire-and-forget, nunca trava a
+// UI. Monta o payload AGORA (DOM válido) com o base64 já comprimido para o Drive
+// (1600px/0.88) e delega para o sender/persistência. Assinatura preservada
+// (chamado em storePhotoBase64).
+async function queuePhotoDriveUpload(midx, photoKey, label, fotoObj, file) {
+  let body;
   try {
     const { dataUrl: driveDataUrl } = await compressPhotoForDrive(file);
     const base64 = driveDataUrl.split(',')[1] || '';
-    await pgpPostJson('salvarFotosDrivePGP', {
+    body = {
       clientName: pgpDriveClientName(0),
       os_id: window._PGP_OS_ID || '',
       maquina_id: pgpDriveMaquinaId(midx),
@@ -2007,71 +2063,24 @@ async function uploadPhotoToDrive(item) {
       entityType: 'foto_pcf',
       entityId: pgpDriveEntityId(midx),
       createdBy: pgpFieldVal(midx, 'tecnico')
-    });
-    fotoObj.driveStatus = 'ok';
+    };
   } catch (err) {
-    fotoObj.driveStatus = 'error';
-    throw err;
-  } finally {
-    renderPhotoThumbs(midx, photoKey);
+    // Falha ao comprimir a imagem para o Drive: não há payload para enfileirar.
+    // A foto segue no PDF local e no rascunho normalmente.
+    console.warn('queuePhotoDriveUpload: falha ao preparar imagem para o Drive:', err && err.message);
+    if (fotoObj) { fotoObj.driveStatus = 'error'; renderPhotoThumbs(midx, photoKey); }
+    return;
   }
+  await pgpSendOrQueueDrive('photo', 'salvarFotosDrivePGP', body, { fotoObj: fotoObj, midx: midx, photoKey: photoKey });
 }
 
-// Ponto de entrada chamado pela captura de foto — fire-and-forget, nunca trava
-// a UI. Se online, tenta subir na hora; se falhar ou estiver offline, guarda só
-// em memória para reenviar depois (ver flushPendingPhotoUploads).
-function queuePhotoDriveUpload(midx, photoKey, label, fotoObj, file) {
-  const item = { midx, photoKey, label, fotoObj, file };
-  if (_pgpGsConnected) {
-    uploadPhotoToDrive(item).catch(() => { _pendingPhotoUploads.push(item); });
-  } else {
-    fotoObj.driveStatus = 'pending';
-    renderPhotoThumbs(midx, photoKey);
-    _pendingPhotoUploads.push(item);
-  }
-}
-
-// Reenvia backups de foto pendentes. Reaproveita o mesmo gatilho de
-// pgpFlushPending() (chamado ao reconectar e sempre que o usuário força reenvio
-// pelo badge ⏳) — não o mecanismo de armazenamento, que continua separado.
-async function flushPendingPhotoUploads() {
-  if (!_pgpGsConnected || !_pendingPhotoUploads.length) return;
-  const pending = _pendingPhotoUploads;
-  _pendingPhotoUploads = [];
-  for (const item of pending) {
-    try { await uploadPhotoToDrive(item); }
-    catch (e) { _pendingPhotoUploads.push(item); }
-  }
-}
-
-// v38 — BACKUP DE PDF NO GOOGLE DRIVE (Gestão de Documentos), espelhando o
-// padrão de queuePhotoDriveUpload/uploadPhotoToDrive acima. Fila separada
-// (só em memória, mesma limitação de _pendingPhotoUploads): o PDF local
-// (doc.save) já foi gerado e salvo independentemente deste upload.
-let _pendingPdfUploads = [];
-
-async function uploadPdfToDrive(item) {
-  await pgpPostJson('salvarPdfDrive', item);
-}
-
-// Ponto de entrada chamado por gerarPDF/gerarPDFConsolidado — fire-and-forget,
-// nunca trava a UI nem impede o doc.save() local.
+// v38/v48 — BACKUP DE PDF NO GOOGLE DRIVE (Gestão de Documentos). Ponto de
+// entrada chamado por gerarPDF/gerarPDFConsolidado — fire-and-forget, nunca trava
+// a UI nem impede o doc.save() local. item já é o body completo (com base64).
+// Agora usa a mesma fila persistente das fotos (pgp_pending_drive): em falha/
+// offline o PDF é reenviado no boot/reconexão. Assinatura preservada.
 function queuePdfDriveUpload(item) {
-  if (_pgpGsConnected) {
-    uploadPdfToDrive(item).catch(() => { _pendingPdfUploads.push(item); });
-  } else {
-    _pendingPdfUploads.push(item);
-  }
-}
-
-async function flushPendingPdfUploads() {
-  if (!_pgpGsConnected || !_pendingPdfUploads.length) return;
-  const pending = _pendingPdfUploads;
-  _pendingPdfUploads = [];
-  for (const item of pending) {
-    try { await uploadPdfToDrive(item); }
-    catch (e) { _pendingPdfUploads.push(item); }
-  }
+  pgpSendOrQueueDrive('pdf', 'salvarPdfDrive', item, null);
 }
 
 // Adiciona UMA foto ao array do item (respeitando o limite). Retorna true/false.
@@ -5815,10 +5824,9 @@ async function pgpPostJson(action, body){
 
 async function pgpFlushPending(){
   if(!_pgpGsConnected||!_pgpGsUrl) return;
-  // v25: reenvia backups de foto pendentes (fila separada, não bloqueia o resto)
-  flushPendingPhotoUploads();
-  // v38: idem para PDFs pendentes (Gestão de Documentos)
-  flushPendingPdfUploads();
+  // v48 (A1): reenvia backups de foto/PDF pendentes da fila PERSISTENTE
+  // 'pgp_pending_drive' (separada, não bloqueia o fluxo crítico abaixo).
+  flushPendingDriveUploads();
   const list = pgpGetPending();
   if(!list.length) return;
   const failed = [];
