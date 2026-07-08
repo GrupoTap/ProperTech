@@ -1,3 +1,4 @@
+<!-- v49: A2 (auditoria 08/07/2026) — busca de fallback "N° série, TAG ou cliente" (#pgpSearchInput): Enter (pgpOnKey) e clique na sugestão (pgpSelectAc) passam a chamar pgpDoSerialSearch() (mesma rota do botão "Buscar"), em vez de pgpDoSearch() (busca só-cliente que rejeitava série/TAG ou jogava a série no campo Cliente do cadastro novo). pgpDoSearch fica sem call site (mantida, não removida). Troca de 1 palavra em 2 linhas; nenhum id/data-key/função renomeado; frontend-only, sem GAS. -->
 <!-- v48: A1 (auditoria 08/07/2026) — filas de backup de foto/PDF no Drive agora são PERSISTENTES (localStorage 'pgp_pending_drive'), não mais só em memória. Antes, se o app fechasse/recarregasse offline antes do flush, o anexo se perdia (a foto seguia no PDF local, mas não entrava no Drive nem no índice TECH_ATTACHMENTS). Agora o payload completo é montado na captura (DOM válido) e persistido; reenvio automático no boot/reconexão. Fila separada e com limite próprio — nunca compete com a fila crítica 'pgp_pending_sync'. Frontend-only; nenhuma mudança de GAS/contrato; nenhum id/data-key/função de negócio renomeado. -->
 <!-- v47: P0 contaminação cruzada de identidade/peças de máquinas entre clientes (Fixes C-F) — ver bloco de changelog completo abaixo e GAS_properCare_v59.js para as causas raiz A/B do lado servidor. -->
 <!-- v45: Card verde de máquina carregada passa a seguir a aba ativa e nova coleta limpa o estado carregado da OS anterior. -->
@@ -5985,8 +5986,8 @@ function pgpOnInput(){
       <span class="pgp-ac-sub">Série: ${m.serial||'—'} · TAG: ${m.tag||'—'} · ${(m.hourTotal||0).toLocaleString('pt-BR')}h</span>
     </div>`).join('');
 }
-function pgpOnKey(e){if(e.key==='Enter'){pgpHideAc();pgpDoSearch();}if(e.key==='Escape')pgpHideAc();}
-function pgpSelectAc(val){document.getElementById('pgpSearchInput').value=val;pgpHideAc();pgpDoSearch();}
+function pgpOnKey(e){if(e.key==='Enter'){pgpHideAc();pgpDoSerialSearch();}if(e.key==='Escape')pgpHideAc();}
+function pgpSelectAc(val){document.getElementById('pgpSearchInput').value=val;pgpHideAc();pgpDoSerialSearch();}
 function pgpHideAc(){const el=document.getElementById('pgpAcList');if(el)el.style.display='none';}
 document.addEventListener('click',e=>{if(!e.target.closest('#pgpSearchInput')&&!e.target.closest('#pgpAcList'))pgpHideAc();});
 
