@@ -1,3 +1,4 @@
+<!-- v52: GUARDA DE FRONT contra os_id "grudento" (par do GAS_properCare_v64.js / PCM v73). Corrige o vazamento em que uma inspeção fora de OS herdava o os_id de um atendimento anterior de OUTRO cliente (Fusari salvando na OS/pasta da Aluminas). Novo window._PGP_OS_CLIENTE (gravado por pgpIniciarPreventivaDeOS a partir de r.os.cliente) + helper pgpOsIdSeguro(clientAtual) que só devolve window._PGP_OS_ID se o cliente da máquina carregada bater com o cliente dono da OS; caso contrário SUPRIME o os_id (o back-end v64 é a defesa final). pgpOsIdSeguro substitui window._PGP_OS_ID nos payloads de foto (queuePhotoDriveUpload), PDF (queuePdfDriveUpload x2) e preventiva (pgpBuildPayload). Se o cliente da OS é desconhecido (fluxo de pipeline), cai aberto e o GAS valida. 100% aditivo; nenhum id/data-key/rota renomeado. -->
 <!-- v51: HORÍMETRO DINÂMICO (par do GAS_properCare_v63.js / PCM v72). Regra do Fernando: o técnico NÃO vê fator/erro/botões de calibração. O bloco visível "Calibração do horímetro" foi REMOVIDO da seção "3. Horímetro e Regime". No lugar, o campo "Horas totais" já vem PRÉ-PREENCHIDO com o horímetro projetado para a data da leitura (base = última leitura real + dias × horas/dia do regime × fator), com uma dica "Estimado p/ DD/MM … — corrija se diferente"; e o valor mostrado de CADA peça também é projetado pelo mesmo delta de horas (contador progressivo soma, regressivo subtrai), recalculando rodadas/restantes. Novo motor: pfProjetarHorimetros(idx) (busca o fator via getHorimetroCalib e cacheia em eq._horimCalib) + pfReprojetar(idx,force) (recalcula ao carregar a máquina e ao trocar a "Data da leitura"); helpers _pfTs/pfHorasSemana mantidos. Campo OCULTO m<idx>_horimetro_estimado guarda o estimado projetado e viaja no payload (horimetro_estimado) para o GAS auto-calibrar o fator ao salvar (sem ação do técnico). Removidas as antigas pfPrefillHorimetro/pfCalibrarHorimetro. Só o ADM (PCM) vê estimado×real×erro×fator. -->
 <!-- v50: FLUXO DE OFICINA — lock por técnico no pipeline (par do GAS_properCare_v62.js). Cada card de tarefa disponível ganha "🔒 Assumir tarefa" (ação assumirTarefa, atômica no GAS); enquanto o técnico detém o lock aparece "🔒 Você está executando" + "Liberar tarefa" (liberarTarefa) e as ações (Concluir/Abrir formulário) só ficam ativas para ele; os demais técnicos veem "🔒 Em execução por X" com as ações bloqueadas. Ao concluir a tarefa o GAS libera o lock automaticamente. Card também mostra "👤 Perfil" (Perfil_Responsavel). Novas funções pfAssumirTarefa/pfLiberarTarefa; gating dentro de pfBuildCard. Status 'dispensado'/'condicional' não exibem ações. Horímetro com calibração (§5.3): na seção "3. Horímetro e Regime" de cada máquina, novo bloco "📊 Calibração do horímetro" — botão "↺ Carregar última + fator" (getHorimetroCalib) e "📊 Registrar real e calibrar" (registrarHorimetroReal) que envia a leitura real (= Horas totais) vs. a estimativa corrigida e recalibra o fator por média móvel. machine_id resolvido por pgpGetLoadedMachineForIndex(idx). Funções pfHorimMachineId/_pfNum/pfPrefillHorimetro/pfCalibrarHorimetro; 100% aditivo, não altera o fluxo de coleta/preventiva. A auto-projeção do estimado pelo regime (feita hoje em background no PCM) pode preencher o campo automaticamente num passo futuro. -->
 <!-- v49: A2 (auditoria 08/07/2026) — busca de fallback "N° série, TAG ou cliente" (#pgpSearchInput): Enter (pgpOnKey) e clique na sugestão (pgpSelectAc) passam a chamar pgpDoSerialSearch() (mesma rota do botão "Buscar"), em vez de pgpDoSearch() (busca só-cliente que rejeitava série/TAG ou jogava a série no campo Cliente do cadastro novo). pgpDoSearch fica sem call site (mantida, não removida). Troca de 1 palavra em 2 linhas; nenhum id/data-key/função renomeado; frontend-only, sem GAS. -->
@@ -1827,6 +1828,7 @@ function limparSessaoStorage() {
     // v28 — Preventiva↔Pipeline: os_id presente na URL indica que o formulário foi aberto
     // a partir de uma tarefa do pipeline de uma OS (não é uma preventiva avulsa).
     window._PGP_OS_ID = urlParams.get('os_id') || null;
+    window._PGP_OS_CLIENTE = null; // v52 — preenchido por pgpIniciarPreventivaDeOS; guarda o cliente dono da OS
     window._PGP_TAREFA_ID = urlParams.get('tarefa_id') || null;
     window._PGP_PREVENTIVA_INICIO_ISO = urlParams.get('inicio_preventiva_iso') || null;
     if (modoUrl === 'preventiva') {
@@ -2011,6 +2013,26 @@ function pgpDriveClientName(midx) {
   return raw !== '—' ? raw : 'SemCliente';
 }
 
+// v52 — GUARDA DE FRONT contra o os_id "grudento". Só devolve window._PGP_OS_ID
+// se ele for seguro para o cliente da máquina carregada. Quando a OS foi aberta,
+// pgpIniciarPreventivaDeOS grava window._PGP_OS_CLIENTE; se depois for carregada
+// uma máquina de OUTRO cliente (inspeção avulsa na mesma sessão), o os_id é
+// SUPRIMIDO — evitando que fotos/PDF/preventiva da Fusari caiam na OS da Aluminas.
+// Se o cliente da OS é desconhecido (ex.: fluxo de pipeline), cai aberto e o
+// back-end (GAS v64) faz a validação final. Nunca é mais permissivo que o back.
+function pgpOsIdSeguro(clientAtual) {
+  var osId = window._PGP_OS_ID || '';
+  if (!osId) return '';
+  var cliOS = window._PGP_OS_CLIENTE || '';
+  if (!cliOS) return osId; // cliente da OS não conhecido no front → back-end valida
+  var cli = (clientAtual !== undefined && clientAtual !== null && clientAtual !== '')
+    ? clientAtual : pgpDriveClientName(0);
+  function norm(s){ return String(s || '').trim().toLowerCase().replace(/\s+/g, ' '); }
+  if (norm(cli) === norm(cliOS)) return osId;
+  try { console.warn('[PCF] os_id suprimido: OS(' + cliOS + ') != máquina(' + cli + ')'); } catch(e){}
+  return '';
+}
+
 // v48 (A1) — Sender unificado de uploads de Drive (foto/PDF). Tenta enviar agora
 // se conectado; em falha/offline, PERSISTE o payload na fila 'pgp_pending_drive'
 // (reenvio no boot/reconexão). ui (opcional) = { fotoObj, midx, photoKey } só
@@ -2055,7 +2077,7 @@ async function queuePhotoDriveUpload(midx, photoKey, label, fotoObj, file) {
     const base64 = driveDataUrl.split(',')[1] || '';
     body = {
       clientName: pgpDriveClientName(0),
-      os_id: window._PGP_OS_ID || '',
+      os_id: pgpOsIdSeguro(),
       maquina_id: pgpDriveMaquinaId(midx),
       maquina_label: pgpDriveMaquinaLabel(midx),
       dataBase64: base64,
@@ -5334,7 +5356,7 @@ async function gerarPDF() {
     const pdfBase64 = b.doc.output('datauristring').split(',')[1] || '';
     queuePdfDriveUpload({
       cliente: pgpDriveClientName(midx),
-      os_id: window._PGP_OS_ID || '',
+      os_id: pgpOsIdSeguro(),
       maquina_id: pgpDriveMaquinaId(midx),
       maquina_label: pgpDriveMaquinaLabel(midx),
       base64: pdfBase64,
@@ -5418,7 +5440,7 @@ async function gerarPDFConsolidado() {
   const consolidadoBase64 = doc.output('datauristring').split(',')[1] || '';
   queuePdfDriveUpload({
     cliente: pgpDriveClientName(0),
-    os_id: window._PGP_OS_ID || '',
+    os_id: pgpOsIdSeguro(),
     maquina_label: 'CONSOLIDADO',
     base64: consolidadoBase64,
     fileName: nomeConsolidado,
@@ -6805,6 +6827,10 @@ async function pgpIniciarPreventivaDeOS(osId){
     const r = await pfGet('getMaquinasByOS', { id_os: osId });
     const osMachines = r.machines || [];
 
+    // v52 — registra o cliente dono desta OS, para pgpOsIdSeguro() poder suprimir
+    // o os_id caso, na mesma sessão, seja carregada uma máquina de outro cliente.
+    window._PGP_OS_CLIENTE = (r.os && r.os.cliente) ? String(r.os.cliente).trim() : '';
+
     if(osMachines.length === 0){
       const clienteOS = r.os && r.os.cliente ? String(r.os.cliente).trim() : '';
       if(!clienteOS){
@@ -7083,7 +7109,7 @@ function pgpBuildPreventivaPayload(midx=currentMachine){
     location:   base.location || '',
     regimeData: base.regimeData || [],
     obsOp:      base.obsOp || '',
-    os_id:      base.os_id || window._PGP_OS_ID || '',
+    os_id:      base.os_id || pgpOsIdSeguro() || '',
     parts
   };
 }
@@ -7512,7 +7538,7 @@ function pgpBuildPayload(midx=currentMachine){
     // pipeline de uma OS (?os_id= na URL de entrada), viaja junto em toda gravação — inclusive
     // no item da fila offline, já que a fila reaproveita este mesmo objeto payload — permitindo
     // ao GAS auto-completar a tarefa correspondente e gravar o vínculo visita↔OS.
-    os_id: window._PGP_OS_ID || '',
+    os_id: pgpOsIdSeguro(),
   };
 }
 
