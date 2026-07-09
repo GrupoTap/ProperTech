@@ -1,3 +1,4 @@
+<!-- v50: FLUXO DE OFICINA — lock por técnico no pipeline (par do GAS_properCare_v62.js). Cada card de tarefa disponível ganha "🔒 Assumir tarefa" (ação assumirTarefa, atômica no GAS); enquanto o técnico detém o lock aparece "🔒 Você está executando" + "Liberar tarefa" (liberarTarefa) e as ações (Concluir/Abrir formulário) só ficam ativas para ele; os demais técnicos veem "🔒 Em execução por X" com as ações bloqueadas. Ao concluir a tarefa o GAS libera o lock automaticamente. Card também mostra "👤 Perfil" (Perfil_Responsavel). Novas funções pfAssumirTarefa/pfLiberarTarefa; gating dentro de pfBuildCard. Status 'dispensado'/'condicional' não exibem ações. Horímetro com calibração (§5.3): na seção "3. Horímetro e Regime" de cada máquina, novo bloco "📊 Calibração do horímetro" — botão "↺ Carregar última + fator" (getHorimetroCalib) e "📊 Registrar real e calibrar" (registrarHorimetroReal) que envia a leitura real (= Horas totais) vs. a estimativa corrigida e recalibra o fator por média móvel. machine_id resolvido por pgpGetLoadedMachineForIndex(idx). Funções pfHorimMachineId/_pfNum/pfPrefillHorimetro/pfCalibrarHorimetro; 100% aditivo, não altera o fluxo de coleta/preventiva. A auto-projeção do estimado pelo regime (feita hoje em background no PCM) pode preencher o campo automaticamente num passo futuro. -->
 <!-- v49: A2 (auditoria 08/07/2026) — busca de fallback "N° série, TAG ou cliente" (#pgpSearchInput): Enter (pgpOnKey) e clique na sugestão (pgpSelectAc) passam a chamar pgpDoSerialSearch() (mesma rota do botão "Buscar"), em vez de pgpDoSearch() (busca só-cliente que rejeitava série/TAG ou jogava a série no campo Cliente do cadastro novo). pgpDoSearch fica sem call site (mantida, não removida). Troca de 1 palavra em 2 linhas; nenhum id/data-key/função renomeado; frontend-only, sem GAS. -->
 <!-- v48: A1 (auditoria 08/07/2026) — filas de backup de foto/PDF no Drive agora são PERSISTENTES (localStorage 'pgp_pending_drive'), não mais só em memória. Antes, se o app fechasse/recarregasse offline antes do flush, o anexo se perdia (a foto seguia no PDF local, mas não entrava no Drive nem no índice TECH_ATTACHMENTS). Agora o payload completo é montado na captura (DOM válido) e persistido; reenvio automático no boot/reconexão. Fila separada e com limite próprio — nunca compete com a fila crítica 'pgp_pending_sync'. Frontend-only; nenhuma mudança de GAS/contrato; nenhum id/data-key/função de negócio renomeado. -->
 <!-- v47: P0 contaminação cruzada de identidade/peças de máquinas entre clientes (Fixes C-F) — ver bloco de changelog completo abaixo e GAS_properCare_v59.js para as causas raiz A/B do lado servidor. -->
@@ -3007,6 +3008,20 @@ function buildPanelHTML(idx) {
                   data-photokey="horimetro"
                   onclick="event.stopPropagation();abrirFotoPicker(this,'linked',${idx},'horimetro')">📷 Foto do horímetro</button>
           <div class="photo-thumbs-mini" data-midx="${idx}" data-pkey="horimetro"></div>
+        </div>
+      </div>
+      <div class="field-item" onclick="toggleField(this,${idx})">
+        <div class="field-label"><div class="checkbox">📊</div>
+          <div class="label-text"><div class="label-main">Calibração do horímetro (opcional)</div>
+          <div class="label-hint">Estimativa do sistema × leitura real — recalibra o fator de projeção a cada visita</div></div></div>
+        <div class="field-input" onclick="event.stopPropagation()">
+          <div class="sub-group"><label>Estimativa corrigida do sistema</label>
+            <input type="number" placeholder="Projeção pelo regime" data-key="${p}horimetro_estimado" onclick="event.stopPropagation()"></div>
+          <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+            <button class="btn-foto-inline" onclick="event.stopPropagation();pfPrefillHorimetro(${idx})">↺ Carregar última + fator</button>
+            <button class="btn-foto-inline" onclick="event.stopPropagation();pfCalibrarHorimetro(${idx})">📊 Registrar real e calibrar</button>
+          </div>
+          <div id="m${idx}_horim_calib_status" style="font-size:12px;color:#94a3b8;margin-top:6px"></div>
         </div>
       </div>
       <div class="field-item" onclick="toggleField(this,${idx})">
@@ -8048,8 +8063,9 @@ function pfGetFormUrl(tipo, tarefa) {
     case 'auto:rotores':    return 'https://grupotap.github.io/ProperRotores/index.html';
     case 'auto:inspecao':   return 'https://grupotap.github.io/ProperTech/index.html';
     case 'auto:preventiva': return 'https://grupotap.github.io/ProperTech/index.html?modo=preventiva';
-    case 'auto:form09':     return null;
-    case 'auto:form10':     return null;
+    case 'auto:form01':     return 'https://grupotap.github.io/ProperForms/form01.html';
+    case 'auto:form09':     return 'https://grupotap.github.io/ProperForms/peritagem.html?tipo=09';
+    case 'auto:form10':     return 'https://grupotap.github.io/ProperForms/peritagem.html?tipo=10';
     default:                return null;
   }
 }
@@ -8065,13 +8081,22 @@ function pfBuildCard(t) {
   var icon    = pfStatusIcon(st);
   var tidSafe = tid.replace(/'/g, "\\'");
 
+  // v50: lock exclusivo por técnico
+  var pfUser = (window.PROPER_SESSION && window.PROPER_SESSION.tecnico)
+    ? (window.PROPER_SESSION.tecnico.id || window.PROPER_SESSION.tecnico.nome || '') : '';
+  var lockPor       = t.Lock_Por || '';
+  var lockedByOther = lockPor && lockPor !== pfUser;
+  var lockedByMe    = lockPor && lockPor === pfUser;
+  var perfil        = t.Perfil_Responsavel || '';
+  var perfilHtml    = perfil ? '<div class="pf-card-meta">👤 Perfil: ' + perfil + '</div>' : '';
+
   var metaHtml = '';
   if (st === 'completo' && (conclBy || conclAt)) {
     metaHtml = '<div class="pf-card-meta">✓ ' + (conclBy ? conclBy : '') + (conclAt ? ' · ' + conclAt : '') + '</div>';
   }
 
   var acaoHtml = '';
-  if (st !== 'bloqueado' && st !== 'completo') {
+  if (st !== 'bloqueado' && st !== 'completo' && st !== 'dispensado' && st !== 'condicional') {
     if (tipo === 'manual') {
       var agora = new Date();
       var inicioSugeridoDate = t.Data_abertura
@@ -8115,15 +8140,148 @@ function pfBuildCard(t) {
     }
   }
 
+  // v50: gating pelo lock — o técnico precisa ASSUMIR a tarefa antes de executá-la;
+  // uma vez assumida, ela trava para ele e os demais veem "em execução por X".
+  var lockHtml = '';
+  if (st !== 'bloqueado' && st !== 'completo' && st !== 'dispensado' && st !== 'condicional') {
+    if (lockedByOther) {
+      lockHtml = '<div class="pf-card-meta" style="color:#f59e0b">🔒 Em execução por ' + lockPor + '</div>';
+      acaoHtml = ''; // outro técnico detém o lock — sem ações
+    } else if (!lockPor && (st === 'pendente' || st === 'em_andamento')) {
+      lockHtml = '';
+      acaoHtml = '<div style="margin-top:10px">' +
+        '<button class="pf-btn pf-btn-concluir" onclick="pfAssumirTarefa(\'' + tidSafe + '\',this)">🔒 Assumir tarefa</button>' +
+      '</div>';
+    } else if (lockedByMe) {
+      lockHtml = '<div class="pf-card-meta" style="color:#22c55e">🔒 Você está executando</div>';
+      acaoHtml = acaoHtml +
+        '<div style="margin-top:6px">' +
+        '<button class="pf-btn pf-btn-cancelar" onclick="pfLiberarTarefa(\'' + tidSafe + '\',this)">Liberar tarefa</button>' +
+        '</div>';
+    }
+  }
+
   return '<div class="pf-card status-' + st + '" id="pfCard-' + tid + '">' +
     '<div class="pf-card-header">' +
       '<span class="pf-status-icon">' + icon + '</span>' +
       '<span class="pf-card-nome">' + nome + '</span>' +
     '</div>' +
     (desc ? '<div class="pf-card-desc">' + desc + '</div>' : '') +
+    perfilHtml +
+    lockHtml +
     metaHtml +
     acaoHtml +
   '</div>';
+}
+
+// ── v50: Lock por técnico (assumir / liberar) ─────────────────────────────────
+async function pfAssumirTarefa(tarefaId, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = 'Assumindo…'; }
+  var usuario = (window.PROPER_SESSION && window.PROPER_SESSION.tecnico)
+    ? (window.PROPER_SESSION.tecnico.id || window.PROPER_SESSION.tecnico.nome || '') : '';
+  try {
+    var r = await pgpPostJson('assumirTarefa', { os_id: _pfOsId, tarefa_id: tarefaId, usuario: usuario });
+    if (r && r.status === 'locked') {
+      if (typeof pfToast === 'function') pfToast('🔒 Já está em execução por ' + (r.locked_by || 'outro técnico'));
+      else alert('Tarefa já está em execução por ' + (r.locked_by || 'outro técnico'));
+    }
+    await pfLoadPipeline();
+  } catch(e) {
+    if (e.message && e.message.includes('AUTH_GOOGLE')) { pfHubLogout(); return; }
+    if (btn) { btn.disabled = false; btn.textContent = '🔒 Assumir tarefa'; }
+    alert('Erro ao assumir tarefa: ' + e.message);
+  }
+}
+
+async function pfLiberarTarefa(tarefaId, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = 'Liberando…'; }
+  var usuario = (window.PROPER_SESSION && window.PROPER_SESSION.tecnico)
+    ? (window.PROPER_SESSION.tecnico.id || window.PROPER_SESSION.tecnico.nome || '') : '';
+  try {
+    await pgpPostJson('liberarTarefa', { os_id: _pfOsId, tarefa_id: tarefaId, usuario: usuario });
+    await pfLoadPipeline();
+  } catch(e) {
+    if (e.message && e.message.includes('AUTH_GOOGLE')) { pfHubLogout(); return; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Liberar tarefa'; }
+    alert('Erro ao liberar tarefa: ' + e.message);
+  }
+}
+
+// ── v50: Calibração de horímetro (par de getHorimetroCalib/registrarHorimetroReal) ──
+// Resolve o machine_id pela máquina carregada no índice (pgpGetLoadedMachineForIndex).
+function pfHorimMachineId(idx) {
+  try {
+    var m = (typeof pgpGetLoadedMachineForIndex === 'function') ? pgpGetLoadedMachineForIndex(idx) : null;
+    return (m && (m.id || m.machine_id)) ? (m.id || m.machine_id) : '';
+  } catch(e) { return ''; }
+}
+function _pfNum(dataKey) {
+  var el = document.querySelector('[data-key="' + dataKey + '"]');
+  if (!el) return null;
+  var v = String(el.value || '').trim().replace(',', '.');
+  return v === '' ? null : parseFloat(v);
+}
+// Mostra o último real registrado e o fator atual (não exibe erro% ao técnico — só
+// o estimado corrigido é editável, conforme regra de UI do §5.3).
+async function pfPrefillHorimetro(idx) {
+  var statusEl = document.getElementById('m' + idx + '_horim_calib_status');
+  var machineId = pfHorimMachineId(idx);
+  if (!machineId) { if (statusEl) statusEl.textContent = '⚠ Carregue a máquina (busca por série/TAG) para calibrar.'; return; }
+  if (statusEl) statusEl.textContent = 'Carregando calibração…';
+  try {
+    var r = await pgpPostJson('getHorimetroCalib', { machine_id: machineId });
+    var fator = r && r.fator_correcao != null ? Number(r.fator_correcao) : 1;
+    var ult = (r && r.ultimo_horimetro_real !== '' && r.ultimo_horimetro_real != null) ? Number(r.ultimo_horimetro_real) : null;
+    var ultAt = (r && r.ultimo_real_at) ? r.ultimo_real_at : '';
+    var estInput = document.querySelector('[data-key="m' + idx + '_horimetro_estimado"]');
+    // Projeção corrigida = último real + (dias desde a leitura × horas/dia do regime × fator).
+    // horas/semana já é calculado na tela (regime de trabalho): elemento m<idx>_h_sem.
+    var hSem = pfHorasSemana(idx);
+    if (ult != null && ultAt && hSem > 0) {
+      var dias = Math.max(0, (Date.now() - new Date(ultAt).getTime()) / 86400000);
+      var proj = ult + dias * (hSem / 7) * fator;
+      if (estInput) estInput.value = Math.round(proj);
+      if (statusEl) statusEl.textContent = 'Estimado ~' + Math.round(proj) + ' h  (base ' + ult +
+        ' + ' + Math.round(dias) + 'd × ' + (hSem / 7).toFixed(1) + ' h/dia × fator ' + fator.toFixed(2) + ')';
+    } else {
+      if (estInput && !estInput.value && ult != null) estInput.value = ult;
+      if (statusEl) statusEl.textContent = 'Fator atual: ' + fator.toFixed(3) +
+        (ult != null ? ' · última leitura real: ' + ult + ' h' : ' · sem leitura anterior') +
+        (hSem > 0 ? '' : ' · preencha o regime de trabalho para projetar') +
+        ' · amostras: ' + ((r && r.n_amostras) || 0);
+    }
+  } catch(e) {
+    if (statusEl) statusEl.textContent = '⚠ Erro ao carregar: ' + e.message;
+  }
+}
+// Lê as horas/semana já calculadas pela seção de regime (m<idx>_h_sem). '—' => 0.
+function pfHorasSemana(idx) {
+  var el = document.getElementById('m' + idx + '_h_sem');
+  if (!el) return 0;
+  var v = parseFloat(String(el.textContent || '').replace(/[^0-9.,]/g, '').replace(',', '.'));
+  return isNaN(v) ? 0 : v;
+}
+// Registra a leitura real (= "Horas totais") vs. a estimativa e recalibra o fator.
+async function pfCalibrarHorimetro(idx) {
+  var statusEl = document.getElementById('m' + idx + '_horim_calib_status');
+  var machineId = pfHorimMachineId(idx);
+  if (!machineId) { if (statusEl) statusEl.textContent = '⚠ Carregue a máquina (busca por série/TAG) para calibrar.'; return; }
+  var real = _pfNum('m' + idx + '_horimetro');
+  var estimado = _pfNum('m' + idx + '_horimetro_estimado');
+  if (real == null) { if (statusEl) statusEl.textContent = '⚠ Preencha as "Horas totais" (leitura real) acima.'; return; }
+  var usuario = (window.PROPER_SESSION && window.PROPER_SESSION.tecnico)
+    ? (window.PROPER_SESSION.tecnico.id || window.PROPER_SESSION.tecnico.nome || '') : '';
+  if (statusEl) statusEl.textContent = 'Registrando…';
+  try {
+    var r = await pgpPostJson('registrarHorimetroReal', { machine_id: machineId, estimado: estimado, real: real, usuario: usuario });
+    var fator = r && r.fator_correcao != null ? Number(r.fator_correcao) : 1;
+    var erro = (r && r.erro_horas !== '' && r.erro_horas != null) ? Number(r.erro_horas) : null;
+    if (statusEl) statusEl.textContent = '✅ Calibrado. Novo fator: ' + fator.toFixed(3) +
+      (erro != null ? ' · erro desta leitura: ' + (erro > 0 ? '+' : '') + erro + ' h' : '');
+  } catch(e) {
+    if (e.message && e.message.includes('AUTH_GOOGLE')) { pfHubLogout(); return; }
+    if (statusEl) statusEl.textContent = '⚠ Erro ao calibrar: ' + e.message;
+  }
 }
 
 // Formata um objeto Date para o formato aceito por <input type="datetime-local">
