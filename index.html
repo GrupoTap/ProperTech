@@ -1,3 +1,4 @@
+<!-- v51: HORÍMETRO DINÂMICO (par do GAS_properCare_v63.js / PCM v72). Regra do Fernando: o técnico NÃO vê fator/erro/botões de calibração. O bloco visível "Calibração do horímetro" foi REMOVIDO da seção "3. Horímetro e Regime". No lugar, o campo "Horas totais" já vem PRÉ-PREENCHIDO com o horímetro projetado para a data da leitura (base = última leitura real + dias × horas/dia do regime × fator), com uma dica "Estimado p/ DD/MM … — corrija se diferente"; e o valor mostrado de CADA peça também é projetado pelo mesmo delta de horas (contador progressivo soma, regressivo subtrai), recalculando rodadas/restantes. Novo motor: pfProjetarHorimetros(idx) (busca o fator via getHorimetroCalib e cacheia em eq._horimCalib) + pfReprojetar(idx,force) (recalcula ao carregar a máquina e ao trocar a "Data da leitura"); helpers _pfTs/pfHorasSemana mantidos. Campo OCULTO m<idx>_horimetro_estimado guarda o estimado projetado e viaja no payload (horimetro_estimado) para o GAS auto-calibrar o fator ao salvar (sem ação do técnico). Removidas as antigas pfPrefillHorimetro/pfCalibrarHorimetro. Só o ADM (PCM) vê estimado×real×erro×fator. -->
 <!-- v50: FLUXO DE OFICINA — lock por técnico no pipeline (par do GAS_properCare_v62.js). Cada card de tarefa disponível ganha "🔒 Assumir tarefa" (ação assumirTarefa, atômica no GAS); enquanto o técnico detém o lock aparece "🔒 Você está executando" + "Liberar tarefa" (liberarTarefa) e as ações (Concluir/Abrir formulário) só ficam ativas para ele; os demais técnicos veem "🔒 Em execução por X" com as ações bloqueadas. Ao concluir a tarefa o GAS libera o lock automaticamente. Card também mostra "👤 Perfil" (Perfil_Responsavel). Novas funções pfAssumirTarefa/pfLiberarTarefa; gating dentro de pfBuildCard. Status 'dispensado'/'condicional' não exibem ações. Horímetro com calibração (§5.3): na seção "3. Horímetro e Regime" de cada máquina, novo bloco "📊 Calibração do horímetro" — botão "↺ Carregar última + fator" (getHorimetroCalib) e "📊 Registrar real e calibrar" (registrarHorimetroReal) que envia a leitura real (= Horas totais) vs. a estimativa corrigida e recalibra o fator por média móvel. machine_id resolvido por pgpGetLoadedMachineForIndex(idx). Funções pfHorimMachineId/_pfNum/pfPrefillHorimetro/pfCalibrarHorimetro; 100% aditivo, não altera o fluxo de coleta/preventiva. A auto-projeção do estimado pelo regime (feita hoje em background no PCM) pode preencher o campo automaticamente num passo futuro. -->
 <!-- v49: A2 (auditoria 08/07/2026) — busca de fallback "N° série, TAG ou cliente" (#pgpSearchInput): Enter (pgpOnKey) e clique na sugestão (pgpSelectAc) passam a chamar pgpDoSerialSearch() (mesma rota do botão "Buscar"), em vez de pgpDoSearch() (busca só-cliente que rejeitava série/TAG ou jogava a série no campo Cliente do cadastro novo). pgpDoSearch fica sem call site (mantida, não removida). Troca de 1 palavra em 2 linhas; nenhum id/data-key/função renomeado; frontend-only, sem GAS. -->
 <!-- v48: A1 (auditoria 08/07/2026) — filas de backup de foto/PDF no Drive agora são PERSISTENTES (localStorage 'pgp_pending_drive'), não mais só em memória. Antes, se o app fechasse/recarregasse offline antes do flush, o anexo se perdia (a foto seguia no PDF local, mas não entrava no Drive nem no índice TECH_ATTACHMENTS). Agora o payload completo é montado na captura (DOM válido) e persistido; reenvio automático no boot/reconexão. Fila separada e com limite próprio — nunca compete com a fila crítica 'pgp_pending_sync'. Frontend-only; nenhuma mudança de GAS/contrato; nenhum id/data-key/função de negócio renomeado. -->
@@ -3001,29 +3002,23 @@ function buildPanelHTML(idx) {
           <div class="label-hint">Ler no display ou horímetro analógico</div></div></div>
         <div class="field-input">
           <div class="row2">
-            <div class="sub-group"><label>Horas totais</label><input type="number" placeholder="Ex: 15000" data-key="${p}horimetro" onclick="event.stopPropagation()"></div>
-            <div class="sub-group"><label>Data da leitura</label><input type="date" data-key="${p}data_leitura" onclick="event.stopPropagation()"></div>
+            <div class="sub-group"><label>Horas totais</label><input type="number" id="${p}horimetro" placeholder="Ex: 15000" data-key="${p}horimetro" onclick="event.stopPropagation()"></div>
+            <div class="sub-group"><label>Data da leitura</label><input type="date" id="${p}data_leitura" data-key="${p}data_leitura" onclick="event.stopPropagation()" onchange="pfReprojetar(${idx})"></div>
           </div>
+          <div id="m${idx}_horim_proj_hint" class="pf-proj-hint" style="font-size:12px;color:#94a3b8;margin-top:6px"></div>
           <button class="btn-foto-inline" id="${p}btn_foto_horimetro" data-done-label="✅ Horímetro ok" data-orig-label="📷 Foto do horímetro"
                   data-photokey="horimetro"
                   onclick="event.stopPropagation();abrirFotoPicker(this,'linked',${idx},'horimetro')">📷 Foto do horímetro</button>
           <div class="photo-thumbs-mini" data-midx="${idx}" data-pkey="horimetro"></div>
         </div>
       </div>
-      <div class="field-item" onclick="toggleField(this,${idx})">
-        <div class="field-label"><div class="checkbox">📊</div>
-          <div class="label-text"><div class="label-main">Calibração do horímetro (opcional)</div>
-          <div class="label-hint">Estimativa do sistema × leitura real — recalibra o fator de projeção a cada visita</div></div></div>
-        <div class="field-input" onclick="event.stopPropagation()">
-          <div class="sub-group"><label>Estimativa corrigida do sistema</label>
-            <input type="number" placeholder="Projeção pelo regime" data-key="${p}horimetro_estimado" onclick="event.stopPropagation()"></div>
-          <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
-            <button class="btn-foto-inline" onclick="event.stopPropagation();pfPrefillHorimetro(${idx})">↺ Carregar última + fator</button>
-            <button class="btn-foto-inline" onclick="event.stopPropagation();pfCalibrarHorimetro(${idx})">📊 Registrar real e calibrar</button>
-          </div>
-          <div id="m${idx}_horim_calib_status" style="font-size:12px;color:#94a3b8;margin-top:6px"></div>
-        </div>
-      </div>
+      <!-- v51: o bloco visível de "Calibração do horímetro" foi REMOVIDO da tela do
+           técnico. A estimativa projetada pelo regime aparece já pré-preenchida no
+           campo "Horas totais" acima (com dica), e o fator de correção roda 100% em
+           background no GAS (auto-calibra ao salvar). Mantemos apenas um campo OCULTO
+           com o horímetro estimado projetado, enviado no payload (horimetro_estimado)
+           para a auto-calibração server-side. Só o ADM (PCM) vê fator/erro/histórico. -->
+      <input type="hidden" id="${p}horimetro_estimado" data-key="${p}horimetro_estimado">
       <div class="field-item" onclick="toggleField(this,${idx})">
         <div class="field-label"><div class="checkbox">✓</div>
           <div class="label-text"><div class="label-main">Regime de trabalho</div>
@@ -6402,6 +6397,9 @@ function pgpLoadMachine(eq,localDb,midx=currentMachine,clientData=null){
   pgpRenderLoadedCard(idx);
   document.querySelectorAll('[data-section]').forEach(s=>refreshSection(s));
   updateProgress(); updateAllTabNames();
+  // v51 — horímetro dinâmico: projeta o total e cada peça para a data da leitura
+  // (busca o fator no backend e aplica; guarda baseline p/ reprojetar na troca de data).
+  try { if(typeof pfProjetarHorimetros==='function') pfProjetarHorimetros(idx); } catch(e) { console.warn('pfProjetarHorimetros:', e); }
   // v8.4.4 — destacar campos faltantes e campos variáveis após carga
   setTimeout(()=>{
     pgpHighlightMissingClientFields(idx);
@@ -7493,6 +7491,9 @@ function pgpBuildPayload(midx=currentMachine){
     })(),
     scenario:(document.getElementById(`${p}scenario`)?.value||''),
     parts,generalObs:gv('obs_gerais'),
+    // v51 — horímetro estimado projetado pelo regime (campo oculto). O GAS usa este
+    // valor para auto-calibrar o fator comparando com a leitura real (hourTotal).
+    horimetro_estimado: gv('horimetro_estimado') || '',
     cnpj:    gv('cnpj')      || '',
     phone:   gv('telefone')  || '',
     email:   gv('email')     || '',
@@ -8207,8 +8208,11 @@ async function pfLiberarTarefa(tarefaId, btn) {
   }
 }
 
-// ── v50: Calibração de horímetro (par de getHorimetroCalib/registrarHorimetroReal) ──
-// Resolve o machine_id pela máquina carregada no índice (pgpGetLoadedMachineForIndex).
+// ── v51: Horímetro DINÂMICO (projeção pelo regime) ──────────────────────────
+// O técnico NÃO vê fator/erro/botões. Vê o horímetro total e o de cada peça já
+// projetados para a data da leitura (regime × fator), e só corrige com o real.
+// O fator vem do backend (getHorimetroCalib) e roda em background; a calibração
+// acontece automaticamente no GAS ao salvar (registrarHorimetroReal via savePreventiva).
 function pfHorimMachineId(idx) {
   try {
     var m = (typeof pgpGetLoadedMachineForIndex === 'function') ? pgpGetLoadedMachineForIndex(idx) : null;
@@ -8221,39 +8225,6 @@ function _pfNum(dataKey) {
   var v = String(el.value || '').trim().replace(',', '.');
   return v === '' ? null : parseFloat(v);
 }
-// Mostra o último real registrado e o fator atual (não exibe erro% ao técnico — só
-// o estimado corrigido é editável, conforme regra de UI do §5.3).
-async function pfPrefillHorimetro(idx) {
-  var statusEl = document.getElementById('m' + idx + '_horim_calib_status');
-  var machineId = pfHorimMachineId(idx);
-  if (!machineId) { if (statusEl) statusEl.textContent = '⚠ Carregue a máquina (busca por série/TAG) para calibrar.'; return; }
-  if (statusEl) statusEl.textContent = 'Carregando calibração…';
-  try {
-    var r = await pgpPostJson('getHorimetroCalib', { machine_id: machineId });
-    var fator = r && r.fator_correcao != null ? Number(r.fator_correcao) : 1;
-    var ult = (r && r.ultimo_horimetro_real !== '' && r.ultimo_horimetro_real != null) ? Number(r.ultimo_horimetro_real) : null;
-    var ultAt = (r && r.ultimo_real_at) ? r.ultimo_real_at : '';
-    var estInput = document.querySelector('[data-key="m' + idx + '_horimetro_estimado"]');
-    // Projeção corrigida = último real + (dias desde a leitura × horas/dia do regime × fator).
-    // horas/semana já é calculado na tela (regime de trabalho): elemento m<idx>_h_sem.
-    var hSem = pfHorasSemana(idx);
-    if (ult != null && ultAt && hSem > 0) {
-      var dias = Math.max(0, (Date.now() - new Date(ultAt).getTime()) / 86400000);
-      var proj = ult + dias * (hSem / 7) * fator;
-      if (estInput) estInput.value = Math.round(proj);
-      if (statusEl) statusEl.textContent = 'Estimado ~' + Math.round(proj) + ' h  (base ' + ult +
-        ' + ' + Math.round(dias) + 'd × ' + (hSem / 7).toFixed(1) + ' h/dia × fator ' + fator.toFixed(2) + ')';
-    } else {
-      if (estInput && !estInput.value && ult != null) estInput.value = ult;
-      if (statusEl) statusEl.textContent = 'Fator atual: ' + fator.toFixed(3) +
-        (ult != null ? ' · última leitura real: ' + ult + ' h' : ' · sem leitura anterior') +
-        (hSem > 0 ? '' : ' · preencha o regime de trabalho para projetar') +
-        ' · amostras: ' + ((r && r.n_amostras) || 0);
-    }
-  } catch(e) {
-    if (statusEl) statusEl.textContent = '⚠ Erro ao carregar: ' + e.message;
-  }
-}
 // Lê as horas/semana já calculadas pela seção de regime (m<idx>_h_sem). '—' => 0.
 function pfHorasSemana(idx) {
   var el = document.getElementById('m' + idx + '_h_sem');
@@ -8261,26 +8232,99 @@ function pfHorasSemana(idx) {
   var v = parseFloat(String(el.textContent || '').replace(/[^0-9.,]/g, '').replace(',', '.'));
   return isNaN(v) ? 0 : v;
 }
-// Registra a leitura real (= "Horas totais") vs. a estimativa e recalibra o fator.
-async function pfCalibrarHorimetro(idx) {
-  var statusEl = document.getElementById('m' + idx + '_horim_calib_status');
+// Converte "YYYY-MM-DD" / Date / ISO em timestamp (ms). 0 se inválido.
+function _pfTs(v) {
+  if (!v) return 0;
+  if (v instanceof Date) return v.getTime();
+  var s = String(v).trim(); if (!s) return 0;
+  var m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/); // dd/mm/yyyy
+  if (m) return new Date(+m[3], +m[2] - 1, +m[1]).getTime();
+  var t = new Date(s).getTime(); return isNaN(t) ? 0 : t;
+}
+// Busca o fator/baseline no backend (uma vez por carga) e projeta. Se offline/erro,
+// projeta mesmo assim com fator=1 usando hourTotal+lastVisit da própria máquina.
+async function pfProjetarHorimetros(idx) {
+  var eq = (typeof pgpGetLoadedMachineForIndex === 'function') ? pgpGetLoadedMachineForIndex(idx) : null;
+  if (!eq) return;
   var machineId = pfHorimMachineId(idx);
-  if (!machineId) { if (statusEl) statusEl.textContent = '⚠ Carregue a máquina (busca por série/TAG) para calibrar.'; return; }
-  var real = _pfNum('m' + idx + '_horimetro');
-  var estimado = _pfNum('m' + idx + '_horimetro_estimado');
-  if (real == null) { if (statusEl) statusEl.textContent = '⚠ Preencha as "Horas totais" (leitura real) acima.'; return; }
-  var usuario = (window.PROPER_SESSION && window.PROPER_SESSION.tecnico)
-    ? (window.PROPER_SESSION.tecnico.id || window.PROPER_SESSION.tecnico.nome || '') : '';
-  if (statusEl) statusEl.textContent = 'Registrando…';
-  try {
-    var r = await pgpPostJson('registrarHorimetroReal', { machine_id: machineId, estimado: estimado, real: real, usuario: usuario });
-    var fator = r && r.fator_correcao != null ? Number(r.fator_correcao) : 1;
-    var erro = (r && r.erro_horas !== '' && r.erro_horas != null) ? Number(r.erro_horas) : null;
-    if (statusEl) statusEl.textContent = '✅ Calibrado. Novo fator: ' + fator.toFixed(3) +
-      (erro != null ? ' · erro desta leitura: ' + (erro > 0 ? '+' : '') + erro + ' h' : '');
-  } catch(e) {
-    if (e.message && e.message.includes('AUTH_GOOGLE')) { pfHubLogout(); return; }
-    if (statusEl) statusEl.textContent = '⚠ Erro ao calibrar: ' + e.message;
+  if (machineId) {
+    try {
+      var r = await pgpPostJson('getHorimetroCalib', { machine_id: machineId });
+      if (r) {
+        eq._horimCalib = {
+          fator: (r.fator_correcao != null) ? Number(r.fator_correcao) : 1,
+          ultimo_real: (r.ultimo_horimetro_real !== '' && r.ultimo_horimetro_real != null) ? Number(r.ultimo_horimetro_real) : null,
+          ultimo_real_at: r.ultimo_real_at || ''
+        };
+      }
+    } catch(e) { /* offline: segue com defaults */ }
+  }
+  pfReprojetar(idx, true);
+}
+// Recalcula a projeção do horímetro total e de todas as peças para a data da leitura.
+// force=true (carga inicial) sobrescreve os campos; force=false (troca de data) só
+// sobrescreve o que ainda não foi editado à mão pelo técnico (guarda dataset.proj).
+function pfReprojetar(idx, force) {
+  var eq = (typeof pgpGetLoadedMachineForIndex === 'function') ? pgpGetLoadedMachineForIndex(idx) : null;
+  if (!eq) return;
+  var calib = eq._horimCalib || {};
+  var fator = (calib.fator != null && !isNaN(calib.fator)) ? Number(calib.fator) : 1;
+  var baseReal = (calib.ultimo_real != null) ? calib.ultimo_real
+                 : (eq.hourTotal != null && eq.hourTotal !== '' ? Number(eq.hourTotal) : null);
+  var baseTs = _pfTs(calib.ultimo_real_at) || _pfTs(eq.lastVisit);
+  var hSem = pfHorasSemana(idx);
+  var hintEl = document.getElementById('m' + idx + '_horim_proj_hint');
+  var estEl  = document.getElementById('m' + idx + '_horimetro_estimado');
+
+  var dataEl = document.getElementById('m' + idx + '_data_leitura');
+  var targetTs = _pfTs(dataEl && dataEl.value) || Date.now();
+
+  // Sem baseline ou sem regime → não dá para projetar; orienta o técnico.
+  if (baseReal == null || !baseTs || hSem <= 0) {
+    if (hintEl) hintEl.textContent = (hSem <= 0)
+      ? '↳ Informe o regime de trabalho para estimar as horas na data da visita.'
+      : '↳ Sem leitura anterior — lance o horímetro real medido.';
+    return;
+  }
+
+  var dias = Math.max(0, (targetTs - baseTs) / 86400000);
+  var delta = dias * (hSem / 7) * fator;
+  var projTotal = Math.round(baseReal + delta);
+
+  // Horímetro total: pré-preenche (editável). Guarda o valor projetado p/ detectar edição manual.
+  var hEl = document.querySelector('[data-key="m' + idx + '_horimetro"]');
+  if (hEl) {
+    var prev = hEl.dataset ? hEl.dataset.proj : '';
+    if (force || hEl.value === '' || hEl.value === prev) hEl.value = projTotal;
+    if (hEl.dataset) hEl.dataset.proj = String(projTotal);
+  }
+  if (estEl) estEl.value = projTotal; // sempre = estimado enviado p/ auto-calibração
+  var dtxt = dataEl && dataEl.value ? dataEl.value.split('-').reverse().join('/') : 'hoje';
+  if (hintEl) hintEl.textContent = '↳ Estimado p/ ' + dtxt + ': ' + projTotal.toLocaleString('pt-BR') +
+    ' h (base ' + Math.round(baseReal).toLocaleString('pt-BR') + ' + ' + Math.round(dias) + 'd de regime) — corrija se diferente.';
+
+  // Peças: cada contador avança/regride pelo mesmo delta de horas da máquina.
+  if (eq.parts && Array.isArray(PARTS)) {
+    PARTS.forEach(function(pt) {
+      var aid = (typeof PART_ID_MAP === 'object') ? PART_ID_MAP[pt.k] : null;
+      var sp = aid ? eq.parts[aid] : null;
+      if (!sp) return;
+      var baseVm = (sp.valorMostrado !== undefined && sp.valorMostrado !== null && sp.valorMostrado !== '')
+        ? parseFloat(sp.valorMostrado) : NaN;
+      if (isNaN(baseVm)) return; // peça sem leitura de contador anterior → deixa em branco p/ o técnico
+      var pk = 'm' + idx + '_' + pt.k;
+      var contEl = document.getElementById(pk + '_contador');
+      var contador = (contEl && contEl.value) ? contEl.value : (sp.contador || '');
+      var projVm = (contador === 'regressivo') ? (baseVm - delta) : (baseVm + delta);
+      projVm = Math.round(projVm);
+      var vmEl = document.getElementById(pk + '_valor_mostrado');
+      if (vmEl) {
+        var prevP = vmEl.dataset ? vmEl.dataset.proj : '';
+        if (force || vmEl.value === '' || vmEl.value === prevP) vmEl.value = projVm;
+        if (vmEl.dataset) vmEl.dataset.proj = String(projVm);
+        if (typeof calcPartRow === 'function') calcPartRow(pk, pt.intDefault);
+      }
+    });
   }
 }
 
