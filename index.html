@@ -1,3 +1,4 @@
+<!-- v53: OS DE INSPEÇÃO/COLETA automática (par do GAS_properCare_v65.js). Toda coleta avulsa (inspeção sem OS) passa a ganhar uma "casa": novo helper pgpGarantirOSInspecaoAvulsa(midx) chama a rota abrirOSInspecao do GAS (idempotente por cliente+máquina+dia), grava window._PGP_OS_ID/_PGP_OS_CLIENTE e é chamado ANTES de subir foto (queuePhotoDriveUpload) e PDF (gerarPDF) — as fotos sobem na captura, então a OS precisa existir antes. Reinicia a OS ao trocar de cliente na mesma sessão (não mistura). pgpDriveMaquinaId passa a enviar o id MK- real da máquina carregada (antes mandava a série pura, ex.: "33027", ambígua entre clientes) com fallback p/ série/TAG. 100% aditivo; nenhum id/data-key/rota renomeado. -->
 <!-- v52: GUARDA DE FRONT contra os_id "grudento" (par do GAS_properCare_v64.js / PCM v73). Corrige o vazamento em que uma inspeção fora de OS herdava o os_id de um atendimento anterior de OUTRO cliente (Fusari salvando na OS/pasta da Aluminas). Novo window._PGP_OS_CLIENTE (gravado por pgpIniciarPreventivaDeOS a partir de r.os.cliente) + helper pgpOsIdSeguro(clientAtual) que só devolve window._PGP_OS_ID se o cliente da máquina carregada bater com o cliente dono da OS; caso contrário SUPRIME o os_id (o back-end v64 é a defesa final). pgpOsIdSeguro substitui window._PGP_OS_ID nos payloads de foto (queuePhotoDriveUpload), PDF (queuePdfDriveUpload x2) e preventiva (pgpBuildPayload). Se o cliente da OS é desconhecido (fluxo de pipeline), cai aberto e o GAS valida. 100% aditivo; nenhum id/data-key/rota renomeado. -->
 <!-- v51: HORÍMETRO DINÂMICO (par do GAS_properCare_v63.js / PCM v72). Regra do Fernando: o técnico NÃO vê fator/erro/botões de calibração. O bloco visível "Calibração do horímetro" foi REMOVIDO da seção "3. Horímetro e Regime". No lugar, o campo "Horas totais" já vem PRÉ-PREENCHIDO com o horímetro projetado para a data da leitura (base = última leitura real + dias × horas/dia do regime × fator), com uma dica "Estimado p/ DD/MM … — corrija se diferente"; e o valor mostrado de CADA peça também é projetado pelo mesmo delta de horas (contador progressivo soma, regressivo subtrai), recalculando rodadas/restantes. Novo motor: pfProjetarHorimetros(idx) (busca o fator via getHorimetroCalib e cacheia em eq._horimCalib) + pfReprojetar(idx,force) (recalcula ao carregar a máquina e ao trocar a "Data da leitura"); helpers _pfTs/pfHorasSemana mantidos. Campo OCULTO m<idx>_horimetro_estimado guarda o estimado projetado e viaja no payload (horimetro_estimado) para o GAS auto-calibrar o fator ao salvar (sem ação do técnico). Removidas as antigas pfPrefillHorimetro/pfCalibrarHorimetro. Só o ADM (PCM) vê estimado×real×erro×fator. -->
 <!-- v50: FLUXO DE OFICINA — lock por técnico no pipeline (par do GAS_properCare_v62.js). Cada card de tarefa disponível ganha "🔒 Assumir tarefa" (ação assumirTarefa, atômica no GAS); enquanto o técnico detém o lock aparece "🔒 Você está executando" + "Liberar tarefa" (liberarTarefa) e as ações (Concluir/Abrir formulário) só ficam ativas para ele; os demais técnicos veem "🔒 Em execução por X" com as ações bloqueadas. Ao concluir a tarefa o GAS libera o lock automaticamente. Card também mostra "👤 Perfil" (Perfil_Responsavel). Novas funções pfAssumirTarefa/pfLiberarTarefa; gating dentro de pfBuildCard. Status 'dispensado'/'condicional' não exibem ações. Horímetro com calibração (§5.3): na seção "3. Horímetro e Regime" de cada máquina, novo bloco "📊 Calibração do horímetro" — botão "↺ Carregar última + fator" (getHorimetroCalib) e "📊 Registrar real e calibrar" (registrarHorimetroReal) que envia a leitura real (= Horas totais) vs. a estimativa corrigida e recalibra o fator por média móvel. machine_id resolvido por pgpGetLoadedMachineForIndex(idx). Funções pfHorimMachineId/_pfNum/pfPrefillHorimetro/pfCalibrarHorimetro; 100% aditivo, não altera o fluxo de coleta/preventiva. A auto-projeção do estimado pelo regime (feita hoje em background no PCM) pode preencher o campo automaticamente num passo futuro. -->
@@ -1995,6 +1996,12 @@ function pgpDriveStatusLabel(status) {
 // v38 — identificador/rótulo de máquina para a taxonomia Cliente›OS›Máquina
 // do Drive (Gestão de Documentos). Reaproveitados por foto e PDF.
 function pgpDriveMaquinaId(midx) {
+  // v53 — prefere o id MK- real da máquina carregada (evita gravar a série pura
+  // "33027" como Maquina_ID, que é ambígua entre clientes). Só cai na série/TAG
+  // quando a máquina não veio do cadastro (ex.: máquina nova). O GAS v65 ainda
+  // reforça isso resolvendo o id canônico no servidor.
+  var eq = (typeof pgpGetLoadedMachineForIndex === 'function') ? pgpGetLoadedMachineForIndex(midx) : null;
+  if (eq && eq.id) return eq.id;
   return pgpFieldVal(midx, 'ns') || pgpFieldVal(midx, 'tag');
 }
 function pgpDriveMaquinaLabel(midx) {
@@ -2031,6 +2038,47 @@ function pgpOsIdSeguro(clientAtual) {
   if (norm(cli) === norm(cliOS)) return osId;
   try { console.warn('[PCF] os_id suprimido: OS(' + cliOS + ') != máquina(' + cli + ')'); } catch(e){}
   return '';
+}
+
+// v53 — Coleta avulsa (inspeção sem OS) ganha uma "casa": pede ao GAS para abrir
+// (ou reusar, idempotente) uma OS leve de Inspeção/Coleta para o cliente+máquina
+// carregados, e passa a usá-la em todos os uploads. Lazy + memoizado: a 1ª chamada
+// (antes da 1ª foto) cria; as demais reaproveitam. Só age em inspeção avulsa; no
+// fluxo de pipeline (já tem _PGP_OS_ID) ou preventiva não faz nada.
+window._pgpOSInspecaoPromise = null;
+async function pgpGarantirOSInspecaoAvulsa(midx){
+  if (_pgpTipoVisita !== 'inspecao') return '';
+  var idx = (midx === undefined) ? (typeof currentMachine !== 'undefined' ? currentMachine : 0) : midx;
+  var cliente = pgpDriveClientName(idx);
+  if (!cliente || cliente === 'SemCliente') return '';
+  var _n = function(s){ return String(s || '').trim().toLowerCase().replace(/\s+/g, ' '); };
+  // Troca de cliente na mesma sessão de inspeção: descarta a OS anterior para não
+  // pendurar a coleta do novo cliente na OS do cliente antigo.
+  if (window._PGP_OS_ID && window._PGP_OS_CLIENTE && _n(window._PGP_OS_CLIENTE) !== _n(cliente)) {
+    window._PGP_OS_ID = null; window._PGP_OS_CLIENTE = null; window._pgpOSInspecaoPromise = null;
+  }
+  if (window._PGP_OS_ID) return window._PGP_OS_ID;
+  if (window._pgpOSInspecaoPromise) return window._pgpOSInspecaoPromise;
+  window._pgpOSInspecaoPromise = (async function(){
+    try {
+      var eq = (typeof pgpGetLoadedMachineForIndex === 'function') ? pgpGetLoadedMachineForIndex(idx) : null;
+      var r = await pgpPostJson('abrirOSInspecao', {
+        cliente: cliente,
+        machine_id: (eq && eq.id) || '',
+        serial: pgpFieldVal(idx, 'ns') || '',
+        tag: pgpFieldVal(idx, 'tag') || '',
+        usuario: pgpFieldVal(idx, 'tecnico') || ''
+      });
+      if (r && r.status === 'ok' && r.id_os) {
+        window._PGP_OS_ID = r.id_os;
+        window._PGP_OS_CLIENTE = r.cliente || cliente;
+        return r.id_os;
+      }
+    } catch(e){ console.warn('[PCF] abrirOSInspecao falhou:', e && e.message); }
+    window._pgpOSInspecaoPromise = null; // libera p/ nova tentativa
+    return '';
+  })();
+  return window._pgpOSInspecaoPromise;
 }
 
 // v48 (A1) — Sender unificado de uploads de Drive (foto/PDF). Tenta enviar agora
@@ -2071,6 +2119,9 @@ async function flushPendingDriveUploads() {
 // (1600px/0.88) e delega para o sender/persistência. Assinatura preservada
 // (chamado em storePhotoBase64).
 async function queuePhotoDriveUpload(midx, photoKey, label, fotoObj, file) {
+  // v53 — garante a OS de Inspeção ANTES de montar o payload (a foto sobe na
+  // captura; sem isso o os_id sairia vazio e a foto cairia em _SEM_OS).
+  try { await pgpGarantirOSInspecaoAvulsa(midx); } catch(e){}
   let body;
   try {
     const { dataUrl: driveDataUrl } = await compressPhotoForDrive(file);
@@ -5336,6 +5387,9 @@ function montarNomeArquivo(razao, modelo, serial, dataStr) {
 
 async function gerarPDF() {
   if (machines.length === 0) { AppDialog.alert('Nenhuma máquina para gerar relatório.', {variant:'warn', title:'Relatório'}); return; }
+  // v53 — garante a OS de Inspeção antes de subir o PDF, para o relatório cair na
+  // OS/pasta certa (e não em _SEM_OS) quando a coleta é avulsa.
+  try { await pgpGarantirOSInspecaoAvulsa(currentMachine); } catch(e){}
   const { jsPDF } = window.jspdf;
   if (!jsPDF) { AppDialog.alert('Biblioteca PDF não carregada. Verifique a conexão e tente novamente.', {variant:'danger', title:'PDF'}); return; }
 
