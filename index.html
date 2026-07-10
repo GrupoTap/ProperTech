@@ -1,3 +1,4 @@
+<!-- v54: ROBUSTEZ "ONDA 1" (par do GAS_properCare_v67.js / PCM v76). Aditivo; nenhum id/data-key/rota/função renomeado; todos os blocos de script passam em node --check. (N13) novo helper global pgpUid() (crypto.randomUUID com fallback ao padrão antigo) substitui o sufixo Math.random().toString(36).slice(2,6) na geração dos IDs VIS- (payload de preventiva e nova coleta) — remove a classe de colisão de visit_id, que torna confiável a idempotência do saveVisit. (N12) pgpRegisterNew passa a EXIGIR série OU tag no cadastro de campo (validação 100% local/offline-first): série vazia + tag vazia eram bloqueadas? não — geravam a chave colapsante MK-cliente-marca-modelo (duas máquinas distintas na mesma linha); agora, sem série, a chave usa TAG-+tag (mesmo esquema do saveMachine no GAS). Placeholders de nm_serial/nm_tag sinalizam "série OU TAG obrigatória". -->
 <!-- v53: OS DE INSPEÇÃO/COLETA automática (par do GAS_properCare_v65.js). Toda coleta avulsa (inspeção sem OS) passa a ganhar uma "casa": novo helper pgpGarantirOSInspecaoAvulsa(midx) chama a rota abrirOSInspecao do GAS (idempotente por cliente+máquina+dia), grava window._PGP_OS_ID/_PGP_OS_CLIENTE e é chamado ANTES de subir foto (queuePhotoDriveUpload) e PDF (gerarPDF) — as fotos sobem na captura, então a OS precisa existir antes. Reinicia a OS ao trocar de cliente na mesma sessão (não mistura). pgpDriveMaquinaId passa a enviar o id MK- real da máquina carregada (antes mandava a série pura, ex.: "33027", ambígua entre clientes) com fallback p/ série/TAG. 100% aditivo; nenhum id/data-key/rota renomeado. -->
 <!-- v52: GUARDA DE FRONT contra os_id "grudento" (par do GAS_properCare_v64.js / PCM v73). Corrige o vazamento em que uma inspeção fora de OS herdava o os_id de um atendimento anterior de OUTRO cliente (Fusari salvando na OS/pasta da Aluminas). Novo window._PGP_OS_CLIENTE (gravado por pgpIniciarPreventivaDeOS a partir de r.os.cliente) + helper pgpOsIdSeguro(clientAtual) que só devolve window._PGP_OS_ID se o cliente da máquina carregada bater com o cliente dono da OS; caso contrário SUPRIME o os_id (o back-end v64 é a defesa final). pgpOsIdSeguro substitui window._PGP_OS_ID nos payloads de foto (queuePhotoDriveUpload), PDF (queuePdfDriveUpload x2) e preventiva (pgpBuildPayload). Se o cliente da OS é desconhecido (fluxo de pipeline), cai aberto e o GAS valida. 100% aditivo; nenhum id/data-key/rota renomeado. -->
 <!-- v51: HORÍMETRO DINÂMICO (par do GAS_properCare_v63.js / PCM v72). Regra do Fernando: o técnico NÃO vê fator/erro/botões de calibração. O bloco visível "Calibração do horímetro" foi REMOVIDO da seção "3. Horímetro e Regime". No lugar, o campo "Horas totais" já vem PRÉ-PREENCHIDO com o horímetro projetado para a data da leitura (base = última leitura real + dias × horas/dia do regime × fator), com uma dica "Estimado p/ DD/MM … — corrija se diferente"; e o valor mostrado de CADA peça também é projetado pelo mesmo delta de horas (contador progressivo soma, regressivo subtrai), recalculando rodadas/restantes. Novo motor: pfProjetarHorimetros(idx) (busca o fator via getHorimetroCalib e cacheia em eq._horimCalib) + pfReprojetar(idx,force) (recalcula ao carregar a máquina e ao trocar a "Data da leitura"); helpers _pfTs/pfHorasSemana mantidos. Campo OCULTO m<idx>_horimetro_estimado guarda o estimado projetado e viaja no payload (horimetro_estimado) para o GAS auto-calibrar o fator ao salvar (sem ação do técnico). Removidas as antigas pfPrefillHorimetro/pfCalibrarHorimetro. Só o ADM (PCM) vê estimado×real×erro×fator. -->
@@ -1432,8 +1433,8 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
     <div id="pgpClientSimilarAlert" style="display:none;margin-top:4px;padding:6px 10px;background:#fff7e6;border-left:3px solid var(--orange);border-radius:0 6px 6px 0;font-size:11px;color:#7B4000;line-height:1.5"></div>
     <input id="nm_brand" placeholder="Marca *">
     <input id="nm_model" placeholder="Modelo *">
-    <input id="nm_serial" placeholder="Nº Série">
-    <input id="nm_tag" placeholder="TAG / Matrícula">
+    <input id="nm_serial" placeholder="Nº Série (série OU TAG obrigatória)">
+    <input id="nm_tag" placeholder="TAG / Matrícula (série OU TAG obrigatória)">
     <input id="nm_location" placeholder="Localização">
     <input id="nm_year" type="number" placeholder="Ano fabric.">
     <input id="nm_hpw" type="number" placeholder="h/Semana">
@@ -1586,6 +1587,13 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
   </div>
 </div>
 
+<!-- v67 — N13: helper global de ID opaco (crypto.randomUUID) com fallback ao padrão antigo -->
+<script>
+function pgpUid(){
+  try { if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID(); } catch(e){}
+  return Math.random().toString(36).slice(2,6); // fallback: padrão antigo
+}
+</script>
 <script>
 // ══════════════════════════════════════════════════════════════════════════
 // CHANGELOG v35 (Fix PCF: rótulo de OS exibe numero_os)
@@ -5676,7 +5684,7 @@ function pgpGetPending(){
 
 function pgpBuildVisitRequest(payload){
   return {
-    visit_id: payload.visit_id || ('VIS-' + Date.now() + '-' + Math.random().toString(36).slice(2,6)),
+    visit_id: payload.visit_id || ('VIS-' + Date.now() + '-' + pgpUid()),
     machine_id:payload.machine_id||'',
     client:payload.client,
     branch:payload.branch,
@@ -7132,7 +7140,7 @@ function pgpBuildPreventivaPayload(midx=currentMachine){
     };
   });
 
-  const visitId='VIS-'+Date.now()+'-'+Math.random().toString(36).slice(2,6);
+  const visitId='VIS-'+Date.now()+'-'+pgpUid();
 
   return{
     visit_id:visitId,
@@ -7407,10 +7415,21 @@ async function pgpRegisterNew(){
       return found ? found.nome : client;
     } catch(e) { return client; }
   })();
+  // v67 — N12: exigir série OU tag no cadastro de campo. Série vazia + tag vazia
+  // gerariam a chave colapsante MK-cliente-marca-modelo (duas máquinas distintas
+  // na mesma linha do parque). Validação 100% local (offline-first). Sem série,
+  // a chave usa 'TAG-'+tag — mesmo esquema que o saveMachine já aplica no GAS.
+  const _nmSerial = document.getElementById('nm_serial').value.trim();
+  const _nmTag    = document.getElementById('nm_tag').value.trim();
+  if(!_nmSerial && !_nmTag){
+    showNotification('⚠ Informe o Nº de Série OU a TAG/Matrícula');
+    return;
+  }
+  const _nmKeySeed = _nmSerial ? _nmSerial : ('TAG-' + _nmTag);
   const eq={
-    id:pgpMachineKey(_clientCanonical,brand,model,document.getElementById('nm_serial').value.trim()),client:_clientCanonical,brand,model,
-    serial: document.getElementById('nm_serial').value.trim(),
-    tag:    document.getElementById('nm_tag').value.trim(),
+    id:pgpMachineKey(_clientCanonical,brand,model,_nmKeySeed),client:_clientCanonical,brand,model,
+    serial: _nmSerial,
+    tag:    _nmTag,
     location:document.getElementById('nm_location').value.trim(),
     year:   parseInt(document.getElementById('nm_year').value)||'',
     hpw:    parseInt(document.getElementById('nm_hpw').value)||0,
