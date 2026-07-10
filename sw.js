@@ -8,7 +8,7 @@
  * DISCIPLINA DE VERSÃO: bump em CACHE a cada deploy do app (v43 -> v44 ...).
  * O activate abaixo apaga qualquer cache antigo com prefixo 'propertech-'.
  */
-const CACHE = 'propertech-v44';
+const CACHE = 'propertech-v45';
 const SCOPE_PREFIX = '/ProperTech/';
 const APP_SHELL = [
   '/ProperTech/',

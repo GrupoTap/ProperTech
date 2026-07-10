@@ -177,9 +177,13 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>ProperCare Field · PGP Preventivas v32</title>
 <meta name="theme-color" content="#0f172a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
@@ -200,7 +204,7 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
   body{font-family:'Barlow',sans-serif;background:#eef1f7;color:var(--text);min-height:100vh;padding-bottom:80px}
 
-  header{background:var(--blue);color:white;padding:14px 16px 11px;position:sticky;top:0;z-index:100;box-shadow:0 3px 12px rgba(0,0,0,.25)}
+  header{background:var(--blue);color:white;padding:calc(14px + env(safe-area-inset-top,0px)) 16px 11px;position:sticky;top:0;z-index:100;box-shadow:0 3px 12px rgba(0,0,0,.25)}
   .top-row{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;overflow:hidden}
   header h1{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;line-height:1.2}
   .subtitle{font-size:11px;opacity:.65;margin-top:2px}
@@ -892,7 +896,7 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
   /* ============================================================
      v24 DARK NEON OVERRIDES — Proper Compressores
      ============================================================ */
-  body{background:var(--bg-app)!important;color:var(--text)!important;font-family:'Inter','Barlow',system-ui,sans-serif!important;-webkit-font-smoothing:antialiased;padding-bottom:120px}
+  body{background:var(--bg-app)!important;color:var(--text)!important;font-family:'Inter','Barlow',system-ui,sans-serif!important;-webkit-font-smoothing:antialiased;padding-bottom:calc(120px + env(safe-area-inset-bottom,0px))}
   ::selection{background:var(--brand-glow);color:#fff}
 
   /* Scrollbar dark */
@@ -8831,5 +8835,6 @@ if(window._PGP_OS_ID && (function(){ try { return localStorage.getItem('proper_p
 })();
 </script>
 
+<script src="proper-pwa.js" defer></script>
 </body>
 </html>
