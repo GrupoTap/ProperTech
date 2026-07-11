@@ -1,3 +1,4 @@
+<!-- v56: ENVIO PARCIAL SEGURO (frontend-only, sem GAS) — ver PROMPT_CLAUDE_CODE_ENVIO_PARCIAL_2026-07-11.md. 100% aditivo; nenhum id/data-view/data-key/rota/função existente renomeado; node --check real passa nos 3 blocos de script. Dois predicados novos, cada um com critério de propósito diferente: pgpMaquinaPronta(midx) — ESTRITO, replica a MESMA validação que pgpEnviarPreventiva já aplica (horímetro informado + toda peça não-N/A com ação + toda "trocada" com referência); usado só como leitura prévia, pgpEnviarPreventiva NÃO foi alterado. pgpMaquinaTemConteudo(midx) — FROUXO (≥1 peça com ação/N-A OU ≥1 foto, SEM exigir horímetro pois este vem pré-preenchido desde o v51 e não sinaliza inspeção real). FIX 1: gerarPDF() (~L5424) agora pula (sem gerar nem subir ao Drive) qualquer máquina sem pgpMaquinaTemConteudo — corrige PDFs em branco poluindo a pasta da OS quando o cliente tem mais máquinas carregadas do que inspecionadas; toast final honesto ("N PDFs gerados · M sem inspeção pulada(s)") e alerta dedicado se nenhuma máquina tinha conteúdo. FIX 2: pgpEnviarTodasPreventivas() (~L7203) calcula ANTES quais máquinas estão prontas (pgpMaquinaPronta) e confirma "Registrar N de TOTAL máquina(s)?" listando as incompletas como "ficam para depois" (não mais tratado como erro); o loop de envio passa a percorrer só as prontas (_prontasIdx); o pop-up final de "Pendências" foi substituído por "Falha no envio", disparado só quando pgpEnviarPreventiva de fato falha — envio parcial deliberado deixa de acionar esse alerta. -->
 <!-- v55: CORREÇÕES DE UX (par PCM v77) — ver PROMPT_CLAUDE_CODE_UX_FRONTS_2026-07-11.md. 100% aditivo; nenhum id/data-view/data-key/rota/função renomeado; node --check real passa nos 3 blocos de script. (1) pgpEnviarGS(srcBtn) — o clique em btnEnviarGSMain (tela principal) não dava feedback nenhum (só o botão do modal btnEnviarGS recebia disabled/texto), então o usuário clicava de novo e disparava 2 envios concorrentes. Agora mira o botão realmente clicado (srcBtn), trava AMBOS os botões (guarda reentrante _pgpEnviarGSBusy + finally garante reabilitação mesmo em erro), espelha o status também na tela principal (novo #pgpSendStatusMain) e mostra aviso visível "🔴 Sem conexão — salvo na fila, reenvio automático" em vez de enfileirar em silêncio. (2) Barreira de toque na borda inferior: viewport-fit=cover + env(safe-area-inset-bottom) em .modal-body/.cfg-box/.foto-picker-box e nas telas do #pfOverlay (pipeline), para o rodapé de ações não cair atrás da barra de gestos do celular. (3) Feedback de processamento: novo CSS .btn.is-busy/.pf-btn.is-busy/.btn-preventiva.is-busy (spinner) + helper _comLoadingBtn_ portado do PCM, aplicado a pgpEnviarGS, pgpDoSerialSearch, pfAssumirTarefa/pfLiberarTarefa/pfConfirmarTarefa e pgpEnviarTodasPreventivas (botões de rede prioritários). -->
 <!-- v54: ROBUSTEZ "ONDA 1" (par do GAS_properCare_v67.js / PCM v76). Aditivo; nenhum id/data-key/rota/função renomeado; todos os blocos de script passam em node --check. (N13) novo helper global pgpUid() (crypto.randomUUID com fallback ao padrão antigo) substitui o sufixo Math.random().toString(36).slice(2,6) na geração dos IDs VIS- (payload de preventiva e nova coleta) — remove a classe de colisão de visit_id, que torna confiável a idempotência do saveVisit. (N12) pgpRegisterNew passa a EXIGIR série OU tag no cadastro de campo (validação 100% local/offline-first): série vazia + tag vazia eram bloqueadas? não — geravam a chave colapsante MK-cliente-marca-modelo (duas máquinas distintas na mesma linha); agora, sem série, a chave usa TAG-+tag (mesmo esquema do saveMachine no GAS). Placeholders de nm_serial/nm_tag sinalizam "série OU TAG obrigatória". -->
 <!-- v53: OS DE INSPEÇÃO/COLETA automática (par do GAS_properCare_v65.js). Toda coleta avulsa (inspeção sem OS) passa a ganhar uma "casa": novo helper pgpGarantirOSInspecaoAvulsa(midx) chama a rota abrirOSInspecao do GAS (idempotente por cliente+máquina+dia), grava window._PGP_OS_ID/_PGP_OS_CLIENTE e é chamado ANTES de subir foto (queuePhotoDriveUpload) e PDF (gerarPDF) — as fotos sobem na captura, então a OS precisa existir antes. Reinicia a OS ao trocar de cliente na mesma sessão (não mistura). pgpDriveMaquinaId passa a enviar o id MK- real da máquina carregada (antes mandava a série pura, ex.: "33027", ambígua entre clientes) com fallback p/ série/TAG. 100% aditivo; nenhum id/data-key/rota renomeado. -->
@@ -5422,7 +5423,11 @@ async function gerarPDF() {
 
   const dataStr = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
   let count = 0;
+  const _pdfPuladas = [];                                  // v56
   for (let midx = 0; midx < machines.length; midx++) {
+    // v56: não gera PDF (nem sobe ao Drive) de máquina sem inspeção — evita
+    // relatório em branco. Critério FROUXO (peça com ação/N/A ou foto).
+    if (!pgpMaquinaTemConteudo(midx)) { _pdfPuladas.push(midx + 1); continue; }
     const b = pgpCreateReportBuilder();
     b.renderMachine(midx, true, null);
     const nomeArq = montarNomeArquivo(vg(midx, 'razao_social'), vg(midx, 'modelo'), vg(midx, 'ns'), dataStr);
@@ -5449,7 +5454,14 @@ async function gerarPDF() {
   const btnConsolidar = document.getElementById('btnConsolidarPdf');
   if (btnConsolidar) btnConsolidar.style.display = machines.length > 1 ? '' : 'none';
 
-  showNotification(count === 1 ? '✅ PDF gerado' : ('✅ ' + count + ' PDFs gerados'));
+  // v56: mensagem honesta sobre o que foi (e não foi) gerado.
+  if (count === 0) {
+    AppDialog.alert('Nenhuma máquina inspecionada — nenhum PDF gerado.\n\nMarque a ação de ao menos uma peça (ou capture uma foto) antes de gerar o relatório.', {variant:'warn', title:'Relatório'});
+  } else {
+    let _msg = (count === 1 ? '✅ PDF gerado' : ('✅ ' + count + ' PDFs gerados'));
+    if (_pdfPuladas.length) _msg += ' · ' + _pdfPuladas.length + ' sem inspeção pulada(s)';
+    showNotification(_msg);
+  }
 }
 
 // v27 item 8: PDF único consolidado com todas as máquinas + índice na 1ª
@@ -7201,9 +7213,31 @@ async function pgpEnviarTodasPreventivas(){
     return pgpEnviarPreventiva(currentMachine);
   }
   const total = machines.length;
+  // v56: envio parcial seguro — calcula ANTES quais máquinas estão prontas
+  // (critério estrito = a mesma validação do envio). As não-prontas ficam para
+  // depois; deixa de ser tratado como "pendência/erro".
+  const _prontasIdx = [];
+  const _pendentes  = [];
+  for(let i = 0; i < machines.length; i++){
+    const _r = pgpMaquinaPronta(i);
+    if(_r.pronta) _prontasIdx.push(i);
+    else _pendentes.push('Máq. ' + (i+1) + (_r.motivo ? ' — ' + _r.motivo : ''));
+  }
+  if(_prontasIdx.length === 0){
+    await AppDialog.alert(
+      'Nenhuma máquina está pronta para registrar ainda.\n\n' + _pendentes.join('\n') +
+      '\n\nInforme o horímetro e a ação de cada peça.',
+      { variant:'warn', title:'Nada a registrar' }
+    );
+    return;
+  }
+  let _conf = 'Registrar ' + _prontasIdx.length + ' de ' + total + ' máquina(s) agora?';
+  if(_pendentes.length){
+    _conf += '\n\nEstas ficam para depois (incompletas):\n' + _pendentes.join('\n');
+  }
   const ok = await AppDialog.confirm(
-    'Registrar as ' + total + ' máquinas desta coleta agora?',
-    { title:'Registrar preventivas', okLabel:'Registrar todas' }
+    _conf,
+    { title:'Registrar preventivas', okLabel:'Registrar ' + _prontasIdx.length }
   );
   if(!ok) return;
 
@@ -7215,7 +7249,7 @@ async function pgpEnviarTodasPreventivas(){
   let enviadas = 0, filas = 0, dups = 0;
   const puladas = [];
   try{
-    for(let i = 0; i < machines.length; i++){
+    for(const i of _prontasIdx){                 // v56: só as prontas (já filtradas)
       const res = await pgpEnviarPreventiva(i, { silent:true });
       if(!res || res.status === 'skipped'){
         puladas.push('Máq. ' + (i+1) + (res && res.reason ? ' — ' + res.reason : ''));
@@ -7233,19 +7267,23 @@ async function pgpEnviarTodasPreventivas(){
   // Fora de OS: só volta para 'inspecao' se TODAS foram registradas (senão
   // mantém a view de preventiva para o técnico completar as pendentes).
   if(window._PGP_OS_ID){ pgpMostrarVoltarParaOS(); }
-  else if(puladas.length === 0){ pgpSetTipoVisita('inspecao'); }
+  // v56: só volta para inspeção se TUDO foi registrado (nem falha nem pendente);
+  // senão mantém a tela de preventiva para o técnico completar as que faltam.
+  else if(puladas.length === 0 && _pendentes.length === 0){ pgpSetTipoVisita('inspecao'); }
 
   let msg = '✅ ' + enviadas + ' preventiva(s) registrada(s)';
   if(filas) msg += ' · ' + filas + ' na fila';
   if(dups)  msg += ' · ' + dups + ' já existia(m)';
-  if(puladas.length) msg += ' · ' + puladas.length + ' não enviada(s)';
+  if(_pendentes.length) msg += ' · ' + _pendentes.length + ' para depois';
+  if(puladas.length) msg += ' · ' + puladas.length + ' falha(s)';
   showNotification(msg);
 
+  // v56: pop-up só se houve FALHA real de envio. As incompletas já foram
+  // avisadas ANTES (na confirmação) e são intencionais — não repetir como erro.
   if(puladas.length){
     AppDialog.alert(
-      'Estas máquinas NÃO foram registradas (dados incompletos ou falha):\n\n' + puladas.join('\n') +
-      '\n\nComplete os campos pendentes e registre novamente.',
-      { variant:'warn', title:'Pendências' }
+      'Estas máquinas tiveram FALHA no envio (tente registrar de novo):\n\n' + puladas.join('\n'),
+      { variant:'warn', title:'Falha no envio' }
     );
   }
 }
@@ -7641,6 +7679,60 @@ function pgpHasMachineData(midx) {
     const el = document.querySelector(`[data-key="m${midx}_${k}"]`);
     return el && String(el.value || '').trim();
   });
+}
+
+// v56: predicado ESTRITO de "máquina pronta para ENVIAR" — replica a MESMA
+// validação que pgpEnviarPreventiva já aplica inline (horímetro informado +
+// toda peça não-N/A com ação + toda "trocada" com referência). Só leitura; o
+// envio continua validando por si (pgpEnviarPreventiva NÃO foi alterado). Usado
+// pela confirmação de envio parcial. Retorna { pronta, motivo }.
+function pgpMaquinaPronta(midx){
+  const idx = pgpGetMachineIndex(midx);
+  const p = 'm' + idx + '_';
+  const gv = key => {
+    const el = document.querySelector('[data-key="' + p + key + '"]');
+    return el ? String(el.value || '').trim() : '';
+  };
+  if(!(parseInt(gv('horimetro')) || 0)) return { pronta:false, motivo:'horímetro não informado' };
+  let todasComAcao = true, algumaTrocadaSemRef = false;
+  PARTS.forEach(pt => {
+    const pk = p + pt.k;
+    const naBtn = document.getElementById(pk + '_na');
+    if(naBtn && naBtn.classList.contains('active')) return; // N/A: ignora
+    const acaoEl = document.getElementById(pk + '_acao');
+    const acao = acaoEl ? acaoEl.value : '';
+    if(!acao){ todasComAcao = false; return; }
+    if(acao === 'trocada'){
+      const refEl = document.getElementById(pk + '_ref');
+      if(!refEl || !refEl.value.trim()) algumaTrocadaSemRef = true;
+    }
+  });
+  if(!todasComAcao) return { pronta:false, motivo:'peça(s) sem ação selecionada' };
+  if(algumaTrocadaSemRef) return { pronta:false, motivo:'peça Trocada sem referência' };
+  return { pronta:true, motivo:'' };
+}
+
+// v56: predicado FROUXO de "máquina tem conteúdo de inspeção" — para o gerarPDF
+// não emitir relatório em branco. NÃO usa horímetro (pré-preenchido no v51, não
+// sinaliza inspeção). Basta ≥1 peça com ação OU marcada N/A OU ≥1 foto. Relatório
+// PARCIAL continua sendo gerado (é legítimo).
+function pgpMaquinaTemConteudo(midx){
+  const idx = pgpGetMachineIndex(midx);
+  const p = 'm' + idx + '_';
+  let tocou = false;
+  PARTS.forEach(pt => {
+    const pk = p + pt.k;
+    const naBtn = document.getElementById(pk + '_na');
+    const acaoEl = document.getElementById(pk + '_acao');
+    if((naBtn && naBtn.classList.contains('active')) || (acaoEl && acaoEl.value)) tocou = true;
+  });
+  if(tocou) return true;
+  if(typeof photoStore !== 'undefined' && photoStore[idx]){
+    for(const k in photoStore[idx]){
+      if(photoStore[idx][k] && photoStore[idx][k].length) return true;
+    }
+  }
+  return false;
 }
 
 // v55: portado do PCM (_comLoadingBtn_, par idêntico — ver PCM_V77.html ~L8547),
