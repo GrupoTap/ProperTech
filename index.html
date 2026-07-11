@@ -1,3 +1,4 @@
+<!-- v57: Sprint F — rename form08→form02 (par GAS_properCare_v68.js/PCM v78/Hub v15). pfGetFormUrl (~L8333): case 'auto:form02' agora retorna .../ProperForms/form02.html; case 'auto:form08' mantido como alias legado apontando para a mesma URL. pfAbrirForm (~L8688): resolve osObj via _pfOsList.find (mesmo padrão de pfSelecionarOS) e acrescenta cliente/os_numero na urlComOs (&cliente=/&os_numero=), sem criar globals novas. 100% aditivo; nenhum id/data-key/rota/função existente renomeado. -->
 <!-- v56: ENVIO PARCIAL SEGURO (frontend-only, sem GAS) — ver PROMPT_CLAUDE_CODE_ENVIO_PARCIAL_2026-07-11.md. 100% aditivo; nenhum id/data-view/data-key/rota/função existente renomeado; node --check real passa nos 3 blocos de script. Dois predicados novos, cada um com critério de propósito diferente: pgpMaquinaPronta(midx) — ESTRITO, replica a MESMA validação que pgpEnviarPreventiva já aplica (horímetro informado + toda peça não-N/A com ação + toda "trocada" com referência); usado só como leitura prévia, pgpEnviarPreventiva NÃO foi alterado. pgpMaquinaTemConteudo(midx) — FROUXO (≥1 peça com ação/N-A OU ≥1 foto, SEM exigir horímetro pois este vem pré-preenchido desde o v51 e não sinaliza inspeção real). FIX 1: gerarPDF() (~L5424) agora pula (sem gerar nem subir ao Drive) qualquer máquina sem pgpMaquinaTemConteudo — corrige PDFs em branco poluindo a pasta da OS quando o cliente tem mais máquinas carregadas do que inspecionadas; toast final honesto ("N PDFs gerados · M sem inspeção pulada(s)") e alerta dedicado se nenhuma máquina tinha conteúdo. FIX 2: pgpEnviarTodasPreventivas() (~L7203) calcula ANTES quais máquinas estão prontas (pgpMaquinaPronta) e confirma "Registrar N de TOTAL máquina(s)?" listando as incompletas como "ficam para depois" (não mais tratado como erro); o loop de envio passa a percorrer só as prontas (_prontasIdx); o pop-up final de "Pendências" foi substituído por "Falha no envio", disparado só quando pgpEnviarPreventiva de fato falha — envio parcial deliberado deixa de acionar esse alerta. -->
 <!-- v55: CORREÇÕES DE UX (par PCM v77) — ver PROMPT_CLAUDE_CODE_UX_FRONTS_2026-07-11.md. 100% aditivo; nenhum id/data-view/data-key/rota/função renomeado; node --check real passa nos 3 blocos de script. (1) pgpEnviarGS(srcBtn) — o clique em btnEnviarGSMain (tela principal) não dava feedback nenhum (só o botão do modal btnEnviarGS recebia disabled/texto), então o usuário clicava de novo e disparava 2 envios concorrentes. Agora mira o botão realmente clicado (srcBtn), trava AMBOS os botões (guarda reentrante _pgpEnviarGSBusy + finally garante reabilitação mesmo em erro), espelha o status também na tela principal (novo #pgpSendStatusMain) e mostra aviso visível "🔴 Sem conexão — salvo na fila, reenvio automático" em vez de enfileirar em silêncio. (2) Barreira de toque na borda inferior: viewport-fit=cover + env(safe-area-inset-bottom) em .modal-body/.cfg-box/.foto-picker-box e nas telas do #pfOverlay (pipeline), para o rodapé de ações não cair atrás da barra de gestos do celular. (3) Feedback de processamento: novo CSS .btn.is-busy/.pf-btn.is-busy/.btn-preventiva.is-busy (spinner) + helper _comLoadingBtn_ portado do PCM, aplicado a pgpEnviarGS, pgpDoSerialSearch, pfAssumirTarefa/pfLiberarTarefa/pfConfirmarTarefa e pgpEnviarTodasPreventivas (botões de rede prioritários). -->
 <!-- v54: ROBUSTEZ "ONDA 1" (par do GAS_properCare_v67.js / PCM v76). Aditivo; nenhum id/data-key/rota/função renomeado; todos os blocos de script passam em node --check. (N13) novo helper global pgpUid() (crypto.randomUUID com fallback ao padrão antigo) substitui o sufixo Math.random().toString(36).slice(2,6) na geração dos IDs VIS- (payload de preventiva e nova coleta) — remove a classe de colisão de visit_id, que torna confiável a idempotência do saveVisit. (N12) pgpRegisterNew passa a EXIGIR série OU tag no cadastro de campo (validação 100% local/offline-first): série vazia + tag vazia eram bloqueadas? não — geravam a chave colapsante MK-cliente-marca-modelo (duas máquinas distintas na mesma linha); agora, sem série, a chave usa TAG-+tag (mesmo esquema do saveMachine no GAS). Placeholders de nm_serial/nm_tag sinalizam "série OU TAG obrigatória". -->
@@ -8330,7 +8331,8 @@ function pfGetFormUrl(tipo, tarefa) {
   // Prioridade 2 (fallback de compatibilidade): tarefas instanciadas antes desta
   // sessão, sem Form_URL preenchido — mantém o comportamento exato de antes.
   switch(tipo) {
-    case 'auto:form08':     return 'https://grupotap.github.io/ProperForms/form08.html';
+    case 'auto:form02':     return 'https://grupotap.github.io/ProperForms/form02.html';
+    case 'auto:form08':     return 'https://grupotap.github.io/ProperForms/form02.html'; // alias legado
     case 'auto:rotores':    return 'https://grupotap.github.io/ProperRotores/index.html';
     case 'auto:inspecao':   return 'https://grupotap.github.io/ProperTech/index.html';
     case 'auto:preventiva': return 'https://grupotap.github.io/ProperTech/index.html?modo=preventiva';
@@ -8686,9 +8688,14 @@ async function pfAbrirForm(tarefaId, formUrl) {
   // por instância de tarefa, que sabemos a qual OS ela pertence.
   var inicioPreventivaISO = new Date().toISOString();
   var separador = formUrl.indexOf('?') >= 0 ? '&' : '?';
+  var osObj = _pfOsList.find(function(o) {
+    return String(o.id_os || '') === String(_pfOsId);
+  });
   var urlComOs = formUrl + separador + 'os_id=' + encodeURIComponent(_pfOsId)
     + '&tarefa_id=' + encodeURIComponent(tarefaId)
-    + '&inicio_preventiva_iso=' + encodeURIComponent(inicioPreventivaISO);
+    + '&inicio_preventiva_iso=' + encodeURIComponent(inicioPreventivaISO)
+    + '&cliente=' + encodeURIComponent(_pfOsNome||'')
+    + '&os_numero=' + encodeURIComponent((osObj && osObj.numero_os)||'');
   window.location.href = urlComOs;
 }
 
