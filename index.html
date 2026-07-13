@@ -8415,6 +8415,25 @@ function pfBuildCard(t) {
           '</div>' +
         '</div>' +
       '</div>';
+    } else if (tipo === 'decisao') {
+      // v58: gateway de decisão — renderiza 1 botão por opção (Opcoes_JSON). Cada
+      // clique grava a escolha via resolverDecisao; a reconciliação do GAS libera/
+      // dispensa os ramos condicionais. Antes esta tarefa caía no "Em breve…".
+      var pfOpcoesDec = [];
+      try { pfOpcoesDec = JSON.parse(t.Opcoes_JSON || '[]'); } catch(e) { pfOpcoesDec = []; }
+      if (pfOpcoesDec.length) {
+        acaoHtml = '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">' +
+          pfOpcoesDec.map(function(o) {
+            var vSafe = String(o.valor).replace(/'/g, "\\'");
+            var lbl   = String(o.label || o.valor);
+            return '<button class="pf-btn pf-btn-abrir-form" onclick="pfResolverDecisao(\'' + tidSafe + '\',\'' + vSafe + '\',this)">' + lbl + '</button>';
+          }).join('') +
+        '</div>';
+      } else {
+        acaoHtml = '<div style="margin-top:10px">' +
+          '<button class="pf-btn pf-btn-breve" disabled title="Decisão sem opções configuradas no template">Sem opções configuradas</button>' +
+        '</div>';
+      }
     } else {
       var formUrl = pfGetFormUrl(tipo, t);
       if (formUrl) {
@@ -8493,6 +8512,24 @@ async function pfLiberarTarefa(tarefaId, btn) {
     if (e.message && e.message.includes('AUTH_GOOGLE')) { pfHubLogout(); return; }
     if (btn) { btn.disabled = false; btn.classList.remove('is-busy'); btn.textContent = 'Liberar tarefa'; }
     alert('Erro ao liberar tarefa: ' + e.message);
+  }
+}
+
+// ── v58: resolver gateway de decisão (Sim/Não) no PCF ─────────────────────────
+// Grava a escolha do técnico via resolverDecisao (GAS) e recarrega o pipeline —
+// a reconciliação do backend libera a próxima tarefa (ramo que casa) e dispensa
+// os ramos não seguidos. Espelha o _resolverDecisao já existente no PCM.
+async function pfResolverDecisao(tarefaId, valor, btn) {
+  if (btn) { btn.disabled = true; btn.classList.add('is-busy'); }
+  var usuario = (window.PROPER_SESSION && window.PROPER_SESSION.tecnico)
+    ? (window.PROPER_SESSION.tecnico.id || window.PROPER_SESSION.tecnico.nome || '') : '';
+  try {
+    await pgpPostJson('resolverDecisao', { os_id: _pfOsId, tarefa_id: tarefaId, valor: valor, usuario: usuario });
+    await pfLoadPipeline();
+  } catch(e) {
+    if (e.message && e.message.includes('AUTH_GOOGLE')) { pfHubLogout(); return; }
+    if (btn) { btn.disabled = false; btn.classList.remove('is-busy'); }
+    alert('Erro ao registrar decisão: ' + e.message);
   }
 }
 
