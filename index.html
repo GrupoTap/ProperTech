@@ -7001,7 +7001,21 @@ async function pgpCarregarMaquinaOS(eq, idx){
     }
   }
 
-  const machineToLoad = pgpMergeClientDataForLoad(found || eq, eq?.clientData || null);
+  // v58 — Fix (campos em branco recorrentes: tipo/horímetro/potência/ano/regime):
+  // a OS/servidor (eq) é AUTORITATIVA para TODOS os campos da máquina. O cache local
+  // (found) só COMPLEMENTA campos que vierem VAZIOS do servidor — nunca sobrescreve
+  // nem apaga o que o servidor já tem. Antes (`found || eq`) um cache incompleto (que
+  // guarda hourTotal/ano mas frequentemente NÃO tem tipo/potência/regime) sombreava o
+  // servidor e zerava esses campos a cada carga da OS. Também evita propagar id órfão
+  // do cache (ex.: "EQ-MODELO"), pois eq.id (servidor) tem prioridade.
+  const _pgpVazio = (v)=> v===undefined || v===null || v==='' || (Array.isArray(v) && v.length===0);
+  const _pgpBase = Object.assign({}, eq);
+  if(found){
+    Object.keys(found).forEach(function(k){
+      if(_pgpVazio(_pgpBase[k]) && !_pgpVazio(found[k])) _pgpBase[k] = found[k];
+    });
+  }
+  const machineToLoad = pgpMergeClientDataForLoad(_pgpBase, eq?.clientData || null);
   if(eq.client) machineToLoad.client = eq.client;
   // Peças vindas da OS têm prioridade absoluta — mesmo quando found foi aceito, nunca
   // deixar peças do cache local sobrescreverem as peças reais da OS.
