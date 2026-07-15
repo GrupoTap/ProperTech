@@ -1,3 +1,4 @@
+<!-- V60 (Fases A + B/C, STAGED — NÃO PUBLICADO). Fase A: confirmação reforçada ao concluir tarefa terminal (t.Acao_Terminal). Fase B: modal de conclusão renderiza slots de foto (pfRenderRequisitosHtml/pfUploadFotoTarefa reusam compressPhotoForDrive + salvarFotosDrivePGP, chave os|tarefa|slot); trava no mínimo. Fase C: checklist (rádio/checkbox) gateia a conclusão. pfConfirmarTarefa valida e envia respostas_json. Requer GAS v72 (colunas Requisitos_JSON/Respostas_JSON; getPipelineByOS já devolve via getSheetDataActive) + PCM V82. Renomear arquivo para PCF_V60.html ao publicar. Ver PATCH_FASES_BCD_2026-07-15.md. -->
 <!-- v58: FILTRO Todas/Minhas na lista de OS (par do GAS_properCare_v69.js). O técnico passa a enxergar TODAS as OS (getOS com escopo:'todas'), não só as vinculadas a ele, para poder assumir tarefas de qualquer OS. Nova linha de chips "Todas as OS"/"Minhas" (padrão: Todas as OS). "Minhas" filtra por o.designada_para_mim (flag vinda do getOS = usuário no vínculo da OS OU Usuario_Designado de alguma tarefa, qualquer fase). Novas: var _pfOsDesignFilter, função pfSetOSDesignFilter, chips .pf-os-design-filter-chip; pfLoadOS acrescenta params.escopo='todas'; pfRenderOS aplica o filtro e o toggle de chip. 100% aditivo; nenhum id/data-key/rota/função existente renomeado. Publicar como PCF_V58.html. -->
 <!-- v57: Sprint F — rename form08→form02 (par GAS_properCare_v68.js/PCM v78/Hub v15). pfGetFormUrl (~L8333): case 'auto:form02' agora retorna .../ProperForms/form02.html; case 'auto:form08' mantido como alias legado apontando para a mesma URL. pfAbrirForm (~L8688): resolve osObj via _pfOsList.find (mesmo padrão de pfSelecionarOS) e acrescenta cliente/os_numero na urlComOs (&cliente=/&os_numero=), sem criar globals novas. 100% aditivo; nenhum id/data-key/rota/função existente renomeado. -->
 <!-- v56: ENVIO PARCIAL SEGURO (frontend-only, sem GAS) — ver PROMPT_CLAUDE_CODE_ENVIO_PARCIAL_2026-07-11.md. 100% aditivo; nenhum id/data-view/data-key/rota/função existente renomeado; node --check real passa nos 3 blocos de script. Dois predicados novos, cada um com critério de propósito diferente: pgpMaquinaPronta(midx) — ESTRITO, replica a MESMA validação que pgpEnviarPreventiva já aplica (horímetro informado + toda peça não-N/A com ação + toda "trocada" com referência); usado só como leitura prévia, pgpEnviarPreventiva NÃO foi alterado. pgpMaquinaTemConteudo(midx) — FROUXO (≥1 peça com ação/N-A OU ≥1 foto, SEM exigir horímetro pois este vem pré-preenchido desde o v51 e não sinaliza inspeção real). FIX 1: gerarPDF() (~L5424) agora pula (sem gerar nem subir ao Drive) qualquer máquina sem pgpMaquinaTemConteudo — corrige PDFs em branco poluindo a pasta da OS quando o cliente tem mais máquinas carregadas do que inspecionadas; toast final honesto ("N PDFs gerados · M sem inspeção pulada(s)") e alerta dedicado se nenhuma máquina tinha conteúdo. FIX 2: pgpEnviarTodasPreventivas() (~L7203) calcula ANTES quais máquinas estão prontas (pgpMaquinaPronta) e confirma "Registrar N de TOTAL máquina(s)?" listando as incompletas como "ficam para depois" (não mais tratado como erro); o loop de envio passa a percorrer só as prontas (_prontasIdx); o pop-up final de "Pendências" foi substituído por "Falha no envio", disparado só quando pgpEnviarPreventiva de fato falha — envio parcial deliberado deixa de acionar esse alerta. -->
@@ -8422,6 +8423,7 @@ function pfBuildCard(t) {
               '<input type="datetime-local" id="pfHoraFim-' + tid + '" value="' + fimSugeridoStr + '" style="width:100%;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:6px;padding:6px;font-size:12px">' +
             '</div>' +
           '</div>' +
+          pfRenderRequisitosHtml(t, tid) +   /* v72 Fases B/C: fotos + checklist */
           '<textarea class="pf-obs-input" id="pfObs-' + tid + '" placeholder="Observação (opcional)…" rows="2"></textarea>' +
           '<div class="pf-confirm-row">' +
             '<button class="pf-btn pf-btn-confirmar" id="pfBtnConfirmar-' + tid + '" onclick="pfConfirmarTarefa(\'' + tidSafe + '\')">✓ Confirmar</button>' +
@@ -8700,7 +8702,77 @@ function pfCancelarConfirmar(tarefaId) {
   if (area) area.classList.remove('visible');
 }
 
+// v72 Fases B/C — requisitos de conclusão (fotos + checklist) em tarefa manual
+var _pfRespostas = {};
+function pfReqDe(t){ try { return JSON.parse((t && t.Requisitos_JSON) || '{}'); } catch(e){ return {}; } }
+function pfChecklistItemHtml(q, tid){
+  var name = 'pfChk-'+tid+'-'+q.id;
+  var opts = (q.opcoes||[]).map(function(o){
+    var type = q.tipo==='multipla' ? 'checkbox' : 'radio';
+    return '<label style="display:block;font-size:12px;color:#e2e8f0;margin:2px 0">'+
+      '<input type="'+type+'" name="'+name+'" value="'+String(o).replace(/"/g,'&quot;')+'"> '+o+'</label>';
+  }).join('');
+  return '<div style="margin:8px 0"><div style="font-size:11px;color:#94a3b8">'+
+    (q.pergunta||'') + (q.obrigatoria?' *':'') + '</div>'+ opts +'</div>';
+}
+function pfRenderRequisitosHtml(t, tid){
+  var req = pfReqDe(t); var h = '';
+  (req.fotos||[]).forEach(function(f){
+    h += '<div style="margin:8px 0"><div style="font-size:11px;color:#94a3b8">'+ (f.rotulo||f.id) +
+         ' (mín '+(f.min||0)+')</div>'+
+         '<input type="file" accept="image/*" capture="environment" multiple '+
+         'onchange="pfOnFotoTarefa(this,\''+tid+'\',\''+f.id+'\')">'+
+         '<div id="pfFotoCount-'+tid+'-'+f.id+'" style="font-size:11px;color:#64748b"></div></div>';
+  });
+  (req.checklist||[]).forEach(function(q){ h += pfChecklistItemHtml(q, tid); });
+  return h;
+}
+async function pfUploadFotoTarefa(os_id, tarefa_id, slotId, file){
+  try {
+    var r = await compressPhotoForDrive(file);
+    var base64 = (r.dataUrl||'').split(',')[1] || '';
+    var fileName = 'tar_' + tarefa_id + '_' + slotId + '_' + Date.now() + '.jpg';
+    var body = {
+      clientName: _pfOsNome || '', os_id: os_id,
+      dataBase64: base64, mime: 'image/jpeg', fileName: fileName,
+      attachmentType: 'foto_tarefa', caption: slotId,
+      entityType: 'pipeline_tarefa', entityId: os_id + '|' + tarefa_id + '|' + slotId,
+      createdBy: (window.PROPER_SESSION && window.PROPER_SESSION.tecnico ? window.PROPER_SESSION.tecnico.id : '')
+    };
+    await pgpSendOrQueueDrive('photo', 'salvarFotosDrivePGP', body, null);
+    return fileName;
+  } catch(e){ return ''; }
+}
+async function pfOnFotoTarefa(input, tid, slotId){
+  _pfRespostas[tid] = _pfRespostas[tid] || { fotos:{}, checklist:{} };
+  _pfRespostas[tid].fotos[slotId] = _pfRespostas[tid].fotos[slotId] || [];
+  for (var i=0;i<input.files.length;i++){
+    var fid = await pfUploadFotoTarefa(_pfOsId, tid, slotId, input.files[i]);
+    if (fid) _pfRespostas[tid].fotos[slotId].push(fid);
+  }
+  var el = document.getElementById('pfFotoCount-'+tid+'-'+slotId);
+  if (el) el.textContent = _pfRespostas[tid].fotos[slotId].length + ' foto(s) enviada(s)';
+}
+
 async function pfConfirmarTarefa(tarefaId) {
+  // v71 Fase A: confirmação reforçada em tarefa terminal
+  var _tf = (_pfTarefas || []).find(function(x){ return String(x.Tarefa_ID) === String(tarefaId); });
+  var _acao = _tf ? String(_tf.Acao_Terminal || '').trim() : '';
+  if (_acao === 'fechar_os' && !window.confirm('⚠ Concluir esta tarefa vai ENCERRAR a OS. Confirmar?')) return;
+  if (_acao === 'fechar_pipeline' && !window.confirm('Concluir vai finalizar esta etapa. A OS continua aberta aguardando a execução. Confirmar?')) return;
+  // v72 Fases B/C: valida fotos mínimas + checklist obrigatório e coleta respostas
+  var _req = pfReqDe(_tf || {});
+  var _resp = _pfRespostas[tarefaId] || { fotos:{}, checklist:{} };
+  var _faltaFoto = (_req.fotos||[]).find(function(f){ return ((_resp.fotos[f.id]||[]).length) < (f.min||0); });
+  if (_faltaFoto) { pfShowUnlockBanner('⚠ Faltam fotos: ' + (_faltaFoto.rotulo||_faltaFoto.id), true); return; }
+  (_req.checklist||[]).forEach(function(q){
+    var nm = 'pfChk-'+tarefaId+'-'+q.id;
+    var marcados = Array.prototype.slice.call(document.querySelectorAll('input[name="'+nm+'"]:checked')).map(function(x){return x.value;});
+    _resp.checklist[q.id] = (q.tipo==='multipla') ? marcados : (marcados[0]||'');
+  });
+  var _faltaChk = (_req.checklist||[]).find(function(q){ return q.obrigatoria && (!_resp.checklist[q.id] || _resp.checklist[q.id].length===0); });
+  if (_faltaChk) { pfShowUnlockBanner('⚠ Responda: ' + _faltaChk.pergunta, true); return; }
+  _pfRespostas[tarefaId] = _resp;
   var obs   = '';
   var obsEl = document.getElementById('pfObs-' + tarefaId);
   if (obsEl) obs = obsEl.value.trim();
@@ -8725,7 +8797,8 @@ async function pfConfirmarTarefa(tarefaId) {
       usuario:    usuario,
       observacao: obs,
       hora_inicio_estimada: horaInicioEstimada,
-      hora_fim_estimada: horaFimEstimada
+      hora_fim_estimada: horaFimEstimada,
+      respostas_json: JSON.stringify(_pfRespostas[tarefaId] || {}) // v72 Fases B/C
     });
     pfShowUnlockBanner('✅ Tarefa concluída!');
     pfLoadPipeline();
