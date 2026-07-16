@@ -5470,6 +5470,28 @@ async function gerarPDF() {
     if (_pdfPuladas.length) _msg += ' · ' + _pdfPuladas.length + ' sem inspeção pulada(s)';
     showNotification(_msg);
   }
+
+  // FIX perda de dados (aditivo) — gerar o PDF NÃO registra a preventiva no sistema
+  // (savePreventiva). Sem este lembrete, o técnico podia gerar o relatório, achar que
+  // concluiu e sair — deixando a preventiva VAZIA no PCM/Sheets mesmo com o PDF completo
+  // no Drive (caso GA37 BRP068954 / S.E.P. BECAPI, 16/07/2026). Só dispara em modo
+  // Preventiva e quando há máquina PRONTA para registrar; oferece registrar na hora.
+  if (count > 0 && _pgpTipoVisita === 'preventiva') {
+    let _algumaPronta = false;
+    for (let _mi = 0; _mi < machines.length; _mi++) {
+      try { if (pgpMaquinaPronta(_mi).pronta) { _algumaPronta = true; break; } } catch (_e) {}
+    }
+    if (_algumaPronta) {
+      const _reg = await AppDialog.confirm(
+        '✅ PDF gerado e salvo no Drive.\n\n' +
+        '⚠ ATENÇÃO: gerar o PDF NÃO registra a preventiva. Os dados só entram no ' +
+        'sistema (PCM/planilha) quando você toca em 🔧 Registrar Preventiva.\n\n' +
+        'Deseja registrar a preventiva agora?',
+        { title: 'Falta registrar a preventiva', okLabel: '🔧 Registrar agora' }
+      );
+      if (_reg) { try { await pgpEnviarTodasPreventivas(); } catch (_e) {} }
+    }
+  }
 }
 
 // v27 item 8: PDF único consolidado com todas as máquinas + índice na 1ª
