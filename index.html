@@ -1,3 +1,4 @@
+<!-- V60 (Fases A + B/C, STAGED — NÃO PUBLICADO). Fase A: confirmação reforçada ao concluir tarefa terminal (t.Acao_Terminal). Fase B: modal de conclusão renderiza slots de foto (pfRenderRequisitosHtml/pfUploadFotoTarefa reusam compressPhotoForDrive + salvarFotosDrivePGP, chave os|tarefa|slot); trava no mínimo. Fase C: checklist (rádio/checkbox) gateia a conclusão. pfConfirmarTarefa valida e envia respostas_json. Requer GAS v72 (colunas Requisitos_JSON/Respostas_JSON; getPipelineByOS já devolve via getSheetDataActive) + PCM V82. Renomear arquivo para PCF_V60.html ao publicar. Ver PATCH_FASES_BCD_2026-07-15.md. -->
 <!-- v58: FILTRO Todas/Minhas na lista de OS (par do GAS_properCare_v69.js). O técnico passa a enxergar TODAS as OS (getOS com escopo:'todas'), não só as vinculadas a ele, para poder assumir tarefas de qualquer OS. Nova linha de chips "Todas as OS"/"Minhas" (padrão: Todas as OS). "Minhas" filtra por o.designada_para_mim (flag vinda do getOS = usuário no vínculo da OS OU Usuario_Designado de alguma tarefa, qualquer fase). Novas: var _pfOsDesignFilter, função pfSetOSDesignFilter, chips .pf-os-design-filter-chip; pfLoadOS acrescenta params.escopo='todas'; pfRenderOS aplica o filtro e o toggle de chip. 100% aditivo; nenhum id/data-key/rota/função existente renomeado. Publicar como PCF_V58.html. -->
 <!-- v57: Sprint F — rename form08→form02 (par GAS_properCare_v68.js/PCM v78/Hub v15). pfGetFormUrl (~L8333): case 'auto:form02' agora retorna .../ProperForms/form02.html; case 'auto:form08' mantido como alias legado apontando para a mesma URL. pfAbrirForm (~L8688): resolve osObj via _pfOsList.find (mesmo padrão de pfSelecionarOS) e acrescenta cliente/os_numero na urlComOs (&cliente=/&os_numero=), sem criar globals novas. 100% aditivo; nenhum id/data-key/rota/função existente renomeado. -->
 <!-- v56: ENVIO PARCIAL SEGURO (frontend-only, sem GAS) — ver PROMPT_CLAUDE_CODE_ENVIO_PARCIAL_2026-07-11.md. 100% aditivo; nenhum id/data-view/data-key/rota/função existente renomeado; node --check real passa nos 3 blocos de script. Dois predicados novos, cada um com critério de propósito diferente: pgpMaquinaPronta(midx) — ESTRITO, replica a MESMA validação que pgpEnviarPreventiva já aplica (horímetro informado + toda peça não-N/A com ação + toda "trocada" com referência); usado só como leitura prévia, pgpEnviarPreventiva NÃO foi alterado. pgpMaquinaTemConteudo(midx) — FROUXO (≥1 peça com ação/N-A OU ≥1 foto, SEM exigir horímetro pois este vem pré-preenchido desde o v51 e não sinaliza inspeção real). FIX 1: gerarPDF() (~L5424) agora pula (sem gerar nem subir ao Drive) qualquer máquina sem pgpMaquinaTemConteudo — corrige PDFs em branco poluindo a pasta da OS quando o cliente tem mais máquinas carregadas do que inspecionadas; toast final honesto ("N PDFs gerados · M sem inspeção pulada(s)") e alerta dedicado se nenhuma máquina tinha conteúdo. FIX 2: pgpEnviarTodasPreventivas() (~L7203) calcula ANTES quais máquinas estão prontas (pgpMaquinaPronta) e confirma "Registrar N de TOTAL máquina(s)?" listando as incompletas como "ficam para depois" (não mais tratado como erro); o loop de envio passa a percorrer só as prontas (_prontasIdx); o pop-up final de "Pendências" foi substituído por "Falha no envio", disparado só quando pgpEnviarPreventiva de fato falha — envio parcial deliberado deixa de acionar esse alerta. -->
@@ -182,14 +183,9 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ProperCare Field · PGP Preventivas v32</title>
+<title>ProperCare Field · PGP Preventivas v32 · build PCF_V60</title>
+<meta name="app-build" content="PCF_V60" data-date="2026-07-17">
 <meta name="theme-color" content="#0f172a">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="ProperTech">
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
@@ -4364,6 +4360,14 @@ function captureState() {
   // v23: inclui as fotos (dataURL) para que as miniaturas sobrevivam ao fechar/reabrir o app
   state.photoStore = photoStore;
 
+  // FIX retomada (aditivo): guarda o ponto de trabalho para reabrir onde parou.
+  try {
+    state.osId = (typeof window._PGP_OS_ID !== 'undefined') ? window._PGP_OS_ID : null;
+    state.osCliente = (typeof window._PGP_OS_CLIENTE !== 'undefined') ? window._PGP_OS_CLIENTE : '';
+    state.tipoVisita = (typeof _pgpTipoVisita !== 'undefined') ? _pgpTipoVisita : 'inspecao';
+    state.currentMachine = (typeof currentMachine === 'number') ? currentMachine : 0;
+  } catch(e) {}
+
   return state;
 }
 
@@ -4478,7 +4482,7 @@ function autoSaveDraft() {
     const state = captureState();
     state.clientName = vg(0, 'razao_social');
     saveDraftStateSafely(state);
-  }, 1200);
+  }, 2500);
 }
 
 // v23: tenta salvar o rascunho com as fotos; se o localStorage estourar o limite
@@ -4486,6 +4490,19 @@ function autoSaveDraft() {
 // perder o restante do preenchimento, e avisa o técnico uma única vez.
 let _fotoQuotaWarned = false;
 function saveDraftStateSafely(state) {
+  // FIX UX (aditivo): rascunho no localStorage fica LEVE (sem fotos) — o
+  // JSON.stringify barato não trava a UI ao digitar. As fotos vão pro IndexedDB
+  // (cota de GB) e voltam no restore via pgpRestaurarFotosIDB.
+  var _idbOk = false;
+  try { _idbOk = ('indexedDB' in window) && !!window.indexedDB; } catch(e){ _idbOk = false; }
+  if (_idbOk) {
+    try { pgpPersistPhotosIDB('draft'); } catch(e0) {}
+    var _lite = Object.assign({}, state, { photoStore: {} });
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify(_lite)); } catch(e1) {}
+    return;
+  }
+  // Fallback (navegador sem IndexedDB): comportamento antigo — tenta com fotos,
+  // e sem fotos se estourar a cota.
   try {
     localStorage.setItem(DRAFT_KEY, JSON.stringify(state));
   } catch (e) {
@@ -4628,6 +4645,16 @@ function restoreDraft() {
   machines = [{}];
   createPanel(0);
   restoreState(draft);
+  // FIX retomada (aditivo): volta ao ponto exato - tipo de visita, OS em curso,
+  // fotos (via IndexedDB) e a maquina que estava aberta.
+  try { if (draft.tipoVisita) pgpSetTipoVisita(draft.tipoVisita); } catch(e){}
+  try { if (draft.osId) { window._PGP_OS_ID = draft.osId; window._PGP_OS_CLIENTE = draft.osCliente || ''; } } catch(e){}
+  try { pgpRestaurarFotosIDB('draft'); } catch(e){}
+  try {
+    if (typeof draft.currentMachine === 'number' && machines.length) {
+      switchMachine(Math.max(0, Math.min(draft.currentMachine, machines.length - 1)));
+    }
+  } catch(e){}
   document.getElementById('restoreBanner').style.display = 'none';
   try { localStorage.removeItem(DRAFT_KEY); } catch(e) {}
 }
@@ -4654,11 +4681,12 @@ function fecharSessoesEvt(e) {
 function renderSessoesList() {
   const sessions = getSessions();
   const body = document.getElementById('sessionsBody');
+  const _tools = '<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button type="button" onclick="pgpLimparAntigasUI()" style="font-size:12px;padding:6px 11px;border-radius:8px;border:1px solid #ddd;background:#fff;cursor:pointer">\uD83E\uDDF9 Limpar antigas (+' + _PGP_RETENCAO_DIAS + ' dias)</button></div>';
   if (!sessions.length) {
-    body.innerHTML = '<div class="sessions-empty">Nenhuma coleta salva ainda.<br>Use <b>💾 Salvar coleta atual</b> abaixo<br>ou clique em <b>Gerar Resumo</b>.</div>';
+    body.innerHTML = _tools + '<div class="sessions-empty">Nenhuma coleta salva ainda.<br>Use <b>💾 Salvar coleta atual</b> abaixo<br>ou clique em <b>Gerar Resumo</b>.</div>';
     return;
   }
-  body.innerHTML = '<div class="sessions-list">' + sessions.map((s, i) => `
+  body.innerHTML = _tools + '<div class="sessions-list">' + sessions.map((s, i) => `
     <div class="session-card">
       <div class="session-card-info">
         <div class="session-card-name">${s.label || s.clientName || '—'}</div>
@@ -4717,7 +4745,7 @@ document.addEventListener('input', function(e) {
   }
 });
 document.addEventListener('change', function(e) {
-  autoSaveDraft();
+  pgpSaveDraftAgora();   // gateway: campo concluído salva na hora
   autoSaveSession();
   if (e.target.dataset && e.target.dataset.key) {
     const pk = e.target.dataset.key.match(/^(m\d+_p\d+)_(contador|historico|ref)$/);
@@ -5471,11 +5499,7 @@ async function gerarPDF() {
     showNotification(_msg);
   }
 
-  // FIX perda de dados (aditivo) — gerar o PDF NÃO registra a preventiva no sistema
-  // (savePreventiva). Sem este lembrete, o técnico podia gerar o relatório, achar que
-  // concluiu e sair — deixando a preventiva VAZIA no PCM/Sheets mesmo com o PDF completo
-  // no Drive (caso GA37 BRP068954 / S.E.P. BECAPI, 16/07/2026). Só dispara em modo
-  // Preventiva e quando há máquina PRONTA para registrar; oferece registrar na hora.
+  // FIX perda de dados (aditivo) - gerar o PDF NAO registra a preventiva.
   if (count > 0 && _pgpTipoVisita === 'preventiva') {
     let _algumaPronta = false;
     for (let _mi = 0; _mi < machines.length; _mi++) {
@@ -5484,9 +5508,8 @@ async function gerarPDF() {
     if (_algumaPronta) {
       const _reg = await AppDialog.confirm(
         '✅ PDF gerado e salvo no Drive.\n\n' +
-        '⚠ ATENÇÃO: gerar o PDF NÃO registra a preventiva. Os dados só entram no ' +
-        'sistema (PCM/planilha) quando você toca em 🔧 Registrar Preventiva.\n\n' +
-        'Deseja registrar a preventiva agora?',
+        '⚠ ATENÇÃO: gerar o PDF NÃO registra a preventiva. Toque em 🔧 Registrar Preventiva para salvar no sistema.\n\n' +
+        'Registrar agora?',
         { title: 'Falta registrar a preventiva', okLabel: '🔧 Registrar agora' }
       );
       if (_reg) { try { await pgpEnviarTodasPreventivas(); } catch (_e) {} }
@@ -7029,7 +7052,21 @@ async function pgpCarregarMaquinaOS(eq, idx){
     }
   }
 
-  const machineToLoad = pgpMergeClientDataForLoad(found || eq, eq?.clientData || null);
+  // v58 — Fix (campos em branco recorrentes: tipo/horímetro/potência/ano/regime):
+  // a OS/servidor (eq) é AUTORITATIVA para TODOS os campos da máquina. O cache local
+  // (found) só COMPLEMENTA campos que vierem VAZIOS do servidor — nunca sobrescreve
+  // nem apaga o que o servidor já tem. Antes (`found || eq`) um cache incompleto (que
+  // guarda hourTotal/ano mas frequentemente NÃO tem tipo/potência/regime) sombreava o
+  // servidor e zerava esses campos a cada carga da OS. Também evita propagar id órfão
+  // do cache (ex.: "EQ-MODELO"), pois eq.id (servidor) tem prioridade.
+  const _pgpVazio = (v)=> v===undefined || v===null || v==='' || (Array.isArray(v) && v.length===0);
+  const _pgpBase = Object.assign({}, eq);
+  if(found){
+    Object.keys(found).forEach(function(k){
+      if(_pgpVazio(_pgpBase[k]) && !_pgpVazio(found[k])) _pgpBase[k] = found[k];
+    });
+  }
+  const machineToLoad = pgpMergeClientDataForLoad(_pgpBase, eq?.clientData || null);
   if(eq.client) machineToLoad.client = eq.client;
   // Peças vindas da OS têm prioridade absoluta — mesmo quando found foi aceito, nunca
   // deixar peças do cache local sobrescreverem as peças reais da OS.
@@ -7243,33 +7280,15 @@ async function pgpEnviarTodasPreventivas(){
     return pgpEnviarPreventiva(currentMachine);
   }
   const total = machines.length;
-  // v56: envio parcial seguro — calcula ANTES quais máquinas estão prontas
-  // (critério estrito = a mesma validação do envio). As não-prontas ficam para
-  // depois; deixa de ser tratado como "pendência/erro".
-  const _prontasIdx = [];
-  const _pendentes  = [];
-  for(let i = 0; i < machines.length; i++){
-    const _r = pgpMaquinaPronta(i);
-    if(_r.pronta) _prontasIdx.push(i);
-    else _pendentes.push('Máq. ' + (i+1) + (_r.motivo ? ' — ' + _r.motivo : ''));
-  }
-  if(_prontasIdx.length === 0){
-    await AppDialog.alert(
-      'Nenhuma máquina está pronta para registrar ainda.\n\n' + _pendentes.join('\n') +
-      '\n\nInforme o horímetro e a ação de cada peça.',
-      { variant:'warn', title:'Nada a registrar' }
-    );
-    return;
-  }
-  let _conf = 'Registrar ' + _prontasIdx.length + ' de ' + total + ' máquina(s) agora?';
-  if(_pendentes.length){
-    _conf += '\n\nEstas ficam para depois (incompletas):\n' + _pendentes.join('\n');
-  }
-  const ok = await AppDialog.confirm(
-    _conf,
-    { title:'Registrar preventivas', okLabel:'Registrar ' + _prontasIdx.length }
-  );
-  if(!ok) return;
+  // FIX (aditivo): seletor com % e checkbox por maquina (a ativa vem marcada),
+  // no lugar do confirm "todas/nada". Permite registrar em lote OU individual.
+  const _selIdx = await pgpAbrirSeletorRegistro();
+  if(_selIdx === null) return;                       // cancelou
+  if(!_selIdx.length){ showNotification('Nenhuma máquina selecionada'); return; }
+  const _selSet = new Set(_selIdx);
+  const _prontasIdx = _selIdx.slice();               // percorre so o escolhido
+  const _pendentes  = [];                            // nao escolhidas = ficam p/ depois
+  for(let i = 0; i < machines.length; i++){ if(!_selSet.has(i)) _pendentes.push('Máq. ' + (i+1)); }
 
   const btn = document.querySelector('.btn-preventiva');
   let _slow = null;
@@ -7764,6 +7783,230 @@ function pgpMaquinaTemConteudo(midx){
   }
   return false;
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FIXES DE CAMPO (aditivo, 16/07/2026) — 100% aditivo; nenhuma função/rota/id
+// existente renomeada. Cobre: (1) fotos persistentes em IndexedDB (sobrevivem à
+// cota de 5MB do localStorage — corrige thumbs sumindo ao reabrir); (2) retomada
+// do ponto de trabalho (tipo de visita, OS, máquina, fotos) ao reabrir; (3)
+// seletor de registro com % e checkbox por máquina (lote OU individual, a ativa
+// já marcada); (4) retenção de 15 dias + botão de limpeza manual.
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ---- IndexedDB mínimo (chave→valor). Degrada em silêncio se indisponível. ----
+var _PGP_IDB_NAME = 'proper_pcf_idb';
+var _PGP_IDB_STORE = 'photos';
+var _pgpIdbPromise = null;
+function _pgpIdbOpen(){
+  if(_pgpIdbPromise) return _pgpIdbPromise;
+  _pgpIdbPromise = new Promise(function(resolve){
+    try{
+      if(!('indexedDB' in window) || !window.indexedDB){ resolve(null); return; }
+      var req = indexedDB.open(_PGP_IDB_NAME, 1);
+      req.onupgradeneeded = function(){
+        var db = req.result;
+        if(!db.objectStoreNames.contains(_PGP_IDB_STORE)) db.createObjectStore(_PGP_IDB_STORE);
+      };
+      req.onsuccess = function(){ resolve(req.result); };
+      req.onerror = function(){ resolve(null); };
+    }catch(e){ resolve(null); }
+  });
+  return _pgpIdbPromise;
+}
+function _pgpIdbStore(mode){
+  return _pgpIdbOpen().then(function(db){
+    if(!db) return null;
+    try{ return db.transaction(_PGP_IDB_STORE, mode).objectStore(_PGP_IDB_STORE); }catch(e){ return null; }
+  });
+}
+function pgpIdbSet(key, val){
+  return _pgpIdbStore('readwrite').then(function(st){
+    if(!st) return false;
+    return new Promise(function(res){ try{ var r=st.put(val,key); r.onsuccess=function(){res(true);}; r.onerror=function(){res(false);}; }catch(e){ res(false); } });
+  });
+}
+function pgpIdbGet(key){
+  return _pgpIdbStore('readonly').then(function(st){
+    if(!st) return null;
+    return new Promise(function(res){ try{ var r=st.get(key); r.onsuccess=function(){res(r.result||null);}; r.onerror=function(){res(null);}; }catch(e){ res(null); } });
+  });
+}
+function pgpIdbDel(key){
+  return _pgpIdbStore('readwrite').then(function(st){
+    if(!st) return false;
+    return new Promise(function(res){ try{ var r=st.delete(key); r.onsuccess=function(){res(true);}; r.onerror=function(){res(false);}; }catch(e){ res(false); } });
+  });
+}
+
+// ---- Persistência de fotos por escopo (usamos só 'draft' = coleta atual) ----
+function _pgpPhotoKeyFor(scope){ return 'ps::' + (scope || 'draft'); }
+function _pgpPhotoSnapshot(){
+  var out = {};
+  try{
+    Object.keys(photoStore).forEach(function(midx){
+      var byKey = photoStore[midx] || {};
+      var dst = {};
+      Object.keys(byKey).forEach(function(pk){
+        var arr = byKey[pk] || [];
+        dst[pk] = arr.map(function(f){ return { label:f.label, dataUrl:f.dataUrl, w:f.w, h:f.h, driveStatus:f.driveStatus }; });
+      });
+      out[midx] = dst;
+    });
+  }catch(e){}
+  return out;
+}
+function pgpPersistPhotosIDB(scope){
+  try{ return pgpIdbSet(_pgpPhotoKeyFor(scope), { ts: Date.now(), photoStore: _pgpPhotoSnapshot() }); }
+  catch(e){ return Promise.resolve(false); }
+}
+// Reinjeta thumbs ausentes a partir do IDB (só complementa; nunca sobrescreve o
+// que já está na tela). Retorna Promise<bool>.
+function pgpRestaurarFotosIDB(scope){
+  return pgpIdbGet(_pgpPhotoKeyFor(scope)).then(function(rec){
+    if(!rec || !rec.photoStore) return false;
+    var ps = rec.photoStore;
+    var achou = false;
+    Object.keys(ps).forEach(function(midx){
+      var byKey = ps[midx] || {};
+      Object.keys(byKey).forEach(function(pk){
+        var arr = byKey[pk] || [];
+        if(!arr.length) return;
+        var cur = (photoStore[midx] && photoStore[midx][pk]) ? photoStore[midx][pk] : null;
+        if(cur && cur.length) return; // já tem na tela — mantém
+        if(!photoStore[midx]) photoStore[midx] = {};
+        photoStore[midx][pk] = arr.map(function(f){ return { label:f.label, dataUrl:f.dataUrl, w:f.w, h:f.h, driveStatus:f.driveStatus||'pending' }; });
+        achou = true;
+        try{ renderPhotoThumbs(parseInt(midx), pk); syncDoneButtonsForKey(parseInt(midx), pk); }catch(e){}
+      });
+    });
+    return achou;
+  }).catch(function(){ return false; });
+}
+
+// ---- % de preenchimento de uma máquina (horímetro + peças com ação/N-A) ----
+function pgpMaquinaPercent(midx){
+  var idx = pgpGetMachineIndex(midx);
+  var p = 'm' + idx + '_';
+  var total = 1 + PARTS.length;
+  var done = 0;
+  var hEl = document.querySelector('[data-key="' + p + 'horimetro"]');
+  if(hEl && (parseInt(String(hEl.value||'').trim()) || 0) > 0) done++;
+  PARTS.forEach(function(pt){
+    var pk = p + pt.k;
+    var naBtn = document.getElementById(pk + '_na');
+    var acaoEl = document.getElementById(pk + '_acao');
+    if((naBtn && naBtn.classList.contains('active')) || (acaoEl && acaoEl.value)) done++;
+  });
+  if(total <= 0) return 0;
+  var pct = Math.round(done / total * 100);
+  return pct > 100 ? 100 : pct;
+}
+
+function _pgpEsc(s){
+  return String(s==null?'':s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; });
+}
+
+// ---- Seletor de registro: lista máquinas com % e checkbox; a ativa vem marcada.
+// Resolve com array de índices, [] se nada, ou null se cancelar. ----
+function pgpAbrirSeletorRegistro(){
+  return new Promise(function(resolve){
+    var ativa = (typeof currentMachine === 'number') ? currentMachine : 0;
+    var ov = document.createElement('div');
+    ov.className = 'pgp-reg-overlay';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100000;display:flex;align-items:flex-end;justify-content:center';
+    var linhas = machines.map(function(m, i){
+      var pct = pgpMaquinaPercent(i);
+      var pr = pgpMaquinaPronta(i);
+      var nome = (vg(i,'modelo') || vg(i,'marca') || ('Máquina ' + (i+1)));
+      var ns = vg(i,'ns'); if(ns && ns!=='—') nome += ' · ' + ns;
+      var checked = (i === ativa) ? 'checked' : '';
+      var cor = pct>=100 ? '#16a34a' : (pct>=50 ? '#d97706' : '#b91c1c');
+      var aviso = pr.pronta ? '' : ('<div style="font-size:11px;color:#b91c1c;margin-top:3px">⚠ ' + _pgpEsc(pr.motivo||'incompleta') + '</div>');
+      return '<label style="display:flex;align-items:center;gap:12px;padding:13px 4px;border-bottom:1px solid #eee;cursor:pointer">' +
+        '<input type="checkbox" class="pgp-reg-cb" data-idx="' + i + '" ' + checked + ' style="width:22px;height:22px;flex:none;accent-color:#c0392b">' +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Máq. ' + (i+1) + ' — ' + _pgpEsc(nome) + '</div>' +
+          '<div style="height:7px;background:#eee;border-radius:5px;margin-top:6px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:' + cor + '"></div></div>' +
+          aviso +
+        '</div>' +
+        '<div style="font-weight:700;font-size:14px;color:' + cor + ';flex:none;min-width:42px;text-align:right">' + pct + '%</div>' +
+      '</label>';
+    }).join('');
+    ov.innerHTML =
+      '<div style="background:#fff;width:100%;max-width:520px;border-radius:16px 16px 0 0;max-height:86vh;display:flex;flex-direction:column;box-shadow:0 -4px 24px rgba(0,0,0,.28);font-family:inherit">' +
+        '<div style="padding:16px 18px 4px;font-weight:700;font-size:17px">Registrar preventiva</div>' +
+        '<div style="padding:0 18px 10px;font-size:12px;color:#666">Marque quais máquinas registrar agora. A máquina aberta já vem marcada — desmarque para enviar individualmente.</div>' +
+        '<div style="overflow:auto;padding:0 18px;-webkit-overflow-scrolling:touch">' + linhas + '</div>' +
+        '<div style="display:flex;gap:10px;padding:12px 18px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));border-top:1px solid #eee">' +
+          '<button type="button" class="pgp-reg-cancel" style="flex:1;padding:14px;border-radius:10px;border:1px solid #ccc;background:#fff;font-weight:600;font-size:15px;cursor:pointer">Cancelar</button>' +
+          '<button type="button" class="pgp-reg-ok" style="flex:2;padding:14px;border-radius:10px;border:none;background:#c0392b;color:#fff;font-weight:700;font-size:15px;cursor:pointer">🔧 Registrar</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(ov);
+    function fechar(val){ try{ document.body.removeChild(ov); }catch(e){} resolve(val); }
+    ov.addEventListener('click', function(e){ if(e.target===ov) fechar(null); });
+    ov.querySelector('.pgp-reg-cancel').onclick = function(){ fechar(null); };
+    ov.querySelector('.pgp-reg-ok').onclick = function(){
+      var idxs = [].slice.call(ov.querySelectorAll('.pgp-reg-cb'))
+        .filter(function(cb){ return cb.checked; })
+        .map(function(cb){ return parseInt(cb.dataset.idx); });
+      fechar(idxs);
+    };
+  });
+}
+
+// ---- Retenção: remove coletas salvas com mais de N dias + a foto no IDB de
+// rascunho antigo. Retorna quantas coletas foram removidas. ----
+var _PGP_RETENCAO_DIAS = 15;
+function pgpLimparAntigas(dias, opts){
+  opts = opts || {};
+  var d = (typeof dias === 'number' && dias > 0) ? dias : _PGP_RETENCAO_DIAS;
+  var cutoff = Date.now() - d * 86400000;
+  var removidas = 0;
+  try{
+    var sessions = getSessions();
+    var kept = sessions.filter(function(s){
+      var t = (typeof s.ts === 'number') ? s.ts : null;
+      if(t === null) return true;           // sem timestamp: não apaga por segurança
+      return t >= cutoff;
+    });
+    removidas = sessions.length - kept.length;
+    if(removidas > 0) persistSessions(kept);
+  }catch(e){}
+  // rascunho antigo: descarta o DRAFT_KEY e a foto de rascunho no IDB
+  try{
+    var draft = getDraft();
+    if(draft && typeof draft.ts === 'number' && draft.ts < cutoff){
+      localStorage.removeItem(DRAFT_KEY);
+      pgpIdbDel(_pgpPhotoKeyFor('draft'));
+    }
+  }catch(e){}
+  return removidas;
+}
+function pgpAutoPurgeAntigas(){ try{ pgpLimparAntigas(_PGP_RETENCAO_DIAS, {silent:true}); }catch(e){} }
+// Save IMEDIATO (sem debounce) do rascunho leve — usado nos "gateways" (campo
+// concluído = evento change) e ao mandar o app pro segundo plano. Barato porque
+// não serializa fotos (elas já estão no IndexedDB).
+function pgpSaveDraftAgora(){
+  try{
+    clearTimeout(_draftTimer);
+    var state = captureState();
+    state.clientName = vg(0, 'razao_social');
+    saveDraftStateSafely(state);
+  }catch(e){}
+}
+async function pgpLimparAntigasUI(){
+  var ok = await AppDialog.confirm(
+    'Limpar do aparelho as coletas salvas com mais de ' + _PGP_RETENCAO_DIAS + ' dias?\n\n' +
+    'Isso NÃO afeta o que já foi registrado no sistema/Sheets nem os PDFs no Drive — só libera espaço local.',
+    { title:'Limpar coletas antigas', okLabel:'Limpar' }
+  );
+  if(!ok) return;
+  var n = pgpLimparAntigas(_PGP_RETENCAO_DIAS);
+  showNotification(n > 0 ? ('🧹 ' + n + ' coleta(s) antiga(s) removida(s)') : 'Nada a limpar — nenhuma coleta com mais de ' + _PGP_RETENCAO_DIAS + ' dias.');
+  try{ renderSessoesList(); }catch(e){}
+}
+
 
 // v55: portado do PCM (_comLoadingBtn_, par idêntico — ver PCM_V77.html ~L8547),
 // aqui já evoluído para somar a classe .is-busy (spinner visual) além de
@@ -8436,6 +8679,7 @@ function pfBuildCard(t) {
               '<input type="datetime-local" id="pfHoraFim-' + tid + '" value="' + fimSugeridoStr + '" style="width:100%;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:6px;padding:6px;font-size:12px">' +
             '</div>' +
           '</div>' +
+          pfRenderRequisitosHtml(t, tid) +   /* v72 Fases B/C: fotos + checklist */
           '<textarea class="pf-obs-input" id="pfObs-' + tid + '" placeholder="Observação (opcional)…" rows="2"></textarea>' +
           '<div class="pf-confirm-row">' +
             '<button class="pf-btn pf-btn-confirmar" id="pfBtnConfirmar-' + tid + '" onclick="pfConfirmarTarefa(\'' + tidSafe + '\')">✓ Confirmar</button>' +
@@ -8443,6 +8687,25 @@ function pfBuildCard(t) {
           '</div>' +
         '</div>' +
       '</div>';
+    } else if (tipo === 'decisao') {
+      // v58: gateway de decisão — renderiza 1 botão por opção (Opcoes_JSON). Cada
+      // clique grava a escolha via resolverDecisao; a reconciliação do GAS libera/
+      // dispensa os ramos condicionais. Antes esta tarefa caía no "Em breve…".
+      var pfOpcoesDec = [];
+      try { pfOpcoesDec = JSON.parse(t.Opcoes_JSON || '[]'); } catch(e) { pfOpcoesDec = []; }
+      if (pfOpcoesDec.length) {
+        acaoHtml = '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">' +
+          pfOpcoesDec.map(function(o) {
+            var vSafe = String(o.valor).replace(/'/g, "\\'");
+            var lbl   = String(o.label || o.valor);
+            return '<button class="pf-btn pf-btn-abrir-form" onclick="pfResolverDecisao(\'' + tidSafe + '\',\'' + vSafe + '\',this)">' + lbl + '</button>';
+          }).join('') +
+        '</div>';
+      } else {
+        acaoHtml = '<div style="margin-top:10px">' +
+          '<button class="pf-btn pf-btn-breve" disabled title="Decisão sem opções configuradas no template">Sem opções configuradas</button>' +
+        '</div>';
+      }
     } else {
       var formUrl = pfGetFormUrl(tipo, t);
       if (formUrl) {
@@ -8521,6 +8784,24 @@ async function pfLiberarTarefa(tarefaId, btn) {
     if (e.message && e.message.includes('AUTH_GOOGLE')) { pfHubLogout(); return; }
     if (btn) { btn.disabled = false; btn.classList.remove('is-busy'); btn.textContent = 'Liberar tarefa'; }
     alert('Erro ao liberar tarefa: ' + e.message);
+  }
+}
+
+// ── v58: resolver gateway de decisão (Sim/Não) no PCF ─────────────────────────
+// Grava a escolha do técnico via resolverDecisao (GAS) e recarrega o pipeline —
+// a reconciliação do backend libera a próxima tarefa (ramo que casa) e dispensa
+// os ramos não seguidos. Espelha o _resolverDecisao já existente no PCM.
+async function pfResolverDecisao(tarefaId, valor, btn) {
+  if (btn) { btn.disabled = true; btn.classList.add('is-busy'); }
+  var usuario = (window.PROPER_SESSION && window.PROPER_SESSION.tecnico)
+    ? (window.PROPER_SESSION.tecnico.id || window.PROPER_SESSION.tecnico.nome || '') : '';
+  try {
+    await pgpPostJson('resolverDecisao', { os_id: _pfOsId, tarefa_id: tarefaId, valor: valor, usuario: usuario });
+    await pfLoadPipeline();
+  } catch(e) {
+    if (e.message && e.message.includes('AUTH_GOOGLE')) { pfHubLogout(); return; }
+    if (btn) { btn.disabled = false; btn.classList.remove('is-busy'); }
+    alert('Erro ao registrar decisão: ' + e.message);
   }
 }
 
@@ -8677,7 +8958,77 @@ function pfCancelarConfirmar(tarefaId) {
   if (area) area.classList.remove('visible');
 }
 
+// v72 Fases B/C — requisitos de conclusão (fotos + checklist) em tarefa manual
+var _pfRespostas = {};
+function pfReqDe(t){ try { return JSON.parse((t && t.Requisitos_JSON) || '{}'); } catch(e){ return {}; } }
+function pfChecklistItemHtml(q, tid){
+  var name = 'pfChk-'+tid+'-'+q.id;
+  var opts = (q.opcoes||[]).map(function(o){
+    var type = q.tipo==='multipla' ? 'checkbox' : 'radio';
+    return '<label style="display:block;font-size:12px;color:#e2e8f0;margin:2px 0">'+
+      '<input type="'+type+'" name="'+name+'" value="'+String(o).replace(/"/g,'&quot;')+'"> '+o+'</label>';
+  }).join('');
+  return '<div style="margin:8px 0"><div style="font-size:11px;color:#94a3b8">'+
+    (q.pergunta||'') + (q.obrigatoria?' *':'') + '</div>'+ opts +'</div>';
+}
+function pfRenderRequisitosHtml(t, tid){
+  var req = pfReqDe(t); var h = '';
+  (req.fotos||[]).forEach(function(f){
+    h += '<div style="margin:8px 0"><div style="font-size:11px;color:#94a3b8">'+ (f.rotulo||f.id) +
+         ' (mín '+(f.min||0)+')</div>'+
+         '<input type="file" accept="image/*" capture="environment" multiple '+
+         'onchange="pfOnFotoTarefa(this,\''+tid+'\',\''+f.id+'\')">'+
+         '<div id="pfFotoCount-'+tid+'-'+f.id+'" style="font-size:11px;color:#64748b"></div></div>';
+  });
+  (req.checklist||[]).forEach(function(q){ h += pfChecklistItemHtml(q, tid); });
+  return h;
+}
+async function pfUploadFotoTarefa(os_id, tarefa_id, slotId, file){
+  try {
+    var r = await compressPhotoForDrive(file);
+    var base64 = (r.dataUrl||'').split(',')[1] || '';
+    var fileName = 'tar_' + tarefa_id + '_' + slotId + '_' + Date.now() + '.jpg';
+    var body = {
+      clientName: _pfOsNome || '', os_id: os_id,
+      dataBase64: base64, mime: 'image/jpeg', fileName: fileName,
+      attachmentType: 'foto_tarefa', caption: slotId,
+      entityType: 'pipeline_tarefa', entityId: os_id + '|' + tarefa_id + '|' + slotId,
+      createdBy: (window.PROPER_SESSION && window.PROPER_SESSION.tecnico ? window.PROPER_SESSION.tecnico.id : '')
+    };
+    await pgpSendOrQueueDrive('photo', 'salvarFotosDrivePGP', body, null);
+    return fileName;
+  } catch(e){ return ''; }
+}
+async function pfOnFotoTarefa(input, tid, slotId){
+  _pfRespostas[tid] = _pfRespostas[tid] || { fotos:{}, checklist:{} };
+  _pfRespostas[tid].fotos[slotId] = _pfRespostas[tid].fotos[slotId] || [];
+  for (var i=0;i<input.files.length;i++){
+    var fid = await pfUploadFotoTarefa(_pfOsId, tid, slotId, input.files[i]);
+    if (fid) _pfRespostas[tid].fotos[slotId].push(fid);
+  }
+  var el = document.getElementById('pfFotoCount-'+tid+'-'+slotId);
+  if (el) el.textContent = _pfRespostas[tid].fotos[slotId].length + ' foto(s) enviada(s)';
+}
+
 async function pfConfirmarTarefa(tarefaId) {
+  // v71 Fase A: confirmação reforçada em tarefa terminal
+  var _tf = (_pfTarefas || []).find(function(x){ return String(x.Tarefa_ID) === String(tarefaId); });
+  var _acao = _tf ? String(_tf.Acao_Terminal || '').trim() : '';
+  if (_acao === 'fechar_os' && !window.confirm('⚠ Concluir esta tarefa vai ENCERRAR a OS. Confirmar?')) return;
+  if (_acao === 'fechar_pipeline' && !window.confirm('Concluir vai finalizar esta etapa. A OS continua aberta aguardando a execução. Confirmar?')) return;
+  // v72 Fases B/C: valida fotos mínimas + checklist obrigatório e coleta respostas
+  var _req = pfReqDe(_tf || {});
+  var _resp = _pfRespostas[tarefaId] || { fotos:{}, checklist:{} };
+  var _faltaFoto = (_req.fotos||[]).find(function(f){ return ((_resp.fotos[f.id]||[]).length) < (f.min||0); });
+  if (_faltaFoto) { pfShowUnlockBanner('⚠ Faltam fotos: ' + (_faltaFoto.rotulo||_faltaFoto.id), true); return; }
+  (_req.checklist||[]).forEach(function(q){
+    var nm = 'pfChk-'+tarefaId+'-'+q.id;
+    var marcados = Array.prototype.slice.call(document.querySelectorAll('input[name="'+nm+'"]:checked')).map(function(x){return x.value;});
+    _resp.checklist[q.id] = (q.tipo==='multipla') ? marcados : (marcados[0]||'');
+  });
+  var _faltaChk = (_req.checklist||[]).find(function(q){ return q.obrigatoria && (!_resp.checklist[q.id] || _resp.checklist[q.id].length===0); });
+  if (_faltaChk) { pfShowUnlockBanner('⚠ Responda: ' + _faltaChk.pergunta, true); return; }
+  _pfRespostas[tarefaId] = _resp;
   var obs   = '';
   var obsEl = document.getElementById('pfObs-' + tarefaId);
   if (obsEl) obs = obsEl.value.trim();
@@ -8702,7 +9053,8 @@ async function pfConfirmarTarefa(tarefaId) {
       usuario:    usuario,
       observacao: obs,
       hora_inicio_estimada: horaInicioEstimada,
-      hora_fim_estimada: horaFimEstimada
+      hora_fim_estimada: horaFimEstimada,
+      respostas_json: JSON.stringify(_pfRespostas[tarefaId] || {}) // v72 Fases B/C
     });
     pfShowUnlockBanner('✅ Tarefa concluída!');
     pfLoadPipeline();
@@ -8880,6 +9232,13 @@ renderTabs();
 updateProgress();
 setupBackGuard();
 checkRestoreDraft();
+try{ pgpAutoPurgeAntigas(); }catch(e){}
+// FIX UX (aditivo): salva no instante em que o app vai pro segundo plano / é
+// fechado — protege contra "sair sem querer" melhor que qualquer timer.
+try {
+  document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'hidden') { try{ pgpSaveDraftAgora(); }catch(e){} } });
+  window.addEventListener('pagehide', function(){ try{ pgpSaveDraftAgora(); }catch(e){} });
+} catch(e){}
 pgpAtualizarAcoesPorTipoVisita();
 if(window._PGP_OS_ID && (function(){ try { return localStorage.getItem('proper_pcf_return_os_'+window._PGP_OS_ID)==='1'; } catch(e){ return false; } })()){ pgpMostrarVoltarParaOS(); }
 
@@ -9057,6 +9416,5 @@ if(window._PGP_OS_ID && (function(){ try { return localStorage.getItem('proper_p
 })();
 </script>
 
-<script src="proper-pwa.js"></script>
 </body>
 </html>
