@@ -186,6 +186,13 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <title>ProperCare Field · PGP Preventivas v32 · build PCF_V60</title>
 <meta name="app-build" content="PCF_V60" data-date="2026-07-17">
 <meta name="theme-color" content="#0f172a">
+<!-- PWA (fix 19/07/2026): o repo já tinha manifest.webmanifest + sw.js + proper-pwa.js,
+     mas o index.html não os referenciava — sem estas 3 linhas o SW nunca registra,
+     o Android nunca oferece "Instalar app" e o shell não fica em cache p/ abrir offline.
+     Mesmo bug (e mesmo fix) do ProperHub v15. 100% aditivo. -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<script src="proper-pwa.js" defer></script>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
