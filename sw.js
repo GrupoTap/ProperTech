@@ -8,12 +8,13 @@
  * DISCIPLINA DE VERSÃO: bump em CACHE a cada deploy do app (v43 -> v44 ...).
  * O activate abaixo apaga qualquer cache antigo com prefixo 'propertech-'.
  */
-const CACHE = 'propertech-v60'; // 19/07/2026: alinhado ao build do index (PCF_V60); bump junto com cada deploy
+const CACHE = 'propertech-v61'; // 19/07/2026: par do index PCF_V61 (Fase O1 offline); bump junto com cada deploy
 const SCOPE_PREFIX = '/ProperTech/';
 const APP_SHELL = [
   '/ProperTech/',
   '/ProperTech/index.html',
   '/ProperTech/manifest.webmanifest',
+  '/ProperTech/jspdf.umd.min.js', // O1.4 (V61): jsPDF local no shell → gerar PDF offline
   '/ProperTech/icon-192.png',
   '/ProperTech/icon-512.png',
   '/ProperTech/icon-maskable-512.png',

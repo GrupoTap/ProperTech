@@ -1,3 +1,23 @@
+<!-- V61 (FASE O1 OFFLINE, 19/07/2026, STAGED — NÃO PUBLICADO). Par: sw.js CACHE 'propertech-v61'
+     + jspdf.umd.min.js no root do repo. Ver NEWFILE_DIAGNOSTICO_OFFLINE_PCF_2026-07-19.md.
+     Escopo (Fernando): pipeline de preventiva/inspeção offline; oficina (forms 01-05) fica p/ F3.
+     O1.1 RECONEXÃO AUTOMÁTICA: listeners online/offline + visibilitychange + timer 90s (só com app
+       visível e desconectado) chamando pgpAutoPing → pgpTestGs; o flush já estava pendurado em
+       pgpSetGsStatus('ok'). 'offline' derruba _pgpGsConnected na hora (antes era foto do boot).
+     O1.2 CACHE DE LEITURA DO PIPELINE: getOS → 'pf_os_cache_v1'; getPipelineByOS →
+       'pf_pipeline_cache_v1' (12 OS mais recentes); getMaquinasByOS → 'pf_maqos_cache_v1' (12).
+       Grava no sucesso; em falha de rede serve o cache com banner 📴 + hora (pfCacheHora).
+       AUTH_GOOGLE continua deslogando (não cai no cache).
+     O1.3 TAREFA DE CAMPO SEM RELOAD: pfAbrirForm detecta destino = próprio app
+       (ProperTech/index.html) e faz chamada interna (pgpIniciarPreventivaDeOS p/ modo=preventiva;
+       inspeção só fecha o overlay e seta os_id) em vez de window.location.href. registrarAbertura
+       e assumirTarefa/liberarTarefa sem conexão vão p/ fila pgp_pending_sync (lock otimista local
+       espelhado no cache; GAS decide conflito no flush). pgpVoltarParaOS idem (pfSelecionarOS
+       in-app; reload vira fallback). pgpQueueRequest: assinatura ganha tarefa_id/os_id p/ não
+       dedupar ações de tarefas diferentes.
+     O1.4 JSPDF SELF-HOST: script local jspdf.umd.min.js (entra no APP_SHELL do SW → PDF offline);
+       fallback document.write p/ CDN se o arquivo faltar no deploy.
+     100% aditivo; nenhum id/data-key/rota/função renomeado. -->
 <!-- V60 (Fases A + B/C, STAGED — NÃO PUBLICADO). Fase A: confirmação reforçada ao concluir tarefa terminal (t.Acao_Terminal). Fase B: modal de conclusão renderiza slots de foto (pfRenderRequisitosHtml/pfUploadFotoTarefa reusam compressPhotoForDrive + salvarFotosDrivePGP, chave os|tarefa|slot); trava no mínimo. Fase C: checklist (rádio/checkbox) gateia a conclusão. pfConfirmarTarefa valida e envia respostas_json. Requer GAS v72 (colunas Requisitos_JSON/Respostas_JSON; getPipelineByOS já devolve via getSheetDataActive) + PCM V82. Renomear arquivo para PCF_V60.html ao publicar. Ver PATCH_FASES_BCD_2026-07-15.md. -->
 <!-- v58: FILTRO Todas/Minhas na lista de OS (par do GAS_properCare_v69.js). O técnico passa a enxergar TODAS as OS (getOS com escopo:'todas'), não só as vinculadas a ele, para poder assumir tarefas de qualquer OS. Nova linha de chips "Todas as OS"/"Minhas" (padrão: Todas as OS). "Minhas" filtra por o.designada_para_mim (flag vinda do getOS = usuário no vínculo da OS OU Usuario_Designado de alguma tarefa, qualquer fase). Novas: var _pfOsDesignFilter, função pfSetOSDesignFilter, chips .pf-os-design-filter-chip; pfLoadOS acrescenta params.escopo='todas'; pfRenderOS aplica o filtro e o toggle de chip. 100% aditivo; nenhum id/data-key/rota/função existente renomeado. Publicar como PCF_V58.html. -->
 <!-- v57: Sprint F — rename form08→form02 (par GAS_properCare_v68.js/PCM v78/Hub v15). pfGetFormUrl (~L8333): case 'auto:form02' agora retorna .../ProperForms/form02.html; case 'auto:form08' mantido como alias legado apontando para a mesma URL. pfAbrirForm (~L8688): resolve osObj via _pfOsList.find (mesmo padrão de pfSelecionarOS) e acrescenta cliente/os_numero na urlComOs (&cliente=/&os_numero=), sem criar globals novas. 100% aditivo; nenhum id/data-key/rota/função existente renomeado. -->
@@ -183,8 +203,8 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ProperCare Field · PGP Preventivas v32 · build PCF_V60</title>
-<meta name="app-build" content="PCF_V60" data-date="2026-07-17">
+<title>ProperCare Field · PGP Preventivas v32 · build PCF_V61</title>
+<meta name="app-build" content="PCF_V61" data-date="2026-07-19">
 <meta name="theme-color" content="#0f172a">
 <!-- PWA (fix 19/07/2026): o repo já tinha manifest.webmanifest + sw.js + proper-pwa.js,
      mas o index.html não os referenciava — sem estas 3 linhas o SW nunca registra,
@@ -194,7 +214,12 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <script src="proper-pwa.js" defer></script>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<!-- O1.4 (V61): jsPDF servido do próprio repo (mesma origem → cacheado pelo SW → PDF offline).
+     Se o arquivo local faltar num deploy incompleto, cai para o CDN (comportamento antigo). -->
+<script src="jspdf.umd.min.js"></script>
+<script>
+if (!window.jspdf) { document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"><\/script>'); }
+</script>
 <style>
   :root{
     /* Dark neon palette — Proper Compressores */
@@ -5963,7 +5988,12 @@ function pgpQueueRequest(action, body){
     body.serial     || machineBody.serial  || '',
     body.tag        || machineBody.tag     || '',
     body.visitDate  || '',
-    JSON.stringify(body.parts || machineBody.parts || {})
+    JSON.stringify(body.parts || machineBody.parts || {}),
+    // O1.3 (V61): ações de pipeline (registrarAbertura/assumirTarefa/liberarTarefa)
+    // agora também entram na fila — sem estes campos, duas tarefas diferentes
+    // teriam a MESMA assinatura e a dedup descartaria a mais antiga.
+    body.tarefa_id  || '',
+    body.os_id      || ''
   ].join('|');
   const next = list.filter(item => item.signature !== signatureBase);
   next.push({ action, body, signature: signatureBase, ts: Date.now() });
@@ -6978,7 +7008,32 @@ async function pgpIniciarPreventivaDeOS(osId){
   if(step2) step2.style.display = 'none';
 
   try{
-    const r = await pfGet('getMaquinasByOS', { id_os: osId });
+    // O1.2 (V61): mesma tolerância offline dos outros GETs do pipeline —
+    // sucesso grava cache; falha de rede serve o cache com aviso 📴.
+    let r;
+    let _maqOffline = null;
+    try {
+      if (!_pgpGsConnected && navigator.onLine === false) throw new Error('offline');
+      r = await pfGet('getMaquinasByOS', { id_os: osId });
+      try {
+        const _mCache = JSON.parse(localStorage.getItem('pf_maqos_cache_v1') || '{}');
+        _mCache[osId] = { ts: Date.now(), machines: r.machines || [], os: r.os || null };
+        const _mKeys = Object.keys(_mCache);
+        if (_mKeys.length > 12) {
+          _mKeys.sort((a,b) => (_mCache[a].ts||0) - (_mCache[b].ts||0));
+          while (_mKeys.length > 12) delete _mCache[_mKeys.shift()];
+        }
+        localStorage.setItem('pf_maqos_cache_v1', JSON.stringify(_mCache));
+      } catch(eC) {}
+    } catch(eNet) {
+      if (eNet.message && eNet.message.includes('AUTH_GOOGLE')) throw eNet;
+      let _mc = null;
+      try { _mc = JSON.parse(localStorage.getItem('pf_maqos_cache_v1') || '{}')[osId] || null; } catch(eC2) {}
+      if (!_mc) throw eNet;
+      r = { machines: _mc.machines || [], os: _mc.os || null };
+      _maqOffline = _mc.ts;
+      showNotification('📴 Máquinas da OS do cache offline (' + pfCacheHora(_mc.ts) + ') — sincroniza quando houver sinal.');
+    }
     const osMachines = r.machines || [];
 
     // v52 — registra o cliente dono desta OS, para pgpOsIdSeguro() poder suprimir
@@ -7507,6 +7562,14 @@ function pgpMostrarVoltarParaOS(){
 function pgpVoltarParaOS(){
   if(!window._PGP_OS_ID) return;
   try { localStorage.removeItem('proper_pcf_return_os_' + window._PGP_OS_ID); } catch(e){}
+  // O1.3 (V61): volta ao pipeline SEM reload (offline-safe e mais rápido) —
+  // abre o overlay e seleciona a OS direto. Reload antigo vira fallback.
+  var _ovPf2 = document.getElementById('pfOverlay');
+  if (_ovPf2 && typeof pfSelecionarOS === 'function') {
+    _ovPf2.style.display = 'flex';
+    pfSelecionarOS(window._PGP_OS_ID, window._PGP_OS_CLIENTE || '');
+    return;
+  }
   window.location.href = window.location.origin + window.location.pathname +
     '?modo=pipeline&os_id=' + encodeURIComponent(window._PGP_OS_ID);
 }
@@ -8306,6 +8369,37 @@ function pgpUpdateAdminLocal(payload){
   pgpUpdateGsStatusDisplay();
 })();
 
+// ── O1.1 (V61): RECONEXÃO AUTOMÁTICA ─────────────────────────────────────────
+// Antes, pgpFlushPending() só rodava no boot ou no toque manual (dot "Sheets" /
+// badge ⏳). Agora o app percebe sozinho: eventos online/offline do navegador,
+// volta do app ao primeiro plano (visibilitychange) e um timer de segurança de
+// 90s enquanto estiver desconectado — o evento 'online' mente em rede fraca,
+// então a prova real é sempre o ping (pgpTestGs). O flush em si já estava
+// pendurado em pgpSetGsStatus('ok'): conectou → reenvia pendências + renova
+// caches. Nada mudou lá.
+var _pgpAutoPingBusy = false;
+function pgpAutoPing() {
+  if (_pgpAutoPingBusy || !_pgpGsUrl) return;
+  _pgpAutoPingBusy = true;
+  Promise.resolve()
+    .then(function(){ return pgpTestGs(); })
+    .catch(function(){})
+    .then(function(){ _pgpAutoPingBusy = false; });
+}
+window.addEventListener('online', pgpAutoPing);
+window.addEventListener('offline', function(){
+  // Derruba o status na hora: envios param de esperar timeout e enfileiram direto
+  // (antes _pgpGsConnected era uma "foto do boot" e só mudava em ping manual).
+  pgpSetGsStatus('off');
+});
+document.addEventListener('visibilitychange', function(){
+  if (document.visibilityState === 'visible' && !_pgpGsConnected) pgpAutoPing();
+});
+setInterval(function(){
+  if (document.visibilityState !== 'visible') return; // não gasta bateria/dados em 2º plano
+  if (!_pgpGsConnected) pgpAutoPing();
+}, 90000);
+
 
 
 
@@ -8422,6 +8516,15 @@ function pfHubLogout() {
   window.location.href = 'https://grupotap.github.io/ProperHub/';
 }
 
+// ── O1.2 (V61): helper de exibição de idade de cache offline ────────────────
+function pfCacheHora(ts) {
+  try {
+    var d = new Date(ts);
+    return ('0'+d.getDate()).slice(-2) + '/' + ('0'+(d.getMonth()+1)).slice(-2) +
+           ' ' + ('0'+d.getHours()).slice(-2) + ':' + ('0'+d.getMinutes()).slice(-2);
+  } catch(e) { return '—'; }
+}
+
 // ── Carregar lista de OS ──────────────────────────────────────────────────────
 async function pfLoadOS() {
   var statusEl = document.getElementById('pfOsStatus');
@@ -8443,9 +8546,23 @@ async function pfLoadOS() {
       return st !== 'cancelada';
     });
     _pfGsConnected = true;
+    // O1.2 (V61): guarda a lista para leitura offline
+    try { localStorage.setItem('pf_os_cache_v1', JSON.stringify({ ts: Date.now(), os: _pfOsList })); } catch(eC) {}
     pfRenderOS();
   } catch(e) {
     if (e.message && e.message.includes('AUTH_GOOGLE')) { pfHubLogout(); return; }
+    // O1.2 (V61): falha de rede → serve a última lista sincronizada, com aviso.
+    var _cacheOS = null;
+    try { _cacheOS = JSON.parse(localStorage.getItem('pf_os_cache_v1') || 'null'); } catch(eC2) {}
+    if (_cacheOS && _cacheOS.os && _cacheOS.os.length) {
+      _pfOsList = _cacheOS.os;
+      _pfGsConnected = false;
+      pfRenderOS();
+      statusEl.textContent = '📴 Offline — lista de ' + pfCacheHora(_cacheOS.ts) +
+        '. Pode haver mudanças no servidor; sincroniza sozinho quando houver sinal.';
+      statusEl.style.display = 'block';
+      return;
+    }
     statusEl.textContent = '⚠ Erro ao carregar OS: ' + e.message;
   }
 }
@@ -8550,8 +8667,33 @@ async function pfLoadPipeline() {
   progLabel.textContent = '';
   progBar.style.width = '0%';
 
+  window._pfPipelineOfflineTs = null; // O1.2 (V61)
   try {
-    var r = await pgpPostJson('getPipelineByOS', { os_id: _pfOsId });
+    var r;
+    try {
+      // O1.2 (V61): sem conexão E sem rede do navegador, nem tenta (fila de
+      // retries demoraria); vai direto pro cache. Com sinal fraco, tenta normal.
+      if (!_pgpGsConnected && navigator.onLine === false) throw new Error('offline');
+      r = await pgpPostJson('getPipelineByOS', { os_id: _pfOsId });
+      // Sucesso → guarda para leitura offline (mantém as 12 OS mais recentes)
+      try {
+        var _pipeCache = JSON.parse(localStorage.getItem('pf_pipeline_cache_v1') || '{}');
+        _pipeCache[_pfOsId] = { ts: Date.now(), tarefas: r.tarefas || [] };
+        var _pcKeys = Object.keys(_pipeCache);
+        if (_pcKeys.length > 12) {
+          _pcKeys.sort(function(a,b){ return (_pipeCache[a].ts||0) - (_pipeCache[b].ts||0); });
+          while (_pcKeys.length > 12) delete _pipeCache[_pcKeys.shift()];
+        }
+        localStorage.setItem('pf_pipeline_cache_v1', JSON.stringify(_pipeCache));
+      } catch(eC) {}
+    } catch(eNet) {
+      if (eNet.message && eNet.message.includes('AUTH_GOOGLE')) throw eNet;
+      var _pc = null;
+      try { _pc = JSON.parse(localStorage.getItem('pf_pipeline_cache_v1') || '{}')[_pfOsId] || null; } catch(eC2) {}
+      if (!_pc) throw eNet;
+      r = { tarefas: _pc.tarefas || [] };
+      window._pfPipelineOfflineTs = _pc.ts;
+    }
     _pfTarefas = r.tarefas || [];
 
     if (_pfTarefas.length === 0) {
@@ -8569,6 +8711,10 @@ async function pfLoadPipeline() {
     var pct   = total > 0 ? Math.round(conc / total * 100) : 0;
     progLabel.textContent = conc + ' de ' + total + ' tarefas concluídas';
     progBar.style.width   = pct + '%';
+    // O1.2 (V61): sinaliza quando o pipeline mostrado veio do cache offline
+    if (window._pfPipelineOfflineTs) {
+      progLabel.textContent += ' · 📴 offline (' + pfCacheHora(window._pfPipelineOfflineTs) + ')';
+    }
 
     // Agrupar por fase
     var faseMap   = {};
@@ -8762,10 +8908,32 @@ function pfBuildCard(t) {
 }
 
 // ── v50: Lock por técnico (assumir / liberar) ─────────────────────────────────
+// ── O1.3 (V61): lock otimista offline ────────────────────────────────────────
+// Sem conexão, assumir/liberar enfileira a ação e aplica o lock localmente
+// (em _pfTarefas E no cache do pipeline, para o re-render offline refletir).
+// Conflito real (outro técnico pegou antes) é decidido pelo GAS no flush —
+// a preventiva registrada continua valendo como visita de qualquer forma.
+function pfLockLocalOffline(tarefaId, usuario) {
+  var t = (_pfTarefas || []).find(function(x){ return String(x.Tarefa_ID) === String(tarefaId); });
+  if (t) t.Lock_Por = usuario;
+  try {
+    var pc = JSON.parse(localStorage.getItem('pf_pipeline_cache_v1') || '{}');
+    if (pc[_pfOsId]) { pc[_pfOsId].tarefas = _pfTarefas; localStorage.setItem('pf_pipeline_cache_v1', JSON.stringify(pc)); }
+  } catch(e) {}
+}
+
 async function pfAssumirTarefa(tarefaId, btn) {
   if (btn) { btn.disabled = true; btn.classList.add('is-busy'); btn.textContent = 'Assumindo…'; }
   var usuario = (window.PROPER_SESSION && window.PROPER_SESSION.tecnico)
     ? (window.PROPER_SESSION.tecnico.id || window.PROPER_SESSION.tecnico.nome || '') : '';
+  // O1.3 (V61): offline → fila + lock otimista local
+  if (!_pgpGsConnected && navigator.onLine === false) {
+    pgpQueueRequest('assumirTarefa', { os_id: _pfOsId, tarefa_id: tarefaId, usuario: usuario });
+    pfLockLocalOffline(tarefaId, usuario);
+    if (typeof pfToast === 'function') pfToast('📴 Assumida offline — sincroniza quando houver sinal');
+    await pfLoadPipeline();
+    return;
+  }
   try {
     var r = await pgpPostJson('assumirTarefa', { os_id: _pfOsId, tarefa_id: tarefaId, usuario: usuario });
     if (r && r.status === 'locked') {
@@ -8784,6 +8952,14 @@ async function pfLiberarTarefa(tarefaId, btn) {
   if (btn) { btn.disabled = true; btn.classList.add('is-busy'); btn.textContent = 'Liberando…'; }
   var usuario = (window.PROPER_SESSION && window.PROPER_SESSION.tecnico)
     ? (window.PROPER_SESSION.tecnico.id || window.PROPER_SESSION.tecnico.nome || '') : '';
+  // O1.3 (V61): offline → fila + solta o lock local
+  if (!_pgpGsConnected && navigator.onLine === false) {
+    pgpQueueRequest('liberarTarefa', { os_id: _pfOsId, tarefa_id: tarefaId, usuario: usuario });
+    pfLockLocalOffline(tarefaId, '');
+    if (typeof pfToast === 'function') pfToast('📴 Liberada offline — sincroniza quando houver sinal');
+    await pfLoadPipeline();
+    return;
+  }
   try {
     await pgpPostJson('liberarTarefa', { os_id: _pfOsId, tarefa_id: tarefaId, usuario: usuario });
     await pfLoadPipeline();
@@ -9077,14 +9253,18 @@ async function pfAbrirForm(tarefaId, formUrl) {
   var usuario = (window.PROPER_SESSION && window.PROPER_SESSION.tecnico)
     ? (window.PROPER_SESSION.tecnico.id || window.PROPER_SESSION.tecnico.nome || '')
     : '';
-  try {
-    await pgpPostJson('registrarAbertura', {
-      os_id:     _pfOsId,
-      tarefa_id: tarefaId,
-      usuario:   usuario
-    });
-  } catch(e) {
-    console.warn('[pfAbrirForm] registrarAbertura falhou:', e.message);
+  // O1.3 (V61): registrarAbertura sem conexão (ou em falha) vai para a fila —
+  // antes a abertura offline simplesmente se perdia (só um console.warn).
+  var _aberturaBody = { os_id: _pfOsId, tarefa_id: tarefaId, usuario: usuario };
+  if (!_pgpGsConnected) {
+    pgpQueueRequest('registrarAbertura', _aberturaBody);
+  } else {
+    try {
+      await pgpPostJson('registrarAbertura', _aberturaBody);
+    } catch(e) {
+      console.warn('[pfAbrirForm] registrarAbertura falhou — enfileirada:', e.message);
+      pgpQueueRequest('registrarAbertura', _aberturaBody);
+    }
   }
   // v28 — Preventiva↔Pipeline: acrescenta os_id na URL de navegação em tempo de execução —
   // o Form_URL salvo no template continua estático e compartilhado entre todas as OS; é aqui,
@@ -9099,6 +9279,30 @@ async function pfAbrirForm(tarefaId, formUrl) {
     + '&inicio_preventiva_iso=' + encodeURIComponent(inicioPreventivaISO)
     + '&cliente=' + encodeURIComponent(_pfOsNome||'')
     + '&os_numero=' + encodeURIComponent((osObj && osObj.numero_os)||'');
+
+  // O1.3 (V61): tarefas de campo (auto:preventiva/auto:inspecao) apontam para o
+  // PRÓPRIO app — abrir por chamada interna, sem window.location.href. Motivos:
+  // (a) offline, o reload era o ponto de morte da cadeia (mesmo com SW é um risco
+  // a menos); (b) online, evita recarregar 500KB e perder estado. Os globals
+  // setados aqui são os mesmos que checkHubSession leria da URL no caminho antigo.
+  var _ehProprioApp = formUrl.indexOf('ProperTech/index.html') >= 0;
+  if (_ehProprioApp) {
+    window._PGP_OS_ID = _pfOsId;
+    window._PGP_TAREFA_ID = tarefaId;
+    window._PGP_PREVENTIVA_INICIO_ISO = inicioPreventivaISO;
+    var _ovPf = document.getElementById('pfOverlay');
+    if (_ovPf) _ovPf.style.display = 'none';
+    if (formUrl.indexOf('modo=preventiva') >= 0 && typeof pgpIniciarPreventivaDeOS === 'function') {
+      await pgpIniciarPreventivaDeOS(_pfOsId);
+    } else {
+      // Inspeção: o app já está aberto no modo padrão; os_id passa a viajar nos
+      // payloads via pgpOsIdSeguro (mesmo efeito do ?os_id= da URL).
+      showNotification('🔧 Inspeção da OS #' + ((osObj && osObj.numero_os) || _pfOsId) +
+        ' — selecione a máquina e colete normalmente.');
+    }
+    return;
+  }
+  // Forms de oficina (ProperForms/Rotores): navegação externa, como antes.
   window.location.href = urlComOs;
 }
 
