@@ -1,3 +1,15 @@
+<!-- V62 (FIX FOTOS DUPLICADAS NO DRIVE, 20/07/2026). Par: sw.js CACHE 'propertech-v62'.
+     CAUSA (auditoria 20/07 na TECH_ATTACHMENTS: 32 linhas excedentes, 29 na PGP-2026-0012 —
+     97 fotos exibidas, 68 únicas; reenvios em rajadas de ~30-40s): flushPendingDriveUploads
+     NÃO tinha trava de reentrância e a fila 'pgp_pending_drive' só era salva ao FIM do laço.
+     Com o V61 disparando pgpFlushPending() em todo ping OK (online/visibilitychange/timer 90s),
+     flushes SOBREPOSTOS liam a mesma fila e cada um reenviava TUDO → mesma foto 2-4x no Drive
+     (File_ID novo, mesmo File_Name com timestamp da captura).
+     FIX (aditivo): (1) trava _pgpDriveFlushBusy + persistência INCREMENTAL da fila de Drive
+     (item enviado sai da fila na hora, não só no fim); (2) mesma trava/persistência incremental
+     na fila crítica 'pgp_pending_sync' (pgpFlushPending). Cinto de segurança no servidor:
+     GAS v74.2 (idempotência por Entity_Type+Entity_ID+File_Name em fotos). PCM V88 oculta
+     duplicatas na exibição. Nenhum id/data-key/rota/função renomeado. -->
 <!-- V61 (FASE O1 OFFLINE, 19/07/2026, STAGED — NÃO PUBLICADO). Par: sw.js CACHE 'propertech-v61'
      + jspdf.umd.min.js no root do repo. Ver NEWFILE_DIAGNOSTICO_OFFLINE_PCF_2026-07-19.md.
      Escopo (Fernando): pipeline de preventiva/inspeção offline; oficina (forms 01-05) fica p/ F3.
@@ -203,8 +215,8 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ProperCare Field · PGP Preventivas v32 · build PCF_V61</title>
-<meta name="app-build" content="PCF_V61" data-date="2026-07-19">
+<title>ProperCare Field · PGP Preventivas v32 · build PCF_V62</title>
+<meta name="app-build" content="PCF_V62" data-date="2026-07-20">
 <meta name="theme-color" content="#0f172a">
 <!-- PWA (fix 19/07/2026): o repo já tinha manifest.webmanifest + sw.js + proper-pwa.js,
      mas o index.html não os referenciava — sem estas 3 linhas o SW nunca registra,
@@ -2163,16 +2175,28 @@ async function pgpSendOrQueueDrive(kind, action, body, ui) {
 // Reenvia todos os backups de Drive pendentes (foto e PDF). Chamado por
 // pgpFlushPending() no boot e a cada reconexão / clique no badge ⏳. Itens que
 // continuarem falhando permanecem na fila; não bloqueia o fluxo crítico.
+// V62 — trava de reentrância: sem ela, flushes sobrepostos (boot + badge + auto-ping
+// do V61 em todo online/visibilitychange/timer) liam a MESMA fila e cada um reenviava
+// tudo → foto duplicada 2-4x no Drive/TECH_ATTACHMENTS (auditoria 20/07).
+var _pgpDriveFlushBusy = false;
 async function flushPendingDriveUploads() {
   if (!_pgpGsConnected) return;
-  const list = pgpGetDriveQueue();
-  if (!list.length) return;
-  const failed = [];
-  for (const entry of list) {
-    try { await pgpPostJson(entry.action, entry.body || {}); }
-    catch (e) { failed.push(entry); }
-  }
-  pgpSaveDriveQueue(failed);
+  if (_pgpDriveFlushBusy) return; // V62
+  _pgpDriveFlushBusy = true;
+  try {
+    const list = pgpGetDriveQueue();
+    if (!list.length) return;
+    const failed = [];
+    for (let i = 0; i < list.length; i++) {
+      const entry = list[i];
+      try { await pgpPostJson(entry.action, entry.body || {}); }
+      catch (e) { failed.push(entry); }
+      // V62 — persistência INCREMENTAL: item enviado sai da fila JÁ (antes a fila
+      // só era regravada no fim do laço; fechar o app no meio reenviava tudo).
+      pgpSaveDriveQueue(failed.concat(list.slice(i + 1)));
+    }
+    pgpSaveDriveQueue(failed);
+  } finally { _pgpDriveFlushBusy = false; }
 }
 
 // Ponto de entrada chamado pela captura de foto — fire-and-forget, nunca trava a
@@ -6035,22 +6059,29 @@ async function pgpPostJson(action, body){
   return d;
 }
 
+var _pgpSyncFlushBusy = false; // V62 — mesma trava de reentrância da fila de Drive
 async function pgpFlushPending(){
   if(!_pgpGsConnected||!_pgpGsUrl) return;
   // v48 (A1): reenvia backups de foto/PDF pendentes da fila PERSISTENTE
   // 'pgp_pending_drive' (separada, não bloqueia o fluxo crítico abaixo).
   flushPendingDriveUploads();
+  if(_pgpSyncFlushBusy) return; // V62
+  _pgpSyncFlushBusy = true;
+  try{
   const list = pgpGetPending();
   if(!list.length) return;
   const failed = [];
   let sent = 0;
-  for(const item of list){
+  for(let _i = 0; _i < list.length; _i++){
+    const item = list[_i];
     try{
       await pgpPostJson(item.action, item.body || {});
       sent++;
     }catch(e){
       failed.push(item);
     }
+    // V62 — persistência incremental (espelho da fila de Drive)
+    localStorage.setItem(PENDING_KEY, JSON.stringify(failed.concat(list.slice(_i + 1))));
   }
   localStorage.setItem(PENDING_KEY, JSON.stringify(failed));
   pgpUpdatePendingBadge();
@@ -6061,6 +6092,7 @@ async function pgpFlushPending(){
       statusEl.innerHTML = `<span style="color:var(--blue,#3b82f6)">🔄 Reenviado — ${sent} visita${sent>1?'s':''} da fila processada${sent>1?'s':''} com sucesso.</span>`;
     }
   }
+  } finally { _pgpSyncFlushBusy = false; } // V62
 }
 
 const PART_ID_MAP = {
