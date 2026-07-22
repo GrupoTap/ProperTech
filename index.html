@@ -1,3 +1,17 @@
+<!-- V63 (ASSINATURAS EM CAMPO NA PREVENTIVA, 22/07/2026). Par: sw.js CACHE 'propertech-v63'.
+     Ao finalizar a preventiva, coleta a assinatura manuscrita do TÉCNICO e do
+     RESPONSÁVEL DO CLIENTE. Fluxo por pessoa: digita o nome -> avança para tela
+     de assinatura em PAISAGEM (o palco é rotacionado 90° via CSS em telas retrato
+     -> vira paisagem em qualquer aparelho, inclusive iOS, sem depender do lock de
+     orientação nativo). Assina com dedo ou caneta (Pointer Events, canvas). As
+     assinaturas ficam em window._PGP_ASSINATURAS (localStorage 'pgp_assinaturas_v1',
+     persistem no boot) e entram na SEÇÃO 8 do rodapé do PDF (renderMachine), com
+     nome + data/hora da coleta. Guard de contexto (pgpAssinaturasContextoOk): só
+     aplica ao PDF se a OS/cliente bater com a máquina (não vaza assinatura de outra
+     visita — mesma filosofia do pgpOsIdSeguro). Botão "✍️ Coletar Assinaturas" no
+     bloco pgpPrevActionsWrap + oferta automática ao "Gerar PDF" de preventiva.
+     novaColeta zera as assinaturas. 100% aditivo, frontend-only, sem mudança de
+     GAS; nenhum id/data-key/rota/função renomeado. -->
 <!-- V62 (FIX FOTOS DUPLICADAS NO DRIVE, 20/07/2026). Par: sw.js CACHE 'propertech-v62'.
      CAUSA (auditoria 20/07 na TECH_ATTACHMENTS: 32 linhas excedentes, 29 na PGP-2026-0012 —
      97 fotos exibidas, 68 únicas; reenvios em rajadas de ~30-40s): flushPendingDriveUploads
@@ -1342,6 +1356,45 @@ if (!window.jspdf) { document.write('<script src="https://cdnjs.cloudflare.com/a
   .btn.is-busy::after,.pf-btn.is-busy::after,.btn-preventiva.is-busy::after{ content:''; position:absolute; width:16px; height:16px; top:calc(50% - 8px); left:calc(50% - 8px);
     border:2px solid currentColor; border-right-color:transparent; border-radius:50%; animation:spin .6s linear infinite; color:#fff }
 
+  /* ── ASSINATURAS EM CAMPO (preventiva) — overlay full-screen: etapa 1 = nome
+     (retrato); etapa 2 = assinatura em PAISAGEM. Em telas retrato o "palco" da
+     assinatura é rotacionado 90° via CSS (.is-rotated) para virar paisagem sem
+     depender do bloqueio de orientação nativo (que o iOS não suporta). ── */
+  .pgp-sign-overlay{ position:fixed; inset:0; z-index:100000; background:#0d1117; display:none;
+    color:#fff; -webkit-user-select:none; user-select:none; touch-action:none; overflow:hidden }
+  .pgp-sign-overlay.open{ display:block }
+  /* Etapa 1 — nome */
+  .pgp-sign-name{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:24px calc(20px + env(safe-area-inset-right,0)) calc(24px + env(safe-area-inset-bottom,0)) calc(20px + env(safe-area-inset-left,0)); gap:14px; text-align:center }
+  .pgp-sign-name h3{ font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:22px; margin:0; color:#fff }
+  .pgp-sign-name p{ font-size:14px; color:#c3ccd6; margin:0; max-width:340px; line-height:1.4 }
+  .pgp-sign-name input{ width:100%; max-width:360px; font-size:18px; padding:14px 14px; border-radius:12px; border:2px solid #30363d;
+    background:#161b22; color:#fff; outline:none; text-align:center; font-family:'Barlow',sans-serif }
+  .pgp-sign-name input:focus{ border-color:var(--orange) }
+  .pgp-sign-name .pgp-sign-row{ display:flex; gap:10px; width:100%; max-width:360px; margin-top:6px }
+  .pgp-sign-btn{ flex:1; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:16px; padding:14px 10px; border-radius:12px;
+    border:2px solid #30363d; background:#161b22; color:#fff; cursor:pointer; text-transform:uppercase; letter-spacing:.5px }
+  .pgp-sign-btn.primary{ background:var(--orange); border-color:var(--orange); color:#fff }
+  .pgp-sign-btn:disabled{ opacity:.45; pointer-events:none }
+  /* Etapa 2 — palco de assinatura */
+  .pgp-sign-stage{ position:absolute; inset:0; display:none; flex-direction:column; background:#0d1117 }
+  .pgp-sign-stage.show{ display:flex }
+  .pgp-sign-stage.is-rotated{ transform-origin:top left; transform:rotate(90deg) translate(0,-100%);
+    width:100vh; height:100vw }
+  .pgp-sign-top{ flex:none; display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:#161b22; border-bottom:1px solid #30363d; min-height:40px }
+  .pgp-sign-top .lbl{ font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:15px; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+  .pgp-sign-top .hint{ font-size:12px; color:#8b949e; white-space:nowrap }
+  .pgp-sign-canvas-wrap{ flex:1; position:relative; background:#fff; margin:10px; border-radius:10px; overflow:hidden;
+    box-shadow:inset 0 0 0 2px #30363d }
+  .pgp-sign-canvas-wrap::before{ content:'Assine aqui'; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    color:#d0d4dc; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:26px; letter-spacing:1px; pointer-events:none }
+  .pgp-sign-canvas-wrap.inked::before{ display:none }
+  .pgp-sign-canvas-wrap::after{ content:''; position:absolute; left:8%; right:8%; bottom:22%; border-bottom:2px dashed #c8ccd4; pointer-events:none }
+  .pgp-sign-canvas{ position:absolute; inset:0; width:100%; height:100%; touch-action:none; cursor:crosshair; display:block }
+  .pgp-sign-bottom{ flex:none; display:flex; gap:10px; padding:10px 14px calc(10px + env(safe-area-inset-bottom,0)); background:#161b22; border-top:1px solid #30363d }
+  .pgp-sign-bottom .pgp-sign-btn{ padding:12px 8px; font-size:15px }
+
 </style>
 </head>
 <body>
@@ -1578,6 +1631,41 @@ if (!window.jspdf) { document.write('<script src="https://cdnjs.cloudflare.com/a
   <button class="btn-preventiva" onclick="pgpEnviarTodasPreventivas()">
     🔧 Registrar Preventiva
   </button>
+  <!-- Assinaturas em campo (técnico + responsável do cliente). O status ao lado
+       reflete o que já foi coletado; as assinaturas entram no rodapé do PDF. -->
+  <button class="btn-preventiva" onclick="pgpColetarAssinaturasPreventiva()"
+          style="background:#243349;border-color:#243349;margin-top:8px">
+    ✍️ Coletar Assinaturas
+  </button>
+  <div id="pgpAssinStatus" style="text-align:center;font-size:12px;color:var(--text-light);margin-top:4px"></div>
+</div>
+
+<!-- OVERLAY DE ASSINATURA (montado 1x, reutilizado técnico/responsável) -->
+<div class="pgp-sign-overlay" id="pgpSignOverlay" aria-hidden="true">
+  <div class="pgp-sign-name" id="pgpSignNameStep">
+    <h3 id="pgpSignTitle">Assinatura</h3>
+    <p id="pgpSignSub">Digite o nome de quem vai assinar e toque em Avançar.</p>
+    <input id="pgpSignNameInput" type="text" placeholder="Nome completo" autocomplete="off"
+           autocapitalize="words" data-lpignore="true" data-1p-ignore>
+    <div class="pgp-sign-row">
+      <button type="button" class="pgp-sign-btn" id="pgpSignCancelBtn">Cancelar</button>
+      <button type="button" class="pgp-sign-btn primary" id="pgpSignNextBtn">Avançar ✍️</button>
+    </div>
+  </div>
+  <div class="pgp-sign-stage" id="pgpSignStage">
+    <div class="pgp-sign-top">
+      <span class="lbl" id="pgpSignStageLbl">Assinatura</span>
+      <span class="hint">👆 Assine com o dedo ou caneta</span>
+    </div>
+    <div class="pgp-sign-canvas-wrap" id="pgpSignCanvasWrap">
+      <canvas class="pgp-sign-canvas" id="pgpSignCanvas"></canvas>
+    </div>
+    <div class="pgp-sign-bottom">
+      <button type="button" class="pgp-sign-btn" id="pgpSignBackBtn">← Voltar</button>
+      <button type="button" class="pgp-sign-btn" id="pgpSignClearBtn">↺ Limpar</button>
+      <button type="button" class="pgp-sign-btn primary" id="pgpSignConfirmBtn">✓ Confirmar</button>
+    </div>
+  </div>
 </div>
 
 <div class="modal-overlay" id="modalOverlay" onclick="fecharModal(event)">
@@ -4004,6 +4092,7 @@ async function novaColeta() {
   _pgpLoadedMachinesByIndex = {};
   pgpRenderLoadedCard(0);
   Object.keys(photoStore).forEach(k => delete photoStore[k]); // v23: limpar fotos da coleta anterior
+  try { pgpLimparAssinaturas(); } catch(e){} // assinaturas são por visita: nova coleta zera
   createPanel(0);
   renderTabs();
   updateProgress();
@@ -5486,6 +5575,53 @@ function pgpCreateReportBuilder() {
       }
     }
 
+    // ── SEÇÃO 8: ASSINATURAS ──────────────────────────
+    // Assinaturas manuscritas coletadas em campo (técnico + responsável do
+    // cliente), cada uma com nome e data/hora da coleta. Só entram se o
+    // contexto (OS/cliente) bater com esta máquina (pgpAssinaturasContextoOk).
+    var _ass = window._PGP_ASSINATURAS || {};
+    if ((_ass.tecnico || _ass.responsavel) && pgpAssinaturasContextoOk(midx)) {
+      var boxH = 40, gap = 6;
+      y = checkY(y + 2, boxH + 12);
+      y = sectionTitle(y, '', '8. Assinaturas');
+      y += 2;
+      var boxW = (CW - gap) / 2;
+      var rowY = y;
+      var _sigs = [
+        { a: _ass.tecnico,     papel: 'Tecnico responsavel' },
+        { a: _ass.responsavel, papel: 'Responsavel pelo cliente' }
+      ];
+      _sigs.forEach(function (s, i) {
+        var x = ML + i * (boxW + gap);
+        doc.setDrawColor.apply(doc, MGRAY); doc.setLineWidth(0.3);
+        doc.rect(x, rowY, boxW, boxH, 'S');
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor.apply(doc, ORANGE);
+        doc.text(limparTextoPDF(s.papel.toUpperCase()), x + 3, rowY + 5);
+        var sigTop = rowY + 7, sigH = 20;
+        if (s.a && s.a.dataUrl) {
+          try {
+            addImagemProporcional(doc, s.a.dataUrl, x + 3, sigTop, boxW - 6, sigH, s.a.w || 400, s.a.h || 150);
+          } catch (e) {}
+        } else {
+          doc.setFont('helvetica', 'italic'); doc.setFontSize(7.5); doc.setTextColor(150, 150, 150);
+          doc.text('Nao coletada', x + 3, sigTop + 10);
+        }
+        var lineY = rowY + boxH - 13;
+        doc.setDrawColor.apply(doc, MGRAY); doc.setLineWidth(0.2);
+        doc.line(x + 3, lineY, x + boxW - 3, lineY);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor.apply(doc, BLACK);
+        doc.text(limparTextoPDF((s.a && s.a.nome) ? s.a.nome : '-'), x + 3, lineY + 4.5);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); doc.setTextColor.apply(doc, DARK);
+        var dh = '';
+        if (s.a && s.a.ts) {
+          var d = new Date(s.a.ts);
+          dh = 'Coletada em ' + d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        }
+        doc.text(limparTextoPDF(dh), x + 3, lineY + 9);
+      });
+      y = rowY + boxH + 4;
+    }
+
     addPageFooter();
   }
 
@@ -5509,6 +5645,16 @@ async function gerarPDF() {
   try { await pgpGarantirOSInspecaoAvulsa(currentMachine); } catch(e){}
   const { jsPDF } = window.jspdf;
   if (!jsPDF) { AppDialog.alert('Biblioteca PDF não carregada. Verifique a conexão e tente novamente.', {variant:'danger', title:'PDF'}); return; }
+
+  // Assinaturas (preventiva): oferece coletar técnico + responsável do cliente
+  // antes de gerar, para que entrem no rodapé de cada PDF. Pulável.
+  if (_pgpTipoVisita === 'preventiva' && !pgpAssinaturasCompletas()) {
+    const _goAssin = await AppDialog.confirm(
+      'Coletar a assinatura do técnico e do responsável do cliente agora?\n\nElas entram no final do relatório em PDF, com nome, data e hora.',
+      { title: 'Assinaturas', okLabel: '✍️ Assinar agora', cancelLabel: 'Gerar sem assinar' }
+    );
+    if (_goAssin) { try { await pgpColetarAssinaturasPreventiva(); } catch (_e) {} }
+  }
 
   showNotification('⏳ Gerando PDF' + (machines.length > 1 ? 's' : '') + '...');
   await new Promise(r => setTimeout(r, 80));
@@ -7229,6 +7375,7 @@ function pgpSetTipoVisita(tipo){
 
   const prevWrap=document.getElementById('pgpPrevActionsWrap');
   if(prevWrap) prevWrap.style.display=tipo==='preventiva'?'':'none';
+  try { pgpAtualizarStatusAssinaturas(); } catch(e){}
   pgpAtualizarAcoesPorTipoVisita();
 }
 
@@ -9466,6 +9613,317 @@ function pfShowUnlockBanner(msg, isError) {
 
 // ── END SPRINT 4E-D ──────────────────────────────────────────────────────────
 
+// ── ASSINATURAS EM CAMPO (preventiva) ────────────────────────────────────────
+// Coleta a assinatura manuscrita do técnico e do responsável do cliente ao
+// finalizar a preventiva. Fluxo por pessoa: digita o nome → avança para uma
+// tela de assinatura em PAISAGEM (o "palco" é rotacionado 90° via CSS em telas
+// retrato, para virar paisagem em qualquer aparelho, inclusive iOS, sem
+// depender do bloqueio de orientação nativo). Assina com o dedo ou caneta.
+// As assinaturas ficam em window._PGP_ASSINATURAS e entram no rodapé do PDF
+// (renderMachine, seção 8). Frontend-only; nenhuma mudança de GAS.
+window._PGP_ASSINATURAS = window._PGP_ASSINATURAS || { tecnico: null, responsavel: null, osId: null, cliente: '' };
+
+// Estado do palco de assinatura (preenchido por pgpSignSetupStage).
+var _pgpSignCtx = null, _pgpSignRotated = false, _pgpSignCssW = 0, _pgpSignCssH = 0;
+var _pgpSignHasInk = false, _pgpSignNome = '', _pgpSignBound = false;
+
+function pgpAssinaturasCompletas() {
+  var a = window._PGP_ASSINATURAS || {};
+  return !!(a.tecnico && a.tecnico.dataUrl && a.responsavel && a.responsavel.dataUrl);
+}
+
+// Só aplica as assinaturas ao PDF se o contexto (OS ou cliente) bater com a
+// máquina — mesma filosofia do pgpOsIdSeguro, evita vazar a assinatura de uma
+// visita anterior de OUTRO cliente para o relatório atual.
+function pgpAssinaturasContextoOk(midx) {
+  var a = window._PGP_ASSINATURAS || {};
+  if (!(a.tecnico || a.responsavel)) return false;
+  if (a.osId) return String(a.osId) === String(window._PGP_OS_ID || '');
+  if (a.cliente) {
+    try {
+      var norm = function (s) { return String(s || '').trim().toLowerCase(); };
+      return norm(a.cliente) === norm(vg(midx, 'razao_social'));
+    } catch (e) { return true; }
+  }
+  return true;
+}
+
+function pgpPersistAssinaturas() {
+  try { localStorage.setItem('pgp_assinaturas_v1', JSON.stringify(window._PGP_ASSINATURAS || {})); } catch (e) {}
+}
+function pgpRestaurarAssinaturas() {
+  try {
+    var raw = localStorage.getItem('pgp_assinaturas_v1');
+    if (raw) {
+      var obj = JSON.parse(raw);
+      if (obj && typeof obj === 'object') window._PGP_ASSINATURAS = Object.assign({ tecnico: null, responsavel: null, osId: null, cliente: '' }, obj);
+    }
+  } catch (e) {}
+  pgpAtualizarStatusAssinaturas();
+}
+function pgpLimparAssinaturas() {
+  window._PGP_ASSINATURAS = { tecnico: null, responsavel: null, osId: null, cliente: '' };
+  try { localStorage.removeItem('pgp_assinaturas_v1'); } catch (e) {}
+  pgpAtualizarStatusAssinaturas();
+}
+
+function pgpAtualizarStatusAssinaturas() {
+  var el = document.getElementById('pgpAssinStatus');
+  if (!el) return;
+  var a = window._PGP_ASSINATURAS || {};
+  var t = (a.tecnico && a.tecnico.dataUrl) ? ('✅ Técnico: ' + (a.tecnico.nome || '')) : '⬜ Técnico pendente';
+  var r = (a.responsavel && a.responsavel.dataUrl) ? ('✅ Responsável: ' + (a.responsavel.nome || '')) : '⬜ Responsável pendente';
+  el.textContent = t + ' · ' + r;
+}
+
+// Mapeia um ponto do ponteiro (clientX/clientY) para coordenadas locais do
+// canvas. Em modo rotacionado (palco em rotate(90deg)), o canvas continua
+// ALINHADO aos eixos (rotação de 90° exata), então getBoundingClientRect
+// devolve o retângulo visual real e a conversão é fechada.
+function pgpSignToLocal(clientX, clientY) {
+  var canvas = document.getElementById('pgpSignCanvas');
+  var r = canvas.getBoundingClientRect();
+  if (_pgpSignRotated) {
+    return { x: clientY - r.top, y: r.right - clientX };
+  }
+  return { x: clientX - r.left, y: clientY - r.top };
+}
+
+function pgpSignMarkInk() {
+  _pgpSignHasInk = true;
+  var wrap = document.getElementById('pgpSignCanvasWrap');
+  if (wrap) wrap.classList.add('inked');
+}
+function pgpSignResetInk() {
+  _pgpSignHasInk = false;
+  var wrap = document.getElementById('pgpSignCanvasWrap');
+  if (wrap) wrap.classList.remove('inked');
+}
+
+// Dimensiona o canvas ao tamanho de layout do wrap (que em modo rotacionado já
+// vem em coordenadas de paisagem) e prepara o contexto. Chamado ao abrir a
+// etapa de assinatura, no Limpar e em resize (só se ainda não houver traço).
+function pgpSignSetupStage() {
+  var stage = document.getElementById('pgpSignStage');
+  var wrap = document.getElementById('pgpSignCanvasWrap');
+  var canvas = document.getElementById('pgpSignCanvas');
+  if (!stage || !wrap || !canvas) return;
+  var portrait = window.innerHeight > window.innerWidth;
+  stage.classList.toggle('is-rotated', portrait);
+  _pgpSignRotated = portrait;
+  // força reflow para o wrap assumir o tamanho final (pós-rotação)
+  void wrap.offsetWidth;
+  var cw = Math.max(40, wrap.clientWidth);
+  var ch = Math.max(40, wrap.clientHeight);
+  var dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+  canvas.width = Math.round(cw * dpr);
+  canvas.height = Math.round(ch * dpr);
+  var ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, cw, ch);
+  ctx.lineWidth = 2.6;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#111111';
+  _pgpSignCtx = ctx;
+  _pgpSignCssW = cw;
+  _pgpSignCssH = ch;
+}
+
+function pgpSignBindCanvasOnce() {
+  if (_pgpSignBound) return;
+  var canvas = document.getElementById('pgpSignCanvas');
+  if (!canvas) return;
+  _pgpSignBound = true;
+  var drawing = false, lastP = null;
+  canvas.addEventListener('pointerdown', function (ev) {
+    if (!_pgpSignCtx) return;
+    ev.preventDefault();
+    drawing = true;
+    try { canvas.setPointerCapture(ev.pointerId); } catch (e) {}
+    var p = pgpSignToLocal(ev.clientX, ev.clientY);
+    lastP = p;
+    _pgpSignCtx.beginPath();
+    _pgpSignCtx.moveTo(p.x, p.y);
+    _pgpSignCtx.lineTo(p.x + 0.1, p.y + 0.1);
+    _pgpSignCtx.stroke();
+    pgpSignMarkInk();
+  });
+  canvas.addEventListener('pointermove', function (ev) {
+    if (!drawing || !_pgpSignCtx) return;
+    ev.preventDefault();
+    var p = pgpSignToLocal(ev.clientX, ev.clientY);
+    _pgpSignCtx.beginPath();
+    _pgpSignCtx.moveTo(lastP.x, lastP.y);
+    _pgpSignCtx.lineTo(p.x, p.y);
+    _pgpSignCtx.stroke();
+    lastP = p;
+  });
+  function end(ev) {
+    if (!drawing) return;
+    drawing = false; lastP = null;
+    try { canvas.releasePointerCapture(ev.pointerId); } catch (e) {}
+  }
+  canvas.addEventListener('pointerup', end);
+  canvas.addEventListener('pointercancel', end);
+  canvas.addEventListener('pointerleave', end);
+}
+
+// Recorta o traço (bounding box da tinta) para a assinatura preencher bem a
+// caixa no PDF e reduzir o tamanho do PNG. Devolve {dataUrl,w,h} ou null.
+function pgpSignTrim(canvas) {
+  var ctx = canvas.getContext('2d');
+  var W = canvas.width, H = canvas.height, data;
+  try { data = ctx.getImageData(0, 0, W, H).data; } catch (e) { return null; }
+  var minX = W, minY = H, maxX = 0, maxY = 0, found = false;
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var i = (y * W + x) * 4;
+      if (data[i] < 230 || data[i + 1] < 230 || data[i + 2] < 230) {
+        found = true;
+        if (x < minX) minX = x; if (x > maxX) maxX = x;
+        if (y < minY) minY = y; if (y > maxY) maxY = y;
+      }
+    }
+  }
+  if (!found) return null;
+  var pad = Math.round(10 * (window.devicePixelRatio || 1));
+  minX = Math.max(0, minX - pad); minY = Math.max(0, minY - pad);
+  maxX = Math.min(W - 1, maxX + pad); maxY = Math.min(H - 1, maxY + pad);
+  var tw = maxX - minX + 1, th = maxY - minY + 1;
+  var out = document.createElement('canvas');
+  out.width = tw; out.height = th;
+  var octx = out.getContext('2d');
+  octx.fillStyle = '#ffffff'; octx.fillRect(0, 0, tw, th);
+  octx.drawImage(canvas, minX, minY, tw, th, 0, 0, tw, th);
+  return { dataUrl: out.toDataURL('image/png'), w: tw, h: th };
+}
+
+// Coleta UMA assinatura. Resolve {nome,dataUrl,w,h,ts} ou null (cancelou).
+function pgpColetarAssinatura(cfg) {
+  cfg = cfg || {};
+  return new Promise(function (resolve) {
+    pgpSignBindCanvasOnce();
+    var ov = document.getElementById('pgpSignOverlay');
+    var nameStep = document.getElementById('pgpSignNameStep');
+    var stage = document.getElementById('pgpSignStage');
+    var nameInput = document.getElementById('pgpSignNameInput');
+    var nextBtn = document.getElementById('pgpSignNextBtn');
+    var cancelBtn = document.getElementById('pgpSignCancelBtn');
+    var backBtn = document.getElementById('pgpSignBackBtn');
+    var clearBtn = document.getElementById('pgpSignClearBtn');
+    var confirmBtn = document.getElementById('pgpSignConfirmBtn');
+    if (!ov) { resolve(null); return; }
+
+    document.getElementById('pgpSignTitle').textContent = cfg.titulo || 'Assinatura';
+    document.getElementById('pgpSignSub').textContent = cfg.sub || 'Digite o nome e toque em Avançar.';
+    document.getElementById('pgpSignStageLbl').textContent = cfg.stageLbl || cfg.titulo || 'Assinatura';
+    nameInput.value = cfg.nomePrefill || '';
+    nameInput.style.borderColor = '';
+
+    ov.classList.add('open');
+    ov.setAttribute('aria-hidden', 'false');
+    stage.classList.remove('show', 'is-rotated');
+    nameStep.style.display = 'flex';
+    setTimeout(function () { try { nameInput.focus(); } catch (e) {} }, 60);
+
+    var done = false;
+    function cleanup() {
+      nextBtn.removeEventListener('click', onNext);
+      cancelBtn.removeEventListener('click', onCancel);
+      backBtn.removeEventListener('click', onBack);
+      clearBtn.removeEventListener('click', onClear);
+      confirmBtn.removeEventListener('click', onConfirm);
+      nameInput.removeEventListener('keydown', onKey);
+      window.removeEventListener('resize', onResize);
+      ov.classList.remove('open');
+      ov.setAttribute('aria-hidden', 'true');
+      stage.classList.remove('show', 'is-rotated');
+      nameStep.style.display = 'flex';
+      _pgpSignCtx = null;
+    }
+    function finish(val) { if (done) return; done = true; cleanup(); resolve(val); }
+
+    function goStage() {
+      var nome = (nameInput.value || '').trim();
+      if (!nome) { nameInput.style.borderColor = '#e5534b'; try { nameInput.focus(); } catch (e) {} return; }
+      _pgpSignNome = nome;
+      nameStep.style.display = 'none';
+      stage.classList.add('show');
+      requestAnimationFrame(function () { pgpSignSetupStage(); pgpSignResetInk(); });
+    }
+    function onNext() { goStage(); }
+    function onKey(e) { if (e.key === 'Enter') { e.preventDefault(); goStage(); } }
+    function onBack() {
+      stage.classList.remove('show', 'is-rotated');
+      nameStep.style.display = 'flex';
+      setTimeout(function () { try { nameInput.focus(); } catch (e) {} }, 50);
+    }
+    function onClear() { pgpSignSetupStage(); pgpSignResetInk(); }
+    function onCancel() { finish(null); }
+    function onConfirm() {
+      if (!_pgpSignHasInk) { try { showNotification('Faça a assinatura antes de confirmar.'); } catch (e) {} return; }
+      var canvas = document.getElementById('pgpSignCanvas');
+      var t = pgpSignTrim(canvas);
+      if (!t) t = { dataUrl: canvas.toDataURL('image/png'), w: canvas.width, h: canvas.height };
+      finish({ nome: _pgpSignNome, dataUrl: t.dataUrl, w: t.w, h: t.h, ts: Date.now() });
+    }
+    function onResize() { if (stage.classList.contains('show') && !_pgpSignHasInk) pgpSignSetupStage(); }
+
+    nextBtn.addEventListener('click', onNext);
+    cancelBtn.addEventListener('click', onCancel);
+    backBtn.addEventListener('click', onBack);
+    clearBtn.addEventListener('click', onClear);
+    confirmBtn.addEventListener('click', onConfirm);
+    nameInput.addEventListener('keydown', onKey);
+    window.addEventListener('resize', onResize);
+  });
+}
+
+// Orquestra as DUAS assinaturas (técnico → responsável do cliente) e persiste.
+// Retorna true só quando ambas foram coletadas.
+async function pgpColetarAssinaturasPreventiva() {
+  window._PGP_ASSINATURAS = window._PGP_ASSINATURAS || { tecnico: null, responsavel: null, osId: null, cliente: '' };
+  var a = window._PGP_ASSINATURAS;
+  var midx = (typeof currentMachine === 'number') ? currentMachine : 0;
+  // contexto atual (OS/cliente) — carimba a coleta p/ o guard de contexto
+  a.osId = window._PGP_OS_ID || null;
+  try { var _cli = vg(midx, 'razao_social'); a.cliente = (_cli && _cli !== '—') ? _cli : ''; } catch (e) {}
+
+  var tecPrefill = '';
+  try { tecPrefill = (window.PROPER_SESSION && window.PROPER_SESSION.tecnico && (window.PROPER_SESSION.tecnico.nome || '')) || ''; } catch (e) {}
+  if (!tecPrefill) { try { tecPrefill = pgpFieldVal(midx, 'tecnico') || ''; } catch (e) {} }
+
+  var tec = await pgpColetarAssinatura({
+    titulo: 'Assinatura do Técnico',
+    sub: 'Confirme seu nome e toque em Avançar para assinar.',
+    stageLbl: 'Técnico — assine abaixo',
+    nomePrefill: (a.tecnico && a.tecnico.nome) || tecPrefill
+  });
+  if (!tec) { pgpAtualizarStatusAssinaturas(); return false; }
+  a.tecnico = Object.assign({ papel: 'Técnico responsável' }, tec);
+  pgpPersistAssinaturas();
+  pgpAtualizarStatusAssinaturas();
+
+  var resp = await pgpColetarAssinatura({
+    titulo: 'Assinatura do Responsável (Cliente)',
+    sub: 'Digite o nome do responsável do cliente e passe o aparelho para ele assinar.',
+    stageLbl: 'Responsável do cliente — assine abaixo',
+    nomePrefill: (a.responsavel && a.responsavel.nome) || ''
+  });
+  if (!resp) {
+    pgpAtualizarStatusAssinaturas();
+    try { showNotification('Assinatura do técnico salva. Falta o responsável.'); } catch (e) {}
+    return false;
+  }
+  a.responsavel = Object.assign({ papel: 'Responsável pelo cliente' }, resp);
+  pgpPersistAssinaturas();
+  pgpAtualizarStatusAssinaturas();
+  try { showNotification('✅ Assinaturas coletadas'); } catch (e) {}
+  return true;
+}
+
 // ── BOOT (relocado para o fim: precisa rodar DEPOIS de todas as
 //    declarações let/const de estado do módulo — _pgpTipoVisita,
 //    _pgpGsUrl, _pgpAllClientsCache, etc. — senão TDZ aborta o init). ──
@@ -9476,6 +9934,7 @@ updateProgress();
 setupBackGuard();
 checkRestoreDraft();
 try{ pgpAutoPurgeAntigas(); }catch(e){}
+try{ pgpRestaurarAssinaturas(); }catch(e){}
 // FIX UX (aditivo): salva no instante em que o app vai pro segundo plano / é
 // fechado — protege contra "sair sem querer" melhor que qualquer timer.
 try {
