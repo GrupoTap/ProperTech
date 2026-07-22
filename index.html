@@ -1432,7 +1432,7 @@ if (!window.jspdf) { document.write('<script src="https://cdnjs.cloudflare.com/a
             <span id="gsTextPgp">Sheets</span>
           </div>
         </div>
-        <span id="pgpPendingBadge" style="display:none;background:#f97316;color:white;font-size:10px;font-weight:700;padding:3px 8px;border-radius:12px;cursor:pointer;white-space:nowrap;font-family:'Barlow Condensed',sans-serif" onclick="pgpFlushPending()" title="Toque para reenviar">⏳</span>
+        <span id="pgpPendingBadge" style="display:none;background:#f97316;color:white;font-size:10px;font-weight:700;padding:3px 8px;border-radius:12px;cursor:pointer;white-space:nowrap;font-family:'Barlow Condensed',sans-serif" onclick="pgpAbrirFilaPanel()" title="Toque para ver a fila de envios">⏳</span>
         <button class="btn-sessions-header" id="btnCatalogLookup" onclick="pgpToggleCatalogPanel()" title="Consulta de peças">🔍</button>
         <button class="btn-sessions-header" onclick="salvarColeta()" title="Salvar coleta">💾</button>
         <button class="btn-sessions-header" onclick="novaColeta()" title="Iniciar nova coleta">➕</button>
@@ -1665,6 +1665,18 @@ if (!window.jspdf) { document.write('<script src="https://cdnjs.cloudflare.com/a
       <button type="button" class="pgp-sign-btn" id="pgpSignClearBtn">↺ Limpar</button>
       <button type="button" class="pgp-sign-btn primary" id="pgpSignConfirmBtn">✓ Confirmar</button>
     </div>
+  </div>
+</div>
+
+<!-- V64 — PAINEL DA FILA DE ENVIOS (visualização do que está pendente / em revisão) -->
+<div id="pgpFilaOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100001;align-items:flex-end;justify-content:center" onclick="if(event.target===this)pgpFecharFilaPanel()">
+  <div style="background:#fff;color:#0f172a;width:100%;max-width:640px;max-height:82vh;overflow:auto;border-radius:14px 14px 0 0;padding:16px;font-family:'Barlow Condensed',system-ui,sans-serif">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <b style="font-size:17px">📤 Fila de envios</b>
+      <span onclick="pgpFecharFilaPanel()" style="cursor:pointer;font-size:22px;color:#64748b;line-height:1">✕</span>
+    </div>
+    <div id="pgpFilaBody"></div>
+    <button onclick="pgpFlushPending();setTimeout(pgpRenderFilaPanel,700)" style="width:100%;background:#3b82f6;color:#fff;border:0;border-radius:10px;padding:13px;font-weight:700;font-size:15px;margin-top:12px;cursor:pointer">🔄 Reenviar agora</button>
   </div>
 </div>
 
@@ -5965,6 +5977,45 @@ function pgpGetPending(){
   try{ return JSON.parse(localStorage.getItem(PENDING_KEY)||'[]'); }catch(e){ return []; }
 }
 
+// V64 — fila de REVISÃO (dead-letter): itens que o servidor rejeitou de forma
+// permanente (ex.: tarefa já assumida por outro técnico = 'locked') ou que
+// falharam além do teto de tentativas. Saem da fila ativa (param de prender o
+// contador para sempre) e ficam VISÍVEIS no painel da fila para o técnico decidir.
+const DEADLETTER_KEY = 'pgp_pending_dead_v1';
+const PGP_MAX_TRIES  = 5;
+function pgpGetDead(){ try{ return JSON.parse(localStorage.getItem(DEADLETTER_KEY)||'[]'); }catch(e){ return []; } }
+function pgpSaveDead(list){ try{ localStorage.setItem(DEADLETTER_KEY, JSON.stringify(list||[])); }catch(e){} }
+function pgpDescartarDead(idx){
+  const list = pgpGetDead();
+  if(idx==null){ pgpSaveDead([]); } else { list.splice(idx,1); pgpSaveDead(list); }
+  pgpUpdatePendingBadge(); pgpRenderFilaPanel();
+}
+function pgpReviverDead(idx){
+  // devolve um item da revisão para a fila ativa (reset de tentativas) e tenta já
+  const dead = pgpGetDead(); const item = dead[idx]; if(!item) return;
+  dead.splice(idx,1); pgpSaveDead(dead);
+  item.tries = 0; delete item.permanent;
+  const list = pgpGetPending(); list.push(item);
+  try{ localStorage.setItem(PENDING_KEY, JSON.stringify(list)); }catch(e){}
+  pgpUpdatePendingBadge(); pgpRenderFilaPanel();
+  if(_pgpGsConnected) pgpFlushPending();
+}
+
+// V64 — visit_id ESTÁVEL por (OS/máquina + data). Antes o pgpBuildPayload não
+// setava visit_id e o pgpBuildVisitRequest gerava um novo a CADA toque em
+// "Enviar" → o GAS não conseguia deduplicar → cada toque recriava linhas de
+// TODAS as máquinas. Com id estável, reenviar a mesma visita é idempotente.
+function pgpVisitIdFor(scope, visitDate){
+  var K='pgp_visit_ids_v1', map={};
+  try{ map = JSON.parse(localStorage.getItem(K)||'{}'); }catch(e){}
+  var k = String(scope||'') + '::' + String(visitDate||'');
+  if(!map[k]){
+    map[k] = 'VIS-' + Date.now().toString(36) + '-' + pgpUid();
+    try{ localStorage.setItem(K, JSON.stringify(map)); }catch(e){}
+  }
+  return map[k];
+}
+
 function pgpBuildVisitRequest(payload){
   return {
     visit_id: payload.visit_id || ('VIS-' + Date.now() + '-' + pgpUid()),
@@ -6184,12 +6235,53 @@ function pgpClearPending(){
   pgpUpdatePendingBadge();
 }
 
+// V64 — painel da fila: mostra CADA item (tipo, máquina, OS, quando, tentativas,
+// erro) — resolve o "não consigo ver o que é". Fila ativa + fila de revisão.
+function pgpFilaItemResumo(item){
+  var b = (item && item.body) || {};
+  var mb = b.machine || {};
+  var maq = b.serial || mb.serial || b.tag || mb.tag || b.machine_id || mb.id || '—';
+  var os = b.os_id || (mb && mb.os_id) || '';
+  var when = item && item.ts ? new Date(item.ts).toLocaleString('pt-BR') : '';
+  return { action:(item&&item.action)||'?', maq:maq, os:os, when:when, tries:(item&&item.tries)||0, err:(item&&(item.lastError||item.deadReason))||'' };
+}
+function pgpAbrirFilaPanel(){ var o=document.getElementById('pgpFilaOverlay'); if(!o) return; o.style.display='flex'; pgpRenderFilaPanel(); }
+function pgpFecharFilaPanel(){ var o=document.getElementById('pgpFilaOverlay'); if(o) o.style.display='none'; }
+function pgpRenderFilaPanel(){
+  var body=document.getElementById('pgpFilaBody'); if(!body) return;
+  var pend=pgpGetPending(), dead=pgpGetDead();
+  function card(it, i, isDead){
+    var r=pgpFilaItemResumo(it);
+    return '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px;margin-bottom:8px;background:'+(isDead?'#fef2f2':'#f8fafc')+'">'
+      +'<div style="font-weight:700;font-size:13px">'+pgpEscHtml(r.action)+(isDead?' <span style="color:#dc2626">· revisar</span>':'')+'</div>'
+      +'<div style="font-size:12px;color:#475569">Máquina: '+pgpEscHtml(String(r.maq))+(r.os?(' · OS '+pgpEscHtml(String(r.os))):'')+'</div>'
+      +'<div style="font-size:11px;color:#94a3b8">'+pgpEscHtml(r.when)+(r.tries?(' · '+r.tries+' tentativa(s)'):'')+'</div>'
+      +(r.err?('<div style="font-size:11px;color:#dc2626;margin-top:3px">'+pgpEscHtml(String(r.err))+'</div>'):'')
+      +(isDead?('<div style="margin-top:6px;display:flex;gap:6px">'
+         +'<button onclick="pgpReviverDead('+i+')" style="flex:1;background:#3b82f6;color:#fff;border:0;border-radius:8px;padding:7px;font-size:12px;cursor:pointer">Reenviar</button>'
+         +'<button onclick="pgpDescartarDead('+i+')" style="flex:1;background:#e2e8f0;color:#334155;border:0;border-radius:8px;padding:7px;font-size:12px;cursor:pointer">Descartar</button>'
+       +'</div>'):'')
+      +'</div>';
+  }
+  var html='';
+  if(!pend.length && !dead.length){ html='<div style="color:#64748b;font-size:13px;text-align:center;padding:20px">Fila vazia — tudo sincronizado. ✅</div>'; }
+  if(pend.length){ html+='<div style="font-size:12px;color:#3b82f6;font-weight:700;margin:4px 0">Aguardando envio ('+pend.length+')</div>'+pend.map(function(it){ return card(it,null,false); }).join(''); }
+  if(dead.length){ html+='<div style="font-size:12px;color:#dc2626;font-weight:700;margin:10px 0 4px">Para revisar ('+dead.length+')</div>'
+      +dead.map(function(it,i){ return card(it,i,true); }).join('')
+      +'<button onclick="pgpDescartarDead(null)" style="width:100%;background:#fee2e2;color:#b91c1c;border:0;border-radius:8px;padding:9px;font-size:12px;margin-top:4px;cursor:pointer">Descartar todos os de revisão</button>'; }
+  body.innerHTML=html;
+}
+
 function pgpUpdatePendingBadge(){
   const n = pgpGetPending().length;
+  const dn = pgpGetDead().length;   // V64 — inclui itens em revisão para não sumirem
   const el = document.getElementById('pgpPendingBadge');
   if(!el) return;
-  if(n>0){
-    el.textContent = `⏳ ${n} envio${n>1?'s':''} pendente${n>1?'s':''}`;
+  if(n>0 || dn>0){
+    let t = '';
+    if(n>0) t = `⏳ ${n} pendente${n>1?'s':''}`;
+    if(dn>0) t = (t?t+' · ':'') + `⚠ ${dn} revisar`;
+    el.textContent = t;
     el.style.display='inline-flex';
   } else {
     el.style.display='none';
@@ -6201,7 +6293,17 @@ async function pgpPostJson(action, body){
     method:'POST',
     body:gcBody({action, key:_AUTH_HASH, ...body})
   });
-  if(!d || d.status!=='ok') throw new Error((d && d.error) || `Falha em ${action}`);
+  if(!d || d.status!=='ok'){
+    // V64 — resposta do servidor com veredito de negócio (locked/duplicate/erro de
+    // validação) = falha PERMANENTE: reenviar em loop não resolve. Marca o erro para
+    // o pgpFlushPending mandar o item para REVISÃO (dead-letter) em vez de deixá-lo
+    // preso na fila para sempre prendendo o contador. Falha de rede/infra vem como
+    // throw do _pgpFetchComRetry_ (sem esta marca) e segue sendo retentável.
+    const _e = new Error((d && (d.error||d.message)) || `Falha em ${action}`);
+    _e.permanent = true;
+    _e.serverStatus = (d && d.status) || '';
+    throw _e;
+  }
   return d;
 }
 
@@ -6217,19 +6319,35 @@ async function pgpFlushPending(){
   const list = pgpGetPending();
   if(!list.length) return;
   const failed = [];
-  let sent = 0;
+  const dead = pgpGetDead();       // V64 — acumula na fila de revisão já existente
+  let sent = 0, deadNew = 0;
   for(let _i = 0; _i < list.length; _i++){
     const item = list[_i];
     try{
       await pgpPostJson(item.action, item.body || {});
       sent++;
     }catch(e){
-      failed.push(item);
+      // V64 — separa falha PERMANENTE (veredito do servidor: locked/duplicate/erro)
+      // de falha transitória (rede). Permanente, ou estourou o teto de tentativas →
+      // vai para REVISÃO (não fica preso na fila prendendo o contador). Senão, mantém
+      // na fila ativa para novo retry no próximo flush.
+      item.tries = (item.tries||0) + 1;
+      item.lastError = String((e && e.message) || e || 'falha');
+      item.lastTs = Date.now();
+      if((e && e.permanent) || item.tries >= PGP_MAX_TRIES){
+        item.deadReason = (e && e.serverStatus) ? ('servidor: ' + e.serverStatus)
+                                                : ('sem sucesso após ' + item.tries + ' tentativa(s)');
+        dead.push(item); deadNew++;
+      } else {
+        failed.push(item);
+      }
     }
-    // V62 — persistência incremental (espelho da fila de Drive)
+    // V62/V64 — persistência incremental (fila ativa = retentáveis + restantes; revisão à parte)
     localStorage.setItem(PENDING_KEY, JSON.stringify(failed.concat(list.slice(_i + 1))));
+    pgpSaveDead(dead);
   }
   localStorage.setItem(PENDING_KEY, JSON.stringify(failed));
+  pgpSaveDead(dead);
   pgpUpdatePendingBadge();
   if(sent>0){
     showNotification(`✅ ${sent} envio${sent>1?'s':''} pendente${sent>1?'s':''} reenviado${sent>1?'s':''}!`);
@@ -6237,6 +6355,9 @@ async function pgpFlushPending(){
     if(statusEl && statusEl.textContent !== '') {
       statusEl.innerHTML = `<span style="color:var(--blue,#3b82f6)">🔄 Reenviado — ${sent} visita${sent>1?'s':''} da fila processada${sent>1?'s':''} com sucesso.</span>`;
     }
+  }
+  if(deadNew>0){
+    showNotification(`⚠ ${deadNew} envio${deadNew>1?'s':''} não aceito${deadNew>1?'s':''} pelo servidor — toque no ⏳ para revisar.`);
   }
   } finally { _pgpSyncFlushBusy = false; } // V62
 }
@@ -7968,6 +8089,12 @@ function pgpBuildPayload(midx=currentMachine){
     // no item da fila offline, já que a fila reaproveita este mesmo objeto payload — permitindo
     // ao GAS auto-completar a tarefa correspondente e gravar o vínculo visita↔OS.
     os_id: pgpOsIdSeguro(),
+    // V64 — visit_id estável (idempotência do reenvio). Chave por OS+máquina+data:
+    // reenviar a mesma visita não cria linha nova (o GAS deduplica por visit_id).
+    visit_id: pgpVisitIdFor(
+      (pgpOsIdSeguro()||'') + '|' + pgpMachineKey(gv('razao_social'),gv('marca'),gv('modelo'),gv('ns')),
+      (gv('data_visita') || new Date().toISOString().slice(0,10))
+    ),
   };
 }
 
@@ -8287,8 +8414,18 @@ let _pgpEnviarGSBusy = false;
 
 async function pgpEnviarGS(srcBtn){
   if(_pgpEnviarGSBusy) return;
-  const indices = machines.map((_, i) => i).filter(pgpHasMachineData);
+  let indices = machines.map((_, i) => i).filter(pgpHasMachineData);
   if(!indices.length){ showNotification('⚠ Preencha ao menos uma máquina antes de enviar'); return; }
+  // V64 — envio POR MÁQUINA: com 2+ máquinas preenchidas, o técnico escolhe quais
+  // enviar agora (mesmo seletor da preventiva), em vez de mandar TUDO sempre.
+  if(indices.length > 1){
+    const _selIdx = await pgpAbrirSeletorRegistro();
+    if(_selIdx === null) return;                 // cancelou
+    if(!_selIdx.length){ showNotification('Nenhuma máquina selecionada'); return; }
+    const _selSet = new Set(_selIdx);
+    indices = indices.filter(i => _selSet.has(i));
+    if(!indices.length){ showNotification('Nenhuma das máquinas com dados foi selecionada'); return; }
+  }
   let sent=0, queued=0, failed=0;
 
   // v55: trava o botão realmente clicado (srcBtn — main da tela ou o do modal) —
@@ -8446,6 +8583,10 @@ pgpUpdateGsStatusDisplay();
     // botão travado para sempre e evita duplo-clique enquanto processa.
     _pgpEnviarGSBusy = false;
     _pgpAllSendBtns.forEach(b => { b.disabled = false; b.classList.remove('is-busy'); });
+    // V64 — o botão grande "Enviar ao Sheets" também DRENA a fila pendente/presa
+    // (antes só o toque no badge ⏳ ou a reconexão faziam isso → os itens presos
+    // nunca saíam ao clicar em Enviar). Fica fora da guarda de reentrância acima.
+    if(_pgpGsConnected){ try{ pgpFlushPending(); }catch(e){} }
   }
 }
 
