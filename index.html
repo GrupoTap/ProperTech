@@ -1,3 +1,14 @@
+<!-- V65 (23/07/2026) — HORÍMETRO ESTIMADO×REAL + FOTOS DA ÚLTIMA VISITA. Par: GAS v76.
+     (1) Horímetro: o "Estimado (regime)" agora é um mostrador SÓ LEITURA, separado da
+     caixa "Real lido no display" (que o técnico preenche no ato). Os dois são guardados
+     (hourTotal=real, horimetro_estimado). Botão "↧ Usar estimado" para copiar o estimado
+     ao real quando não der para ler o display. pfReprojetar não pré-preenche mais o real.
+     (2) Nova seção só-leitura "Fotos da última visita": ao abrir a máquina, pfCarregarFotosMaquina
+     chama getFotosMaquina (GAS v76) e mostra miniaturas das fotos anteriores (índice
+     TECH_ATTACHMENTS por Maquina_ID) + link da pasta no Drive. Aditivo, offline-safe.
+     (3) O fix do "regime não salva/não recupera" é server-side (GAS v76 ensureMachineFromVisit).
+     ADITIVO sobre a V64 (corretiva). Nada renomeado/removido. Testar no celular antes do rollout.
+-->
 <!-- V63 (ASSINATURAS EM CAMPO NA PREVENTIVA, 22/07/2026). Par: sw.js CACHE 'propertech-v63'.
      Ao finalizar a preventiva, coleta a assinatura manuscrita do TÉCNICO e do
      RESPONSÁVEL DO CLIENTE. Fluxo por pessoa: digita o nome -> avança para tela
@@ -337,6 +348,20 @@ if (!window.jspdf) { document.write('<script src="https://cdnjs.cloudflare.com/a
   .obs-row td{padding:0 !important}
   .part-obs-ta{width:100%;border:1.5px solid var(--orange);border-radius:0 0 6px 6px;padding:6px 8px;font-family:'Barlow',sans-serif;font-size:12px;color:var(--text);background:#fffdf5;outline:none;resize:none;display:block;margin:0}
 
+  /* v65 — Horímetro estimado (só leitura) + botão "usar estimado" */
+  .pf-horim-est{background:#eef2f7!important;color:#334155!important;font-weight:700;letter-spacing:.3px;cursor:default}
+  .pf-horim-est:focus{border-color:var(--gray-mid)!important;box-shadow:none!important}
+  .pf-usar-est-btn{width:100%;border:1px dashed var(--blue-mid);background:transparent;color:var(--blue-mid);border-radius:8px;padding:9px 10px;font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;cursor:pointer;min-height:40px}
+  .pf-usar-est-btn:active{background:var(--blue-light)}
+  /* v65 — Fotos da última visita (só leitura) */
+  .pf-prevfotos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .pf-prevfotos-empty{grid-column:1/-1;color:var(--text-light);font-size:12px;padding:6px 2px;font-style:italic}
+  .pf-prevfoto{margin:0;background:var(--blue-light);border-radius:8px;overflow:hidden;display:flex;flex-direction:column}
+  .pf-prevfoto img{width:100%;aspect-ratio:1/1;object-fit:cover;display:block;background:#0b1220}
+  .pf-prevfoto-noimg{width:100%;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;color:var(--text-light);font-size:10px;background:#0b1220}
+  .pf-prevfoto figcaption{font-size:10px;line-height:1.25;color:var(--text);padding:4px 6px;display:flex;flex-direction:column;gap:1px}
+  .pf-prevfoto-sub{color:var(--text-light);font-size:9px}
+  .pf-prevfotos-folder{grid-column:1/-1;text-align:center;font-size:12px;font-weight:700;color:var(--blue-mid);text-decoration:none;padding:6px}
   /* Regime turnos */
   .regime-turnos{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
   .turno-row{display:flex;align-items:flex-end;gap:6px;background:var(--blue-light);border-radius:8px;padding:8px}
@@ -3248,6 +3273,19 @@ function buildPanelHTML(idx) {
     </div>
   </div>
 
+  <!-- v65: Fotos de visitas ANTERIORES da máquina (só leitura). Carregadas do índice
+       TECH_ATTACHMENTS via getFotosMaquina ao abrir a máquina. Sem data-section: não
+       conta no progresso/badges. Começa recolhida; o badge mostra a contagem. -->
+  <div class="section pf-prevfotos-section">
+    <div class="section-header collapsed" onclick="toggleSection(this)">
+      <span class="icon">📸</span><span class="title">Fotos da última visita</span>
+      <span class="badge" id="m${idx}_prevfotos_badge">—</span><span class="chevron">▼</span>
+    </div>
+    <div class="section-body hidden">
+      <div class="pf-prevfotos" id="m${idx}_prev_fotos"><div class="pf-prevfotos-empty">As fotos anteriores da máquina aparecem aqui ao abrir.</div></div>
+    </div>
+  </div>
+
   <div class="section" data-section>
     <div class="section-header" onclick="toggleSection(this)">
       <span class="icon">⏱️</span><span class="title">3. Horímetro e Regime</span>
@@ -3257,11 +3295,18 @@ function buildPanelHTML(idx) {
       <div class="field-item" onclick="toggleField(this,${idx})">
         <div class="field-label"><div class="checkbox">✓</div>
           <div class="label-text"><div class="label-main">Horímetro total atual</div>
-          <div class="label-hint">Ler no display ou horímetro analógico</div></div></div>
+          <div class="label-hint">Leia o horímetro na máquina e lance o valor REAL medido</div></div></div>
         <div class="field-input">
+          <!-- v65: estimado (só leitura, calculado pelo regime) SEPARADO do real lido.
+               O técnico enxerga a estimativa como referência travada e digita a leitura
+               real no ato. Os DOIS são guardados (hourTotal=real, horimetro_estimado). -->
           <div class="row2">
-            <div class="sub-group"><label>Horas totais</label><input type="number" id="${p}horimetro" placeholder="Ex: 15000" data-key="${p}horimetro" onclick="event.stopPropagation()"></div>
+            <div class="sub-group"><label>Estimado (regime)</label><input type="text" id="${p}horim_est_box" class="pf-horim-est" readonly tabindex="-1" placeholder="—" onclick="event.stopPropagation()"></div>
+            <div class="sub-group"><label>Real lido no display *</label><input type="number" id="${p}horimetro" placeholder="Leitura real" data-key="${p}horimetro" onclick="event.stopPropagation()"></div>
+          </div>
+          <div class="row2">
             <div class="sub-group"><label>Data da leitura</label><input type="date" id="${p}data_leitura" data-key="${p}data_leitura" onclick="event.stopPropagation()" onchange="pfReprojetar(${idx})"></div>
+            <div class="sub-group" style="display:flex;align-items:flex-end"><button type="button" class="pf-usar-est-btn" id="${p}usar_est_btn" onclick="event.stopPropagation();pfUsarEstimado(${idx})" title="Copiar o estimado para o campo real (use só se não conseguir ler o horímetro)">↧ Usar estimado</button></div>
           </div>
           <div id="m${idx}_horim_proj_hint" class="pf-proj-hint" style="font-size:12px;color:#94a3b8;margin-top:6px"></div>
           <button class="btn-foto-inline" id="${p}btn_foto_horimetro" data-done-label="✅ Horímetro ok" data-orig-label="📷 Foto do horímetro"
@@ -6905,6 +6950,8 @@ function pgpLoadMachine(eq,localDb,midx=currentMachine,clientData=null){
   // v51 — horímetro dinâmico: projeta o total e cada peça para a data da leitura
   // (busca o fator no backend e aplica; guarda baseline p/ reprojetar na troca de data).
   try { if(typeof pfProjetarHorimetros==='function') pfProjetarHorimetros(idx); } catch(e) { console.warn('pfProjetarHorimetros:', e); }
+  // v65 — carrega (não-bloqueante) as fotos de visitas anteriores desta máquina
+  try { if(typeof pfCarregarFotosMaquina==='function') pfCarregarFotosMaquina(idx); } catch(e) { console.warn('pfCarregarFotosMaquina:', e); }
   // v8.4.4 — destacar campos faltantes e campos variáveis após carga
   setTimeout(()=>{
     pgpHighlightMissingClientFields(idx);
@@ -9341,6 +9388,60 @@ function _pfTs(v) {
   if (m) return new Date(+m[3], +m[2] - 1, +m[1]).getTime();
   var t = new Date(s).getTime(); return isNaN(t) ? 0 : t;
 }
+// v65 — Fotos de visitas ANTERIORES da máquina: busca no backend (getFotosMaquina,
+// que lê o índice TECH_ATTACHMENTS por Maquina_ID) e desenha miniaturas SÓ LEITURA na
+// seção "Fotos da última visita". Não bloqueia a UI; silencioso offline/erro. Guarda
+// de contexto: se a máquina ativa trocar enquanto a rede responde, descarta o retorno.
+async function pfCarregarFotosMaquina(idx) {
+  var box   = document.getElementById('m' + idx + '_prev_fotos');
+  var badge = document.getElementById('m' + idx + '_prevfotos_badge');
+  if (!box) return;
+  var eq = (typeof pgpGetLoadedMachineForIndex === 'function') ? pgpGetLoadedMachineForIndex(idx) : null;
+  var machineId = (eq && (eq.id || eq.machine_id)) || '';
+  var serial  = pgpFieldVal(idx, 'ns') || '';
+  var cliente = pgpDriveClientName(idx);
+  if (!machineId && !serial) {
+    box.innerHTML = '<div class="pf-prevfotos-empty">Máquina sem identificação — sem fotos anteriores.</div>';
+    if (badge) badge.textContent = '0';
+    return;
+  }
+  box.innerHTML = '<div class="pf-prevfotos-empty">Carregando fotos anteriores…</div>';
+  if (badge) badge.textContent = '…';
+  try {
+    var r = await pfGet('getFotosMaquina', { machine_id: machineId, serial: serial, cliente: cliente, limit: 12 });
+    // a máquina ativa pode ter mudado enquanto a rede respondia
+    var eqNow = (typeof pgpGetLoadedMachineForIndex === 'function') ? pgpGetLoadedMachineForIndex(idx) : null;
+    var midNow = (eqNow && (eqNow.id || eqNow.machine_id)) || '';
+    if (machineId && midNow && midNow !== machineId) return;
+    var fotos = (r && r.fotos) || [];
+    if (!fotos.length) {
+      box.innerHTML = '<div class="pf-prevfotos-empty">Nenhuma foto de visita anterior encontrada para esta máquina.</div>';
+      if (badge) badge.textContent = '0';
+      return;
+    }
+    var html = '';
+    fotos.forEach(function(f){
+      var legenda = pgpEscHtml(f.caption || f.fileName || '');
+      var sub = [f.data, (f.os_numero ? 'OS ' + f.os_numero : '')].filter(Boolean).join(' · ');
+      var img = f.thumb
+        ? '<img src="' + f.thumb + '" alt="" loading="lazy">'
+        : '<div class="pf-prevfoto-noimg">sem prévia</div>';
+      var open = f.file_url ? ' onclick="window.open(\'' + pgpEscHtml(f.file_url) + '\',\'_blank\')" style="cursor:pointer" title="Abrir no Drive"' : '';
+      html += '<figure class="pf-prevfoto"' + open + '>' + img +
+              '<figcaption>' + (legenda || '&nbsp;') +
+              (sub ? '<span class="pf-prevfoto-sub">' + pgpEscHtml(sub) + '</span>' : '') +
+              '</figcaption></figure>';
+    });
+    var folderUrl = fotos[0] && fotos[0].folder_url;
+    if (folderUrl) html += '<a class="pf-prevfotos-folder" href="' + pgpEscHtml(folderUrl) + '" target="_blank" rel="noopener">📁 Abrir pasta no Drive</a>';
+    box.innerHTML = html;
+    if (badge) badge.textContent = String(r.total || fotos.length);
+  } catch (e) {
+    box.innerHTML = '<div class="pf-prevfotos-empty">Fotos anteriores indisponíveis agora (offline?).</div>';
+    if (badge) badge.textContent = '—';
+  }
+}
+
 // Busca o fator/baseline no backend (uma vez por carga) e projeta. Se offline/erro,
 // projeta mesmo assim com fator=1 usando hourTotal+lastVisit da própria máquina.
 async function pfProjetarHorimetros(idx) {
@@ -9375,15 +9476,25 @@ function pfReprojetar(idx, force) {
   var hSem = pfHorasSemana(idx);
   var hintEl = document.getElementById('m' + idx + '_horim_proj_hint');
   var estEl  = document.getElementById('m' + idx + '_horimetro_estimado');
+  var estBox = document.getElementById('m' + idx + '_horim_est_box'); // v65: mostrador do estimado (só leitura)
+  var hEl    = document.querySelector('[data-key="m' + idx + '_horimetro"]'); // real lido (editável)
 
   var dataEl = document.getElementById('m' + idx + '_data_leitura');
   var targetTs = _pfTs(dataEl && dataEl.value) || Date.now();
 
+  // v65 — o campo REAL nunca é pré-preenchido com a estimativa: o técnico deve lançar
+  // a leitura do display. Na CARGA (force) limpamos o real para forçar a leitura; na
+  // troca de data (force=false) preservamos o que o técnico já digitou.
+  if (force && hEl) { hEl.value = ''; if (hEl.dataset) hEl.dataset.proj = ''; }
+
   // Sem baseline ou sem regime → não dá para projetar; orienta o técnico.
   if (baseReal == null || !baseTs || hSem <= 0) {
+    if (estBox) estBox.value = '';
+    if (estEl)  estEl.value  = '';
+    if (hEl && baseReal != null) hEl.placeholder = 'Real (últ. total ' + Math.round(baseReal).toLocaleString('pt-BR') + ')';
     if (hintEl) hintEl.textContent = (hSem <= 0)
-      ? '↳ Informe o regime de trabalho para estimar as horas na data da visita.'
-      : '↳ Sem leitura anterior — lance o horímetro real medido.';
+      ? '↳ Informe o regime de trabalho para estimar as horas na data da visita — e lance o horímetro REAL medido.'
+      : '↳ Sem leitura anterior — lance o horímetro REAL medido no display.';
     return;
   }
 
@@ -9391,17 +9502,14 @@ function pfReprojetar(idx, force) {
   var delta = dias * (hSem / 7) * fator;
   var projTotal = Math.round(baseReal + delta);
 
-  // Horímetro total: pré-preenche (editável). Guarda o valor projetado p/ detectar edição manual.
-  var hEl = document.querySelector('[data-key="m' + idx + '_horimetro"]');
-  if (hEl) {
-    var prev = hEl.dataset ? hEl.dataset.proj : '';
-    if (force || hEl.value === '' || hEl.value === prev) hEl.value = projTotal;
-    if (hEl.dataset) hEl.dataset.proj = String(projTotal);
-  }
-  if (estEl) estEl.value = projTotal; // sempre = estimado enviado p/ auto-calibração
+  // Estimado (só leitura) + campo oculto enviado p/ auto-calibração. O real recebe o
+  // valor estimado apenas como PLACEHOLDER (dica) — nunca é preenchido de fato.
+  if (estBox) estBox.value = projTotal.toLocaleString('pt-BR') + ' h';
+  if (estEl)  estEl.value  = projTotal;
+  if (hEl)    hEl.placeholder = 'Real (est. ' + projTotal.toLocaleString('pt-BR') + ')';
   var dtxt = dataEl && dataEl.value ? dataEl.value.split('-').reverse().join('/') : 'hoje';
   if (hintEl) hintEl.textContent = '↳ Estimado p/ ' + dtxt + ': ' + projTotal.toLocaleString('pt-BR') +
-    ' h (base ' + Math.round(baseReal).toLocaleString('pt-BR') + ' + ' + Math.round(dias) + 'd de regime) — corrija se diferente.';
+    ' h (base ' + Math.round(baseReal).toLocaleString('pt-BR') + ' + ' + Math.round(dias) + 'd de regime). Leia o horímetro e lance o valor real.';
 
   // Peças: cada contador avança/regride pelo mesmo delta de horas da máquina.
   if (eq.parts && Array.isArray(PARTS)) {
@@ -9426,6 +9534,23 @@ function pfReprojetar(idx, force) {
       }
     });
   }
+}
+
+// v65 — "↧ Usar estimado": copia o horímetro estimado (regime) para o campo REAL.
+// Escape hatch para quando o técnico não conseguir ler o display (relógio quebrado
+// etc.). Uso deliberado, não automático — mantém a leitura real como padrão.
+function pfUsarEstimado(idx) {
+  var estEl = document.getElementById('m' + idx + '_horimetro_estimado');
+  var hEl   = document.querySelector('[data-key="m' + idx + '_horimetro"]');
+  var val   = estEl && estEl.value !== '' ? parseInt(estEl.value, 10) : NaN;
+  if (!hEl) return;
+  if (isNaN(val)) { showNotification('Sem estimativa disponível — informe o regime e a leitura anterior.'); return; }
+  hEl.value = val;
+  // dispara os mesmos hooks de um preenchimento manual (validação/rascunho/progresso)
+  try { hEl.dispatchEvent(new Event('input', { bubbles: true })); } catch(e){}
+  try { hEl.dispatchEvent(new Event('change', { bubbles: true })); } catch(e){}
+  var fi = hEl.closest('.field-item'); if (fi) fi.classList.add('checked');
+  try { if (typeof updateProgress === 'function') updateProgress(); } catch(e){}
 }
 
 // Formata um objeto Date para o formato aceito por <input type="datetime-local">
