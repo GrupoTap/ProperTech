@@ -1,3 +1,19 @@
+<!-- V67 (28/07/2026) — UX DO PIPELINE (varredura OS Reforma, chamado do Fernando). Inclui a V66.
+     (1) pfAbrirForm(tarefaId, formUrl, this): spinner imediato no clique + registrarAbertura
+         vira fire-and-forget (antes o await segurava a navegação segundos sem feedback);
+         caminho interno (ProperTech) devolve o botão ao normal.
+     (2) pfLoadPipeline(opts.soft): assumir/liberar/decidir/concluir recarregam SEM apagar
+         a tela (matava a sensação de "piscou e falhou"); toast "🔒 Tarefa assumida" no sucesso.
+     (3) "Nenhuma tarefa no pipeline": 1 retry automático (2,5s) antes de cravar o vazio
+         (OS recém-criada ainda instanciando) + botão ↻ Recarregar; cache offline NÃO grava
+         mais lista vazia (cache de 0 tarefas mostrava vazio p/ OS que já tinha tarefas).
+     100% aditivo; nenhum id/data-view/data-key/rota renomeado. Par: sw v67. -->
+<!-- V66 (28/07/2026) — FIX N/A DE PEÇA NÃO PERSISTIA (chamado do Fernando). Par: GAS v77.
+     pgpBuildPreventivaPayload montava parts[aid] SEM o boolean `na` (só acao='na');
+     o GAS gravava então NA='NÃO' no PECAS_LOG e nunca levava o N/A ao MACHINE_PARTS —
+     marcar N/A em campo "voltava" no próximo refresh do PCM/PCF. Uma linha aditiva:
+     na:isNA no objeto da peça (mesmo padrão que pgpBuildPayload/inspeção já fazia).
+     O GAS v77 ainda aceita acao='na' como fallback p/ PCFs antigos. Nada renomeado. -->
 <!-- V65 (23/07/2026) — HORÍMETRO ESTIMADO×REAL + FOTOS DA ÚLTIMA VISITA. Par: GAS v76.
      (1) Horímetro: o "Estimado (regime)" agora é um mostrador SÓ LEITURA, separado da
      caixa "Real lido no display" (que o técnico preenche no ato). Os dois são guardados
@@ -7629,6 +7645,7 @@ function pgpBuildPreventivaPayload(midx=currentMachine){
     parts[aid]={
       name:(base.parts[aid]?.name)||pt.k,
       acao:acaoFinal,
+      na:isNA, // V66: o boolean nunca viajava — o GAS gravava NA='NÃO' p/ peça marcada N/A
       ref:refEl?.value.trim()||'',
       refAnterior,
       interval,
@@ -9026,13 +9043,19 @@ async function pfSelecionarOS(osId, osNome) {
   pfLoadPipeline();
 }
 
-async function pfLoadPipeline() {
+async function pfLoadPipeline(opts) {
+  // V67: opts.soft=true → NÃO limpa a tela durante o refresh (mata o "pisca e
+  // recarrega" pós assumir/liberar/decidir que dava impressão de falha); o
+  // conteúdo antigo fica visível até o novo estar pronto.
+  opts = opts || {};
   var conteudo  = document.getElementById('pfPipelineConteudo');
   var progLabel = document.getElementById('pfProgressLabel');
   var progBar   = document.getElementById('pfProgressBar');
-  conteudo.innerHTML = '<div style="text-align:center;padding:24px;color:#64748b;font-size:13px">Carregando pipeline…</div>';
-  progLabel.textContent = '';
-  progBar.style.width = '0%';
+  if (!opts.soft) {
+    conteudo.innerHTML = '<div style="text-align:center;padding:24px;color:#64748b;font-size:13px">Carregando pipeline…</div>';
+    progLabel.textContent = '';
+    progBar.style.width = '0%';
+  }
 
   window._pfPipelineOfflineTs = null; // O1.2 (V61)
   try {
@@ -9043,7 +9066,11 @@ async function pfLoadPipeline() {
       if (!_pgpGsConnected && navigator.onLine === false) throw new Error('offline');
       r = await pgpPostJson('getPipelineByOS', { os_id: _pfOsId });
       // Sucesso → guarda para leitura offline (mantém as 12 OS mais recentes)
+      // V67: lista VAZIA não entra no cache — um cache de "0 tarefas" gravado
+      // antes do pipeline ser instanciado fazia o modo offline mostrar
+      // "Nenhuma tarefa" para uma OS que JÁ tinha tarefas.
       try {
+        if (!(r.tarefas || []).length) throw new Error('vazio — não cachear');
         var _pipeCache = JSON.parse(localStorage.getItem('pf_pipeline_cache_v1') || '{}');
         _pipeCache[_pfOsId] = { ts: Date.now(), tarefas: r.tarefas || [] };
         var _pcKeys = Object.keys(_pipeCache);
@@ -9064,10 +9091,23 @@ async function pfLoadPipeline() {
     _pfTarefas = r.tarefas || [];
 
     if (_pfTarefas.length === 0) {
+      // V67: OS recém-criada pode ainda estar instanciando o pipeline no GAS —
+      // antes já cravava "Nenhuma tarefa" na 1ª leitura (chamado do Fernando).
+      // Agora: 1 retry automático após 2,5s; persistindo vazio, mostra o estado
+      // com botão de recarregar.
+      if (!opts._retentou) {
+        conteudo.innerHTML = '<div style="text-align:center;padding:32px 16px;color:#64748b">' +
+          '<div style="font-size:32px;margin-bottom:12px">⏳</div>' +
+          '<div style="font-size:13px;color:#94a3b8">Aguardando as tarefas da OS…</div>' +
+        '</div>';
+        await new Promise(function(res){ setTimeout(res, 2500); });
+        return pfLoadPipeline({ _retentou: true });
+      }
       conteudo.innerHTML = '<div style="text-align:center;padding:32px 16px;color:#64748b">' +
         '<div style="font-size:32px;margin-bottom:12px">🔧</div>' +
         '<div style="font-size:14px;font-weight:600;color:#94a3b8;margin-bottom:6px">Nenhuma tarefa no pipeline</div>' +
-        '<div style="font-size:12px">Esta OS ainda não tem um pipeline instanciado.<br>O admin pode configurá-lo no ProperAdmin.</div>' +
+        '<div style="font-size:12px">Esta OS ainda não tem um pipeline instanciado.<br>O admin pode configurá-lo no ProperAdmin.<br>Se você acabou de criar a OS, toque em recarregar.</div>' +
+        '<br><button onclick="pfLoadPipeline()" style="background:#1e293b;border:1px solid #334155;color:#94a3b8;padding:8px 16px;border-radius:8px;cursor:pointer;font-family:\'Barlow Condensed\',sans-serif;font-size:13px;font-weight:700">↻ Recarregar</button>' +
       '</div>';
       return;
     }
@@ -9230,7 +9270,7 @@ function pfBuildCard(t) {
       var formUrl = pfGetFormUrl(tipo, t);
       if (formUrl) {
         acaoHtml = '<div style="margin-top:10px">' +
-          '<button class="pf-btn pf-btn-abrir-form" onclick="pfAbrirForm(\'' + tidSafe + '\',\'' + formUrl.replace(/'/g, "\\'") + '\')">📋 Abrir formulário</button>' +
+          '<button class="pf-btn pf-btn-abrir-form" onclick="pfAbrirForm(\'' + tidSafe + '\',\'' + formUrl.replace(/'/g, "\\'") + '\',this)">📋 Abrir formulário</button>' +
         '</div>';
       } else {
         acaoHtml = '<div style="margin-top:10px">' +
@@ -9298,7 +9338,7 @@ async function pfAssumirTarefa(tarefaId, btn) {
     pgpQueueRequest('assumirTarefa', { os_id: _pfOsId, tarefa_id: tarefaId, usuario: usuario });
     pfLockLocalOffline(tarefaId, usuario);
     if (typeof pfToast === 'function') pfToast('📴 Assumida offline — sincroniza quando houver sinal');
-    await pfLoadPipeline();
+    await pfLoadPipeline({ soft: true }); // V67: refresh sem apagar a tela
     return;
   }
   try {
@@ -9306,8 +9346,11 @@ async function pfAssumirTarefa(tarefaId, btn) {
     if (r && r.status === 'locked') {
       if (typeof pfToast === 'function') pfToast('🔒 Já está em execução por ' + (r.locked_by || 'outro técnico'));
       else alert('Tarefa já está em execução por ' + (r.locked_by || 'outro técnico'));
+    } else {
+      // V67: sucesso agora tem feedback explícito (antes só a tela "piscava")
+      if (typeof pfToast === 'function') pfToast('🔒 Tarefa assumida — pode abrir o formulário');
     }
-    await pfLoadPipeline();
+    await pfLoadPipeline({ soft: true }); // V67: refresh sem apagar a tela
   } catch(e) {
     if (e.message && e.message.includes('AUTH_GOOGLE')) { pfHubLogout(); return; }
     if (btn) { btn.disabled = false; btn.classList.remove('is-busy'); btn.textContent = '🔒 Assumir tarefa'; }
@@ -9324,12 +9367,12 @@ async function pfLiberarTarefa(tarefaId, btn) {
     pgpQueueRequest('liberarTarefa', { os_id: _pfOsId, tarefa_id: tarefaId, usuario: usuario });
     pfLockLocalOffline(tarefaId, '');
     if (typeof pfToast === 'function') pfToast('📴 Liberada offline — sincroniza quando houver sinal');
-    await pfLoadPipeline();
+    await pfLoadPipeline({ soft: true }); // V67: refresh sem apagar a tela
     return;
   }
   try {
     await pgpPostJson('liberarTarefa', { os_id: _pfOsId, tarefa_id: tarefaId, usuario: usuario });
-    await pfLoadPipeline();
+    await pfLoadPipeline({ soft: true }); // V67: refresh sem apagar a tela
   } catch(e) {
     if (e.message && e.message.includes('AUTH_GOOGLE')) { pfHubLogout(); return; }
     if (btn) { btn.disabled = false; btn.classList.remove('is-busy'); btn.textContent = 'Liberar tarefa'; }
@@ -9347,7 +9390,7 @@ async function pfResolverDecisao(tarefaId, valor, btn) {
     ? (window.PROPER_SESSION.tecnico.id || window.PROPER_SESSION.tecnico.nome || '') : '';
   try {
     await pgpPostJson('resolverDecisao', { os_id: _pfOsId, tarefa_id: tarefaId, valor: valor, usuario: usuario });
-    await pfLoadPipeline();
+    await pfLoadPipeline({ soft: true }); // V67: refresh sem apagar a tela
   } catch(e) {
     if (e.message && e.message.includes('AUTH_GOOGLE')) { pfHubLogout(); return; }
     if (btn) { btn.disabled = false; btn.classList.remove('is-busy'); }
@@ -9685,7 +9728,7 @@ async function pfConfirmarTarefa(tarefaId) {
       respostas_json: JSON.stringify(_pfRespostas[tarefaId] || {}) // v72 Fases B/C
     });
     pfShowUnlockBanner('✅ Tarefa concluída!');
-    pfLoadPipeline();
+    pfLoadPipeline({ soft: true }); // V67: refresh sem apagar a tela
   } catch(e) {
     if (e.message && e.message.includes('AUTH_GOOGLE')) { pfHubLogout(); return; }
     if (btnEl) { btnEl.disabled = false; btnEl.classList.remove('is-busy'); btnEl.textContent = '✓ Confirmar'; }
@@ -9694,22 +9737,25 @@ async function pfConfirmarTarefa(tarefaId) {
 }
 
 // ── Abrir formulário vinculado ────────────────────────────────────────────────
-async function pfAbrirForm(tarefaId, formUrl) {
+async function pfAbrirForm(tarefaId, formUrl, btn) {
+  // V67: feedback IMEDIATO no clique (spinner) — antes o await do
+  // registrarAbertura segurava a navegação por segundos sem nenhum sinal e o
+  // usuário achava que o clique não tinha funcionado (chamado do Fernando).
+  if (btn) { btn.disabled = true; btn.classList.add('is-busy'); btn.textContent = 'Abrindo…'; }
   var usuario = (window.PROPER_SESSION && window.PROPER_SESSION.tecnico)
     ? (window.PROPER_SESSION.tecnico.id || window.PROPER_SESSION.tecnico.nome || '')
     : '';
   // O1.3 (V61): registrarAbertura sem conexão (ou em falha) vai para a fila —
   // antes a abertura offline simplesmente se perdia (só um console.warn).
+  // V67: e agora é FIRE-AND-FORGET — não bloqueia mais a navegação.
   var _aberturaBody = { os_id: _pfOsId, tarefa_id: tarefaId, usuario: usuario };
   if (!_pgpGsConnected) {
     pgpQueueRequest('registrarAbertura', _aberturaBody);
   } else {
-    try {
-      await pgpPostJson('registrarAbertura', _aberturaBody);
-    } catch(e) {
+    pgpPostJson('registrarAbertura', _aberturaBody).catch(function(e) {
       console.warn('[pfAbrirForm] registrarAbertura falhou — enfileirada:', e.message);
       pgpQueueRequest('registrarAbertura', _aberturaBody);
-    }
+    });
   }
   // v28 — Preventiva↔Pipeline: acrescenta os_id na URL de navegação em tempo de execução —
   // o Form_URL salvo no template continua estático e compartilhado entre todas as OS; é aqui,
@@ -9732,6 +9778,8 @@ async function pfAbrirForm(tarefaId, formUrl) {
   // setados aqui são os mesmos que checkHubSession leria da URL no caminho antigo.
   var _ehProprioApp = formUrl.indexOf('ProperTech/index.html') >= 0;
   if (_ehProprioApp) {
+    // V67: caminho interno não navega — devolve o botão ao estado normal
+    if (btn) { btn.disabled = false; btn.classList.remove('is-busy'); btn.textContent = '📋 Abrir formulário'; }
     window._PGP_OS_ID = _pfOsId;
     window._PGP_TAREFA_ID = tarefaId;
     window._PGP_PREVENTIVA_INICIO_ISO = inicioPreventivaISO;
@@ -9773,7 +9821,7 @@ async function pollPfNotificacoes() {
     if (ov && ov.style.display !== 'none' && novasIds.length > 0) {
       pfShowUnlockBanner('🔔 ' + novasIds[0].Mensagem);
       if (_pfOsId && document.getElementById('pfScreenPipeline').style.display !== 'none') {
-        pfLoadPipeline();
+        pfLoadPipeline({ soft: true }); // V67: notificação não apaga a tela
       }
     }
   } catch(e) {
