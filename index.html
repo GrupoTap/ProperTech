@@ -1,5 +1,30 @@
 <!-- V68 (29/07/2026) — PACOTE PÓS-TESTE PROFUNDO. Inclui a V67. Par obrigatório: sw.js
-     com CACHE='propertech-v69'; back-end GAS v79 (mesmo CONTRATO de campos).
+     com CACHE='propertech-v70'; back-end GAS v79 (mesmo CONTRATO de campos).
+
+     V70 (29/07/2026) — FIX do perfil que travava em "parafuso" numa OS de pistão.
+     Relatado em campo na OS PGP-2026-0024. ZERO mudança de GAS.
+     CAUSA RAIZ: o perfil era DERIVADO (hidden m<i>_perfil + fallback no
+     _PGP_PERFIL_DEFAULT) mas o painel era DESENHADO a partir de um snapshot
+     dele, sem registro de qual perfil estava na tela. pgpLoadMachine limpa
+     todos os [data-key^="m<i>_"] — inclusive esse hidden, que é ESTADO do
+     painel e não campo do técnico. Hidden vazio ⇒ pgpPerfilId() caía no
+     default da OS ('pistao') com a tela ainda em parafuso; e as guardas de
+     idempotência comparavam justamente com pgpPerfilId() ⇒ pgpAplicarPerfil
+     nunca era chamado. Trocar o select à mão também não fazia nada, em silêncio.
+       • m<i>_perfil deixa de ser apagado (pgpLoadMachine, pgpClearMachine e o
+         limpar-painel);
+       • panel.dataset.perfilRender registra o perfil DESENHADO, e é com ele que
+         pgpAplicarPerfil/pgpAutoPerfilPorTipo decidem re-renderizar;
+       • pgpPerfilId() passa a PREFERIR o desenhado — payload, validação, PDF e
+         CSV não podem mais discordar da tela (o risco era enviar preventiva com
+         o checklist vazio e descartar o que foi preenchido);
+       • tripwire em pgpEnviarPreventiva: recusa em vez de gravar dado parcial;
+       • handoff ?modo=pistao do pipeline APLICA o perfil nos painéis já
+         existentes (o caminho interno não recarrega a página);
+       • máquina da OS sem Tipo_Equip herda o perfil da OS e tem o campo
+         preenchido, para a próxima visita já abrir certa;
+       • restoreState aplica o perfil ANTES de repovoar os campos;
+       • pgpOnTipoChange avisa quando não conseguiu trocar.
 
      V69 (29/07/2026) — PERFIL DE EQUIPAMENTO + CHECKLIST DE COMPRESSOR DE PISTÃO.
      ZERO mudança de GAS. Nenhum id/data-key/rota renomeado; o perfil 'parafuso'
@@ -321,8 +346,8 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ProperCare Field · PGP Preventivas v33 · build PCF_V69</title>
-<meta name="app-build" content="PCF_V69" data-date="2026-07-29">
+<title>ProperCare Field · PGP Preventivas v33 · build PCF_V70</title>
+<meta name="app-build" content="PCF_V70" data-date="2026-07-29">
 <meta name="theme-color" content="#0f172a">
 <!-- PWA (fix 19/07/2026): o repo já tinha manifest.webmanifest + sw.js + proper-pwa.js,
      mas o index.html não os referenciava — sem estas 3 linhas o SW nunca registra,
@@ -3686,6 +3711,10 @@ function createPanel(idx) {
   panel.className = 'machine-panel' + (idx === currentMachine ? ' active' : '');
   panel.id = 'panel-' + idx;
   panel.innerHTML = buildPanelHTML(idx);
+  // V70 — registra qual perfil FOI DESENHADO. Lido do próprio markup e não de
+  // pgpPerfilId, para não depender do estado do documento neste instante.
+  var _hidPerfil = panel.querySelector('[data-key="m'+idx+'_perfil"]');
+  panel.dataset.perfilRender = (_hidPerfil && _hidPerfil.value) || 'parafuso';
   document.getElementById('machineContent').appendChild(panel);
   // v8.4.4: preencher data_visita com hoje automaticamente
   const dvEl = document.querySelector(`[data-key="m${idx}_data_visita"]`);
@@ -4368,7 +4397,10 @@ async function resetCurrent() {
     const inp=el.querySelector('.photo-input-file'); if(inp) inp.value='';
     delete el.dataset.photoFile;
   });
-  panel.querySelectorAll('input,textarea,select').forEach(el => el.value='');
+  panel.querySelectorAll('input,textarea,select').forEach(el => {
+    if (el.dataset && el.dataset.key === 'm'+currentMachine+'_perfil') return; // V69.1
+    el.value='';
+  });
   // Reset feedback visual dos botões de foto inline (v23: também restaura o texto original)
   panel.querySelectorAll('.foto-ini-btn, .btn-foto-inline, .btn-foto-peca').forEach(b => {
     b.classList.remove('done');
@@ -4896,6 +4928,14 @@ function restoreState(state) {
       }
     });
   })();
+
+  // V69.1 — o perfil de cada máquina precisa ser aplicado ANTES de repovoar os
+  // campos: trocar de perfil re-renderiza as seções 4 e 5, o que apagaria os
+  // valores restaurados. O hidden m<i>_perfil viaja dentro de state.fields.
+  machines.forEach((_, i) => {
+    const _pf = (state.fields || {})['m' + i + '_perfil'];
+    if (_pf && PERFIS_EQUIP[_pf]) { try { pgpAplicarPerfil(i, _pf, {force:true}); } catch (_) {} }
+  });
 
   // Depois restaurar valores dos campos
   Object.entries(state.fields || {}).forEach(([key, val]) => {
@@ -6820,7 +6860,33 @@ const PERFIS_EQUIP = {
 // Perfil é POR MÁQUINA (por painel), não da sessão: uma OS pode ter um pistão
 // no painel 0 e um parafuso no painel 1. Fica num hidden com data-key, então
 // é salvo e restaurado pelo motor de rascunho/coletas sem código extra.
+// V70 — PERFIL DESENHADO x PERFIL DECLARADO.
+// `panel.dataset.perfilRender` = o perfil cujo HTML está de fato na tela.
+// O hidden `m<i>_perfil` = a intenção declarada, que viaja no rascunho/coleta.
+// Toda a classe de bug "trocar o select não muda o checklist" nasce de tratar
+// os dois como a mesma coisa. Fica no dataset (e não numa variável JS) para ser
+// auditável pelo DevTools em campo e para acompanhar o nó que ele descreve.
+function pgpPerfilRenderizado(midx){
+  try{
+    var el = document.getElementById('panel-'+midx);
+    var v = el && el.dataset ? el.dataset.perfilRender : '';
+    return (v && PERFIS_EQUIP[v]) ? v : '';
+  }catch(_){ return ''; }
+}
+function pgpMarcarPerfilRender(midx, perfilId){
+  try{
+    var el = document.getElementById('panel-'+midx);
+    if(el) el.dataset.perfilRender = perfilId;
+  }catch(_){}
+}
 function pgpPerfilId(midx){
+  // V70 — o DESENHADO tem prioridade sobre o declarado. Isso é o que garante
+  // que payload, validação, PDF e CSV nunca discordem do que o técnico viu:
+  // numa dessincronia, pgpBuildPayload iterava as peças do perfil declarado
+  // (q1..q13) que não existiam no DOM parafuso e a preventiva era enviada com
+  // o checklist VAZIO, descartando em silêncio tudo que havia sido preenchido.
+  var r = pgpPerfilRenderizado(midx);
+  if (r) return r;
   try{
     var el = document.getElementById('m'+midx+'_perfil');
     var v = el && el.value ? String(el.value) : '';
@@ -6828,6 +6894,16 @@ function pgpPerfilId(midx){
   }catch(_){}
   var d = window._PGP_PERFIL_DEFAULT;
   return (d && PERFIS_EQUIP[d]) ? d : 'parafuso';
+}
+// Perfil que o hidden DECLARA, ignorando o que está na tela. Usado só para
+// detectar a divergência (a tripwire do envio).
+function pgpPerfilDeclarado(midx){
+  try{
+    var el = document.getElementById('m'+midx+'_perfil');
+    var v = el && el.value ? String(el.value) : '';
+    if (v && PERFIS_EQUIP[v]) return v;
+  }catch(_){}
+  return '';
 }
 function pgpPerfil(midx){ return PERFIS_EQUIP[pgpPerfilId(midx)] || PERFIS_EQUIP.parafuso; }
 function pgpPartsDe(midx){ return pgpPerfil(midx).parts || PARTS; }
@@ -7053,8 +7129,15 @@ function pgpAplicarPerfil(midx, perfilId, opts){
   var p = 'm'+midx+'_';
   var hid = document.getElementById(p+'perfil');
   if(!hid) return false;
-  if(hid.value === perfilId && !opts.force) return false;
+  // V69.1: comparar com o que está DESENHADO. Comparar com hid.value fazia a
+  // função sair fora quando o hidden tinha sido apagado por pgpLoadMachine.
+  // V70: só é no-op se o hidden E o DOM já estiverem no perfil pedido.
+  if(hid.value === perfilId && pgpPerfilRenderizado(midx) === perfilId && !opts.force) return false;
   hid.value = perfilId;
+  // V70 ⚠ ORDEM CRÍTICA: marcar o perfil DESENHADO antes de reconstruir as
+  // seções. buildPartsSection/buildPhotoItems consultam pgpPerfilId(), que dá
+  // prioridade ao desenhado — marcar depois remontava tudo no perfil ANTIGO.
+  pgpMarcarPerfilRender(midx, perfilId);
   var perfil = PERFIS_EQUIP[perfilId];
 
   var sec4 = document.getElementById(p+'sec4_body');
@@ -7113,9 +7196,48 @@ function pgpAutoPerfilPorTipo(midx, textoBruto){
       txt = el ? el.value : '';
     }
     var sug = pgpPerfilPorTipoTexto(txt);
-    if(sug && sug !== pgpPerfilId(midx)) return pgpAplicarPerfil(midx, sug);
-  }catch(_){}
+    // V70: aplica quando o DOM está desenhado diferente do sugerido. Comparar
+    // com pgpPerfilId era o beco sem saída: ele podia já responder 'pistao'
+    // (pelo default da OS) com o painel ainda desenhado em parafuso.
+    if(sug && sug !== pgpPerfilRenderizado(midx)) return pgpAplicarPerfil(midx, sug, {force:true});
+  }catch(e){ console.warn('pgpAutoPerfilPorTipo:', e); }
   return false;
+}
+
+// V69.1 — perfil vindo da OS (?modo=pistao na Form_URL do template). Só entra
+// quando a MÁQUINA não declara o tipo dela: o cadastro da máquina sempre vence.
+// Também preenche o "Tipo de equipamento" em branco com o rótulo do perfil,
+// para que o Tipo_Equip seja gravado e a próxima visita já abra certa sozinha.
+function pgpAplicarPerfilDaOS(midx){
+  try{
+    var d = window._PGP_PERFIL_DEFAULT;
+    if(!d || !PERFIS_EQUIP[d]) return false;
+    var el = document.querySelector('[data-key="m'+midx+'_tipo"]');
+    if(el && pgpPerfilPorTipoTexto(el.value)) return false; // a máquina já decidiu
+    // V70: preencher o "Tipo de equipamento" em branco NÃO depende de o perfil
+    // ter mudado — antes esta função saía antes daqui quando o painel já estava
+    // no perfil da OS, e a máquina seguia sem Tipo_Equip (então a visita
+    // seguinte voltava a abrir errada).
+    if(el && !String(el.value||'').trim()){
+      pgpGarantirOpcaoTipo(midx, PERFIS_EQUIP[d].rotulo);
+      el.value = PERFIS_EQUIP[d].rotulo;
+    }
+    if(pgpPerfilRenderizado(midx) === d) return false;
+    return pgpAplicarPerfil(midx, d, {force:true});
+  }catch(_){ return false; }
+}
+
+// V69.1 — reconcilia o desenhado com a intenção salva (hidden). Usado depois de
+// restaurar rascunho/coleta, onde o hidden volta mas a tela não.
+function pgpSincronizarPerfis(){
+  try{
+    for(var i=0;i<(machines||[]).length;i++){
+      var hid = document.getElementById('m'+i+'_perfil');
+      var v = hid && hid.value ? String(hid.value) : '';
+      if(v && PERFIS_EQUIP[v] && pgpPerfilRenderizado(i) !== v) pgpAplicarPerfil(i, v, {force:true});
+      // (o dataset do painel é atualizado dentro de pgpAplicarPerfil)
+    }
+  }catch(_){}
 }
 
 // Mantém no select o tipo exatamente como está cadastrado na máquina, mesmo
@@ -7132,8 +7254,18 @@ function pgpGarantirOpcaoTipo(midx, valor){
   }catch(_){}
 }
 function pgpOnTipoChange(midx){
+  var _sel = document.querySelector('[data-key="m'+midx+'_tipo"]');
+  var sug  = pgpPerfilPorTipoTexto(_sel ? _sel.value : '');
   if(pgpAutoPerfilPorTipo(midx)){
     try{ showNotification('Perfil da máquina: ' + pgpPerfil(midx).rotulo); }catch(_){}
+    return;
+  }
+  // V70 — o pior sintoma do bug de 29/07 foi o SILÊNCIO: o técnico trocava o
+  // select e nada acontecia, sem qualquer sinal. Se havia sugestão e a tela
+  // continua em outro perfil, avisa em vez de fingir que deu certo.
+  if(sug && pgpPerfilRenderizado(midx) !== sug){
+    try{ showNotification('⚠ Não foi possível trocar o checklist para ' +
+      ((PERFIS_EQUIP[sug]||{}).rotulo || sug) + ' — recarregue o formulário antes de coletar.'); }catch(_){}
   }
 }
 
@@ -7573,7 +7705,11 @@ function pgpLoadMachine(eq,localDb,midx=currentMachine,clientData=null){
   const p = `m${idx}_`;
   pgpSetLoadedMachineForIndex(idx, eq);
   const sv=(key,val)=>{const el=document.querySelector(`[data-key="${p}${key}"]`);if(el)el.value=val??'';};
-  document.querySelectorAll(`[data-key^="${p}"]`).forEach(el=>{ if(el.tagName!=='BUTTON') el.value=''; });
+  // V69.1: o hidden do PERFIL não pode ser zerado junto — foi exatamente isso
+  // que fazia o checklist de pistão nunca aparecer numa máquina vinda da OS.
+  document.querySelectorAll(`[data-key^="${p}"]`).forEach(el=>{
+    if(el.tagName!=='BUTTON' && el.dataset.key !== `${p}perfil`) el.value='';
+  });
   sv('razao_social',eq.client); sv('filial',eq.branch);     sv('cnpj',eq.cnpj);
   sv('contato',eq.contact);     sv('telefone',eq.phone);    sv('email',eq.email);
   sv('cidade',eq.city);         sv('marca',eq.brand);       sv('modelo',eq.model);
@@ -7586,7 +7722,13 @@ function pgpLoadMachine(eq,localDb,midx=currentMachine,clientData=null){
   // pgpAplicarPerfil re-renderiza a seção 4 inteira: os ids das peças do perfil
   // novo só passam a existir depois desta chamada. É o que permite pistão no
   // painel 0 e parafuso no painel 1 dentro da MESMA OS.
-  try{ if(typeof pgpAutoPerfilPorTipo==='function') pgpAutoPerfilPorTipo(idx, eq && eq.tipo); }catch(_){}
+  try{
+    if(typeof pgpAutoPerfilPorTipo==='function'){
+      // 1º o cadastro da máquina; 2º o perfil da OS (?modo=pistao) para máquinas
+      // que ainda não têm Tipo_Equip preenchido — o caso real do parque.
+      if(!pgpAutoPerfilPorTipo(idx, eq && eq.tipo)) pgpAplicarPerfilDaOS(idx);
+    }
+  }catch(_){}
   // v27: Dados da Preventiva — restaurar ao reabrir uma visita salva
   if(eq.auxiliar)   sv('auxiliar',   eq.auxiliar);
   if(eq.horaInicio) sv('hora_inicio',eq.horaInicio);
@@ -7693,7 +7835,9 @@ function pgpClearMachine(){
   const histEl=document.getElementById('machineHistoryPanel');
   if(histEl)histEl.style.display='none';
   // Limpar todos os campos do formulário de máquina
-  document.querySelectorAll(`[data-key^="m${idx}_"]`).forEach(el=>{ if(el.tagName!=='BUTTON') el.value=''; });
+  document.querySelectorAll(`[data-key^="m${idx}_"]`).forEach(el=>{
+    if(el.tagName!=='BUTTON' && el.dataset.key !== `m${idx}_perfil`) el.value=''; // V69.1
+  });
   // Remover estado "checked" dos field-items
   document.querySelectorAll(`#panel-${idx} .field-item`).forEach(fi=>fi.classList.remove('checked'));
   pgpBackToStep1();
@@ -8604,6 +8748,20 @@ async function pgpEnviarPreventiva(midx=currentMachine, opts){
     var elHf = document.querySelector('[data-key="m'+idx+'_hora_fim"]');
     if(elHf) elHf.value = pgpNowHHMMLocal();
   }
+  // V70 — TRIPWIRE de integridade. Depois dos fixes desta versão a divergência
+  // não deveria mais acontecer; se acontecer, o pior desfecho possível é gravar
+  // uma preventiva com o checklist vazio (o payload itera as peças de um perfil
+  // cujos inputs não existem no DOM). Recusar é sempre melhor que perder dado.
+  const _rend = pgpPerfilRenderizado(idx);
+  const _decl = pgpPerfilDeclarado(idx);
+  if(_rend && _decl && _rend !== _decl){
+    console.warn('perfil dessincronizado: DOM=' + _rend + ' declarado=' + _decl);
+    if(silent) return { status:'skipped', reason:'perfil do checklist dessincronizado' };
+    showNotification('⚠ O checklist na tela (' + ((PERFIS_EQUIP[_rend]||{}).rotulo||_rend) +
+      ') não corresponde ao perfil da máquina — recarregue o formulário antes de registrar.');
+    return;
+  }
+
   const _perfEnv = pgpPerfil(idx);
   const hourTotal=parseInt(gv('horimetro'))||0;
   // V69: no perfil pistão o horímetro é OPCIONAL (a maioria das máquinas não
@@ -10716,7 +10874,12 @@ async function pfAbrirForm(tarefaId, formUrl, btn) {
     var _ovPf = document.getElementById('pfOverlay');
     if (_ovPf) _ovPf.style.display = 'none';
     // V69: ?modo=pistao é tratado como preventiva com perfil de pistão.
-    if (formUrl.indexOf('modo=pistao') >= 0) window._PGP_PERFIL_DEFAULT = 'pistao';
+    if (formUrl.indexOf('modo=pistao') >= 0) {
+      window._PGP_PERFIL_DEFAULT = 'pistao';
+      // V69.1: os painéis já existem (o app não recarrega neste caminho), então
+      // definir só o default não bastava — era preciso aplicá-lo na tela.
+      try{ for (var _i = 0; _i < (machines||[]).length; _i++) pgpAplicarPerfilDaOS(_i); }catch(_){}
+    }
     if ((formUrl.indexOf('modo=preventiva') >= 0 || formUrl.indexOf('modo=pistao') >= 0) && typeof pgpIniciarPreventivaDeOS === 'function') {
       await pgpIniciarPreventivaDeOS(_pfOsId);
     } else {
