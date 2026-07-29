@@ -1584,7 +1584,15 @@ if (!window.jspdf) { document.write('<script src="https://cdnjs.cloudflare.com/a
 .pgp-estado-wrap{margin:8px 0 4px}
 .pgp-estado-wrap .pgp-acao-label{display:block;font-size:9px;font-weight:700;color:var(--text-light);
   text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px}
-.pgp-acao-pill.pgp-pill-nok.active{background:#c0392b;border-color:#c0392b;color:#fff}
+/* V70.1 — as regras .active das pills são por SUFIXO DE ID
+   (.pgp-acao-pill[id$="_acao_conferida"].active etc.). Os botões de estado
+   usam ids novos (_est_ok/_est_nok), então precisam das suas próprias regras:
+   sem elas o "Conforme" setava o estado mas não mudava nada na tela, e em
+   campo isso lê como "o botão não responde ao toque". */
+.pgp-acao-pill.pgp-pill-ok.active{background:var(--green);border:3px solid #157a3c;color:#fff;
+  box-shadow:0 3px 10px rgba(30,140,74,.45);transform:translateY(-1px)}
+.pgp-acao-pill.pgp-pill-nok.active{background:var(--red);border:3px solid #922b21;color:#fff;
+  box-shadow:0 3px 10px rgba(192,57,43,.45);transform:translateY(-1px)}
 .pt-table.pt-perfil-pistao .pt-name small{color:#64748b}
 .pt-table.pt-perfil-pistao input[type="date"]{font-size:11px;padding:5px 4px;width:100%}
 tr.pt-group.pt-nao-conforme .pt-name{box-shadow:inset 3px 0 0 #c0392b}
@@ -3383,8 +3391,7 @@ function calcPartRow(pk, intDefault) {
   // V69 — perfil pistão: o gatilho é por CALENDÁRIO. O hidden _contador
   // marcado como 'calendario' é o discriminador (nunca colide com os valores
   // do parafuso: progressivo/regressivo/nao_sei/nao_informado).
-  const _cont = document.getElementById(`${pk}_contador`);
-  if (_cont && _cont.value === 'calendario') return pgpCalcPartRowCalendario(pk, intDefault);
+  if (pgpEhPistao(pgpMidxDePk(pk))) return pgpCalcPartRowCalendario(pk, intDefault);
   const calcBox  = document.getElementById(`${pk}_calc_box`);
   if (!calcBox) { updatePartCompletionStatus(pk); return; }
   const contEl   = document.getElementById(`${pk}_contador`);
@@ -3433,8 +3440,7 @@ function pgpPartKeyInfo(pk){
 function updatePartCompletionStatus(pk){
   const badge = document.getElementById(`${pk}_status_badge`);
   if(!badge) return;
-  const _cont = document.getElementById(`${pk}_contador`);
-  if (_cont && _cont.value === 'calendario') return pgpUpdatePartStatusPistao(pk, badge, pgpPartKeyInfo(pk));
+  if (pgpEhPistao(pgpMidxDePk(pk))) return pgpUpdatePartStatusPistao(pk, badge, pgpPartKeyInfo(pk));
   const acao = (document.getElementById(`${pk}_acao`)||{}).value || '';
   const naBtn = document.getElementById(`${pk}_na`);
   const isNa = naBtn && naBtn.classList.contains('active');
@@ -7012,7 +7018,13 @@ function pgpCalendarioInfo(dataIso, dias){
 function pgpSetEstado(pk, est){
   var h = document.getElementById(pk+'_estado');
   if(!h) return;
-  h.value = (h.value === est) ? '' : est;
+  // V70.1 — NÃO é toggle. Era: `h.value = (h.value===est) ? '' : est`, e um
+  // segundo toque em "Conforme" DESMARCAVA o item em silêncio — o técnico
+  // tocava de novo para confirmar e perdia o estado, aí o envio era barrado
+  // por "item sem estado" sem ele entender qual. pgpSetAcao nunca foi toggle;
+  // esta era a única pill do app que se comportava diferente. Para tirar o
+  // item da conta existe o N/A.
+  h.value = est;
   var v = h.value;
   var bOk  = document.getElementById(pk+'_est_ok');
   var bNok = document.getElementById(pk+'_est_nok');
@@ -7023,12 +7035,26 @@ function pgpSetEstado(pk, est){
   calcPartRow(pk, 0);
 }
 
+// Ciclo padrão do item, lido do catálogo do perfil — nunca do argumento do
+// chamador (pgpSetEstado passava 0 e zerava o cálculo).
+function pgpCicloPadrao(pk){
+  try{
+    var midx = pgpMidxDePk(pk);
+    var k = String(pk).replace('m'+midx+'_','');
+    var pt = (pgpPartsDe(midx)||[]).find(function(x){ return x.k === k; });
+    return pt ? pt.intDefault : 0;
+  }catch(_){ return 0; }
+}
 function pgpCalcPartRowCalendario(pk, intDefault){
   var calcBox = document.getElementById(pk+'_calc_box');
   var dtEl    = document.getElementById(pk+'_valor_mostrado');
   var intEl   = document.getElementById(pk+'_int');
   var estEl   = document.getElementById(pk+'_estado');
-  var dias    = (intEl && intEl.value) ? parseInt(intEl.value,10) : (parseInt(intDefault,10)||0);
+  var padrao  = pgpCicloPadrao(pk) || parseInt(intDefault,10) || 0;
+  var dias    = (intEl && String(intEl.value||'').trim()) ? parseInt(intEl.value,10) : padrao;
+  if(!dias) dias = padrao;
+  // se o campo estava vazio (clear cego), devolve o padrão à tela
+  if(intEl && !String(intEl.value||'').trim() && padrao) intEl.value = padrao;
   var estado  = estEl ? estEl.value : '';
   var info    = pgpCalendarioInfo(dtEl ? dtEl.value : '', dias);
   if (calcBox) {
@@ -7105,7 +7131,7 @@ function buildPartsTablePistao(p, midx){
     +   '<div class="pgp-estado-wrap">'
     +     '<label class="pgp-acao-label">Estado encontrado</label>'
     +     '<div style="display:flex;gap:8px;flex-wrap:wrap">'
-    +       '<button class="pgp-acao-pill" id="'+pk+'_est_ok" onclick="event.stopPropagation();pgpSetEstado(\''+pk+'\',\'ok\')">✔ Conforme</button>'
+    +       '<button class="pgp-acao-pill pgp-pill-ok" id="'+pk+'_est_ok" onclick="event.stopPropagation();pgpSetEstado(\''+pk+'\',\'ok\')">✔ Conforme</button>'
     +       '<button class="pgp-acao-pill pgp-pill-nok" id="'+pk+'_est_nok" onclick="event.stopPropagation();pgpSetEstado(\''+pk+'\',\'nao_conforme\')">✖ Não conforme</button>'
     +     '</div>'
     +     '<input type="hidden" id="'+pk+'_estado" data-key="'+pk+'_estado" value="">'
@@ -7116,9 +7142,9 @@ function buildPartsTablePistao(p, midx){
     +       'oninput="updatePartCompletionStatus(\''+pk+'\')" onclick="event.stopPropagation()">'
     +   '</div>'
     +   (fotoKey ? ('<div class="pt-foto-dupla">'
-    +     '<button class="btn-foto-peca" id="'+pk+'_foto_btn" data-done-label="✅ Foto ok" data-orig-label="📷 Câmera" '
+    +     '<button class="btn-foto-peca" id="'+pk+'_foto_btn" data-done-label="📷 Câmera ✓" data-orig-label="📷 Câmera" '
     +       'data-photokey="'+fotoKey+'" onclick="event.stopPropagation();fotoDireto(this,\'linked\','+midx+',\''+fotoKey+'\',\'camera\')">📷 Câmera</button>'
-    +     '<button class="btn-foto-peca" id="'+pk+'_foto_gal" data-done-label="✅ Foto ok" data-orig-label="🖼 Galeria" '
+    +     '<button class="btn-foto-peca" id="'+pk+'_foto_gal" data-done-label="🖼 Galeria ✓" data-orig-label="🖼 Galeria" '
     +       'data-photokey="'+fotoKey+'" onclick="event.stopPropagation();fotoDireto(this,\'linked\','+midx+',\''+fotoKey+'\',\'galeria\')">🖼 Galeria</button>'
     +   '</div>'
     +   '<div class="photo-thumbs-mini" data-midx="'+midx+'" data-pkey="'+fotoKey+'"></div>') : '')
@@ -7222,6 +7248,7 @@ function pgpAplicarPerfil(midx, perfilId, opts){
   var pn = document.getElementById(p+'perfil_nome');
   if(pn) pn.textContent = perfil.rotulo;
 
+  try{ pgpReporEstadoFixoDoPerfil(midx); }catch(_){}
   try{ pgpRestoreLoadedParts(p, midx); }catch(_){}
   try{
     (perfil.photos||[]).forEach(function(ph,i){ renderPhotoThumbs(midx, ph.photoKey || ('foto_idx_'+i)); });
@@ -7289,6 +7316,27 @@ function pgpAplicarPerfilDaOS(midx){
     if(pgpPerfilRenderizado(midx) === d) return false;
     return pgpAplicarPerfil(midx, d, {force:true});
   }catch(_){ return false; }
+}
+
+// V70.1 — repõe os valores que são CONSTANTES do perfil e que os clears cegos
+// por [data-key^="m<i>_"] apagam. Não é redundante com o item (A): o (A) faz a
+// LÓGICA parar de depender do DOM; isto mantém o DOM correto para o que é
+// gravado (rascunho/coleta) e para quem lê o hidden diretamente.
+function pgpReporEstadoFixoDoPerfil(midx){
+  try{
+    if(!pgpEhPistao(midx)) return;
+    var p = 'm'+midx+'_';
+    var sc = document.getElementById(p+'scenario');
+    if(sc) sc.value = 'PISTAO';
+    pgpPartsDe(midx).forEach(function(pt){
+      var c = document.getElementById(p+pt.k+'_contador');
+      if(c) c.value = 'calendario';
+      // o ciclo em dias nasce do catálogo do perfil; o clear cego o zerava e o
+      // técnico via o campo CICLO vazio, com o prazo deixando de ser calculado
+      var i = document.getElementById(p+pt.k+'_int');
+      if(i && !String(i.value||'').trim()) i.value = pt.intDefault;
+    });
+  }catch(_){}
 }
 
 // V69.1 — reconcilia o desenhado com a intenção salva (hidden). Usado depois de
@@ -7877,6 +7925,8 @@ function pgpLoadMachine(eq,localDb,midx=currentMachine,clientData=null){
     });
   }
 
+  pgpReporEstadoFixoDoPerfil(idx); // V70.1 — o clear acima zerou os hiddens fixos do perfil
+  pgpPartsDe(idx).forEach(pt => { try{ calcPartRow('m'+idx+'_'+pt.k, pt.intDefault); }catch(_){} });
   pgpRenderLoadedCard(idx);
   document.querySelectorAll('[data-section]').forEach(s=>refreshSection(s));
   updateProgress(); updateAllTabNames();
@@ -8568,7 +8618,7 @@ function pgpBuildPreventivaPayload(midx=currentMachine){
     // V69 — perfil pistão (gatilho por calendário): mesma modelagem do
     // pgpBuildPayload. O "estado encontrado" tem precedência sobre o prazo no
     // campo status (é o que o cliente lê no relatório).
-    if (contVal === 'calendario') {
+    if (pgpEhPistao(idx)) {
       const _diasP = parseInt(intEl?.value) || pt.intDefault;
       const _estP  = (document.getElementById(pk+'_estado')||{}).value || '';
       const _calP  = pgpCalendarioInfo(vmEl?.value||'', _diasP);
@@ -9172,7 +9222,7 @@ function pgpBuildPayload(midx=currentMachine){
     // da última troca (ISO) e interval está em DIAS; horasRodadas/horasRestantes
     // passam a ser dias. lastChange fica 0 porque o GAS faz intOrBlank() nele e
     // destruiria a data.
-    if (contVal === 'calendario') {
+    if (pgpEhPistao(idx)) {
       const _estP = (document.getElementById(`${pk}_estado`)||{}).value || '';
       const _calP = pgpCalendarioInfo(vmEl?.value||'', interval);
       let _stP = _calP ? _calP.status : '';
