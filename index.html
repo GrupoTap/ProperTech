@@ -346,7 +346,7 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ProperCare Field · PGP Preventivas v33 · build PCF_V70</title>
+<title>ProperCare Field · PGP Preventivas v34 · build PCF_V70</title>
 <meta name="app-build" content="PCF_V70" data-date="2026-07-29">
 <meta name="theme-color" content="#0f172a">
 <!-- PWA (fix 19/07/2026): o repo já tinha manifest.webmanifest + sw.js + proper-pwa.js,
@@ -840,11 +840,18 @@ if (!window.jspdf) { document.write('<script src="https://cdnjs.cloudflare.com/a
   .pgp-tipo-btn-active{background:var(--blue);color:white;border-color:var(--blue)}
   .pgp-acao-wrap{margin-bottom:10px}
   .pgp-acao-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--blue);display:block;margin-bottom:6px}
-  .pgp-acao-pill{flex:1;padding:10px 4px;border:2px solid var(--gray-mid);border-radius:8px;background:#fff;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;cursor:pointer;color:var(--text-light);transition:all .15s;min-height:44px;text-align:center}
+  /* V70.1 — a pill era `background:#fff` com `color:var(--text-light)` (#94a3b8):
+     ~2,3:1 de contraste, praticamente ilegível no tema escuro. Os estados
+     .active abaixo seguem idênticos. */
+  .pgp-acao-pill{flex:1;padding:10px 4px;border:2px solid var(--gray-mid);border-radius:8px;background:var(--bg-surface);font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;cursor:pointer;color:var(--text);transition:all .15s;min-height:44px;text-align:center}
   .pgp-acao-pill[id$="_acao_conferida"].active{background:var(--green);border:3px solid #157a3c;color:white;box-shadow:0 3px 10px rgba(30,140,74,.45);transform:translateY(-1px)}
   .pgp-acao-pill[id$="_acao_trocada"].active{background:var(--blue-mid);border:3px solid var(--blue);color:white;box-shadow:0 3px 10px rgba(46,91,168,.45);transform:translateY(-1px)}
   .pgp-acao-pill[id$="_acao_na"].active{background:var(--purple);border:3px solid #5a2f88;color:white;box-shadow:0 3px 10px rgba(108,58,158,.45);transform:translateY(-1px)}
-  .pgp-prev-actions{padding:10px 12px 0;display:flex;gap:10px}
+  .pgp-prev-actions{padding:10px 12px 0;display:flex;gap:10px;flex-wrap:wrap}
+  /* V70.1 — sem o wrap acima + esta linha, o #pgpAssinStatus era empurrado para
+     fora do viewport e criava rolagem horizontal em toda preventiva (bug que já
+     existia na V68, visível assim que o modo preventiva era ativado). */
+  #pgpAssinStatus{flex:1 1 100%;min-width:0}
   .btn-preventiva{flex:1;background:var(--blue);color:white;border:none;border-radius:10px;padding:14px 12px;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:.5px}
 
   /* ── GS STATUS ── */
@@ -1527,6 +1534,52 @@ if (!window.jspdf) { document.write('<script src="https://cdnjs.cloudflare.com/a
   .pgp-sign-bottom .pgp-sign-btn{ padding:12px 8px; font-size:15px }
 
 
+
+/* ═══ V70.1 — CHECKLIST DE PISTÃO EM CARTÕES (celular) ═══════════════════ */
+.pt-table.pt-perfil-pistao{display:block;table-layout:auto;margin-bottom:10px}
+.pt-table.pt-perfil-pistao colgroup,
+.pt-table.pt-perfil-pistao thead{display:none}
+.pt-table.pt-perfil-pistao tbody{display:block}
+.pt-table.pt-perfil-pistao tbody tr{display:block;border-bottom:none}
+.pt-table.pt-perfil-pistao tbody tr.pt-group{
+  display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;
+  padding:12px 12px 14px;margin-top:12px;cursor:default;
+  background:var(--bg-card);border:1px solid var(--gray-mid);
+  border-top:3px solid var(--blue);border-radius:10px 10px 0 0}
+.pt-table.pt-perfil-pistao tbody tr.pt-group>td{border-top:none!important;box-shadow:none!important;background:transparent}
+.pt-table.pt-perfil-pistao td.pt-name{
+  flex:0 0 100%;padding:0;white-space:normal;word-break:normal;overflow-wrap:anywhere;line-height:1.3}
+.pt-table.pt-perfil-pistao td.pt-inp{flex:1 1 140px;min-width:0;padding:0}
+.pt-table.pt-perfil-pistao td.pt-cel-ciclo{flex:0 0 92px}
+.pt-table.pt-perfil-pistao td.td-na{flex:0 0 64px;padding:0}
+.pt-table.pt-perfil-pistao td.td-detail{flex:0 0 52px;padding:0}
+.pt-table.pt-perfil-pistao td.td-na .btn-pt-na,
+.pt-table.pt-perfil-pistao td.td-detail .btn-pt-detail{width:100%}
+/* rótulo do campo, já que o cabeçalho da tabela fica oculto */
+.pt-table.pt-perfil-pistao td[data-rot]::before{
+  content:attr(data-rot);display:block;font-size:9px;font-weight:700;
+  color:var(--text-light);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+/* o CSS compacto do v40 só cobria number/text — o date ficava sem regra */
+.pt-table.pt-perfil-pistao td.pt-inp input{
+  width:100%;min-width:0;box-sizing:border-box;
+  border:1.5px solid var(--gray-mid);border-radius:8px;padding:10px 8px;
+  font-size:15px;font-family:'Barlow',sans-serif;
+  background:var(--bg-surface);color:var(--text)}
+.pt-table.pt-perfil-pistao td.pt-inp input:focus{border-color:var(--blue);outline:none}
+.pt-table.pt-perfil-pistao .btn-pt-na,
+.pt-table.pt-perfil-pistao .btn-pt-detail{min-height:42px;padding:9px 12px;font-size:12px}
+.pt-table.pt-perfil-pistao tr.pt-quick-row>td,
+.pt-table.pt-perfil-pistao tr.pt-detail-row>td{display:block;padding:0!important;border-bottom:none!important}
+.pt-table.pt-perfil-pistao .pt-quick-box,
+.pt-table.pt-perfil-pistao .pt-detail-box{
+  border:1px solid var(--gray-mid);border-top:none;border-left:3px solid var(--brand-start);
+  border-radius:0;background:var(--bg-elev)}
+.pt-table.pt-perfil-pistao tr.pt-detail-row>td .pt-detail-box{border-radius:0 0 10px 10px}
+.pt-table.pt-perfil-pistao tr.pt-group.pt-nao-conforme{border-top-color:var(--red)}
+/* dois botões de foto lado a lado (1 toque em vez de 2) */
+.pt-foto-dupla{display:flex;gap:8px}
+.pt-foto-dupla .btn-foto-peca{flex:1 1 0;min-width:0;min-height:46px}
+
 /* ═══ V69 — PERFIL DE EQUIPAMENTO / CHECKLIST DE PISTÃO ═══════════════════ */
 .pgp-estado-wrap{margin:8px 0 4px}
 .pgp-estado-wrap .pgp-acao-label{display:block;font-size:9px;font-weight:700;color:var(--text-light);
@@ -1536,13 +1589,13 @@ if (!window.jspdf) { document.write('<script src="https://cdnjs.cloudflare.com/a
 .pt-table.pt-perfil-pistao input[type="date"]{font-size:11px;padding:5px 4px;width:100%}
 tr.pt-group.pt-nao-conforme .pt-name{box-shadow:inset 3px 0 0 #c0392b}
 tr.pt-group.pt-nao-conforme{background:#fff5f4}
-.pf-perfil-chip{margin-top:6px;font-size:11px;color:#475569;background:#f1f5f9;border:1px solid #e2e8f0;
-  border-radius:6px;padding:5px 9px;display:inline-block}
-.pf-perfil-chip b{color:#0f172a}
+.pf-perfil-chip{margin-top:6px;font-size:11px;color:var(--text-light);background:var(--bg-elev);
+  border:1px solid var(--gray-mid);border-radius:6px;padding:5px 9px;display:inline-block}
+.pf-perfil-chip b{color:var(--text)}
 .pf-horim-nota{margin-top:6px;font-size:11px;line-height:1.5;color:#7B4000;background:#fff7e6;
   border-left:3px solid var(--orange);border-radius:0 6px 6px 0;padding:6px 10px}
-#pgpNewMachine #nm_tipo{width:100%;padding:9px 10px;border:1px solid #d7dce5;border-radius:8px;
-  font-size:13px;background:#fff;color:#0f172a}
+#pgpNewMachine #nm_tipo{width:100%;padding:11px 10px;border:1.5px solid var(--gray-mid);border-radius:8px;
+  font-size:14px;background:var(--bg-surface);color:var(--text)}
 </style>
 </head>
 <body>
@@ -1567,7 +1620,7 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
       <div class="proper-logo-mark">H</div>
       <div class="proper-logo-text">
         <span class="brand">PROPER</span>
-        <span class="brand-sub">Field · v26</span>
+        <span class="brand-sub">Field · V70</span>
       </div>
     </div>
     <div class="header-right">
@@ -3306,9 +3359,9 @@ function togglePartDetail(pk, intDefault, e) {
   const wasCollapsedComplete = tr && tr.classList.contains('pt-collapsed-complete');
   const isNa = naBtn && naBtn.classList.contains('active');
   if (wasCollapsedComplete) {
-    if (quick && !isNa) quick.style.display = 'table-row';
+    if (quick && !isNa) quick.style.display = ''; // V70.1: deixa o CSS decidir (cartão no pistão)
     if (tr) tr.classList.remove('pt-collapsed-complete');
-    det.style.display = 'table-row';
+    det.style.display = ''; // V70.1
     if (btn) btn.classList.add('open');
     if (tr) tr.classList.add('pt-detail-open');
     calcPartRow(pk, intDefault);
@@ -3317,7 +3370,7 @@ function togglePartDetail(pk, intDefault, e) {
   }
 
   const open = det.style.display === 'none' || det.style.display === '';
-  det.style.display = open ? 'table-row' : 'none';
+  det.style.display = open ? '' : 'none'; // V70.1
   if (btn) btn.classList.toggle('open', open);
   if (tr)  tr.classList.toggle('pt-detail-open', open);
   if (open) {
@@ -5337,6 +5390,15 @@ function abrirFotoPicker(triggerBtn, type, midx, photoKey) {
   document.getElementById('fotoPickerOverlay').classList.add('open');
 }
 
+// V70.1 — atalho de 1 toque (pedido do Fernando, 29/07): monta o mesmo
+// contexto que abrirFotoPicker montaria e vai DIRETO para a origem escolhida,
+// sem passar pelo overlay de "câmera ou galeria". O overlay continua existindo
+// e é o caminho de todos os outros botões de foto do app.
+function fotoDireto(triggerBtn, type, midx, photoKey, origem) {
+  _pickerContext = { type, triggerBtn, midx, photoKey };
+  fotoPickerEscolher(origem);
+}
+
 function fotoPickerFechar() {
   document.getElementById('fotoPickerOverlay').classList.remove('open');
   _pickerContext = null;
@@ -7031,9 +7093,9 @@ function buildPartsTablePistao(p, midx){
     +     '<input type="hidden" id="'+pk+'_contador" data-key="'+pk+'_contador" value="calendario">'
     +     '<input type="hidden" id="'+pk+'_ult" data-key="'+pk+'_ult" data-user-edited="false">'
     +   '</td>'
-    +   '<td class="pt-inp"><input type="date" id="'+pk+'_valor_mostrado" data-key="'+pk+'_valor_mostrado" '
+    +   '<td class="pt-inp pt-cel-data" data-rot="Última troca"><input type="date" id="'+pk+'_valor_mostrado" data-key="'+pk+'_valor_mostrado" '
     +     'onchange="calcPartRow(\''+pk+'\','+pt.intDefault+')" oninput="calcPartRow(\''+pk+'\','+pt.intDefault+')" onclick="event.stopPropagation()"></td>'
-    +   '<td class="pt-inp" style="min-width:62px"><input type="number" placeholder="'+pt.intDefault+'" value="'+pt.intDefault+'" '
+    +   '<td class="pt-inp pt-cel-ciclo" data-rot="Ciclo (dias)"><input type="number" placeholder="'+pt.intDefault+'" value="'+pt.intDefault+'" '
     +     'id="'+pk+'_int" data-key="'+pk+'_int" oninput="calcPartRow(\''+pk+'\','+pt.intDefault+')" onclick="event.stopPropagation()"></td>'
     +   '<td class="td-na"><button class="btn-pt-na" id="'+pk+'_na" onclick="togglePtNA(\''+pk+'\',event)">N/A</button></td>'
     +   '<td class="td-detail"><button class="btn-pt-detail" id="'+pk+'_detail_btn" onclick="togglePartDetail(\''+pk+'\','+pt.intDefault+',event)">▸</button></td>'
@@ -7053,11 +7115,13 @@ function buildPartsTablePistao(p, midx){
     +     '<input type="text" placeholder="Ex: W800, AW150, A-52" id="'+pk+'_ref" data-key="'+pk+'_ref" '
     +       'oninput="updatePartCompletionStatus(\''+pk+'\')" onclick="event.stopPropagation()">'
     +   '</div>'
-    +   (fotoKey ? ('<div class="pt-photo-cols"><div class="pt-photo-col">'
-    +     '<button class="btn-foto-peca" id="'+pk+'_foto_btn" data-done-label="✅ Foto ok" data-orig-label="📷 Foto do item" '
-    +       'data-photokey="'+fotoKey+'" onclick="event.stopPropagation();abrirFotoPicker(this,\'linked\','+midx+',\''+fotoKey+'\')">📷 Foto do item</button>'
-    +     '<div class="photo-thumbs-mini" data-midx="'+midx+'" data-pkey="'+fotoKey+'"></div>'
-    +   '</div></div>') : '')
+    +   (fotoKey ? ('<div class="pt-foto-dupla">'
+    +     '<button class="btn-foto-peca" id="'+pk+'_foto_btn" data-done-label="✅ Foto ok" data-orig-label="📷 Câmera" '
+    +       'data-photokey="'+fotoKey+'" onclick="event.stopPropagation();fotoDireto(this,\'linked\','+midx+',\''+fotoKey+'\',\'camera\')">📷 Câmera</button>'
+    +     '<button class="btn-foto-peca" id="'+pk+'_foto_gal" data-done-label="✅ Foto ok" data-orig-label="🖼 Galeria" '
+    +       'data-photokey="'+fotoKey+'" onclick="event.stopPropagation();fotoDireto(this,\'linked\','+midx+',\''+fotoKey+'\',\'galeria\')">🖼 Galeria</button>'
+    +   '</div>'
+    +   '<div class="photo-thumbs-mini" data-midx="'+midx+'" data-pkey="'+fotoKey+'"></div>') : '')
     +   '<input type="hidden" id="'+pk+'_acao" value="">'
     +   '<div class="pgp-acao-wrap" style="display:'+(_pgpTipoVisita==='preventiva'?'':'none')+'">'
     +     '<label class="pgp-acao-label">Ação executada</label>'
