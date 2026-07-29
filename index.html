@@ -1,3 +1,50 @@
+<!-- V68 (29/07/2026) — PACOTE PÓS-TESTE PROFUNDO. Inclui a V67. Par obrigatório: sw.js
+     com CACHE='propertech-v68'; back-end GAS v79 (mesmo CONTRATO de campos).
+     100% ADITIVO: nenhuma função, id, data-key, data-view, rota ou chave de payload
+     foi renomeada/removida; todos os blocos <script> passam em `node --check`.
+
+     F-06 (P1) — visit_id ESTÁVEL na preventiva + fila deduplicada.
+       pgpBuildPreventivaPayload gerava 'VIS-'+Date.now()+uid a CADA build: dois toques
+       em "🔧 Registrar Preventiva" (ou timeout + retoque) criavam DUAS visitas, com
+       PECAS_LOG duplicado e peças processadas 2×. Agora o id vem do MESMO pgpVisitIdFor
+       usado na inspeção desde a V64, com escopo 'PREV|'+os_id+'|'+machine_id + data da
+       visita (o prefixo PREV evita colidir com o visit_id da inspeção, que o GAS
+       deduplica na mesma coluna VISITAS.ID); formato antigo mantido como fallback.
+       Novo pgpQueuePreventiva(payload) substitui os 3 `list.push({...})` crus e
+       deduplica por assinatura/visit_id (inclusive itens enfileirados por versões
+       antigas). Payload passa a levar client_uid (= visit_id) conforme o CONTRATO.
+     F-18a (P2) — espelho local só depois do desfecho positivo.
+       pgpUpdateAdminLocal(payload) rodava ANTES dos 3 caminhos que DESCARTAM o payload
+       (fila cheia com payload grande, offline com fila cheia, falha de rede com fila
+       cheia): o aparelho "lembrava" de uma preventiva que o servidor nunca recebeu.
+       Foi movido para depois do sucesso/duplicata no GAS ou do enfileiramento
+       CONFIRMADO.
+     F-18b (P2) — quota do localStorage deixa de ser reportada como sucesso.
+       savePendingQueue devolve {saved:false} no QuotaExceeded, mas os 3 call sites da
+       preventiva só checavam .blocked e mostravam "📋 Preventiva salva na fila" com
+       NADA persistido. Agora `!saved` é falha nos três pontos, e no lote
+       (pgpEnviarTodasPreventivas) a máquina cai em "puladas" com o motivo exato e o
+       pop-up diz que nada foi salvo nem no servidor nem na fila.
+     F-19 (P2) — fix v58 (servidor autoritativo) completado no fluxo AVULSO.
+       pgpSelectClientMachine fazia pgpMergeClientDataForLoad(found||eq, ...) — o cache
+       local vencia o servidor e zerava tipo/potência/regime. Agora replica o merge de
+       pgpCarregarMaquinaOS (base = servidor, local só complementa campos vazios);
+       `found||eq` só permanece quando eq vem sem id (offline puro).
+     F-20 (P2) — auto-calibração do horímetro religada (morta desde a v63).
+       pgpBuildPreventivaPayload não copiava horimetro_estimado (que já existia em
+       base), então registrarHorimetroReal no GAS nunca recalibrava e o fator ficava
+       1,000. Passou a viajar no payload.
+     F-02d/F-15 — rotas de form que faltavam em pfGetFormUrl.
+       Novos cases auto:form03/form04/form05 → form03.html/form04.html/form05.html no
+       ProperForms; os tipos legados auto:form09/form10 (usados pelos templates já
+       instanciados) viraram ALIAS dessas URLs, no lugar do stub peritagem.html?tipo=.
+       auto:form02/auto:form08 seguem intactos.
+     F-30 — fotos do PDF viviam só em memória.
+       Backup IMEDIATO no IndexedDB na captura (antes só via debounce de 2,5s);
+       temDadosPreenchidos passa a contar fotos (back-guard e beforeunload agora
+       disparam numa coleta só de fotos); o banner de rascunho avisa quantas fotos
+       voltam ao tocar em "Continuar"; descartar o rascunho com fotos pendentes exige
+       confirmação; nova coleta limpa o backup para não vazar fotos entre clientes. -->
 <!-- V67 (28/07/2026) — UX DO PIPELINE (varredura OS Reforma, chamado do Fernando). Inclui a V66.
      (1) pfAbrirForm(tarefaId, formUrl, this): spinner imediato no clique + registrarAbertura
          vira fire-and-forget (antes o await segurava a navegação segundos sem feedback);
@@ -256,8 +303,8 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ProperCare Field · PGP Preventivas v32 · build PCF_V62</title>
-<meta name="app-build" content="PCF_V62" data-date="2026-07-20">
+<title>ProperCare Field · PGP Preventivas v32 · build PCF_V68</title>
+<meta name="app-build" content="PCF_V68" data-date="2026-07-29">
 <meta name="theme-color" content="#0f172a">
 <!-- PWA (fix 19/07/2026): o repo já tinha manifest.webmanifest + sw.js + proper-pwa.js,
      mas o index.html não os referenciava — sem estas 3 linhas o SW nunca registra,
@@ -2093,6 +2140,25 @@ function gcParam() {
 const photoStore = {};
 const MAX_FOTOS_POR_ITEM = 3;
 
+// V68 — F-30: o photoStore vive só em MEMÓRIA. Um reload/fechamento antes de
+// gerar o PDF perdia as fotos do relatório (os backups em 'pgp_pending_drive'
+// são payloads de upload para o Drive e nunca voltam para o photoStore).
+// Helper único para "quantas fotos existem agora na memória", usado pelo guard
+// de saída (temDadosPreenchidos) e pelos avisos de rascunho.
+function pgpContarFotosCapturadas(){
+  var n = 0;
+  try{
+    Object.keys(photoStore).forEach(function(midx){
+      var byKey = photoStore[midx] || {};
+      Object.keys(byKey).forEach(function(pk){
+        var arr = byKey[pk];
+        if(arr && arr.length) n += arr.length;
+      });
+    });
+  }catch(e){}
+  return n;
+}
+
 // Exibe um aviso rápido no rodapé da tela (ex: limite de fotos atingido)
 let _fotoToastTimer = null;
 function showFotoToast(msg) {
@@ -2401,6 +2467,11 @@ async function storePhotoBase64(midx, photoKey, label, file, saveToDevice) {
     renderPhotoThumbs(midx, photoKey);
     if (saveToDevice) savePhotoToDevice(dataUrl, photoKey, label);
     autoSaveDraft();
+    // V68 — F-30: backup IMEDIATO no IndexedDB. O autoSaveDraft acima só persiste
+    // depois de 2,5s de debounce; um reload/crash dentro dessa janela levava a
+    // foto embora (o photoStore é memória pura). Aqui a foto vira recuperável
+    // por pgpRestaurarFotosIDB('draft') no mesmo instante da captura.
+    try { pgpPersistPhotosIDB('draft'); } catch (e0) {}
     queuePhotoDriveUpload(midx, photoKey, label, fotoObj, file);
     return true;
   } catch (err) {
@@ -4165,6 +4236,11 @@ async function novaColeta() {
   _pgpLoadedMachinesByIndex = {};
   pgpRenderLoadedCard(0);
   Object.keys(photoStore).forEach(k => delete photoStore[k]); // v23: limpar fotos da coleta anterior
+  // V68 — F-30: zerar também o backup local das fotos, senão o aviso de "N foto(s)
+  // do relatório" da coleta ANTERIOR reapareceria numa coleta nova (e o restore
+  // reinjetaria fotos de outra máquina/cliente).
+  try { pgpIdbDel(_pgpPhotoKeyFor('draft')); } catch(e) {}
+  try { _pgpDraftFotosPendentes = 0; } catch(e) {}
   try { pgpLimparAssinaturas(); } catch(e){} // assinaturas são por visita: nova coleta zera
   createPanel(0);
   renderTabs();
@@ -4182,6 +4258,11 @@ async function novaColeta() {
 let _allowLeave = false;
 
 function temDadosPreenchidos() {
+  // V68 — F-30: fotos capturadas também são "dados preenchidos". Antes, uma
+  // coleta feita SÓ de fotos (nenhum input digitado ainda) não disparava nem o
+  // back-guard nem o beforeunload: o técnico saía/recarregava sem aviso nenhum
+  // e o photoStore (memória) ia junto.
+  try { if (pgpContarFotosCapturadas() > 0) return true; } catch(e) {}
   const inputs = document.querySelectorAll('input, textarea, select');
   for (const el of inputs) {
     if (el.value && el.value.trim() !== '') return true;
@@ -4854,7 +4935,33 @@ function checkRestoreDraft() {
   const date = new Date(draft.ts).toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
   info.textContent = name + ' · ' + date;
   banner.style.display = 'flex';
+
+  // V68 — F-30: AVISO CLARO de fotos órfãs. O banner só dizia "Rascunho
+  // encontrado"; as fotos do relatório (que ficaram no IndexedDB) não eram
+  // mencionadas, então o técnico descartava/ignorava o rascunho e gerava um PDF
+  // sem foto nenhuma. Aqui o banner passa a dizer quantas fotos voltam se ele
+  // tocar em "Continuar". Assíncrono e 100% tolerante a falha: se o IndexedDB
+  // não responder, o banner fica exatamente como era.
+  try{
+    pgpIdbGet(_pgpPhotoKeyFor('draft')).then(function(rec){
+      var n = 0;
+      try{
+        var ps = (rec && rec.photoStore) || {};
+        Object.keys(ps).forEach(function(midx){
+          var byKey = ps[midx] || {};
+          Object.keys(byKey).forEach(function(pk){ if(byKey[pk] && byKey[pk].length) n += byKey[pk].length; });
+        });
+      }catch(e){}
+      if(!n) return;
+      _pgpDraftFotosPendentes = n;
+      info.textContent = name + ' · ' + date + ' · 📷 ' + n + ' foto(s) do relatório';
+      showNotification('📷 ' + n + ' foto(s) da coleta anterior ficaram salvas no aparelho. Toque em "Continuar" no topo para trazê-las de volta ANTES de gerar o PDF.');
+    }).catch(function(){});
+  }catch(e){}
 }
+
+// V68 — F-30: quantidade de fotos que o backup local tem esperando (0 = nenhuma).
+let _pgpDraftFotosPendentes = 0;
 
 function restoreDraft() {
   const draft = getDraft();
@@ -4868,6 +4975,7 @@ function restoreDraft() {
   try { if (draft.tipoVisita) pgpSetTipoVisita(draft.tipoVisita); } catch(e){}
   try { if (draft.osId) { window._PGP_OS_ID = draft.osId; window._PGP_OS_CLIENTE = draft.osCliente || ''; } } catch(e){}
   try { pgpRestaurarFotosIDB('draft'); } catch(e){}
+  try { _pgpDraftFotosPendentes = 0; } catch(e){} // V68 — F-30: fotos já voltaram
   try {
     if (typeof draft.currentMachine === 'number' && machines.length) {
       switchMachine(Math.max(0, Math.min(draft.currentMachine, machines.length - 1)));
@@ -4877,7 +4985,24 @@ function restoreDraft() {
   try { localStorage.removeItem(DRAFT_KEY); } catch(e) {}
 }
 
-function discardDraft() {
+async function discardDraft() {
+  // V68 — F-30: descartar o rascunho jogava fora, em silêncio e com um toque no
+  // "✕", as fotos do relatório que estavam no backup local. Agora, quando há
+  // fotos esperando, o técnico precisa confirmar sabendo o que perde.
+  if (_pgpDraftFotosPendentes > 0) {
+    let ok = true;
+    try {
+      ok = await AppDialog.confirm(
+        'A coleta anterior tem ' + _pgpDraftFotosPendentes + ' foto(s) do relatório guardadas neste aparelho.\n\n' +
+        'Se descartar agora, essas fotos serão PERDIDAS e o PDF sairá sem elas. ' +
+        'Para recuperá-las, toque em "Continuar" em vez de descartar.',
+        { title: 'Descartar fotos da coleta anterior?', okLabel: 'Descartar mesmo assim', danger: true }
+      );
+    } catch(e) { ok = true; }
+    if (!ok) return;
+    try { pgpIdbDel(_pgpPhotoKeyFor('draft')); } catch(e) {}
+    _pgpDraftFotosPendentes = 0;
+  }
   try { localStorage.removeItem(DRAFT_KEY); } catch(e) {}
   document.getElementById('restoreBanner').style.display = 'none';
 }
@@ -6285,6 +6410,29 @@ function pgpQueueRequest(action, body){
   return qResult;
 }
 
+// V68 — F-06: enfileiramento DEDUPLICADO da preventiva. Os 3 call sites de
+// pgpEnviarPreventiva faziam `list.push({...})` cru, sem passar pelo filtro por
+// assinatura do pgpQueueRequest — então dois toques (ou timeout + retoque)
+// deixavam DOIS itens savePreventiva na fila e o flush criava a visita 2×.
+// Mantém a convenção de assinatura já usada em produção (signature = visit_id),
+// para que itens enfileirados por versões antigas do app também sejam
+// reconhecidos e substituídos em vez de acumular. Devolve o MESMO shape de
+// savePendingQueue ({saved, blocked, count}).
+function pgpQueuePreventiva(payload){
+  const list = pgpGetPending();
+  const sig  = payload.visit_id || ('savePreventiva|' + (payload.machine_id||'') + '|' + (payload.visitDate||''));
+  const next = list.filter(function(item){
+    if(!item || item.action !== 'savePreventiva') return true;
+    const iSig = String(item.signature || '');
+    const iVid = String((item.body && item.body.visit_id) || '');
+    return !(iSig === sig || (iVid && iVid === sig));
+  });
+  next.push({ action:'savePreventiva', body:payload, signature:sig, ts:Date.now() });
+  const qResult = savePendingQueue(next);
+  if(qResult.saved) pgpUpdatePendingBadge();
+  return qResult;
+}
+
 function pgpAddPending(type, payload){
   if(type==='machine') return pgpQueueRequest('saveMachine', { machine: payload });
   if(type==='parts') return pgpQueueRequest('updateMachineParts', payload);
@@ -7314,10 +7462,33 @@ function pgpSelectClientMachine(eq){
   if(!found&&eq.tag&&eq.client)
     found=localDb.find(m=>clientKey(m.client||'')===clientKey(eq.client)&&compactKey(m.tag||'')===compactKey(eq.tag));
 
+  // V68 — F-19: completa no fluxo AVULSO o fix v58 que só existia no fluxo de OS
+  // (pgpCarregarMaquinaOS). Antes, `found||eq` fazia o registro LOCAL vencer o do
+  // servidor: um cache incompleto (guarda hourTotal/ano mas frequentemente NÃO tem
+  // tipo/potência/regime) sombreava o servidor e zerava esses campos a cada carga.
+  // Agora o servidor (eq) é a BASE e o cache local (found) só COMPLEMENTA campos
+  // que vierem VAZIOS do servidor. `found||eq` fica mantido apenas quando eq NÃO
+  // tem id — ou seja, o item não veio do servidor (offline puro/lista local).
+  const _pgpVazioAv = (v)=> v===undefined || v===null || v==='' || (Array.isArray(v) && v.length===0);
+  let _pgpBaseAv;
+  if(eq && eq.id){
+    _pgpBaseAv = Object.assign({}, eq);
+    if(found){
+      Object.keys(found).forEach(function(k){
+        if(_pgpVazioAv(_pgpBaseAv[k]) && !_pgpVazioAv(found[k])) _pgpBaseAv[k] = found[k];
+      });
+    }
+  } else {
+    _pgpBaseAv = found || eq;   // offline puro (eq sem id): comportamento antigo
+  }
+
   // v8.5.3: sempre usar o cliente vindo do servidor (eq.client), não o do localStorage
   // O servidor já resolve o canônico; o local pode ter grafia antiga
-  const machineToLoad=pgpMergeClientDataForLoad(found||eq, eq?.clientData || null);
+  const machineToLoad=pgpMergeClientDataForLoad(_pgpBaseAv, eq?.clientData || null);
   if(eq.client) machineToLoad.client=eq.client; // servidor vence
+  // Mesma regra do fluxo de OS: peças vindas do servidor têm prioridade absoluta —
+  // nunca deixar peças do cache local sobrescreverem as reais.
+  if(eq && eq.id && eq.parts) machineToLoad.parts = eq.parts;
 
   document.getElementById('pgpStep1').style.display='none';
   document.getElementById('pgpStep2').style.display='none';
@@ -7665,10 +7836,38 @@ function pgpBuildPreventivaPayload(midx=currentMachine){
     };
   });
 
-  const visitId='VIS-'+Date.now()+'-'+pgpUid();
+  // V68 — F-06: visit_id ESTÁVEL na preventiva. Antes era 'VIS-'+Date.now()+uid,
+  // gerado de NOVO a cada build: dois toques em "🔧 Registrar Preventiva" (ou um
+  // timeout seguido de retoque) criavam DUAS visitas, PECAS_LOG duplicado e peças
+  // processadas 2×. Agora deriva do MESMO pgpVisitIdFor usado no fluxo de inspeção
+  // desde a V64, com escopo (os_id|machineKey) + data da visita. base.visit_id já
+  // vem estável do pgpBuildPayload; só recalcula se, por algum motivo, faltar.
+  // O formato antigo permanece como último fallback (nunca retorna vazio).
+  // O escopo leva o prefixo 'PREV|' de propósito: no GAS, saveVisit (inspeção) e
+  // savePreventiva deduplicam na MESMA coluna VISITAS.ID. Sem o prefixo, a
+  // preventiva herdaria o visit_id que o pgpBuildPayload já gera para a inspeção
+  // e uma preventiva feita no mesmo dia/máquina de uma inspeção voltaria como
+  // duplicate:true (nada gravado). Com o prefixo os dois são estáveis e disjuntos.
+  const _prevOsId   = base.os_id || pgpOsIdSeguro() || '';
+  const _prevMKey   = base.machine_id || '';
+  const _prevDate   = base.visitDate || new Date().toISOString().slice(0,10);
+  let visitId = '';
+  if(_prevOsId || _prevMKey){
+    try{ visitId = pgpVisitIdFor('PREV|' + _prevOsId + '|' + _prevMKey, _prevDate); }catch(e){}
+  }
+  if(!visitId) visitId = 'VIS-'+Date.now()+'-'+pgpUid();
 
   return{
     visit_id:visitId,
+    // V68 — F-06 (CONTRATO 29/07/2026): dedupe adicional ao visit_id no GAS
+    // (savePreventiva/saveVisit). Usa o próprio visit_id estável: mesma preventiva
+    // reenviada ⇒ mesmo client_uid ⇒ criação idempotente.
+    client_uid:visitId,
+    // V68 — F-20: religa a auto-calibração do horímetro. O valor já existia em
+    // base (campo oculto m<idx>_horimetro_estimado, projetado desde a v51) mas
+    // NUNCA era copiado para o payload da preventiva — por isso o
+    // registrarHorimetroReal do GAS nunca recalibrava e o fator ficava 1,000.
+    horimetro_estimado: base.horimetro_estimado || '',
     machine_id:base.machine_id,
     serial:base.serial,
     tag:base.tag,
@@ -7731,6 +7930,10 @@ async function pgpEnviarTodasPreventivas(){
       } else if(res.status === 'queued'){ filas++; }
       else if(res.status === 'duplicate'){ dups++; }
       else if(res.status === 'ok'){ enviadas++; }
+      // V68 — F-18b: status:'error' (fila cheia OU cota do localStorage estourada,
+      // ou seja, NADA persistido) cai aqui em "puladas" carregando o motivo exato
+      // devolvido por pgpEnviarPreventiva, e o pop-up final avisa que essas
+      // máquinas não foram salvas em lugar nenhum.
       else { puladas.push('Máq. ' + (i+1) + (res.error ? ' — ' + res.error : ' — falha')); }
     }
   } finally {
@@ -7757,7 +7960,10 @@ async function pgpEnviarTodasPreventivas(){
   // avisadas ANTES (na confirmação) e são intencionais — não repetir como erro.
   if(puladas.length){
     AppDialog.alert(
-      'Estas máquinas tiveram FALHA no envio (tente registrar de novo):\n\n' + puladas.join('\n'),
+      'Estas máquinas tiveram FALHA no envio (tente registrar de novo):\n\n' + puladas.join('\n') +
+      // V68 — F-18b: deixar explícito que NADA ficou guardado para essas máquinas.
+      '\n\nNADA foi salvo para elas — nem no servidor, nem na fila offline. ' +
+      'Conecte-se (ou libere espaço no aparelho) e registre de novo.',
       { variant:'warn', title:'Falha no envio' }
     );
   }
@@ -7818,7 +8024,14 @@ async function pgpEnviarPreventiva(midx=currentMachine, opts){
   try{
     payload=pgpBuildPreventivaPayload(idx);
     nTrocadas=Object.values(payload.parts).filter(p=>p.acao==='trocada').length;
-    pgpUpdateAdminLocal(payload);
+    // V68 — F-18a: pgpUpdateAdminLocal(payload) SAIU daqui. Rodando neste ponto,
+    // o espelho local (proper_admin_v2) era atualizado ANTES dos 3 caminhos que
+    // DESCARTAM o payload (fila cheia com payload grande / offline com fila cheia /
+    // falha de rede com fila cheia): o aparelho passava a "lembrar" de uma
+    // preventiva que o servidor nunca recebeu e o técnico via as peças trocadas
+    // achando que tinha registrado. Agora o espelho só é atualizado DEPOIS de um
+    // desfecho positivo (enviado ao GAS, duplicado no GAS ou enfileirado COM
+    // gravação confirmada) — ver as chamadas pgpUpdateAdminLocal abaixo.
   }catch(e){
     if(silent) return { status:'skipped', reason:'falha ao montar os dados' };
     showNotification('🚫 Falha ao montar os dados da preventiva. Nada foi enviado — tente novamente.');
@@ -7834,9 +8047,21 @@ async function pgpEnviarPreventiva(midx=currentMachine, opts){
       showNotification('🚫 Muitas fotos/observações e fila cheia. Envie em partes ou libere espaço na fila.');
       return;
     }
-    listSize.push({action:'savePreventiva',body:payload,signature:payload.visit_id,ts:Date.now()});
-    const qResultSize = savePendingQueue(listSize);
-    pgpUpdatePendingBadge();
+    // V68 — F-06: enfileira COM dedupe por visit_id (antes: list.push cru).
+    const qResultSize = pgpQueuePreventiva(payload);
+    // V68 — F-18b: savePendingQueue devolve {saved:false} também quando o
+    // localStorage estoura a cota (QuotaExceeded). Antes só `.blocked` era
+    // checado e o app dizia "salvo na fila" com NADA persistido.
+    if(!qResultSize.saved){
+      const _erroSize = qResultSize.blocked
+        ? 'fila cheia (' + qResultSize.count + '/' + QUEUE_LIMIT + ')'
+        : 'armazenamento local sem espaço — nada foi salvo';
+      if(silent) return { status:'error', error:'payload grande + ' + _erroSize };
+      showNotification('🚫 Não foi possível salvar a preventiva — ' + _erroSize + '. Conecte-se ou libere espaço e tente de novo.');
+      return;
+    }
+    // V68 — F-18a: desfecho positivo ⇒ agora sim o espelho local pode registrar.
+    pgpUpdateAdminLocal(payload);
     if(silent) return { status:'queued' };
     showNotification('⚠ Muitas fotos/observações — dados salvos na fila (' + qResultSize.count + '/' + QUEUE_LIMIT + '). Envie em partes ou reduza fotos.');
     return;
@@ -7855,26 +8080,38 @@ async function pgpEnviarPreventiva(midx=currentMachine, opts){
       showNotification('🚫 Fila offline cheia (' + list.length + '/' + QUEUE_LIMIT + ' itens). Conecte-se primeiro.');
       return;
     }
-    list.push({action:'savePreventiva',body:payload,signature:payload.visit_id,ts:Date.now()});
-    const qResult = savePendingQueue(list);
-    pgpUpdatePendingBadge();
+    // V68 — F-06: enfileira COM dedupe por visit_id (antes: list.push cru).
+    const qResult = pgpQueuePreventiva(payload);
     if(_slow) clearTimeout(_slow);
     if(btn){btn.disabled=false;btn.textContent='🔧 Registrar Preventiva';}
-    if(silent) return qResult.blocked ? { status:'error', error:'fila cheia' } : { status:'queued' };
-    if(qResult.blocked){
-      showNotification('🚫 Não foi possível salvar — fila cheia. Conecte-se primeiro.');
-    } else {
-      showNotification('📋 Preventiva salva na fila (' + qResult.count + '/' + QUEUE_LIMIT + ') — enviada ao conectar');
+    // V68 — F-18b: `!saved` (cota do localStorage estourada) agora é FALHA, igual
+    // a `.blocked`. Antes o app mostrava "📋 Preventiva salva na fila" sem ter
+    // persistido nada.
+    if(!qResult.saved){
+      const _erroOff = qResult.blocked
+        ? 'fila cheia (' + qResult.count + '/' + QUEUE_LIMIT + ')'
+        : 'armazenamento local sem espaço — nada foi salvo';
+      if(silent) return { status:'error', error:'offline + ' + _erroOff };
+      showNotification('🚫 Não foi possível salvar — ' + _erroOff + '. Conecte-se primeiro.');
+      return;
     }
+    // V68 — F-18a: só espelha localmente depois de a fila confirmar a gravação.
+    pgpUpdateAdminLocal(payload);
+    if(silent) return { status:'queued' };
+    showNotification('📋 Preventiva salva na fila (' + qResult.count + '/' + QUEUE_LIMIT + ') — enviada ao conectar');
     return;
   }
 
   try{
     const d = await pgpPostJson('savePreventiva', payload);
     if(d.duplicate){
+      // V68 — F-18a: o servidor JÁ tem esta preventiva ⇒ espelhar é correto.
+      pgpUpdateAdminLocal(payload);
       if(silent) return { status:'duplicate' };
       showNotification('ℹ Esta preventiva já foi registrada');
     } else if(d.status==='ok'){
+      // V68 — F-18a: gravado no servidor ⇒ espelho local pode acompanhar.
+      pgpUpdateAdminLocal(payload);
       if(silent) return { status:'ok' };
       showNotification('✅ Preventiva registrada — '+nTrocadas+' peça(s) atualizada(s)');
       if(window._PGP_OS_ID){ pgpMostrarVoltarParaOS(); }
@@ -7885,16 +8122,23 @@ async function pgpEnviarPreventiva(midx=currentMachine, opts){
   }catch(e){
     const list=pgpGetPending();
     if(list.length >= QUEUE_LIMIT){
+      // V68 — F-18a: payload DESCARTADO; o espelho local não pode registrar nada.
       if(silent) return { status:'error', error:'falha no envio e fila cheia' };
       showNotification('🚫 Falha no envio e fila cheia. Conecte-se para liberar espaço.');
     } else {
-      list.push({action:'savePreventiva',body:payload,signature:payload.visit_id,ts:Date.now()});
-      const qResult = savePendingQueue(list);
-      pgpUpdatePendingBadge();
-      if(silent) return qResult.blocked ? { status:'error', error:'fila cheia' } : { status:'queued' };
-      if(qResult.blocked){
-        showNotification('🚫 Falha no envio e fila cheia. Conecte-se para liberar espaço.');
+      // V68 — F-06: enfileira COM dedupe por visit_id (antes: list.push cru).
+      const qResult = pgpQueuePreventiva(payload);
+      // V68 — F-18b: cota estourada também é falha (antes só `.blocked` era visto).
+      if(!qResult.saved){
+        const _erroNet = qResult.blocked
+          ? 'fila cheia (' + qResult.count + '/' + QUEUE_LIMIT + ')'
+          : 'armazenamento local sem espaço — nada foi salvo';
+        if(silent) return { status:'error', error:'falha no envio + ' + _erroNet };
+        showNotification('🚫 Falha no envio e ' + _erroNet + '. Conecte-se para liberar espaço.');
       } else {
+        // V68 — F-18a: fila confirmou a gravação ⇒ espelho local pode acompanhar.
+        pgpUpdateAdminLocal(payload);
+        if(silent) return { status:'queued' };
         showNotification('⏳ Falha — preventiva salva na fila (' + qResult.count + '/' + QUEUE_LIMIT + ')');
       }
     }
@@ -9184,8 +9428,19 @@ function pfGetFormUrl(tipo, tarefa) {
     case 'auto:inspecao':   return 'https://grupotap.github.io/ProperTech/index.html';
     case 'auto:preventiva': return 'https://grupotap.github.io/ProperTech/index.html?modo=preventiva';
     case 'auto:form01':     return 'https://grupotap.github.io/ProperForms/form01.html';
-    case 'auto:form09':     return 'https://grupotap.github.io/ProperForms/peritagem.html?tipo=09';
-    case 'auto:form10':     return 'https://grupotap.github.io/ProperForms/peritagem.html?tipo=10';
+    // V68 — F-02d/F-15: rotas que faltavam. form03 (Peritagem Mecânica),
+    // form04 (Peritagem Elétrica) e form05 (Termo de Desmontagem) existem no
+    // ProperForms mas não tinham case: as tarefas caíam no fallback
+    // peritagem.html?tipo=09|10, hoje um stub de 1KB, e o técnico abria uma
+    // página vazia. Os tipos legados form09/form10 (usados pelos templates já
+    // instanciados, ver TPL_DIAG_REFORMA) viram ALIAS das URLs novas — mesmo
+    // padrão do par form02/form08 acima e do _aliasTipoTarefa_ do GAS v79
+    // (form02↔form08, form03↔form09, form04↔form10).
+    case 'auto:form03':     return 'https://grupotap.github.io/ProperForms/form03.html';
+    case 'auto:form04':     return 'https://grupotap.github.io/ProperForms/form04.html';
+    case 'auto:form05':     return 'https://grupotap.github.io/ProperForms/form05.html';
+    case 'auto:form09':     return 'https://grupotap.github.io/ProperForms/form03.html'; // alias legado
+    case 'auto:form10':     return 'https://grupotap.github.io/ProperForms/form04.html'; // alias legado
     default:                return null;
   }
 }
