@@ -1,5 +1,23 @@
 <!-- V68 (29/07/2026) — PACOTE PÓS-TESTE PROFUNDO. Inclui a V67. Par obrigatório: sw.js
-     com CACHE='propertech-v68'; back-end GAS v79 (mesmo CONTRATO de campos).
+     com CACHE='propertech-v69'; back-end GAS v79 (mesmo CONTRATO de campos).
+
+     V69 (29/07/2026) — PERFIL DE EQUIPAMENTO + CHECKLIST DE COMPRESSOR DE PISTÃO.
+     ZERO mudança de GAS. Nenhum id/data-key/rota renomeado; o perfil 'parafuso'
+     aponta para os MESMOS arrays de antes (PARTS/PHOTOS/SCENARIOS/PART_ID_MAP/
+     PART_NAME_MAP/PART_PHOTO_MAP), então o fluxo que está no ar não muda.
+       • perfil é POR MÁQUINA (hidden m<idx>_perfil) — uma OS pode ter pistão no
+         painel 0 e parafuso no painel 1; o Tipo_Equip cadastrado decide sozinho;
+       • rota nova ?modo=pistao (default dos painéis novos), tratada como
+         preventiva; Form_URL continua com tipo 'auto:preventiva' porque o
+         gatilho de autoCompletarTarefa é hardcoded dentro de savePreventiva;
+       • gatilho por CALENDÁRIO: valorMostrado carrega a DATA da última troca,
+         contador='calendario', interval em DIAS, horasRodadas/Restantes em dias,
+         status = OK|ATENÇÃO|VENCIDO|NÃO CONFORME. Tudo em campos que já existiam
+         e já faziam round-trip por MACHINE_PARTS;
+       • horímetro OPCIONAL no perfil pistão (hourTotal:0 é aceito pelo GAS);
+       • visit_id do pistão usa o prefixo 'PIST|' (o parafuso segue com 'PREV|');
+       • FIX de bug latente: o payload da preventiva nunca enviava tarefa_id —
+         em OS com duas preventivas, autoCompletarTarefa podia fechar a errada.
      100% ADITIVO: nenhuma função, id, data-key, data-view, rota ou chave de payload
      foi renomeada/removida; todos os blocos <script> passam em `node --check`.
 
@@ -303,8 +321,8 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ProperCare Field · PGP Preventivas v32 · build PCF_V68</title>
-<meta name="app-build" content="PCF_V68" data-date="2026-07-29">
+<title>ProperCare Field · PGP Preventivas v33 · build PCF_V69</title>
+<meta name="app-build" content="PCF_V69" data-date="2026-07-29">
 <meta name="theme-color" content="#0f172a">
 <!-- PWA (fix 19/07/2026): o repo já tinha manifest.webmanifest + sw.js + proper-pwa.js,
      mas o index.html não os referenciava — sem estas 3 linhas o SW nunca registra,
@@ -1483,6 +1501,23 @@ if (!window.jspdf) { document.write('<script src="https://cdnjs.cloudflare.com/a
   .pgp-sign-bottom{ flex:none; display:flex; gap:10px; padding:10px 14px calc(10px + env(safe-area-inset-bottom,0)); background:#161b22; border-top:1px solid #30363d }
   .pgp-sign-bottom .pgp-sign-btn{ padding:12px 8px; font-size:15px }
 
+
+/* ═══ V69 — PERFIL DE EQUIPAMENTO / CHECKLIST DE PISTÃO ═══════════════════ */
+.pgp-estado-wrap{margin:8px 0 4px}
+.pgp-estado-wrap .pgp-acao-label{display:block;font-size:9px;font-weight:700;color:var(--text-light);
+  text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px}
+.pgp-acao-pill.pgp-pill-nok.active{background:#c0392b;border-color:#c0392b;color:#fff}
+.pt-table.pt-perfil-pistao .pt-name small{color:#64748b}
+.pt-table.pt-perfil-pistao input[type="date"]{font-size:11px;padding:5px 4px;width:100%}
+tr.pt-group.pt-nao-conforme .pt-name{box-shadow:inset 3px 0 0 #c0392b}
+tr.pt-group.pt-nao-conforme{background:#fff5f4}
+.pf-perfil-chip{margin-top:6px;font-size:11px;color:#475569;background:#f1f5f9;border:1px solid #e2e8f0;
+  border-radius:6px;padding:5px 9px;display:inline-block}
+.pf-perfil-chip b{color:#0f172a}
+.pf-horim-nota{margin-top:6px;font-size:11px;line-height:1.5;color:#7B4000;background:#fff7e6;
+  border-left:3px solid var(--orange);border-radius:0 6px 6px 0;padding:6px 10px}
+#pgpNewMachine #nm_tipo{width:100%;padding:9px 10px;border:1px solid #d7dce5;border-radius:8px;
+  font-size:13px;background:#fff;color:#0f172a}
 </style>
 </head>
 <body>
@@ -1641,6 +1676,17 @@ if (!window.jspdf) { document.write('<script src="https://cdnjs.cloudflare.com/a
     <input id="nm_location" placeholder="Localização">
     <input id="nm_year" type="number" placeholder="Ano fabric.">
     <input id="nm_hpw" type="number" placeholder="h/Semana">
+    <!-- V69: o tipo passa a ser cadastrado JÁ em campo. Vai para
+         MAQUINAS.Tipo_Equip via saveMachine (campo que já existia e nunca era
+         preenchido no cadastro rápido) e é o que faz a PRÓXIMA visita abrir
+         com o checklist certo sozinha. -->
+    <select id="nm_tipo">
+      <option value="">Tipo de equipamento...</option>
+      <option>Compressor Parafuso</option><option>Compressor de Pistão</option>
+      <option>Compressor Centrífugo</option><option>Secador Frigorífico</option>
+      <option>Secador por Adsorção</option><option>Filtro de Linha</option>
+      <option>Vaso de Pressão</option><option>Outro</option>
+    </select>
   </div>
   <button class="pgp-new-btn" onclick="pgpRegisterNew()">✚ Cadastrar e carregar</button>
 </div>
@@ -2097,6 +2143,14 @@ function limparSessaoStorage() {
       // pgpSetTipoVisita (ou pgpIniciarPreventivaDeOS, se vier de uma OS) será chamado
       // após DOM pronto
       window._INITIAL_MODO = 'preventiva';
+    }
+    // V69 — ?modo=pistao: mesma preventiva, mas os painéis nascem com o perfil
+    // de compressor de PISTÃO. É só o DEFAULT: cada máquina pode ter o seu
+    // (uma OS pode misturar pistão e parafuso), e carregar uma máquina cujo
+    // Tipo_Equip diga outra coisa troca o perfil daquele painel sozinho.
+    if (modoUrl === 'pistao') {
+      window._INITIAL_MODO = 'preventiva';
+      window._PGP_PERFIL_DEFAULT = 'pistao';
     }
     if (modoUrl === 'pipeline') {
       window._INITIAL_MODO = 'pipeline';
@@ -2755,6 +2809,117 @@ const PART_PHOTO_LABELS = {
   oleo_lubrificante: 'Óleo Lubrificante',
 };
 
+
+// ══════════════════════════════════════════════════════════════════════════
+// V69 — PERFIL DE EQUIPAMENTO: COMPRESSOR DE PISTÃO
+// ──────────────────────────────────────────────────────────────────────────
+// O motor do PCF (cadastro, cliente, fila, IndexedDB, assinatura, PDF,
+// pipeline) sempre foi agnóstico ao tipo de máquina. O que era parafuso
+// estava travado em 7 constantes (PARTS, PHOTOS, SCENARIOS, PART_ID_MAP,
+// PART_NAME_MAP, PART_PHOTO_MAP, HORI_PHOTO_LABELS). A V69 transforma essas
+// constantes em PERFIS: o perfil 'parafuso' aponta para EXATAMENTE os mesmos
+// arrays de antes (zero mudança de comportamento no que está no ar) e o
+// perfil 'pistao' traz o seu próprio conjunto.
+//
+// PISTÃO x PARAFUSO — o que muda de verdade:
+//   • gatilho por CALENDÁRIO (dias), não por horímetro — a maioria dos
+//     compressores de pistão não tem horímetro;
+//   • não existe elemento separador ar/óleo, filtro de ar secundário,
+//     válvula termostática nem válvula de pressão mínima;
+//   • existe cabeçote (junta + palhetas), válvula de retenção, serpentina/
+//     tubo de descarga e correia em V — que são justamente as corretivas
+//     mais comuns;
+//   • não há os cenários A–E de contador progressivo/regressivo.
+//
+// CONTRATO COM O GAS (v79) — ZERO mudança de backend. O mapeamento aproveita
+// campos que já existem e já fazem round-trip por MACHINE_PARTS:
+//   valorMostrado -> DATA da última troca (ISO 'YYYY-MM-DD'); passa por
+//                    safeVal() no GAS (não é coagido a inteiro) e volta em
+//                    pgpRestoreLoadedParts;
+//   contador      -> 'calendario' (marca a linha como baseada em data);
+//   interval      -> intervalo em DIAS (inteiro; coluna Interval_H);
+//   horasRodadas  -> dias decorridos;  horasRestantes -> dias até vencer;
+//   status        -> OK | ATENÇÃO | VENCIDO | NÃO CONFORME (string livre);
+//   lastChange    -> 0 (intOrBlank no GAS destruiria uma data);
+//   acao          -> conferida | trocada | na  (vocabulário INALTERADO — é o
+//                    único campo que o GAS valida).
+// ══════════════════════════════════════════════════════════════════════════
+
+// Intervalos padrão em DIAS. Onde os fabricantes divergem, adotamos o MAIS
+// CONSERVADOR (decisão 29/07): óleo 200 h ou 2 meses (Schulz/CLER/Pressure);
+// filtro de ar 300 h ou trimestral (Schulz/CLER, mais curto que os 600 h da
+// Pressure); palhetas/cabeçote 1000 h ou 9 meses; aferições anuais.
+const PARTS_PISTAO = [
+  {label:'Óleo lubrificante',        k:'q1',  intDefault:60,  hint:'Nível, aspecto e troca — 200 h ou 2 meses'},
+  {label:'Filtro de ar',             k:'q2',  intDefault:90,  hint:'Limpeza ou troca — 300 h ou trimestral'},
+  {label:'Correias em V',            k:'q3',  intDefault:90,  hint:'Tensão e alinhamento polia × volante'},
+  {label:'Manômetro',                k:'q4',  intDefault:365, hint:'Legibilidade e aferição anual'},
+  {label:'Válvula de segurança',     k:'q5',  intDefault:365, hint:'Teste manual na visita; aferição anual'},
+  {label:'Pressostato',              k:'q6',  intDefault:365, hint:'Pressão de corte e de religa'},
+  {label:'Dreno / purga',            k:'q7',  intDefault:90,  hint:'Condensado do reservatório'},
+  {label:'Base, coxins e apoios',    k:'q8',  intDefault:90,  hint:'Nivelamento, chumbadores, vibração'},
+  {label:'Válvula de retenção',      k:'q9',  intDefault:365, hint:'Sede e reparo — causa clássica de não partir'},
+  {label:'Cabeçote (junta/palhetas)',k:'q10', intDefault:270, hint:'Válvulas de lâmina e reaperto — 1000 h ou 9 meses'},
+  {label:'Serpentina / tubo desc.',  k:'q11', intDefault:90,  hint:'Trincas e aletas obstruídas'},
+  {label:'Motor elétrico',           k:'q12', intDefault:90,  hint:'Ventilação, bornes, aquecimento'},
+  {label:'Reservatório',             k:'q13', intDefault:90,  hint:'Casco, corrosão, placa de identificação'},
+];
+
+const PHOTOS_PISTAO = [
+  {label:'Placa de identificação / plaqueta', hint:'Marca, modelo, série, PMTA — legível', photoKey:'plaqueta_p'},
+  {label:'Foto geral – frente e lateral', hint:'Estado geral e ambiente de instalação', photoKey:'geral'},
+  {label:'Rótulo do óleo aplicado', hint:'ISO/AW da embalagem usada na troca', photoKey:'oleo_rotulo'},
+  {label:'Filtro de ar', hint:'Estado do elemento, sujidade', photoKey:'filtro_ar_p'},
+  {label:'Correias e polias', hint:'Desgaste, trincas, alinhamento', photoKey:'correias_p'},
+  {label:'Manômetro', hint:'Pressão indicada e estado do mostrador', photoKey:'manometro_p'},
+  {label:'Válvula de segurança', hint:'Corpo, lacre e descarga desobstruída', photoKey:'valv_seg_p'},
+  {label:'Pressostato', hint:'Corpo, contatos e ligação', photoKey:'pressostato_p'},
+  {label:'Dreno / purga', hint:'Registro, purgador e condensado', photoKey:'dreno_p'},
+  {label:'Base de apoio e coxins', hint:'Nivelamento e fixação', photoKey:'base_p'},
+  {label:'Válvula de retenção', hint:'Corpo e conexão com o reservatório', photoKey:'valv_ret_p'},
+  {label:'Cabeçote', hint:'Junta, aletas e sinais de vazamento', photoKey:'cabecote_p'},
+  {label:'Serpentina / tubo de descarga', hint:'Trincas, solda, aletas', photoKey:'serpentina_p'},
+  {label:'Motor elétrico e ligação', hint:'Carenagem, bornes, ventilação', photoKey:'motor_p'},
+  {label:'Reservatório e placa NR-13', hint:'Casco, apoios e placa de identificação', photoKey:'reservatorio_p'},
+  {label:'Horímetro (se houver)', hint:'A maioria dos pistões não tem — opcional', photoKey:'horimetro'},
+  {label:'Outros / itens com avaria', hint:'Qualquer anormalidade encontrada'},
+];
+
+const PART_ID_MAP_PISTAO = {
+  q1:'oleo_lubrif',  q2:'filtro_ar',      q3:'correias',   q4:'manometro',
+  q5:'valv_seguranca', q6:'pressostato',  q7:'dreno',      q8:'base_coxins',
+  q9:'valv_retencao', q10:'cabecote',     q11:'serpentina',q12:'motor_eletrico',
+  q13:'reservatorio',
+};
+
+const PART_NAME_MAP_PISTAO = {
+  q1:'Óleo Lubrificante', q2:'Filtro de Ar', q3:'Correias em V', q4:'Manômetro',
+  q5:'Válvula de Segurança', q6:'Pressostato', q7:'Dreno / Purga', q8:'Base e Coxins',
+  q9:'Válvula de Retenção', q10:'Cabeçote (junta/palhetas)', q11:'Serpentina / Tubo de Descarga',
+  q12:'Motor Elétrico', q13:'Reservatório',
+};
+
+const PART_PHOTO_MAP_PISTAO = {
+  q1:'oleo_rotulo',  q2:'filtro_ar_p',   q3:'correias_p',  q4:'manometro_p',
+  q5:'valv_seg_p',   q6:'pressostato_p', q7:'dreno_p',     q8:'base_p',
+  q9:'valv_ret_p',   q10:'cabecote_p',   q11:'serpentina_p', q12:'motor_p',
+  q13:'reservatorio_p',
+};
+
+// As photoKeys dos dois perfis são disjuntas, então o mapa reverso e os
+// rótulos podem ser UNIÃO — assim nenhum call-site que só conhece a photoKey
+// (legenda de foto, seção 6 do PDF) precisa saber de qual perfil ela veio.
+Object.entries(PART_PHOTO_MAP_PISTAO).forEach(([partK, photoKey]) => {
+  if (photoKey) PART_PHOTO_MAP_REV[photoKey] = partK;
+});
+PARTS_PISTAO.forEach(pt => {
+  const pkey = PART_PHOTO_MAP_PISTAO[pt.k];
+  if (pkey) PART_PHOTO_LABELS[pkey] = PART_NAME_MAP_PISTAO[pt.k] || pt.label;
+});
+
+// Tolerância do status ATENÇÃO no gatilho por calendário (decisão 29/07).
+const PGP_ATENCAO_DIAS = 15;
+
 const SCENARIOS = [
   {id:'A', icon:'⏱️', title:'Só horímetro total analógico',    desc:'Sem informação por peça — apenas o marcador geral'},
   {id:'B', icon:'🏷️', title:'Total + plano adesivado',         desc:'Plano de manutenção fixado na máquina, confiabilidade incerta'},
@@ -2937,6 +3102,9 @@ function buildPartsTable(p, midx, scenario) {
 }
 
 function buildPartsSection(p, midx) {
+  // V69: no perfil pistão não existem os cenários A–E (contador progressivo/
+  // regressivo é painel de parafuso). A tabela é renderizada direto.
+  if (pgpEhPistao(midx)) return buildPartsSectionPistao(p, midx);
   return `
   <div class="scenario-selector">
     <div class="scenario-label">Qual é o cenário de informação desta máquina?</div>
@@ -2946,12 +3114,12 @@ function buildPartsSection(p, midx) {
     <button type="button" class="btn btn-reset" style="margin:0 0 8px;padding:8px 10px;font-size:12px" onclick="collapseCompletedParts(${midx})">▴ Recolher peças completas</button>
     <div id="${p}parts_table_content"></div>
   </div>
-  ${buildHiddenPartIds(p)}`;
+  ${buildHiddenPartIds(p, midx)}`;
 }
 
 // Garante que todos os IDs de compatibilidade existem mesmo sem tabela renderizada
-function buildHiddenPartIds(p) {
-  return PARTS.map(pt => {
+function buildHiddenPartIds(p, midx) {
+  return pgpPartsDe(midx).map(pt => {
     const pk = `${p}${pt.k}`;
     return `<span style="display:none">
       <input type="hidden" id="${pk}_valor_mostrado_h" data-key="${pk}_valor_mostrado_hidden">
@@ -2971,8 +3139,8 @@ function pgpHasValue(v) {
 function pgpRestoreLoadedParts(p, midx) {
   const loadedEq = pgpGetLoadedMachineForIndex(midx);
   if (!loadedEq || !loadedEq.parts) return;
-  PARTS.forEach(pt => {
-    const aid = PART_ID_MAP[pt.k];
+  pgpPartsDe(midx).forEach(pt => {
+    const aid = pgpPartIdMapDe(midx)[pt.k];
     if (!aid) return;
     const sp = loadedEq.parts[aid];
     if (!sp) return;
@@ -3008,6 +3176,17 @@ function pgpRestoreLoadedParts(p, midx) {
         const tr = document.getElementById(`${pk}_tr`);
         if (tr) tr.classList.add('pt-na');
       }
+    }
+    // V69 — perfil pistão: o "estado encontrado" viaja em sp.status
+    const estEl = document.getElementById(`${pk}_estado`);
+    if (estEl && String(sp.status || '').toUpperCase().indexOf('NÃO CONFORME') === 0) {
+      estEl.value = 'nao_conforme';
+      const bNok = document.getElementById(`${pk}_est_nok`);
+      if (bNok) bNok.classList.add('active');
+    } else if (estEl && sp.status) {
+      estEl.value = 'ok';
+      const bOk = document.getElementById(`${pk}_est_ok`);
+      if (bOk) bOk.classList.add('active');
     }
     updatePartCompletionStatus(pk);
     const quick = document.getElementById(`${pk}_quick_row`);
@@ -3123,6 +3302,11 @@ function togglePartDetail(pk, intDefault, e) {
 }
 
 function calcPartRow(pk, intDefault) {
+  // V69 — perfil pistão: o gatilho é por CALENDÁRIO. O hidden _contador
+  // marcado como 'calendario' é o discriminador (nunca colide com os valores
+  // do parafuso: progressivo/regressivo/nao_sei/nao_informado).
+  const _cont = document.getElementById(`${pk}_contador`);
+  if (_cont && _cont.value === 'calendario') return pgpCalcPartRowCalendario(pk, intDefault);
   const calcBox  = document.getElementById(`${pk}_calc_box`);
   if (!calcBox) { updatePartCompletionStatus(pk); return; }
   const contEl   = document.getElementById(`${pk}_contador`);
@@ -3162,7 +3346,8 @@ function pgpPartPhotoCount(midx, photoKey){
 }
 
 function pgpPartKeyInfo(pk){
-  const m = String(pk).match(/^m(\d+)_(p\d+)$/);
+  // V69: as peças do perfil pistão usam o prefixo 'q' (q1..q13)
+  const m = String(pk).match(/^m(\d+)_([a-z]+\d+)$/);
   if(!m) return null;
   return { midx: parseInt(m[1],10), partK: m[2] };
 }
@@ -3170,6 +3355,8 @@ function pgpPartKeyInfo(pk){
 function updatePartCompletionStatus(pk){
   const badge = document.getElementById(`${pk}_status_badge`);
   if(!badge) return;
+  const _cont = document.getElementById(`${pk}_contador`);
+  if (_cont && _cont.value === 'calendario') return pgpUpdatePartStatusPistao(pk, badge, pgpPartKeyInfo(pk));
   const acao = (document.getElementById(`${pk}_acao`)||{}).value || '';
   const naBtn = document.getElementById(`${pk}_na`);
   const isNa = naBtn && naBtn.classList.contains('active');
@@ -3177,7 +3364,7 @@ function updatePartCompletionStatus(pk){
   const intEl = document.getElementById(`${pk}_int`);
   const info = pgpPartKeyInfo(pk);
   const hasHoriPhoto = info ? pgpPartPhotoCount(info.midx, `hori_${info.partK}`) > 0 : false;
-  const partPhotoKey = info ? PART_PHOTO_MAP[info.partK] : '';
+  const partPhotoKey = info ? (pgpPartPhotoMapDe(info.midx)||{})[info.partK] : '';
   const hasMappedPartPhoto = !!partPhotoKey && pgpPartPhotoCount(info.midx, partPhotoKey) > 0;
   const hasPartPhoto = partPhotoKey ? hasMappedPartPhoto : true;
   const valorFilled = !!valorEl && String(valorEl.value || '').trim() !== '';
@@ -3210,7 +3397,7 @@ function collapseCompletedParts(midx){
     const det = document.getElementById(pk+'_detail_row');
     const quick = document.getElementById(pk+'_quick_row');
     const btn = document.getElementById(pk+'_detail_btn');
-    if(st==='Completa'||st==='N/A'){
+    if(String(st).indexOf('Completa')===0||st==='N/A'){
       if(det) det.style.display='none';
       if(quick) quick.style.display='none';
       if(btn) btn.classList.remove('open');
@@ -3228,24 +3415,13 @@ function buildPanelHTML(idx) {
   // único (.photo-item-group) — antes eram irmãos soltos e a borda divisória
   // vivia em .photo-item, fazendo a thumb parecer pertencer ao item SEGUINTE.
   // A borda agora fica no grupo inteiro (nome do item + suas fotos).
-  const photoItems = PHOTOS.map((ph,i) => {
-    const pKey = ph.photoKey || ('foto_idx_' + i);
-    return `
-    <div class="photo-item-group">
-      <div class="photo-item" data-pidx="${i}" onclick="togglePhoto(this,${idx})">
-        <div class="photo-cb">✓</div>
-        <div style="flex:1">
-          <div class="photo-pname">${ph.label}</div>
-          ${ph.hint?'<div class="photo-hint">'+ph.hint+'</div>':''}
-        </div>
-        <button class="btn-photo-capture" onclick="event.stopPropagation();abrirFotoPicker(this,'photo-item',${idx})">📷</button>
-        <button class="photo-nd-btn" onclick="togglePhotoND(event,this,${idx})">N/D</button>
-      </div>
-      <div class="photo-thumbs-mini" data-midx="${idx}" data-pkey="${pKey}"></div>
-    </div>`;
-  }).join('');
+  // V69: extraído para buildPhotoItems(idx) para poder ser re-renderizado
+  // quando o perfil da máquina muda (pgpAplicarPerfil).
+  const photoItems = buildPhotoItems(idx);
+  const _perfilAtual = pgpPerfil(idx);
 
   return `
+  <input type="hidden" id="${p}perfil" data-key="${p}perfil" value="${_perfilAtual.id}">
   <!-- ── LEMBRETE FOTO INICIAL ── -->
   <div class="foto-inicial-banner" id="${p}banner_foto_inicial">
     <span class="foto-ini-icon">📷</span>
@@ -3327,13 +3503,14 @@ function buildPanelHTML(idx) {
         <div class="field-label"><div class="checkbox">✓</div>
           <div class="label-text"><div class="label-main">Tipo de equipamento</div></div></div>
         <div class="field-input">
-          <select data-key="${p}tipo" onclick="event.stopPropagation()">
+          <select data-key="${p}tipo" onclick="event.stopPropagation()" onchange="pgpOnTipoChange(${idx})">
             <option value="">Selecionar...</option>
             <option>Compressor Parafuso</option><option>Compressor de Pistão</option>
             <option>Compressor Centrífugo</option><option>Secador Frigorífico</option>
             <option>Secador por Adsorção</option><option>Filtro de Linha</option>
             <option>Vaso de Pressão</option><option>Outro</option>
           </select>
+          <div class="pf-perfil-chip">Checklist em uso: <b id="${p}perfil_nome">${_perfilAtual.rotulo}</b></div>
         </div>
       </div>
       <div class="field-item" onclick="toggleField(this,${idx})">
@@ -3389,8 +3566,9 @@ function buildPanelHTML(idx) {
                real no ato. Os DOIS são guardados (hourTotal=real, horimetro_estimado). -->
           <div class="row2">
             <div class="sub-group"><label>Estimado (regime)</label><input type="text" id="${p}horim_est_box" class="pf-horim-est" readonly tabindex="-1" placeholder="—" onclick="event.stopPropagation()"></div>
-            <div class="sub-group"><label>Real lido no display *</label><input type="number" id="${p}horimetro" placeholder="Leitura real" data-key="${p}horimetro" onclick="event.stopPropagation()"></div>
+            <div class="sub-group"><label id="${p}horim_label">${_perfilAtual.horimetroObrigatorio?'Real lido no display *':'Real lido (se houver)'}</label><input type="number" id="${p}horimetro" placeholder="Leitura real" data-key="${p}horimetro" onclick="event.stopPropagation()"></div>
           </div>
+          <div class="pf-horim-nota" id="${p}horim_nota" style="display:${_perfilAtual.horimetroObrigatorio?'none':''}">ℹ️ A maioria dos compressores de pistão não tem horímetro. Deixe em branco se não houver — a preventiva é controlada por data.</div>
           <div class="row2">
             <div class="sub-group"><label>Data da leitura</label><input type="date" id="${p}data_leitura" data-key="${p}data_leitura" onclick="event.stopPropagation()" onchange="pfReprojetar(${idx})"></div>
             <div class="sub-group" style="display:flex;align-items:flex-end"><button type="button" class="pf-usar-est-btn" id="${p}usar_est_btn" onclick="event.stopPropagation();pfUsarEstimado(${idx})" title="Copiar o estimado para o campo real (use só se não conseguir ler o horímetro)">↧ Usar estimado</button></div>
@@ -3433,15 +3611,15 @@ function buildPanelHTML(idx) {
 
   <div class="section" data-section>
     <div class="section-header" onclick="toggleSection(this)">
-      <span class="icon">🔧</span><span class="title">4. Peças de Preventiva</span>
+      <span class="icon">🔧</span><span class="title" id="${p}sec4_title">${_perfilAtual.tituloSec4}</span>
       <span class="badge" data-section-badge>0/1</span><span class="chevron">▼</span>
     </div>
     <div class="section-body">
       <div class="field-item" style="cursor:default">
         <div class="field-label" style="pointer-events:none"><div class="checkbox">✓</div>
-          <div class="label-text"><div class="label-main">Selecione o cenário e registre as peças</div>
-          <div class="label-hint">Escolha abaixo o que você encontrou na máquina.</div></div></div>
-        <div class="field-input" style="display:block;padding-top:0" onclick="event.stopPropagation()">
+          <div class="label-text"><div class="label-main" id="${p}sec4_label">${_perfilAtual.labelSec4}</div>
+          <div class="label-hint" id="${p}sec4_hint">${_perfilAtual.hintSec4}</div></div></div>
+        <div class="field-input" id="${p}sec4_body" style="display:block;padding-top:0" onclick="event.stopPropagation()">
           ${buildPartsSection(p, idx)}
         </div>
       </div>
@@ -3451,13 +3629,13 @@ function buildPanelHTML(idx) {
   <div class="section" data-section>
     <div class="section-header" onclick="toggleSection(this)">
       <span class="icon">📷</span><span class="title">5. Registro Fotográfico</span>
-      <span class="badge" data-section-badge>0/${PHOTOS.length}</span><span class="chevron">▼</span>
+      <span class="badge" data-section-badge id="${p}sec5_badge">0/${_perfilAtual.photos.length}</span><span class="chevron">▼</span>
     </div>
     <div class="section-body">
       <div class="drive-reminder">
         <strong>📁 Lembrete para o escritório:</strong> solicitar o link da pasta do Drive com as fotos para vincular na planilha PGP (campo "Link Fotos/Drive").
       </div>
-      ${photoItems}
+      <div id="${p}sec5_items">${photoItems}</div>
     </div>
   </div>
 
@@ -3710,7 +3888,7 @@ function handlePhotoCapture(input, midx) {
   item.dataset.photoFile = file.name;
   // Armazena base64 para uso no PDF
   const pidx = parseInt(item.dataset.pidx);
-  const ph = PHOTOS[pidx];
+  const ph = pgpPhotosDe(midx)[pidx];
   if (ph) {
     const photoKey = ph.photoKey || ('foto_idx_' + pidx);
     storePhotoBase64(midx, photoKey, ph.label, file);
@@ -3741,7 +3919,7 @@ async function capturePhotoLinked(input, midx, photoKey, triggerBtn, saveToDevic
 
   // Armazena base64 para uso no PDF (e salva no dispositivo se veio da câmera)
   if (photoKey && photoKey !== 'null') {
-    const ph = PHOTOS.find(p => p.photoKey === photoKey);
+    const ph = pgpPhotosDe(midx).find(p => p.photoKey === photoKey);
     const label = ph ? ph.label
       : (HORI_PHOTO_LABELS[photoKey] || PART_PHOTO_LABELS[photoKey] || (triggerBtn ? (triggerBtn.dataset.origLabel || triggerBtn.textContent.trim()) : photoKey));
     await storePhotosFromFileList(midx, photoKey, label, files, saveToDevice);
@@ -3752,7 +3930,7 @@ async function capturePhotoLinked(input, midx, photoKey, triggerBtn, saveToDevic
     const photoItems = panel.querySelectorAll('.photo-item');
     photoItems.forEach(item => {
       const pidx = parseInt(item.dataset.pidx);
-      const ph = PHOTOS[pidx];
+      const ph = pgpPhotosDe(midx)[pidx];
       if (ph && ph.photoKey === photoKey) {
         const ndBtn = item.querySelector('.photo-nd-btn');
         if (ndBtn) ndBtn.classList.remove('active');
@@ -3900,10 +4078,10 @@ ${'━'.repeat(20)}
 ${(() => {
       const scEl = document.getElementById('m'+i+'_scenario');
       const scId = scEl ? scEl.value : '—';
-      const scObj = SCENARIOS.find(s=>s.id===scId);
+      const scObj = (pgpPerfil(i).scenarios||SCENARIOS).find(s=>s.id===scId);
       const scLabel = scObj ? `Cenário ${scId}: ${scObj.title}` : '(cenário não selecionado)';
       const lines = [`Cenário: ${scLabel}`];
-      PARTS.forEach(pt => {
+      pgpPartsDe(i).forEach(pt => {
         const pfx = 'm'+i+'_'+pt.k;
         const naBtn = document.getElementById(pfx+'_na');
         const isNA  = naBtn && naBtn.classList.contains('active');
@@ -3998,7 +4176,8 @@ function exportarCSV() {
   ];
 
   // Mapeamento de chaves do HTML para índices de campo (apenas peças que permanecem na tabela)
-  const partKeys = ['p1', 'p2', 'p3', 'p4', 'p5', 'p9'];
+  // V69: chaves do CSV variam por perfil da máquina (parafuso p*, pistão q*)
+  const partKeys = pgpPartsDe(currentMachine).map(pt => pt.k);
   
   // Montar dados (uma linha por máquina)
   const linhas = [];
@@ -4036,7 +4215,8 @@ function exportarCSV() {
     
     // Peças (9 peças x 11 campos)
     partKeys.forEach((pk, pkIdx) => {
-      const intDefault = PARTS[pkIdx] ? PARTS[pkIdx].intDefault : 2000;
+      const _ptsCsv = pgpPartsDe(midx);
+      const intDefault = _ptsCsv[pkIdx] ? _ptsCsv[pkIdx].intDefault : 2000;
       // v31 item 8: campo manual removido da UI — calcular fallback pela
       // mesma fórmula usada nos payloads/PDF quando não há valor salvo.
       let ultCSV = getPartValue(midx, pk, 'ult');
@@ -4432,7 +4612,12 @@ function renderPGPFields() {
     html += `</div>`;
 
     html += `<div class="pgp-field-group"><div class="pgp-group-title">🔧 Peças – Últ. Troca / Intervalo / Ref.</div>`;
-    PARTS_LABELS.forEach(pt => {
+    // V69: no perfil pistão a aba "Campos PGP" lista os itens do checklist de
+    // pistão (PARTS_LABELS é a lista fixa do parafuso, mantida como está).
+    const _lblPgp = pgpEhPistao(i)
+      ? pgpPartsDe(i).map(pt => ({label: PART_NAME_MAP_PISTAO[pt.k] || pt.label, k: pt.k}))
+      : PARTS_LABELS;
+    _lblPgp.forEach(pt => {
       const naBtn = document.getElementById('m'+i+'_'+pt.k+'_na');
       const isNA = naBtn && naBtn.classList.contains('active');
       if (isNA) { html += makeRow(pt.label, 'N/A'); return; }
@@ -4449,7 +4634,7 @@ function renderPGPFields() {
       if (!ult) {
         const vmEl2 = document.getElementById('m'+i+'_'+pt.k+'_valor_mostrado');
         const contEl2 = document.getElementById('m'+i+'_'+pt.k+'_contador');
-        const partDef = PARTS.find(p => p.k === pt.k);
+        const partDef = pgpPartsDe(i).find(p => p.k === pt.k);
         const intervalo = intV || (partDef ? partDef.intDefault : '');
         const calcUlt = calcUltimaTroca(pgpVal(i,'horimetro'), vmEl2?.value, intervalo, contEl2?.value);
         if (calcUlt !== null) ult = String(Math.max(0, calcUlt).toFixed(0));
@@ -4753,7 +4938,7 @@ function restoreState(state) {
   // Recalcular tudo após restore
   machines.forEach((_, i) => {
     calcRegime(i);
-    PARTS.forEach(pt => calcPartRow('m'+i+'_'+pt.k, pt.intDefault));
+    pgpPartsDe(i).forEach(pt => calcPartRow('m'+i+'_'+pt.k, pt.intDefault));
   });
   document.querySelectorAll('[data-section]').forEach(s => refreshSection(s));
   updateProgress();
@@ -5078,10 +5263,10 @@ document.addEventListener('input', function(e) {
     const mk = e.target.dataset.key.match(/^m(\d+)_modelo$/);
     if (mk) updateTabName(parseInt(mk[1]));
     // Atualizar cálculo de peça ao digitar (nova tabela ou campo detalhe)
-    const pk = e.target.dataset.key.match(/^(m\d+_p\d+)_(contador|valor_mostrado|int)$/);
+    const pk = e.target.dataset.key.match(/^(m\d+_[a-z]+\d+)_(contador|valor_mostrado|int)$/);
     if (pk) {
       const pkPrefix = pk[1];
-      const pt = PARTS.find(p => pkPrefix.endsWith('_'+p.k));
+      const pt = pgpPartsDe(pgpMidxDePk(pkPrefix)).find(p => pkPrefix.endsWith('_'+p.k));
       calcPartRow(pkPrefix, pt ? pt.intDefault : 2000);
       updatePartCompletionStatus(pkPrefix);
     }
@@ -5091,9 +5276,9 @@ document.addEventListener('change', function(e) {
   pgpSaveDraftAgora();   // gateway: campo concluído salva na hora
   autoSaveSession();
   if (e.target.dataset && e.target.dataset.key) {
-    const pk = e.target.dataset.key.match(/^(m\d+_p\d+)_(contador|historico|ref)$/);
+    const pk = e.target.dataset.key.match(/^(m\d+_[a-z]+\d+)_(contador|historico|ref)$/);
     if (pk) {
-      const pt = PARTS.find(p => pk[1].endsWith('_'+p.k));
+      const pt = pgpPartsDe(pgpMidxDePk(pk[1])).find(p => pk[1].endsWith('_'+p.k));
       calcPartRow(pk[1], pt ? pt.intDefault : 2000);
       updatePartCompletionStatus(pk[1]);
     }
@@ -5145,7 +5330,7 @@ function fotoPickerEscolher(origem) {
       const files = newInput.files;
       item.dataset.photoFile = files[0].name;
       const pidx = parseInt(item.dataset.pidx);
-      const ph = PHOTOS[pidx];
+      const ph = pgpPhotosDe(midx)[pidx];
       if (ph) {
         const key = ph.photoKey || ('foto_idx_' + pidx);
         await storePhotosFromFileList(midx, key, ph.label, files, isCam);
@@ -5467,14 +5652,18 @@ function pgpCreateReportBuilder() {
 
     // ── SEÇÃO 4: PEÇAS ────────────────────────────────
     y = checkY(y, 12);
-    y = sectionTitle(y, '[P]', '4. Peças de Preventiva');
+    const _perfPdf = pgpPerfil(midx);
+    const _ehPistaoPdf = _perfPdf.id === 'pistao';
+    y = sectionTitle(y, '[P]', _ehPistaoPdf ? '4. Checklist de Preventiva (Pistao)' : '4. Peças de Preventiva');
 
     // Cabeçalho da tabela
     // v27: coluna "Referência" dedicada — antes a referência era desenhada
     // sobre a mesma linha de base do nome da peça (colidiam visualmente).
     // Larguras somam exatamente CW (182mm).
     const colsP = [40, 26, 22, 22, 22, 22, 28];
-    const headP = ['Peça', 'Referência', 'Últ.Troca(h)', 'Intervalo(h)', 'H.Rodadas', 'H.Restantes', 'Status'];
+    const headP = _ehPistaoPdf
+      ? ['Item', 'Referência', 'Últ. troca', 'Ciclo (d)', 'Dias', 'Restam', 'Estado']
+      : ['Peça', 'Referência', 'Últ.Troca(h)', 'Intervalo(h)', 'H.Rodadas', 'H.Restantes', 'Status'];
     const rowHP = 7;
 
     y = checkY(y, rowHP + 2);
@@ -5490,13 +5679,13 @@ function pgpCreateReportBuilder() {
     // Linha por peça
     const scenEl = document.getElementById('m' + midx + '_scenario');
     const scenId = scenEl ? scenEl.value : '';
-    const scenObj = SCENARIOS.find(s => s.id === scenId);
+    const scenObj = (_perfPdf.scenarios || SCENARIOS).find(s => s.id === scenId);
     // v27: observações individuais por peça — antes só a obs geral das
     // peças (parts_obs) aparecia no PDF, perdendo o campo de observação
     // por peça (${pk}_obs, ex: "etiqueta ilegível, horímetro zerado...").
     const partsObsList = [];
 
-    PARTS.forEach((pt, pi) => {
+    _perfPdf.parts.forEach((pt, pi) => {
       y = checkY(y, rowHP);
       const pk = 'm' + midx + '_' + pt.k;
       const naBtn = document.getElementById(pk + '_na');
@@ -5536,8 +5725,26 @@ function pgpCreateReportBuilder() {
         }
 
         let rodadas = '', restantes = '', status = '', statusColor = DARK;
-        const vmN = parseFloat(vm), intN = parseFloat(intV);
-        if (!isNaN(vmN) && !isNaN(intN) && (cont === 'progressivo' || cont === 'regressivo')) {
+        // V69 — perfil pistão: as colunas viram data/dias e o estado
+        // encontrado (conforme / não conforme) tem precedência no "Estado".
+        if (cont === 'calendario') {
+          const _calPdf = pgpCalendarioInfo(vm, intV);
+          if (_calPdf) {
+            ult = pgpFmtDataBR(pgpParseDataLocal(vm));
+            rodadas   = String(Math.max(0, _calPdf.rodados));
+            restantes = String(_calPdf.restantes);
+            status = _calPdf.status;
+            statusColor = _calPdf.status === 'VENCIDO' ? [192, 57, 43]
+                        : _calPdf.status === 'ATENÇÃO' ? [200, 100, 0] : GREEN;
+          } else {
+            ult = '—';
+          }
+          const _estPdf = (document.getElementById(pk + '_estado') || {}).value || '';
+          if (_estPdf === 'nao_conforme') { status = 'NAO CONFORME'; statusColor = [192, 57, 43]; }
+          else if (_estPdf === 'ok' && !status) { status = 'Conforme'; statusColor = GREEN; }
+        } else
+        if (!isNaN(parseFloat(vm)) && !isNaN(parseFloat(intV)) && (cont === 'progressivo' || cont === 'regressivo')) {
+          const vmN = parseFloat(vm), intN = parseFloat(intV);
           rodadas   = cont === 'progressivo' ? vmN.toFixed(0) : (intN - vmN).toFixed(0);
           restantes = cont === 'progressivo' ? (intN - vmN).toFixed(0) : vmN.toFixed(0);
           const pct = (parseFloat(rodadas) / intN) * 100;
@@ -5646,7 +5853,8 @@ function pgpCreateReportBuilder() {
       // v27: se a foto está vinculada a uma peça marcada N/A, o status é
       // "Não Aplicável" (peça não existe na máquina) e não "Não disponível"
       // (que fica reservado a foto de peça existente ainda não tirada).
-      const photoKey = (PHOTOS[pidx] && PHOTOS[pidx].photoKey) || '';
+      const _phPdf = _perfPdf.photos[pidx];
+      const photoKey = (_phPdf && _phPdf.photoKey) || '';
       const linkedPartK = PART_PHOTO_MAP_REV[photoKey];
       let linkedPartNA = false;
       if (linkedPartK) {
@@ -6580,6 +6788,355 @@ const PART_NAME_MAP = {
   p4:'Separador Ar/Óleo', p5:'Óleo Lubrificante', p9:'Correia',
 };
 
+// ══════════════════════════════════════════════════════════════════════════
+// V69 — REGISTRO DE PERFIS + ACESSORES
+// Declarado AQUI (e não junto de PARTS_PISTAO) de propósito: PART_ID_MAP e
+// PART_NAME_MAP são `const` declarados nesta linha acima; referenciá-los antes
+// cairia na TDZ e quebraria o script inteiro no load.
+// ══════════════════════════════════════════════════════════════════════════
+const PERFIS_EQUIP = {
+  parafuso: {
+    id:'parafuso', rotulo:'Compressor Parafuso',
+    parts:PARTS, photos:PHOTOS, scenarios:SCENARIOS,
+    idMap:PART_ID_MAP, nameMap:PART_NAME_MAP, photoMap:PART_PHOTO_MAP,
+    gatilho:'horas', usaCenarios:true, horimetroObrigatorio:true,
+    visitPrefix:'PREV|',
+    tituloSec4:'4. Peças de Preventiva',
+    labelSec4:'Selecione o cenário e registre as peças',
+    hintSec4:'Escolha abaixo o que você encontrou na máquina.',
+  },
+  pistao: {
+    id:'pistao', rotulo:'Compressor de Pistão',
+    parts:PARTS_PISTAO, photos:PHOTOS_PISTAO, scenarios:null,
+    idMap:PART_ID_MAP_PISTAO, nameMap:PART_NAME_MAP_PISTAO, photoMap:PART_PHOTO_MAP_PISTAO,
+    gatilho:'calendario', usaCenarios:false, horimetroObrigatorio:false,
+    visitPrefix:'PIST|',
+    tituloSec4:'4. Checklist de Preventiva (Pistão)',
+    labelSec4:'Estado, ação e foto de cada ponto',
+    hintSec4:'Marque o estado encontrado, a ação executada e registre a foto. O prazo é por data.',
+  },
+};
+
+// Perfil é POR MÁQUINA (por painel), não da sessão: uma OS pode ter um pistão
+// no painel 0 e um parafuso no painel 1. Fica num hidden com data-key, então
+// é salvo e restaurado pelo motor de rascunho/coletas sem código extra.
+function pgpPerfilId(midx){
+  try{
+    var el = document.getElementById('m'+midx+'_perfil');
+    var v = el && el.value ? String(el.value) : '';
+    if (v && PERFIS_EQUIP[v]) return v;
+  }catch(_){}
+  var d = window._PGP_PERFIL_DEFAULT;
+  return (d && PERFIS_EQUIP[d]) ? d : 'parafuso';
+}
+function pgpPerfil(midx){ return PERFIS_EQUIP[pgpPerfilId(midx)] || PERFIS_EQUIP.parafuso; }
+function pgpPartsDe(midx){ return pgpPerfil(midx).parts || PARTS; }
+function pgpPhotosDe(midx){ return pgpPerfil(midx).photos || PHOTOS; }
+function pgpPartIdMapDe(midx){ return pgpPerfil(midx).idMap || PART_ID_MAP; }
+function pgpPartNameMapDe(midx){ return pgpPerfil(midx).nameMap || PART_NAME_MAP; }
+function pgpPartPhotoMapDe(midx){ return pgpPerfil(midx).photoMap || PART_PHOTO_MAP; }
+function pgpEhPistao(midx){ return pgpPerfilId(midx) === 'pistao'; }
+
+// Descobre o midx a partir de um prefixo de peça (m3_q7 -> 3)
+function pgpMidxDePk(pk){
+  var m = String(pk||'').match(/^m(\d+)_/);
+  return m ? parseInt(m[1],10) : 0;
+}
+
+// ── GATILHO POR CALENDÁRIO ────────────────────────────────────────────────
+function pgpParseDataLocal(iso){
+  var m = String(iso||'').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(!m) return null;
+  var d = new Date(parseInt(m[1],10), parseInt(m[2],10)-1, parseInt(m[3],10));
+  return isNaN(d.getTime()) ? null : d;
+}
+function pgpHojeLocal(){ var n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate()); }
+function pgpFmtDataBR(d){
+  if(!d) return '—';
+  return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
+}
+function pgpCalendarioInfo(dataIso, dias){
+  var diasN = parseInt(dias,10);
+  var base = pgpParseDataLocal(dataIso);
+  if(!base || !diasN || isNaN(diasN)) return null;
+  var prox = new Date(base.getTime());
+  prox.setDate(prox.getDate() + diasN);
+  var hoje = pgpHojeLocal();
+  var restantes = Math.round((prox.getTime() - hoje.getTime())/86400000);
+  var rodados   = Math.round((hoje.getTime() - base.getTime())/86400000);
+  var status = 'OK';
+  if (restantes <= 0) status = 'VENCIDO';
+  else if (restantes <= PGP_ATENCAO_DIAS) status = 'ATENÇÃO';
+  return { proxima:prox, restantes:restantes, rodados:rodados, status:status };
+}
+
+// ── ESTADO ENCONTRADO (conforme / não conforme) — só no perfil pistão ─────
+function pgpSetEstado(pk, est){
+  var h = document.getElementById(pk+'_estado');
+  if(!h) return;
+  h.value = (h.value === est) ? '' : est;
+  var v = h.value;
+  var bOk  = document.getElementById(pk+'_est_ok');
+  var bNok = document.getElementById(pk+'_est_nok');
+  if(bOk)  bOk.classList.toggle('active',  v==='ok');
+  if(bNok) bNok.classList.toggle('active', v==='nao_conforme');
+  var tr = document.getElementById(pk+'_tr');
+  if(tr) tr.classList.toggle('pt-nao-conforme', v==='nao_conforme');
+  calcPartRow(pk, 0);
+}
+
+function pgpCalcPartRowCalendario(pk, intDefault){
+  var calcBox = document.getElementById(pk+'_calc_box');
+  var dtEl    = document.getElementById(pk+'_valor_mostrado');
+  var intEl   = document.getElementById(pk+'_int');
+  var estEl   = document.getElementById(pk+'_estado');
+  var dias    = (intEl && intEl.value) ? parseInt(intEl.value,10) : (parseInt(intDefault,10)||0);
+  var estado  = estEl ? estEl.value : '';
+  var info    = pgpCalendarioInfo(dtEl ? dtEl.value : '', dias);
+  if (calcBox) {
+    if (!info) {
+      calcBox.innerHTML = (estado === 'nao_conforme')
+        ? '<div class="pt-calc-line pt-calc-err">⚠️ Item NÃO CONFORME — registre a ação e a referência.</div>'
+        : '';
+    } else {
+      var cls = 'pt-calc-ok';
+      if (info.status === 'ATENÇÃO') cls = 'pt-calc-warn';
+      if (info.status === 'VENCIDO') cls = 'pt-calc-err';
+      if (estado === 'nao_conforme') cls = 'pt-calc-err';
+      var prazo = (info.restantes >= 0)
+        ? '⏳ Faltam <b>'+info.restantes+' dia(s)</b>'
+        : '⚠️ Vencido há <b>'+Math.abs(info.restantes)+' dia(s)</b>';
+      calcBox.innerHTML = '<div class="pt-calc-line '+cls+'">'
+        + '📅 Próxima: <b>'+pgpFmtDataBR(info.proxima)+'</b> &nbsp;|&nbsp; '+prazo
+        + ' &nbsp;|&nbsp; ciclo de '+dias+' dia(s)'
+        + (estado==='nao_conforme' ? ' &nbsp;|&nbsp; <b>NÃO CONFORME</b>' : '')
+        + '</div>';
+    }
+  }
+  updatePartCompletionStatus(pk);
+}
+
+function pgpUpdatePartStatusPistao(pk, badge, info){
+  var acaoEl = document.getElementById(pk+'_acao');
+  var acao   = acaoEl ? acaoEl.value : '';
+  var naBtn  = document.getElementById(pk+'_na');
+  var isNa   = naBtn && naBtn.classList.contains('active');
+  var estEl  = document.getElementById(pk+'_estado');
+  var estado = estEl ? estEl.value : '';
+  var dtEl   = document.getElementById(pk+'_valor_mostrado');
+  var midx   = info ? info.midx : pgpMidxDePk(pk);
+  var photoKey = info ? (pgpPartPhotoMapDe(midx)||{})[info.partK] : '';
+  var hasPhoto = photoKey ? (pgpPartPhotoCount(midx, photoKey) > 0) : true;
+  var isPrev   = (_pgpTipoVisita === 'preventiva');
+  var hasAcao  = ['conferida','trocada','na'].indexOf(acao) >= 0;
+  var complete = !!estado && hasPhoto && (!isPrev || hasAcao);
+  var started  = !!estado || hasPhoto || hasAcao || !!(dtEl && dtEl.value);
+  var label='Pendente', cls='pt-badge-pend';
+  if(isNa){ label='N/A'; cls='pt-badge-na'; }
+  else if(complete){ label = (estado==='nao_conforme') ? 'Completa ⚠' : 'Completa'; cls='pt-badge-ok'; }
+  else if(started){ label='Semi completa'; cls='pt-badge-semi'; }
+  badge.textContent = label;
+  badge.className = 'pt-status-badge ' + cls;
+  try{
+    var _tr = document.getElementById(pk+'_tr');
+    if(_tr){ _tr.classList.toggle('pt-filled', cls==='pt-badge-ok'); }
+  }catch(_){ }
+}
+
+// ── SEÇÃO 4 DO PERFIL PISTÃO ──────────────────────────────────────────────
+function buildPartsTablePistao(p, midx){
+  var rows = PARTS_PISTAO.map(function(pt){
+    var pk = p + pt.k;
+    var fotoKey = PART_PHOTO_MAP_PISTAO[pt.k] || '';
+    return ''
+    + '<tr class="pt-group" id="'+pk+'_tr" onclick="togglePartDetail(\''+pk+'\','+pt.intDefault+',event)">'
+    +   '<td class="pt-name">'+pt.label+'<small>'+(pt.hint||('Ciclo de '+pt.intDefault+' dias'))+'</small>'
+    +     '<span class="pt-status-badge pt-badge-pend" id="'+pk+'_status_badge">Pendente</span>'
+    +     '<input type="hidden" id="'+pk+'_contador" data-key="'+pk+'_contador" value="calendario">'
+    +     '<input type="hidden" id="'+pk+'_ult" data-key="'+pk+'_ult" data-user-edited="false">'
+    +   '</td>'
+    +   '<td class="pt-inp"><input type="date" id="'+pk+'_valor_mostrado" data-key="'+pk+'_valor_mostrado" '
+    +     'onchange="calcPartRow(\''+pk+'\','+pt.intDefault+')" oninput="calcPartRow(\''+pk+'\','+pt.intDefault+')" onclick="event.stopPropagation()"></td>'
+    +   '<td class="pt-inp" style="min-width:62px"><input type="number" placeholder="'+pt.intDefault+'" value="'+pt.intDefault+'" '
+    +     'id="'+pk+'_int" data-key="'+pk+'_int" oninput="calcPartRow(\''+pk+'\','+pt.intDefault+')" onclick="event.stopPropagation()"></td>'
+    +   '<td class="td-na"><button class="btn-pt-na" id="'+pk+'_na" onclick="togglePtNA(\''+pk+'\',event)">N/A</button></td>'
+    +   '<td class="td-detail"><button class="btn-pt-detail" id="'+pk+'_detail_btn" onclick="togglePartDetail(\''+pk+'\','+pt.intDefault+',event)">▸</button></td>'
+    + '</tr>'
+    + '<tr class="pt-quick-row pt-group-cont" id="'+pk+'_quick_row"><td colspan="10"><div class="pt-quick-box">'
+    +   '<div class="pt-box-partname">'+pt.label+'</div>'
+    +   '<div class="pgp-estado-wrap">'
+    +     '<label class="pgp-acao-label">Estado encontrado</label>'
+    +     '<div style="display:flex;gap:8px;flex-wrap:wrap">'
+    +       '<button class="pgp-acao-pill" id="'+pk+'_est_ok" onclick="event.stopPropagation();pgpSetEstado(\''+pk+'\',\'ok\')">✔ Conforme</button>'
+    +       '<button class="pgp-acao-pill pgp-pill-nok" id="'+pk+'_est_nok" onclick="event.stopPropagation();pgpSetEstado(\''+pk+'\',\'nao_conforme\')">✖ Não conforme</button>'
+    +     '</div>'
+    +     '<input type="hidden" id="'+pk+'_estado" data-key="'+pk+'_estado" value="">'
+    +   '</div>'
+    +   '<div class="pt-det-field">'
+    +     '<label>Referência / Código</label>'
+    +     '<input type="text" placeholder="Ex: W800, AW150, A-52" id="'+pk+'_ref" data-key="'+pk+'_ref" '
+    +       'oninput="updatePartCompletionStatus(\''+pk+'\')" onclick="event.stopPropagation()">'
+    +   '</div>'
+    +   (fotoKey ? ('<div class="pt-photo-cols"><div class="pt-photo-col">'
+    +     '<button class="btn-foto-peca" id="'+pk+'_foto_btn" data-done-label="✅ Foto ok" data-orig-label="📷 Foto do item" '
+    +       'data-photokey="'+fotoKey+'" onclick="event.stopPropagation();abrirFotoPicker(this,\'linked\','+midx+',\''+fotoKey+'\')">📷 Foto do item</button>'
+    +     '<div class="photo-thumbs-mini" data-midx="'+midx+'" data-pkey="'+fotoKey+'"></div>'
+    +   '</div></div>') : '')
+    +   '<input type="hidden" id="'+pk+'_acao" value="">'
+    +   '<div class="pgp-acao-wrap" style="display:'+(_pgpTipoVisita==='preventiva'?'':'none')+'">'
+    +     '<label class="pgp-acao-label">Ação executada</label>'
+    +     '<div style="display:flex;gap:8px;flex-wrap:wrap">'
+    +       '<button class="pgp-acao-pill" id="'+pk+'_acao_conferida" onclick="event.stopPropagation();pgpSetAcao(\''+pk+'\',\'conferida\')">Conferida</button>'
+    +       '<button class="pgp-acao-pill" id="'+pk+'_acao_trocada" onclick="event.stopPropagation();pgpSetAcao(\''+pk+'\',\'trocada\')">Trocada</button>'
+    +       '<button class="pgp-acao-pill" id="'+pk+'_acao_na" onclick="event.stopPropagation();pgpSetAcao(\''+pk+'\',\'na\')">N/A</button>'
+    +     '</div>'
+    +   '</div>'
+    + '</div></td></tr>'
+    + '<tr class="pt-detail-row pt-group-cont" id="'+pk+'_detail_row" style="display:none"><td colspan="10"><div class="pt-detail-box">'
+    +   '<div class="pt-box-partname">'+pt.label+' — observação e prazo</div>'
+    +   '<div class="pt-det-field"><label>Observação</label>'
+    +     '<textarea placeholder="Ex: correia com microtrincas, trocar na próxima visita..." id="'+pk+'_obs" data-key="'+pk+'_obs" rows="2"></textarea></div>'
+    +   '<div id="'+pk+'_calc_box"></div>'
+    + '</div></td></tr>';
+  }).join('');
+
+  return ''
+  + '<div class="sc-hint">📅 Preventiva de pistão é por CALENDÁRIO. Informe a data da última troca/conferência de cada ponto e o ciclo em dias — o prazo é calculado sozinho (ATENÇÃO a '+PGP_ATENCAO_DIAS+' dias do vencimento). O horímetro é opcional.</div>'
+  + '<table class="pt-table pt-perfil-pistao">'
+  +   '<colgroup><col class="pt-col-name"><col class="pt-col-main"><col class="pt-col-extra"><col class="pt-col-na"><col class="pt-col-detail"></colgroup>'
+  +   '<thead><tr><th>Item</th><th class="th-center">Última troca</th><th class="th-center">Ciclo (d)</th><th class="th-center">N/A</th><th class="th-center">▸</th></tr></thead>'
+  +   '<tbody>'+rows+'</tbody>'
+  + '</table>'
+  + '<div class="pt-det-field" style="margin-top:4px">'
+  +   '<label style="font-size:9px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.4px">Observação geral do checklist</label>'
+  +   '<textarea class="parts-obs-global" placeholder="Ex: máquina sem horímetro; reservatório sem placa de identificação..." id="'+p+'parts_obs" data-key="'+p+'parts_obs" rows="2"></textarea>'
+  + '</div>';
+}
+
+function buildPartsSectionPistao(p, midx){
+  return ''
+  + '<div class="parts-table-wrap visible" id="'+p+'parts_table_wrap">'
+  +   '<button type="button" class="btn btn-reset" style="margin:0 0 8px;padding:8px 10px;font-size:12px" onclick="collapseCompletedParts('+midx+')">▴ Recolher itens completos</button>'
+  +   '<div id="'+p+'parts_table_content">'+buildPartsTablePistao(p, midx)+'</div>'
+  +   '<input type="hidden" id="'+p+'scenario" data-key="'+p+'scenario" value="PISTAO">'
+  + '</div>'
+  + buildHiddenPartIds(p, midx);
+}
+
+// Itens da seção 5 (registro fotográfico) — extraído de buildPanelHTML para
+// poder ser re-renderizado quando o perfil da máquina muda.
+function buildPhotoItems(idx){
+  return pgpPhotosDe(idx).map(function(ph,i){
+    var pKey = ph.photoKey || ('foto_idx_' + i);
+    return ''
+    + '<div class="photo-item-group">'
+    +   '<div class="photo-item" data-pidx="'+i+'" onclick="togglePhoto(this,'+idx+')">'
+    +     '<div class="photo-cb">✓</div>'
+    +     '<div style="flex:1">'
+    +       '<div class="photo-pname">'+ph.label+'</div>'
+    +       (ph.hint ? '<div class="photo-hint">'+ph.hint+'</div>' : '')
+    +     '</div>'
+    +     '<button class="btn-photo-capture" onclick="event.stopPropagation();abrirFotoPicker(this,\'photo-item\','+idx+')">📷</button>'
+    +     '<button class="photo-nd-btn" onclick="togglePhotoND(event,this,'+idx+')">N/D</button>'
+    +   '</div>'
+    +   '<div class="photo-thumbs-mini" data-midx="'+idx+'" data-pkey="'+pKey+'"></div>'
+    + '</div>';
+  }).join('');
+}
+
+// Troca o perfil de UMA máquina e re-renderiza só as seções 3/4/5 do painel.
+// Não toca em nenhum outro painel — é isso que permite pistão e parafuso na
+// mesma OS (e, mais adiante, lavadora como perfil próprio).
+function pgpAplicarPerfil(midx, perfilId, opts){
+  opts = opts || {};
+  if(!PERFIS_EQUIP[perfilId]) perfilId = 'parafuso';
+  var p = 'm'+midx+'_';
+  var hid = document.getElementById(p+'perfil');
+  if(!hid) return false;
+  if(hid.value === perfilId && !opts.force) return false;
+  hid.value = perfilId;
+  var perfil = PERFIS_EQUIP[perfilId];
+
+  var sec4 = document.getElementById(p+'sec4_body');
+  if(sec4) sec4.innerHTML = buildPartsSection(p, midx);
+  var t4 = document.getElementById(p+'sec4_title'); if(t4) t4.textContent = perfil.tituloSec4;
+  var l4 = document.getElementById(p+'sec4_label'); if(l4) l4.textContent = perfil.labelSec4;
+  var h4 = document.getElementById(p+'sec4_hint');  if(h4) h4.textContent = perfil.hintSec4;
+
+  var sec5 = document.getElementById(p+'sec5_items');
+  if(sec5) sec5.innerHTML = buildPhotoItems(midx);
+  var b5 = document.getElementById(p+'sec5_badge'); if(b5) b5.textContent = '0/'+perfil.photos.length;
+
+  var hl = document.getElementById(p+'horim_label');
+  if(hl) hl.textContent = perfil.horimetroObrigatorio ? 'Real lido no display *' : 'Real lido (se houver)';
+  var hn = document.getElementById(p+'horim_nota');
+  if(hn) hn.style.display = perfil.horimetroObrigatorio ? 'none' : '';
+
+  var pn = document.getElementById(p+'perfil_nome');
+  if(pn) pn.textContent = perfil.rotulo;
+
+  try{ pgpRestoreLoadedParts(p, midx); }catch(_){}
+  try{
+    (perfil.photos||[]).forEach(function(ph,i){ renderPhotoThumbs(midx, ph.photoKey || ('foto_idx_'+i)); });
+    (perfil.parts||[]).forEach(function(pt){
+      var fk = (perfil.photoMap||{})[pt.k]; if(fk) renderPhotoThumbs(midx, fk);
+      updatePartCompletionStatus(p+pt.k);
+    });
+  }catch(_){}
+  try{ pgpAtualizarAcoesPorTipoVisita(); }catch(_){}
+  try{
+    var painel = document.getElementById('panel-'+midx);
+    if(painel) painel.querySelectorAll('[data-section]').forEach(function(sec){ refreshSection(sec); });
+    updateProgress();
+  }catch(_){}
+  return true;
+}
+
+// Sugere o perfil a partir do Tipo_Equip cadastrado na máquina.
+function pgpPerfilPorTipoTexto(txt){
+  var t = String(txt||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  if(!t) return '';
+  if(t.indexOf('pistao') >= 0 || t.indexOf('piston') >= 0 || t.indexOf('alternativ') >= 0) return 'pistao';
+  if(t.indexOf('parafuso') >= 0 || t.indexOf('screw') >= 0) return 'parafuso';
+  return '';
+}
+// O Tipo_Equip da planilha é TEXTO LIVRE e nem sempre bate com uma <option>
+// do select (o parque real tem "Compressor de Ar - Pistão", vindo do sistema
+// antigo). Por isso o valor bruto da máquina tem prioridade sobre o select:
+// setar .value num <select> com uma string que não existe nas options deixa o
+// campo VAZIO, e a detecção morreria justamente nas máquinas legadas.
+function pgpAutoPerfilPorTipo(midx, textoBruto){
+  try{
+    var txt = String(textoBruto || '').trim();
+    if(!txt){
+      var el = document.querySelector('[data-key="m'+midx+'_tipo"]');
+      txt = el ? el.value : '';
+    }
+    var sug = pgpPerfilPorTipoTexto(txt);
+    if(sug && sug !== pgpPerfilId(midx)) return pgpAplicarPerfil(midx, sug);
+  }catch(_){}
+  return false;
+}
+
+// Mantém no select o tipo exatamente como está cadastrado na máquina, mesmo
+// que não seja uma das opções fixas — senão o campo abriria em branco e um
+// salvamento seguinte APAGARIA o Tipo_Equip da planilha.
+function pgpGarantirOpcaoTipo(midx, valor){
+  try{
+    var v = String(valor||'').trim();
+    if(!v) return;
+    var sel = document.querySelector('[data-key="m'+midx+'_tipo"]');
+    if(!sel || sel.tagName !== 'SELECT') return;
+    var achou = Array.prototype.some.call(sel.options, function(o){ return o.value === v || o.text === v; });
+    if(!achou){ var o = document.createElement('option'); o.value = v; o.textContent = v; sel.appendChild(o); }
+  }catch(_){}
+}
+function pgpOnTipoChange(midx){
+  if(pgpAutoPerfilPorTipo(midx)){
+    try{ showNotification('Perfil da máquina: ' + pgpPerfil(midx).rotulo); }catch(_){}
+  }
+}
+
 function pgpSetGsStatus(state){
   const dot=document.getElementById('gsDotPgp');
   const txt=document.getElementById('gsTextPgp');
@@ -6952,7 +7509,7 @@ function pgpMarkDynamicFieldsForUpdate(midx){
   mark('prox_visita');
 
   // Campos de peças: valor_mostrado e ult (última troca) por cenário
-  PARTS.forEach(pt=>{
+  pgpPartsDe(midx).forEach(pt=>{
     const pk = `${p}${pt.k}`;
     const naBtn = document.getElementById(`${pk}_na`);
     const isNA = naBtn && naBtn.classList.contains('active');
@@ -7022,8 +7579,14 @@ function pgpLoadMachine(eq,localDb,midx=currentMachine,clientData=null){
   sv('cidade',eq.city);         sv('marca',eq.brand);       sv('modelo',eq.model);
   sv('ns',eq.serial);           sv('ano',eq.year);          sv('localizacao',eq.location);
   sv('tag',eq.tag);             sv('horimetro',eq.hourTotal||'');
-  if(eq.tipo)     sv('tipo',    eq.tipo);
+  if(eq.tipo){ pgpGarantirOpcaoTipo(idx, eq.tipo); sv('tipo', eq.tipo); }
   if(eq.potencia) sv('potencia',eq.potencia);
+  // V69 — o Tipo_Equip cadastrado decide o perfil do checklist DESTE painel
+  // (pistão / parafuso). Roda aqui, antes da restauração das peças, porque
+  // pgpAplicarPerfil re-renderiza a seção 4 inteira: os ids das peças do perfil
+  // novo só passam a existir depois desta chamada. É o que permite pistão no
+  // painel 0 e parafuso no painel 1 dentro da MESMA OS.
+  try{ if(typeof pgpAutoPerfilPorTipo==='function') pgpAutoPerfilPorTipo(idx, eq && eq.tipo); }catch(_){}
   // v27: Dados da Preventiva — restaurar ao reabrir uma visita salva
   if(eq.auxiliar)   sv('auxiliar',   eq.auxiliar);
   if(eq.horaInicio) sv('hora_inicio',eq.horaInicio);
@@ -7082,8 +7645,8 @@ function pgpLoadMachine(eq,localDb,midx=currentMachine,clientData=null){
   });
 
   if(eq.parts){
-    PARTS.forEach(pt=>{
-      const aid=PART_ID_MAP[pt.k]; if(!aid) return;
+    pgpPartsDe(midx).forEach(pt=>{
+      const aid=pgpPartIdMapDe(midx)[pt.k]; if(!aid) return;
       const sp=eq.parts[aid];      if(!sp) return;
       const pk=`${p}${pt.k}`;
       const ultEl=document.getElementById(`${pk}_ult`);  if(ultEl && sp.lastChange !== undefined && sp.lastChange !== null && sp.lastChange !== '') ultEl.value=sp.lastChange;
@@ -7507,7 +8070,17 @@ function pgpSelectClientMachine(eq){
   }
 }
 
+// V69: pré-seleciona no cadastro rápido o tipo correspondente ao perfil ativo.
+function pgpPreSelecionarTipoNovo(){
+  try{
+    var sel = document.getElementById('nm_tipo');
+    if(!sel || sel.value) return;
+    var rot = (PERFIS_EQUIP[pgpPerfilId(currentMachine)] || {}).rotulo || '';
+    if(rot) sel.value = rot;
+  }catch(_){}
+}
 function pgpNewMachineForClient(client){
+  pgpPreSelecionarTipoNovo();
   document.getElementById('pgpStep2').style.display='none';
   document.getElementById('nm_client').value=client;
   document.getElementById('pgpNewMachine').classList.add('show');
@@ -7754,10 +8327,11 @@ function pgpBuildPreventivaPayload(midx=currentMachine){
   const p=`m${idx}_`;
   const loadedMachine=pgpGetLoadedMachineForIndex(idx);
 
+  const perfil=pgpPerfil(idx);
   const parts={};
-  PARTS.forEach(pt=>{
+  pgpPartsDe(idx).forEach(pt=>{
     const pk=p+pt.k;
-    const aid=PART_ID_MAP[pt.k];
+    const aid=pgpPartIdMapDe(idx)[pt.k];
     if(!aid) return;
 
     const acaoEl=document.getElementById(pk+'_acao');
@@ -7781,6 +8355,36 @@ function pgpBuildPreventivaPayload(midx=currentMachine){
       if (sc === 'D') contVal = 'progressivo';
       else if (sc === 'E') contVal = 'regressivo';
       else contVal = base.parts[aid]?.contador || '';
+    }
+
+    // V69 — perfil pistão (gatilho por calendário): mesma modelagem do
+    // pgpBuildPayload. O "estado encontrado" tem precedência sobre o prazo no
+    // campo status (é o que o cliente lê no relatório).
+    if (contVal === 'calendario') {
+      const _diasP = parseInt(intEl?.value) || pt.intDefault;
+      const _estP  = (document.getElementById(pk+'_estado')||{}).value || '';
+      const _calP  = pgpCalendarioInfo(vmEl?.value||'', _diasP);
+      let _stP = _calP ? _calP.status : '';
+      if (_estP === 'nao_conforme') _stP = 'NÃO CONFORME';
+      else if (_estP === 'ok' && !_stP) _stP = 'OK';
+      const _refP = refEl?.value.trim()||'';
+      parts[aid]={
+        name:(pgpPartNameMapDe(idx)[pt.k])||pt.label||pt.k,
+        acao:acaoFinal,
+        na:isNA,
+        ref:_refP,
+        refAnterior,
+        interval:_diasP,
+        tipoReferencia:(acaoFinal!=='trocada') ? '' : ((!_refP||!refAnterior) ? 'manual' : (_refP===refAnterior?'original':'manual')),
+        lastChange:0,
+        obs:(base.parts[aid]?.obs)||'',
+        valorMostrado: vmEl?.value.trim()||'',
+        contador:'calendario',
+        horasRodadas:  _calP ? String(Math.max(0,_calP.rodados)) : '',
+        horasRestantes:_calP ? String(_calP.restantes) : '',
+        status:_stP
+      };
+      return;
     }
 
     // v9: calcular lastChange com prioridade: valorMostrado+contador > _ult editado > fallback
@@ -7814,7 +8418,7 @@ function pgpBuildPreventivaPayload(midx=currentMachine){
     }
 
     parts[aid]={
-      name:(base.parts[aid]?.name)||pt.k,
+      name:(base.parts[aid]?.name)||pt.k,  // eslint-disable-line
       acao:acaoFinal,
       na:isNA, // V66: o boolean nunca viajava — o GAS gravava NA='NÃO' p/ peça marcada N/A
       ref:refEl?.value.trim()||'',
@@ -7853,12 +8457,30 @@ function pgpBuildPreventivaPayload(midx=currentMachine){
   const _prevDate   = base.visitDate || new Date().toISOString().slice(0,10);
   let visitId = '';
   if(_prevOsId || _prevMKey){
-    try{ visitId = pgpVisitIdFor('PREV|' + _prevOsId + '|' + _prevMKey, _prevDate); }catch(e){}
+    // V69: o prefixo vem do perfil ('PREV|' parafuso, 'PIST|' pistão). Sem isso,
+    // uma preventiva de pistão e uma de parafuso na mesma OS/máquina/dia gerariam
+    // o MESMO visit_id e a segunda voltaria como duplicate:true (nada gravado).
+    try{ visitId = pgpVisitIdFor((perfil.visitPrefix||'PREV|') + _prevOsId + '|' + _prevMKey, _prevDate); }catch(e){}
   }
   if(!visitId) visitId = 'VIS-'+Date.now()+'-'+pgpUid();
 
+  // V69 — perfil pistão: hourTotal deixa de ser exigido. O GAS (savePreventiva)
+  // só rejeita undefined/null; 0 passa e é gravado como 0.
+  let _hourOut = base.hourTotal;
+  if (!perfil.horimetroObrigatorio && (_hourOut === '' || _hourOut === null || _hourOut === undefined || (typeof _hourOut === 'number' && !isFinite(_hourOut)))) _hourOut = 0;
+
   return{
     visit_id:visitId,
+    // V69 — BUG LATENTE CORRIGIDO: o payload da preventiva NUNCA enviava
+    // tarefa_id, mas savePreventiva o lê (body.tarefa_id) e o repassa a
+    // autoCompletarTarefa. Numa OS com DUAS preventivas (ex.: um parafuso e um
+    // pistão), a tarefa fechada era a primeira 'auto:preventiva' encontrada —
+    // possivelmente a errada. Já valia para o parafuso; o perfil pistão só
+    // tornava o cenário provável.
+    tarefa_id: (window._PGP_TAREFA_ID || ''),
+    // V69: perfil do checklist usado (parafuso | pistao) — viaja para o GAS de
+    // graça (campo ignorado por quem não conhece) e identifica a origem do dado.
+    perfil_equip: perfil.id,
     // V68 — F-06 (CONTRATO 29/07/2026): dedupe adicional ao visit_id no GAS
     // (savePreventiva/saveVisit). Usa o próprio visit_id estável: mesma preventiva
     // reenviada ⇒ mesmo client_uid ⇒ criação idempotente.
@@ -7876,7 +8498,7 @@ function pgpBuildPreventivaPayload(midx=currentMachine){
     brand:base.brand,
     model:base.model,
     visitDate:base.visitDate,
-    hourTotal:base.hourTotal,
+    hourTotal:_hourOut,
     hpw:base.hpw,
     tech:base.tech,
     tipo:'preventiva', // tipo de VISITA (usado pelo GAS p/ VISITAS.Tipo) — não confundir com tipoEquip abaixo
@@ -7982,8 +8604,11 @@ async function pgpEnviarPreventiva(midx=currentMachine, opts){
     var elHf = document.querySelector('[data-key="m'+idx+'_hora_fim"]');
     if(elHf) elHf.value = pgpNowHHMMLocal();
   }
+  const _perfEnv = pgpPerfil(idx);
   const hourTotal=parseInt(gv('horimetro'))||0;
-  if(!hourTotal){
+  // V69: no perfil pistão o horímetro é OPCIONAL (a maioria das máquinas não
+  // tem) — o gatilho da preventiva é o calendário.
+  if(!hourTotal && _perfEnv.horimetroObrigatorio){
     if(silent) return { status:'skipped', reason:'horímetro não informado' };
     showNotification('⚠ Informe o horímetro antes de registrar');
     return;
@@ -7991,12 +8616,20 @@ async function pgpEnviarPreventiva(midx=currentMachine, opts){
 
   let todasComAcao=true;
   let algumaTrocadaSemRef=false;
+  let algumSemEstado=false;
 
-  PARTS.forEach(pt=>{
+  pgpPartsDe(idx).forEach(pt=>{
     const pk=p+pt.k;
     const naBtn=document.getElementById(pk+'_na');
     const isNA=naBtn?.classList.contains('active')||false;
     if(isNA) return;
+
+    // V69 — perfil pistão: o estado encontrado (conforme / não conforme) é o
+    // dado central do checklist; sem ele o relatório não diz nada ao cliente.
+    if(_perfEnv.id==='pistao'){
+      const estEl=document.getElementById(pk+'_estado');
+      if(!estEl || !estEl.value) algumSemEstado=true;
+    }
 
     const acaoEl=document.getElementById(pk+'_acao');
     const acao=acaoEl?acaoEl.value:'';
@@ -8008,6 +8641,11 @@ async function pgpEnviarPreventiva(midx=currentMachine, opts){
     }
   });
 
+  if(algumSemEstado){
+    if(silent) return { status:'skipped', reason:'item(ns) sem estado encontrado' };
+    showNotification('⚠ Marque Conforme ou Não conforme em todos os itens');
+    return;
+  }
   if(!todasComAcao){
     if(silent) return { status:'skipped', reason:'peça(s) sem ação selecionada' };
     showNotification('⚠ Selecione uma ação para todas as peças');
@@ -8220,6 +8858,10 @@ async function pgpRegisterNew(){
     hpw:    parseInt(document.getElementById('nm_hpw').value)||0,
     hourTotal:0,branch:'',cnpj:'',contact:'',phone:'',
     email:'',city:'',obs:'',driveLink:'',photos:[],parts:{},
+    // V69: se o técnico não escolher, assume o rótulo do perfil ativo — numa OS
+    // aberta com ?modo=pistao a máquina nasce como 'Compressor de Pistão'.
+    tipo: (document.getElementById('nm_tipo') && document.getElementById('nm_tipo').value)
+          || (PERFIS_EQUIP[pgpPerfilId(currentMachine)] || {}).rotulo || '',
   };
   // Salvar no localStorage do admin
   pgpUpdateAdminLocal({machine_id:eq.id,serial:eq.serial,tag:eq.tag,client:eq.client,branch:eq.branch,brand:eq.brand,model:eq.model,location:eq.location,hourTotal:eq.hourTotal,hpw:eq.hpw});
@@ -8260,9 +8902,9 @@ function pgpBuildPayload(midx=currentMachine){
   const hpwEl=document.getElementById(`${p}h_sem_total`);
   const hpw=parseInt(hpwEl?.value)||0;
   const parts={};
-  PARTS.forEach(pt=>{
+  pgpPartsDe(idx).forEach(pt=>{
     const pk=`${p}${pt.k}`;
-    const aid=PART_ID_MAP[pt.k]; if(!aid) return;
+    const aid=pgpPartIdMapDe(idx)[pt.k]; if(!aid) return;
     const naBtn=document.getElementById(`${pk}_na`);
     const isNA=naBtn?.classList.contains('active')||false;
     const valorEl=document.getElementById(`${pk}_valor_mostrado`);
@@ -8304,7 +8946,25 @@ function pgpBuildPayload(midx=currentMachine){
       const pct = parseFloat(horasRodadas)/interval*100;
       partStatus = parseFloat(horasRestantes)<=0?'VENCIDO':pct>=80?'ATENÇÃO':'OK';
     }
-    parts[aid]={name:PART_NAME_MAP[pt.k]||pt.k,lastChange:Math.max(0,lastChange),interval,
+    // V69 — perfil pistão: gatilho por calendário. valorMostrado carrega a DATA
+    // da última troca (ISO) e interval está em DIAS; horasRodadas/horasRestantes
+    // passam a ser dias. lastChange fica 0 porque o GAS faz intOrBlank() nele e
+    // destruiria a data.
+    if (contVal === 'calendario') {
+      const _estP = (document.getElementById(`${pk}_estado`)||{}).value || '';
+      const _calP = pgpCalendarioInfo(vmEl?.value||'', interval);
+      let _stP = _calP ? _calP.status : '';
+      if (_estP === 'nao_conforme') _stP = 'NÃO CONFORME';
+      else if (_estP === 'ok' && !_stP) _stP = 'OK';
+      parts[aid]={name:pgpPartNameMapDe(idx)[pt.k]||pt.label||pt.k,lastChange:0,interval,
+        ref:refEl?.value.trim()||'',obs:obsEl?.value.trim()||'',na:isNA,
+        contador:'calendario', valorMostrado:vmEl?.value.trim()||'',
+        horasRodadas:  _calP ? String(Math.max(0,_calP.rodados)) : '',
+        horasRestantes:_calP ? String(_calP.restantes) : '',
+        status:_stP};
+      return;
+    }
+    parts[aid]={name:pgpPartNameMapDe(idx)[pt.k]||pt.k,lastChange:Math.max(0,lastChange),interval,
       ref:refEl?.value.trim()||'',obs:obsEl?.value.trim()||'',na:isNA,
       // v8.4.4:
       contador:contVal, valorMostrado:vmEl?.value.trim()||'',
@@ -8426,12 +9086,17 @@ function pgpMaquinaPronta(midx){
     const el = document.querySelector('[data-key="' + p + key + '"]');
     return el ? String(el.value || '').trim() : '';
   };
-  if(!(parseInt(gv('horimetro')) || 0)) return { pronta:false, motivo:'horímetro não informado' };
-  let todasComAcao = true, algumaTrocadaSemRef = false;
-  PARTS.forEach(pt => {
+  const _perfPr = pgpPerfil(idx);
+  if(_perfPr.horimetroObrigatorio && !(parseInt(gv('horimetro')) || 0)) return { pronta:false, motivo:'horímetro não informado' };
+  let todasComAcao = true, algumaTrocadaSemRef = false, algumSemEstadoPr = false;
+  pgpPartsDe(idx).forEach(pt => {
     const pk = p + pt.k;
     const naBtn = document.getElementById(pk + '_na');
     if(naBtn && naBtn.classList.contains('active')) return; // N/A: ignora
+    if(_perfPr.id === 'pistao'){
+      const estElPr = document.getElementById(pk + '_estado');
+      if(!estElPr || !estElPr.value) algumSemEstadoPr = true;
+    }
     const acaoEl = document.getElementById(pk + '_acao');
     const acao = acaoEl ? acaoEl.value : '';
     if(!acao){ todasComAcao = false; return; }
@@ -8440,6 +9105,7 @@ function pgpMaquinaPronta(midx){
       if(!refEl || !refEl.value.trim()) algumaTrocadaSemRef = true;
     }
   });
+  if(algumSemEstadoPr) return { pronta:false, motivo:'item(ns) sem estado encontrado' };
   if(!todasComAcao) return { pronta:false, motivo:'peça(s) sem ação selecionada' };
   if(algumaTrocadaSemRef) return { pronta:false, motivo:'peça Trocada sem referência' };
   return { pronta:true, motivo:'' };
@@ -8453,7 +9119,7 @@ function pgpMaquinaTemConteudo(midx){
   const idx = pgpGetMachineIndex(midx);
   const p = 'm' + idx + '_';
   let tocou = false;
-  PARTS.forEach(pt => {
+  pgpPartsDe(idx).forEach(pt => {
     const pk = p + pt.k;
     const naBtn = document.getElementById(pk + '_na');
     const acaoEl = document.getElementById(pk + '_acao');
@@ -8571,11 +9237,13 @@ function pgpRestaurarFotosIDB(scope){
 function pgpMaquinaPercent(midx){
   var idx = pgpGetMachineIndex(midx);
   var p = 'm' + idx + '_';
-  var total = 1 + PARTS.length;
+  var _perfPct = pgpPerfil(idx);
+  var _contaHorim = !!_perfPct.horimetroObrigatorio;
+  var total = (_contaHorim ? 1 : 0) + pgpPartsDe(idx).length;
   var done = 0;
   var hEl = document.querySelector('[data-key="' + p + 'horimetro"]');
-  if(hEl && (parseInt(String(hEl.value||'').trim()) || 0) > 0) done++;
-  PARTS.forEach(function(pt){
+  if(_contaHorim && hEl && (parseInt(String(hEl.value||'').trim()) || 0) > 0) done++;
+  pgpPartsDe(idx).forEach(function(pt){
     var pk = p + pt.k;
     var naBtn = document.getElementById(pk + '_na');
     var acaoEl = document.getElementById(pk + '_acao');
@@ -9427,6 +10095,11 @@ function pfGetFormUrl(tipo, tarefa) {
     case 'auto:rotores':    return 'https://grupotap.github.io/ProperRotores/index.html';
     case 'auto:inspecao':   return 'https://grupotap.github.io/ProperTech/index.html';
     case 'auto:preventiva': return 'https://grupotap.github.io/ProperTech/index.html?modo=preventiva';
+    // V69: fallback para quem cadastrar a tarefa com tipo próprio. O caminho
+    // recomendado continua sendo Form_URL (prioridade 1) com tipo
+    // 'auto:preventiva', porque autoCompletarTarefa no GAS tem o gatilho
+    // 'preventiva' HARDCODED dentro de savePreventiva.
+    case 'auto:preventiva_pistao': return 'https://grupotap.github.io/ProperTech/index.html?modo=pistao';
     case 'auto:form01':     return 'https://grupotap.github.io/ProperForms/form01.html';
     // V68 — F-02d/F-15: rotas que faltavam. form03 (Peritagem Mecânica),
     // form04 (Peritagem Elétrica) e form05 (Termo de Desmontagem) existem no
@@ -9810,9 +10483,11 @@ function pfReprojetar(idx, force) {
     ' h (base ' + Math.round(baseReal).toLocaleString('pt-BR') + ' + ' + Math.round(dias) + 'd de regime). Leia o horímetro e lance o valor real.';
 
   // Peças: cada contador avança/regride pelo mesmo delta de horas da máquina.
-  if (eq.parts && Array.isArray(PARTS)) {
-    PARTS.forEach(function(pt) {
-      var aid = (typeof PART_ID_MAP === 'object') ? PART_ID_MAP[pt.k] : null;
+  // V69: a projeção por peça é aritmética de HORAS — no perfil pistão
+  // (gatilho por calendário) não se aplica e é pulada.
+  if (eq.parts && !pgpEhPistao(idx) && Array.isArray(pgpPartsDe(idx))) {
+    pgpPartsDe(idx).forEach(function(pt) {
+      var aid = pgpPartIdMapDe(idx)[pt.k];
       var sp = aid ? eq.parts[aid] : null;
       if (!sp) return;
       var baseVm = (sp.valorMostrado !== undefined && sp.valorMostrado !== null && sp.valorMostrado !== '')
@@ -10040,7 +10715,9 @@ async function pfAbrirForm(tarefaId, formUrl, btn) {
     window._PGP_PREVENTIVA_INICIO_ISO = inicioPreventivaISO;
     var _ovPf = document.getElementById('pfOverlay');
     if (_ovPf) _ovPf.style.display = 'none';
-    if (formUrl.indexOf('modo=preventiva') >= 0 && typeof pgpIniciarPreventivaDeOS === 'function') {
+    // V69: ?modo=pistao é tratado como preventiva com perfil de pistão.
+    if (formUrl.indexOf('modo=pistao') >= 0) window._PGP_PERFIL_DEFAULT = 'pistao';
+    if ((formUrl.indexOf('modo=preventiva') >= 0 || formUrl.indexOf('modo=pistao') >= 0) && typeof pgpIniciarPreventivaDeOS === 'function') {
       await pgpIniciarPreventivaDeOS(_pfOsId);
     } else {
       // Inspeção: o app já está aberto no modo padrão; os_id passa a viajar nos

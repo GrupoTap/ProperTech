@@ -8,7 +8,7 @@
  * DISCIPLINA DE VERSÃO: bump em CACHE a cada deploy do app (v43 -> v44 ...).
  * O activate abaixo apaga qualquer cache antigo com prefixo 'propertech-'.
  */
-const CACHE = 'propertech-v68'; // 29/07/2026: par do index PCF_V68 (F-06 visit_id estável + dedupe da fila, F-18a/b espelho local e cota, F-19 servidor autoritativo no avulso, F-20 horímetro estimado, F-02d/F-15 rotas form03/04/05, F-30 fotos do PDF); GAS v79. Bump junto com cada deploy
+const CACHE = 'propertech-v69'; // 29/07/2026: par do index PCF_V69 (perfil de equipamento + checklist de compressor de PISTÃO, gatilho por calendário, ?modo=pistao, fix do tarefa_id no payload da preventiva). Anterior: PCF_V68 (F-06 visit_id estável + dedupe da fila, F-18a/b espelho local e cota, F-19 servidor autoritativo no avulso, F-20 horímetro estimado, F-02d/F-15 rotas form03/04/05, F-30 fotos do PDF); GAS v79. Bump junto com cada deploy
 const SCOPE_PREFIX = '/ProperTech/';
 const APP_SHELL = [
   '/ProperTech/',
