@@ -1,4 +1,34 @@
-<!-- V68 (29/07/2026) — PACOTE PÓS-TESTE PROFUNDO. Inclui a V67. Par obrigatório: sw.js
+<!-- V71 (30/07/2026) — FIX DEFINITIVO: a COLETA DO TÉCNICO deixa de ser apagada.
+     Par obrigatório: sw.js com CACHE='propertech-v71'; back-end GAS v80 (aditivo;
+     a V71 também funciona com o v79 no ar).
+
+     SINTOMA (Fernando, 30/07, Chiaperini CJ 20 Apv série 2026001): regime de
+     trabalho coletado no cliente numa preventiva de pistão não aparecia na OS
+     seguinte; o PCM mostrava 50 h/semana mas o cadastro sem regime nenhum.
+     Enésima recorrência de "o regime não salva" depois dos fixes v76 e v79 F-30.
+
+     CAUSA RAIZ (o dado NUNCA CHEGOU ao servidor — os guards do GAS estavam certos):
+     pgpLoadMachine limpa TODOS os [data-key^="m<i>_"] e repõe só o que o servidor
+     tem. Regime, horímetro REAL, data da leitura, observações e refs/datas de peça
+     são COLETA — existem apenas no DOM até o envio. Como pfAbrirForm reabre a
+     tarefa por chamada interna (sem recarregar a página), TODA reentrada rodava
+     pgpIniciarPreventivaDeOS → pgpLoadMachine → clear cego → a coleta morria em
+     silêncio (os campos cadastrais voltavam do servidor, então a tela parecia
+     intacta). pfReprojetar(force=true) ainda zerava o horímetro real de novo. O
+     check verde só era ADICIONADO, nunca removido: seção 3 ficava 1/2 verde com os
+     turnos vazios. O payload saía com regimeData:[] e hpw:0 → o GAS "preservava"
+     o vazio. 4ª ocorrência da classe "clear cego apaga estado que não vem do
+     servidor" (V69.1 m<i>_perfil, V70.1 _contador/_int).
+
+     FIXES: (1) pgpLoadMachine em MODO MERGE na recarga da mesma máquina (DOM vence;
+     troca real de máquina continua limpando) + projeção não-destrutiva;
+     (2) pgpIniciarPreventivaDeOS idempotente na reentrada (_PGP_OS_ID_CARREGADA);
+     (3) pgpSyncCheckedComValores — o check passa a ser derivado do valor, marca E
+     desmarca; (4) tripwire de regime no envio de preventiva E de visita/inspeção;
+     (5) numBrJs_/pgpHorimetroInt_ no horímetro ("12.500" não vira mais 12).
+     Nenhum id/data-key/função removido ou renomeado.
+
+     V68 (29/07/2026) — PACOTE PÓS-TESTE PROFUNDO. Inclui a V67. Par obrigatório: sw.js
      com CACHE='propertech-v70'; back-end GAS v79 (mesmo CONTRATO de campos).
 
      V70 (29/07/2026) — FIX do perfil que travava em "parafuso" numa OS de pistão.
@@ -346,7 +376,7 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ProperCare Field · PGP Preventivas v34 · build PCF_V70</title>
+<title>ProperCare Field · PGP Preventivas v34 · build PCF_V71</title>
 <meta name="app-build" content="PCF_V70" data-date="2026-07-29">
 <meta name="theme-color" content="#0f172a">
 <!-- PWA (fix 19/07/2026): o repo já tinha manifest.webmanifest + sw.js + proper-pwa.js,
@@ -1628,7 +1658,7 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
       <div class="proper-logo-mark">H</div>
       <div class="proper-logo-text">
         <span class="brand">PROPER</span>
-        <span class="brand-sub">Field · V70</span>
+        <span class="brand-sub">Field · V71</span>
       </div>
     </div>
     <div class="header-right">
@@ -3231,22 +3261,27 @@ function pgpRestoreLoadedParts(p, midx) {
     const sp = loadedEq.parts[aid];
     if (!sp) return;
     const pk = `${p}${pt.k}`;
+    // V71: _vazio_ = só preenche input que está VAZIO. Nas duas chamadas reais
+    // (selectScenario e pgpAplicarPerfil) a tabela acabou de ser recriada, então
+    // o efeito é idêntico ao de antes; mas se rodar com coleta na tela (perfil
+    // trocado no meio da visita), o que o técnico lançou não é sobrescrito.
+    const _vazio_ = (el)=> !!el && String(el.value||'').trim()==='';
     // Última troca (campo no detalhe expandido) — preserva 0 como valor válido
     const ultEl = document.getElementById(`${pk}_ult`);
-    if (ultEl && sp.lastChange !== undefined && sp.lastChange !== null && sp.lastChange !== '') {
+    if (ultEl && _vazio_(ultEl) && sp.lastChange !== undefined && sp.lastChange !== null && sp.lastChange !== '') {
       ultEl.value = sp.lastChange;
       ultEl.dataset.userEdited = 'false';
     }
     // Intervalo
     const intEl = document.getElementById(`${pk}_int`);
-    if (intEl && sp.interval) intEl.value = sp.interval;
+    if (intEl && _vazio_(intEl) && sp.interval) intEl.value = sp.interval;
     // Referência
     const refEl = document.getElementById(`${pk}_ref`);
-    if (refEl && sp.ref) refEl.value = sp.ref;
+    if (refEl && _vazio_(refEl) && sp.ref) refEl.value = sp.ref;
     // Valor mostrado (visível em cenários B/C/D/E)
     if (sp.valorMostrado !== undefined && sp.valorMostrado !== null && (sp.valorMostrado !== '' || sp.valorMostrado === 0)) {
       const vmEl = document.getElementById(`${pk}_valor_mostrado`);
-      if (vmEl) vmEl.value = sp.valorMostrado;
+      if (vmEl && _vazio_(vmEl)) vmEl.value = sp.valorMostrado;
     }
     // Contador — só atualiza select visível (cenário C); nos demais o hidden já tem valor por defeito
     if (sp.contador) {
@@ -5039,6 +5074,9 @@ function restoreState(state) {
     calcRegime(i);
     pgpPartsDe(i).forEach(pt => calcPartRow('m'+i+'_'+pt.k, pt.intDefault));
   });
+  // V71 (FIX 3): depois de repovoar tudo, o check passa a refletir o VALOR real
+  // (um rascunho salvo com item marcado mas campo vazio não volta verde).
+  machines.forEach((_, i) => pgpSyncCheckedComValores(i));
   document.querySelectorAll('[data-section]').forEach(s => refreshSection(s));
   updateProgress();
   updateAllTabNames();
@@ -5356,6 +5394,9 @@ function salvarSessaoManual() {
 
 // Event delegation: auto-save rascunho e atualizar nome da aba
 document.addEventListener('input', function(e) {
+  // V71: marca o campo como TOCADO PELO TÉCNICO. É o que permite ao MODO MERGE
+  // refrescar cadastro do servidor sem atropelar uma correção feita à mão.
+  try { if (e.target && e.target.dataset && e.target.dataset.key) e.target.dataset.pgpTocado = 'true'; } catch(_) {}
   autoSaveDraft();
   autoSaveSession();
   if (e.target.dataset && e.target.dataset.key) {
@@ -5372,6 +5413,7 @@ document.addEventListener('input', function(e) {
   }
 });
 document.addEventListener('change', function(e) {
+  try { if (e.target && e.target.dataset && e.target.dataset.key) e.target.dataset.pgpTocado = 'true'; } catch(_) {}
   pgpSaveDraftAgora();   // gateway: campo concluído salva na hora
   autoSaveSession();
   if (e.target.dataset && e.target.dataset.key) {
@@ -7811,17 +7853,285 @@ function pgpMergeClientDataForLoad(eq, clientData){
   return out;
 }
 
+
+// ═══════════════════════════════════════════════════════════════════════════
+// V71 (30/07/2026) — COLETA DO TÉCNICO × CADASTRO DO SERVIDOR
+//
+// Um `data-key` do painel pode ser DUAS coisas muito diferentes:
+//   (a) CADASTRO — cliente, marca, modelo, série, ano, TAG, localização, tipo…
+//       O servidor é a fonte da verdade; recarregar de lá é sempre correto.
+//   (b) COLETA DO TÉCNICO — regime de trabalho, horímetro REAL lido no display,
+//       data da leitura, observações, referências e datas de troca das peças…
+//       O DOM é a ÚNICA cópia viva desse dado até o envio. Se for limpo, morre.
+//
+// O clear cego `[data-key^="m<i>_"]` de pgpLoadMachine tratava os dois como (a).
+// Por isso TODA REENTRADA na tarefa (pfAbrirForm → pgpIniciarPreventivaDeOS, que
+// NÃO recarrega a página) apagava em silêncio o que o técnico havia digitado: os
+// campos cadastrais voltavam do servidor e a tela parecia intacta, mas o regime
+// e o horímetro real sumiam. O regime só era redesenhado quando o SERVIDOR já
+// tinha regime — numa máquina nova ele voltava vazio, com o check verde ainda
+// aceso, e o payload saía com regimeData:[] → o GAS "preservava" o vazio → a
+// coleta feita no cliente era perdida e tinha de ser refeita na próxima visita.
+//
+// É a 4ª ocorrência da MESMA classe ("clear cego apaga estado que não vem do
+// servidor"): V69.1 = m<i>_perfil, V70.1 = _contador/_int, V71 = a COLETA.
+//
+// REGRA DEFINITIVA (não reintroduzir): campo de coleta do técnico NUNCA é limpo
+// nem regravado a partir do servidor sem confirmação explícita do usuário.
+// O DOM é fonte da verdade da COLETA até o envio; o servidor é fonte da verdade
+// do CADASTRO.
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Sufixos de data-key que pertencem à COLETA. Casados por SUFIXO para valer no
+// nível do painel (m0_horimetro), das peças (m0_p3_ult) e das faixas de regime
+// (m0_turno1_inicio) sem precisar de lista por perfil.
+const PGP_SUFIXOS_COLETA = [
+  '_horimetro','_horimetro_estimado','_data_visita','_data_leitura',
+  '_obs_gerais','_parts_obs','_auxiliar','_hora_inicio','_hora_fim','_tecnico',
+  '_dias_sem','_h_dia','_h_sem_total',
+  '_ult','_ref','_obs','_valor_mostrado','_valor_mostrado_hidden','_estado',
+  // derivados do catálogo do perfil (V70.1) — protegidos no merge, mas NÃO
+  // contam como evidência de digitação do técnico (ver PGP_SUFIXOS_NAO_EVIDENCIA)
+  '_int','_contador'
+];
+// Preenchidos automaticamente pelo perfil/projeção: presença deles não prova
+// que houve coleta.
+const PGP_SUFIXOS_NAO_EVIDENCIA = ['_int','_contador','_horimetro_estimado'];
+
+function pgpEhCampoColeta(dataKey){
+  const k = String(dataKey || '');
+  if(!k) return false;
+  if(/_turno\d+_/.test(k)) return true;              // faixas de regime
+  for(let i=0;i<PGP_SUFIXOS_COLETA.length;i++){
+    if(k.endsWith(PGP_SUFIXOS_COLETA[i])) return true;
+  }
+  return false;
+}
+
+// Compara a identidade da máquina que o painel JÁ tinha com a que está chegando.
+// true = mesma máquina (recarga) · false = outra máquina (troca real)
+// null = inconclusivo → PROTEGE a coleta (perder dado é pior que manter valor).
+function pgpMesmaMaquinaCarregada(midx, eqNova){
+  try{
+    const ant = pgpGetLoadedMachineForIndex(midx);
+    if(!ant || !eqNova) return null;
+    const ck = (v)=>{
+      try { return compactKey(String(v==null?'':v)); }
+      catch(_) { return String(v==null?'':v).toLowerCase().replace(/[^a-z0-9]/g,''); }
+    };
+    const idA = String(ant.id||'').trim(), idB = String(eqNova.id||'').trim();
+    if(idA && idB) return idA === idB;
+    const serA = ck(ant.serial), serB = ck(eqNova.serial);
+    if(serA && serB){
+      if(serA !== serB) return false;
+      const moA = ck(ant.model), moB = ck(eqNova.model);
+      if(moA && moB && moA !== moB) return false;
+      return true;
+    }
+    const tagA = ck(ant.tag), tagB = ck(eqNova.tag);
+    const cliA = ck(ant.client), cliB = ck(eqNova.client);
+    if(tagA && tagB && cliA && cliB) return (tagA === tagB && cliA === cliB);
+    return null;
+  }catch(_){ return null; }
+}
+
+// Há coleta do técnico (não-cadastral) neste painel?
+function pgpPainelTemColeta(midx){
+  try{
+    const idx = pgpGetMachineIndex(midx);
+    const els = document.querySelectorAll('[data-key^="m'+idx+'_"]');
+    for(const el of els){
+      if(el.tagName === 'BUTTON') continue;
+      const k = el.dataset ? el.dataset.key : '';
+      if(!pgpEhCampoColeta(k)) continue;
+      if(PGP_SUFIXOS_NAO_EVIDENCIA.some(s=>String(k).endsWith(s))) continue;
+      if(el.type === 'checkbox' || el.type === 'radio'){ if(el.checked) return true; continue; }
+      if(String(el.value||'').trim() !== '') return true;
+    }
+    // ações/estados de peça marcados nas pills também são coleta
+    const pills = document.querySelectorAll('#panel-'+idx+' .pgp-acao-pill.active, #panel-'+idx+' .btn-na.active');
+    if(pills && pills.length) return true;
+    return false;
+  }catch(_){ return false; }
+}
+
+function pgpAlgumPainelTemColeta(){
+  try{
+    const n = (typeof machines !== 'undefined' && machines) ? machines.length : 1;
+    for(let i=0;i<n;i++){ if(pgpPainelTemColeta(i)) return true; }
+    return false;
+  }catch(_){ return false; }
+}
+
+// Alguma faixa de regime preenchida NA TELA deste painel?
+function pgpTemRegimeNaTela(midx){
+  try{
+    const idx = pgpGetMachineIndex(midx);
+    const c = document.getElementById('m'+idx+'_turnos');
+    if(!c) return false;
+    return [...c.querySelectorAll('.turno-row')].some(row=>{
+      const d = row.querySelector('.turno-dias-sel');
+      const i = row.querySelector('input[type="time"][data-key$="_inicio"]');
+      const f = row.querySelector('input[type="time"][data-key$="_fim"]');
+      return !!((d && d.value) || (i && i.value) || (f && f.value));
+    });
+  }catch(_){ return false; }
+}
+
+// Lê as faixas de regime da TELA no mesmo formato do payload (dias/inicio/fim/customDays).
+function pgpLerRegimeDaTela(midx){
+  try{
+    const idx = pgpGetMachineIndex(midx);
+    const c = document.getElementById('m'+idx+'_turnos');
+    if(!c) return [];
+    return [...c.querySelectorAll('.turno-row')].map(row=>{
+      const d = row.querySelector('.turno-dias-sel');
+      const i = row.querySelector('input[type="time"][data-key$="_inicio"]');
+      const f = row.querySelector('input[type="time"][data-key$="_fim"]');
+      const cbs = [...(row.querySelectorAll('.custom-days-wrap input[type="checkbox"]')||[])];
+      return { dias:(d&&d.value)||'', inicio:(i&&i.value)||'', fim:(f&&f.value)||'',
+               customDays: cbs.map((cb,n)=>cb.checked?n:-1).filter(n=>n>=0) };
+    }).filter(t=>t.dias && t.inicio && t.fim);
+  }catch(_){ return []; }
+}
+
+// V71 (FIX 3) — o check verde NÃO PODE MENTIR.
+// O loop original só ADICIONAVA .checked; um campo esvaziado (pelo clear cego,
+// por um restore parcial, ou pela mão do técnico) continuava verde e contando no
+// badge da seção. Foi assim que a perda do regime passou despercebida em campo:
+// seção 3 marcada 1/2 com os campos de turno VAZIOS. Agora o estado é derivado
+// do valor sempre que a tela é repovoada programaticamente.
+// Inputs hidden / readonly / disabled não contam: são espelhos (ex.: "Estimado
+// (regime)"), não evidência de que o técnico preencheu algo.
+function pgpSyncCheckedComValores(midx){
+  try{
+    const idx = pgpGetMachineIndex(midx);
+    const panel = document.getElementById('panel-'+idx);
+    if(!panel) return;
+    panel.querySelectorAll('.field-item').forEach(fi=>{
+      const visiveis = [...fi.querySelectorAll('input,select,textarea')]
+        .filter(el=> el.type !== 'hidden' && !el.readOnly && !el.disabled);
+      if(!visiveis.length) return;   // item sem input visível — não opina
+      const temValor = visiveis.some(el=>{
+        if(el.type === 'checkbox' || el.type === 'radio') return el.checked;
+        return String(el.value||'').trim() !== '';
+      });
+      fi.classList.toggle('checked', temValor);
+    });
+  }catch(_){}
+}
+
+// V71 (FIX 5) — número com milhar brasileiro. Espelha numBr_ do GAS (v79 F-22):
+// "12.500" precisa virar 12500, não 12 (parseInt para no ponto). O guard do
+// servidor não bastava: o payload já saía errado do aparelho.
+function numBrJs_(v){
+  if(v === undefined || v === null || v === '') return '';
+  if(typeof v === 'number') return isFinite(v) ? v : '';
+  var raw = String(v).trim();
+  if(!raw) return '';
+  var temVirgula = raw.indexOf(',') >= 0;
+  var ehMilhar = function(x){ return /^-?\d{1,3}(\.\d{3})+$/.test(x); };
+  // caminho nativo: string já é número JS válido (inclusive '1e3') → Number manda
+  if(!temVirgula && !ehMilhar(raw)){
+    var nNat = Number(raw);
+    if(isFinite(nNat) && raw !== '') return nNat;
+  }
+  // formato BR / string suja ("1.234,5", "12.500", "R$ 1.200,00", "900 h")
+  var s = raw.replace(/[^\d.,\-]/g, '');
+  if(!s || !/\d/.test(s)) return '';
+  if(s.indexOf(',') >= 0) s = s.replace(/\./g,'').replace(/,/g,'.');
+  else if(ehMilhar(s))    s = s.replace(/\./g,'');
+  var n = Number(s);
+  return isFinite(n) ? n : '';
+}
+function pgpHorimetroInt_(v){
+  const n = numBrJs_(v);
+  return n === '' ? 0 : Math.trunc(n);
+}
+
+// V71 (FIX 4) — TRIPWIRE de regime. Espelha o tripwire de perfil do V70: se o
+// payload está prestes a sair SEM regime numa máquina que comprovadamente opera
+// (h/semana no cadastro, h/semana calculada na tela, ou regime já conhecido),
+// isso é perda de dado — e perda de dado custa uma viagem ao cliente.
+// Devolve { ok:true } ou { ok:false, motivo }.
+async function pgpTripwireRegime(idx, payload, opts){
+  opts = opts || {};
+  try{
+    const regime = (payload && Array.isArray(payload.regimeData)) ? payload.regimeData : [];
+    if(regime.length) return { ok:true };
+    const eq = pgpGetLoadedMachineForIndex(idx) || {};
+    const cadastroTinhaRegime = !!(eq.regimeData && eq.regimeData.length);
+    const hpwTela = pgpHorimetroInt_((document.getElementById('m'+idx+'_h_sem_total')||{}).value || 0);
+    const hpwCadastro = pgpHorimetroInt_(eq.hpw || 0);
+    const opera = cadastroTinhaRegime || hpwTela > 0 || hpwCadastro > 0;
+    if(!opera) return { ok:true };   // máquina realmente sem regime conhecido
+    const hs = hpwTela || hpwCadastro;
+    const msg = '⚠ O REGIME DE TRABALHO está VAZIO na tela'
+      + (hs ? ', mas esta máquina opera ' + hs + ' h/semana no cadastro' : ', mas esta máquina já tinha regime cadastrado')
+      + '.\n\nSe enviar assim, o regime NÃO será gravado e a informação terá de ser coletada de novo no cliente.\n\n'
+      + 'Volte à seção 3 e preencha as faixas de horário — ou confirme que a máquina está sem regime definido.';
+    if(opts.silent) return { ok:false, motivo:'regime vazio (máquina opera ' + (hs||'?') + ' h/semana)' };
+    let segue = false;
+    try{
+      segue = await AppDialog.confirm(msg, { title:'Regime de trabalho vazio', okLabel:'Enviar sem regime', danger:true });
+    }catch(_){
+      try { segue = confirm(msg); } catch(__) { segue = true; }
+    }
+    return segue ? { ok:true } : { ok:false, motivo:'cancelado pelo técnico (regime vazio)' };
+  }catch(_){ return { ok:true }; }   // tripwire nunca pode travar o envio por bug próprio
+}
+
 function pgpLoadMachine(eq,localDb,midx=currentMachine,clientData=null){
   eq = pgpMergeClientDataForLoad(eq, clientData);
   const idx = pgpGetMachineIndex(midx);
   const p = `m${idx}_`;
+  // V71 (FIX 1) — decidido ANTES de tocar no DOM (pgpSetLoadedMachineForIndex
+  // abaixo sobrescreve a máquina anterior, que é justamente o que comparamos):
+  //   recarga da MESMA máquina com coleta em andamento ⇒ MODO MERGE (o DOM vence)
+  //   troca REAL de máquina                            ⇒ clear + repor (como antes)
+  //   identidade inconclusiva + coleta na tela         ⇒ MERGE (protege o dado)
+  const _pgpMesmaMaq  = pgpMesmaMaquinaCarregada(idx, eq);
+  const _pgpTemColeta = pgpPainelTemColeta(idx);
+  const modoMerge     = _pgpTemColeta && _pgpMesmaMaq !== false;
+  if(modoMerge){
+    try{ console.warn('[PCF V71] pgpLoadMachine painel '+idx+': MODO MERGE — coleta em andamento preservada (mesmaMaquina='+_pgpMesmaMaq+').'); }catch(_){}
+  }
   pgpSetLoadedMachineForIndex(idx, eq);
-  const sv=(key,val)=>{const el=document.querySelector(`[data-key="${p}${key}"]`);if(el)el.value=val??'';};
+  // V71 — regra do MODO MERGE, por natureza do campo:
+  //  · COLETA (regime, horímetro real, obs, refs/datas de peça): QUALQUER valor
+  //    presente na tela é sagrado — pode ter vindo de rascunho, sem evento de
+  //    input, e é a única cópia viva do que foi medido no cliente.
+  //  · CADASTRO (cliente, marca, modelo, tipo, TAG, localização…): o servidor
+  //    continua autoritativo e REFRESCA a tela — a menos que o próprio técnico
+  //    tenha editado o campo nesta sessão (dataset.pgpTocado, marcado na
+  //    delegação global de input/change). Sem essa distinção, um select com
+  //    valor DEFAULT (ex.: Tipo_Equip = "Compressor Parafuso") nunca receberia o
+  //    valor real da planilha — e o Tipo_Equip legado seria apagado no salvamento.
+  const _pgpTocado = (el)=> !!(el && el.dataset && el.dataset.pgpTocado === 'true');
+  const sv=(key,val)=>{
+    const el=document.querySelector(`[data-key="${p}${key}"]`);
+    if(!el) return;
+    if(modoMerge){
+      const temValor = String(el.value||'').trim()!=='';
+      if(pgpEhCampoColeta(`${p}${key}`)){ if(temValor) return; }
+      else if(_pgpTocado(el)) return;
+    }
+    el.value=val??'';
+  };
+  // Mesma regra para os inputs de peça (que usam id, não data-key) — todos de COLETA.
+  const svEl=(el,val)=>{
+    if(!el) return;
+    if(modoMerge && String(el.value||'').trim()!=='') return;
+    el.value=val;
+  };
   // V69.1: o hidden do PERFIL não pode ser zerado junto — foi exatamente isso
   // que fazia o checklist de pistão nunca aparecer numa máquina vinda da OS.
-  document.querySelectorAll(`[data-key^="${p}"]`).forEach(el=>{
-    if(el.tagName!=='BUTTON' && el.dataset.key !== `${p}perfil`) el.value='';
-  });
+  // V71: e no MODO MERGE não há clear nenhum — ver o bloco de comentário acima.
+  if(!modoMerge){
+    document.querySelectorAll(`[data-key^="${p}"]`).forEach(el=>{
+      if(el.tagName!=='BUTTON' && el.dataset.key !== `${p}perfil`) el.value='';
+    });
+  }
   sv('razao_social',eq.client); sv('filial',eq.branch);     sv('cnpj',eq.cnpj);
   sv('contato',eq.contact);     sv('telefone',eq.phone);    sv('email',eq.email);
   sv('cidade',eq.city);         sv('marca',eq.brand);       sv('modelo',eq.model);
@@ -7853,7 +8163,10 @@ function pgpLoadMachine(eq,localDb,midx=currentMachine,clientData=null){
   if(dvEl && !dvEl.value) dvEl.value = new Date().toISOString().slice(0,10);
 
   // Restaurar regime de trabalho (turnos)
-  if(eq.regimeData && eq.regimeData.length){
+  // V71 (FIX 1): no MODO MERGE o regime que está na TELA é mais novo que o do
+  // cadastro (foi coletado agora, no cliente) — só repõe do servidor se a tela
+  // estiver inteiramente vazia.
+  if(eq.regimeData && eq.regimeData.length && !(modoMerge && pgpTemRegimeNaTela(idx))){
     const container = document.getElementById(p+'turnos');
     if(container){
       // Limpar turnos existentes (manter só o primeiro)
@@ -7893,27 +8206,27 @@ function pgpLoadMachine(eq,localDb,midx=currentMachine,clientData=null){
     }
   }
 
-  document.querySelectorAll(`#panel-${idx} .field-item`).forEach(fi=>{
-    if([...fi.querySelectorAll('input,select,textarea')].some(i=>i.value?.trim()))
-      fi.classList.add('checked');
-  });
+  // V71 (FIX 3): derivado do valor (marca E desmarca) — o check não pode mentir.
+  pgpSyncCheckedComValores(idx);
 
   if(eq.parts){
     pgpPartsDe(midx).forEach(pt=>{
       const aid=pgpPartIdMapDe(midx)[pt.k]; if(!aid) return;
       const sp=eq.parts[aid];      if(!sp) return;
       const pk=`${p}${pt.k}`;
-      const ultEl=document.getElementById(`${pk}_ult`);  if(ultEl && sp.lastChange !== undefined && sp.lastChange !== null && sp.lastChange !== '') ultEl.value=sp.lastChange;
-      const refEl=document.getElementById(`${pk}_ref`);  if(refEl&&sp.ref)        refEl.value=sp.ref;
-      const intEl=document.getElementById(`${pk}_int`);  if(intEl&&sp.interval)   intEl.value=sp.interval;
+      // V71 (FIX 1): svEl respeita o MODO MERGE — a data/ref/leitura que o técnico
+      // lançou agora nunca é sobrescrita pelo histórico do servidor na reentrada.
+      const ultEl=document.getElementById(`${pk}_ult`);  if(ultEl && sp.lastChange !== undefined && sp.lastChange !== null && sp.lastChange !== '') svEl(ultEl, sp.lastChange);
+      const refEl=document.getElementById(`${pk}_ref`);  if(refEl&&sp.ref)        svEl(refEl, sp.ref);
+      const intEl=document.getElementById(`${pk}_int`);  if(intEl&&sp.interval)   svEl(intEl, sp.interval);
       // Restaurar valorMostrado e contador da visita anterior como referência visual
       if(sp.valorMostrado !== undefined && sp.valorMostrado !== null && (sp.valorMostrado !== '' || sp.valorMostrado === 0)){
         const vmEl=document.getElementById(`${pk}_valor_mostrado`);
-        if(vmEl) vmEl.value=sp.valorMostrado;
+        if(vmEl) svEl(vmEl, sp.valorMostrado);
       }
       if(sp.contador){
         const cEl=document.getElementById(`${pk}_contador`);
-        if(cEl) cEl.value=sp.contador;
+        if(cEl) svEl(cEl, sp.contador);
       }
       if(sp.na){
         const nb=document.getElementById(`${pk}_na`);
@@ -7932,7 +8245,10 @@ function pgpLoadMachine(eq,localDb,midx=currentMachine,clientData=null){
   updateProgress(); updateAllTabNames();
   // v51 — horímetro dinâmico: projeta o total e cada peça para a data da leitura
   // (busca o fator no backend e aplica; guarda baseline p/ reprojetar na troca de data).
-  try { if(typeof pfProjetarHorimetros==='function') pfProjetarHorimetros(idx); } catch(e) { console.warn('pfProjetarHorimetros:', e); }
+  // V71 (FIX 1): na reentrada (MODO MERGE) a projeção NÃO pode zerar a leitura
+  // real nem sobrescrever os contadores que o técnico já lançou — pfReprojetar
+  // com force=true fazia exatamente isso (`if (force && hEl) hEl.value=''`).
+  try { if(typeof pfProjetarHorimetros==='function') pfProjetarHorimetros(idx, modoMerge); } catch(e) { console.warn('pfProjetarHorimetros:', e); }
   // v65 — carrega (não-bloqueante) as fotos de visitas anteriores desta máquina
   try { if(typeof pfCarregarFotosMaquina==='function') pfCarregarFotosMaquina(idx); } catch(e) { console.warn('pfCarregarFotosMaquina:', e); }
   // v8.4.4 — destacar campos faltantes e campos variáveis após carga
@@ -7954,6 +8270,11 @@ function pgpClearMachine(){
   });
   // Remover estado "checked" dos field-items
   document.querySelectorAll(`#panel-${idx} .field-item`).forEach(fi=>fi.classList.remove('checked'));
+  // V71 (FIX 2/3): a máquina saiu da tela — o carimbo de OS carregada morre com
+  // ela (senão um novo carregamento da mesma OS seria suprimido sem necessidade),
+  // e os badges das seções voltam a bater com a tela vazia.
+  try{ window._PGP_OS_ID_CARREGADA = ''; }catch(_){}
+  try{ pgpSyncCheckedComValores(idx); document.querySelectorAll('[data-section]').forEach(s=>refreshSection(s)); updateProgress(); }catch(_){}
   pgpBackToStep1();
 }
 
@@ -8358,6 +8679,30 @@ function pgpClientSearchFallback(){
 // Usada quando o formulário é aberto a partir de uma tarefa auto:preventiva do pipeline
 // (?modo=preventiva&os_id=...).
 async function pgpIniciarPreventivaDeOS(osId){
+  // ═══════════════════════════════════════════════════════════════════════
+  // V71 (FIX 2) — REENTRADA NA TAREFA ERA O GATILHO Nº 1 DA PERDA DE DADO.
+  // pfAbrirForm reabre a tarefa por CHAMADA INTERNA (não recarrega a página,
+  // O1.3/V61). Recarregar as máquinas da OS por cima de uma coleta em
+  // andamento passava pelo clear cego de pgpLoadMachine e apagava regime,
+  // horímetro real e observações — em silêncio, com o check verde intacto.
+  // Mesma OS já carregada + coleta na tela ⇒ NÃO recarrega nada.
+  // ═══════════════════════════════════════════════════════════════════════
+  try{
+    if(osId && String(window._PGP_OS_ID_CARREGADA||'') === String(osId) && pgpAlgumPainelTemColeta()){
+      window._PGP_OS_ID = osId;
+      const _s1r = document.getElementById('pgpStep1');
+      const _s2r = document.getElementById('pgpStep2');
+      if(_s1r) _s1r.style.display = 'none';
+      if(_s2r) _s2r.style.display = 'none';
+      try{ pgpSetTipoVisita('preventiva'); }catch(_){}
+      try{ pgpAtualizarAcoesPorTipoVisita(); }catch(_){}
+      try{ machines.forEach((_,i)=>pgpSyncCheckedComValores(i)); }catch(_){}
+      try{ document.querySelectorAll('[data-section]').forEach(s=>refreshSection(s)); updateProgress(); }catch(_){}
+      showNotification('↩ Coleta desta OS já estava aberta — seus dados foram mantidos.');
+      try{ console.warn('[PCF V71] pgpIniciarPreventivaDeOS: reentrada na OS '+osId+' — recarga do servidor SUPRIMIDA para não apagar a coleta.'); }catch(_){}
+      return;
+    }
+  }catch(_){}
   pgpSetTipoVisita('preventiva');
 
   // v47 — Fix F (P0 contaminação cruzada): mesmo padrão de novaColeta() — garante que
@@ -8403,6 +8748,8 @@ async function pgpIniciarPreventivaDeOS(osId){
     // v52 — registra o cliente dono desta OS, para pgpOsIdSeguro() poder suprimir
     // o os_id caso, na mesma sessão, seja carregada uma máquina de outro cliente.
     window._PGP_OS_CLIENTE = (r.os && r.os.cliente) ? String(r.os.cliente).trim() : '';
+    // V71 (FIX 2): carimbo de "esta OS já está na tela" — base do guard de reentrada.
+    window._PGP_OS_ID_CARREGADA = String(osId||'');
 
     if(osMachines.length === 0){
       const clienteOS = r.os && r.os.cliente ? String(r.os.cliente).trim() : '';
@@ -8876,8 +9223,23 @@ async function pgpEnviarPreventiva(midx=currentMachine, opts){
     return;
   }
 
+  // V71 (FIX 4) — TRIPWIRE DE REGIME: nunca deixar sair uma preventiva sem
+  // regime numa máquina que comprovadamente opera. Recusar (ou exigir confirmação)
+  // é sempre melhor que perder o dado e ter de voltar ao cliente para recoletar.
+  {
+    const _regTela = pgpLerRegimeDaTela(idx);
+    const _tw = await pgpTripwireRegime(idx, { regimeData: _regTela }, { silent: silent });
+    if(!_tw.ok){
+      if(silent) return { status:'skipped', reason: _tw.motivo };
+      return;
+    }
+  }
+
   const _perfEnv = pgpPerfil(idx);
-  const hourTotal=parseInt(gv('horimetro'))||0;
+  // V71 (FIX 5): numBrJs_ no lugar de parseInt — "12.500" virava 12 e o
+  // horímetro da máquina despencava (o guard numBr_ do GAS v79 só protegia
+  // o servidor; o payload já saía errado daqui).
+  const hourTotal=pgpHorimetroInt_(gv('horimetro'));
   // V69: no perfil pistão o horímetro é OPCIONAL (a maioria das máquinas não
   // tem) — o gatilho da preventiva é o calendário.
   if(!hourTotal && _perfEnv.horimetroObrigatorio){
@@ -9170,7 +9532,7 @@ function pgpBuildPayload(midx=currentMachine){
     var elHf = document.querySelector('[data-key="m0_hora_fim"]');
     if(elHf) elHf.value = pgpNowHHMMLocal();
   }
-  const hourTotal=parseInt(gv('horimetro'))||0;
+  const hourTotal=pgpHorimetroInt_(gv('horimetro'));   // V71 (FIX 5) milhar BR
   const hpwEl=document.getElementById(`${p}h_sem_total`);
   const hpw=parseInt(hpwEl?.value)||0;
   const parts={};
@@ -9691,6 +10053,12 @@ async function pgpEnviarGS(srcBtn){
   for (const i of indices) {
     const payload=pgpBuildPayload(i);
     const loadedMachine = pgpGetLoadedMachineForIndex(i);
+    // V71 (FIX 4) — mesmo tripwire de regime da preventiva: a inspeção/visita
+    // normal grava o MESMO cadastro de máquina (saveVisit → ensureMachineFromVisit).
+    {
+      const _twV = await pgpTripwireRegime(i, payload, {});
+      if(!_twV.ok){ failed++; continue; }
+    }
     const _prevHour = parseInt(loadedMachine?.hourTotal) || 0;
     const _newHour  = parseInt(payload.hourTotal) || 0;
 
@@ -10687,7 +11055,9 @@ async function pfCarregarFotosMaquina(idx) {
 
 // Busca o fator/baseline no backend (uma vez por carga) e projeta. Se offline/erro,
 // projeta mesmo assim com fator=1 usando hourTotal+lastVisit da própria máquina.
-async function pfProjetarHorimetros(idx) {
+// V71: preservarColeta=true (reentrada/MODO MERGE) desliga o force — o campo
+// REAL e os contadores já lançados pelo técnico ficam intactos.
+async function pfProjetarHorimetros(idx, preservarColeta) {
   var eq = (typeof pgpGetLoadedMachineForIndex === 'function') ? pgpGetLoadedMachineForIndex(idx) : null;
   if (!eq) return;
   var machineId = pfHorimMachineId(idx);
@@ -10703,12 +11073,14 @@ async function pfProjetarHorimetros(idx) {
       }
     } catch(e) { /* offline: segue com defaults */ }
   }
-  pfReprojetar(idx, true);
+  pfReprojetar(idx, true, preservarColeta === true);
 }
 // Recalcula a projeção do horímetro total e de todas as peças para a data da leitura.
 // force=true (carga inicial) sobrescreve os campos; force=false (troca de data) só
 // sobrescreve o que ainda não foi editado à mão pelo técnico (guarda dataset.proj).
-function pfReprojetar(idx, force) {
+function pfReprojetar(idx, force, preservarColeta) {
+  // V71 (FIX 1): com coleta em andamento, force deixa de ser destrutivo.
+  if (preservarColeta) force = false;
   var eq = (typeof pgpGetLoadedMachineForIndex === 'function') ? pgpGetLoadedMachineForIndex(idx) : null;
   if (!eq) return;
   var calib = eq._horimCalib || {};

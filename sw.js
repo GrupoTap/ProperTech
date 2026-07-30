@@ -8,7 +8,7 @@
  * DISCIPLINA DE VERSÃO: bump em CACHE a cada deploy do app (v43 -> v44 ...).
  * O activate abaixo apaga qualquer cache antigo com prefixo 'propertech-'.
  */
-const CACHE = 'propertech-v70'; // 29/07/2026: par do index PCF_V70 (checklist de PISTÃO por calendário + FIX do perfil que travava em parafuso na OS de pistão + acabamento de campo: checklist em cartões no celular, foto em 1 toque câmera/galeria, contraste das pills, fim da rolagem horizontal na preventiva, badge de versão real). Anteriores: PCF_V69 (não publicado), PCF_V68 (F-06 visit_id estável + dedupe da fila, F-18a/b espelho local e cota, F-19 servidor autoritativo no avulso, F-20 horímetro estimado, F-02d/F-15 rotas form03/04/05, F-30 fotos do PDF); GAS v79. Bump junto com cada deploy
+const CACHE = 'propertech-v71'; // 30/07/2026: par do index PCF_V71 — FIX DEFINITIVO da COLETA DO TÉCNICO que era apagada pelo clear cego de pgpLoadMachine na REENTRADA da tarefa (regime de trabalho, horímetro REAL, observações e refs/datas de peça). Inclui: MODO MERGE no pgpLoadMachine, pgpIniciarPreventivaDeOS idempotente, check verde derivado do valor, tripwire de regime no envio (preventiva E visita) e numBrJs_ no horímetro (12.500 não vira mais 12). Back-end par: GAS v80 (F-31 saveMachine sem regressão, F-32 telemetria COLETA_REGIME_VAZIA, F-33 recuperação de regime/horímetro). Anteriores: PCF_V70 (checklist de PISTÃO por calendário + acabamento de campo), PCF_V68 (F-06 visit_id estável, F-19 servidor autoritativo no avulso, F-20 horímetro estimado). Bump junto com cada deploy
 const SCOPE_PREFIX = '/ProperTech/';
 const APP_SHELL = [
   '/ProperTech/',
