@@ -1,3 +1,24 @@
+<!-- V73 (31/07/2026) — NADA COLETADO SE PERDE; TUDO PERTINENTE VAI AO PDF.
+     Par obrigatório: sw.js com CACHE='propertech-v73' + GAS v81 (as colunas
+     novas ficam vazias se o v81 ainda não estiver publicado — nada quebra).
+
+     DADOS QUE MORRIAM NO APARELHO (coletados, no PDF de campo, nunca enviados):
+       • data da leitura do horímetro  • observação geral do checklist
+       • estado ENCONTRADO da peça (só ia fundido no `status` de prazo)
+     A INSPEÇÃO ERA CIDADÃ DE SEGUNDA CLASSE: pgpBuildVisitRequest é uma
+     WHITELIST e não copiava os_id (a tarefa auto:inspecao de uma OS NUNCA
+     fechava e a visita ficava sem vínculo), tarefa_id, client_uid (dedupe
+     F-09 morto) nem horimetro_estimado (auto-calibração do regime só
+     acontecia em preventiva).
+     NO PDF (os dois apps, bloco espelhado):
+       • AÇÃO por peça (trocada/conferida/N-A) — o dado central da preventiva,
+         o único que o GAS valida como obrigatório, não saía em relatório algum
+       • Nº da OS + tipo de visita na seção 2
+       • título deixa de mentir: RELATORIO DE INSPECAO quando é inspeção
+       • referência ANTERIOR da peça trocada ("era: X")
+       • VENCIDO* + nota quando a peça está conforme e o PRAZO é que venceu
+     Também: gv('estado') referenciava um input de UF inexistente (código morto).
+-->
 <!-- V72 (31/07/2026) — UX DE CAMPO + MOTOR DE PDF.
      Par obrigatório: sw.js com CACHE='propertech-v72'. Back-end: NENHUMA
      mudança de GAS (roda com o v79 ou o v80 no ar).
@@ -414,8 +435,8 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ProperCare Field · PGP Preventivas v34 · build PCF_V72</title>
-<meta name="app-build" content="PCF_V72" data-date="2026-07-31">
+<title>ProperCare Field · PGP Preventivas v34 · build PCF_V73</title>
+<meta name="app-build" content="PCF_V73" data-date="2026-07-31">
 <meta name="theme-color" content="#0f172a">
 <!-- PWA (fix 19/07/2026): o repo já tinha manifest.webmanifest + sw.js + proper-pwa.js,
      mas o index.html não os referenciava — sem estas 3 linhas o SW nunca registra,
@@ -1708,7 +1729,7 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
       <div class="proper-logo-mark">H</div>
       <div class="proper-logo-text">
         <span class="brand">PROPER</span>
-        <span class="brand-sub">Field · V72</span>
+        <span class="brand-sub">Field · V73</span>
       </div>
     </div>
     <div class="header-right">
@@ -2320,6 +2341,7 @@ function limparSessaoStorage() {
     window._PGP_OS_ID = urlParams.get('os_id') || null;
     window._PGP_OS_CLIENTE = null; // v52 — preenchido por pgpIniciarPreventivaDeOS; guarda o cliente dono da OS
     window._PGP_TAREFA_ID = urlParams.get('tarefa_id') || null;
+    window._PGP_OS_NUMERO = urlParams.get('os_numero') || '';   // V73 (P2)
     window._PGP_PREVENTIVA_INICIO_ISO = urlParams.get('inicio_preventiva_iso') || null;
     if (modoUrl === 'preventiva') {
       // pgpSetTipoVisita (ou pgpIniciarPreventivaDeOS, se vier de uma OS) será chamado
@@ -4670,6 +4692,7 @@ async function novaColeta() {
   window._PGP_OS_ID = null;
   window._PGP_OS_CLIENTE = null;
   window._PGP_TAREFA_ID = null;
+  window._PGP_OS_NUMERO = '';
   window._PGP_OS_ID_CARREGADA = '';
   window._PGP_TIPO_ESPERADO = null;
   try { const _rw = document.getElementById('pgpReturnToOSContainer'); if(_rw){ _rw.style.display='none'; _rw.innerHTML=''; } } catch(e){}
@@ -5730,6 +5753,16 @@ function pgpCreateReportBuilder() {
   const WHITE  = [255, 255, 255];
 
   let pageNum = 1;
+  // ═════════════════════════════════════════════════════════════════════
+  // V73 (P3) — o título era FIXO em "RELATORIO DE VISITA PREVENTIVA", mas
+  // o mesmo gerarPDF atende preventiva E inspeção: toda inspeção saía com
+  // um cabeçalho que mentia sobre o próprio documento.
+  // renderPreventivaPdf define isto a partir de dados.tipoVisita, ANTES de
+  // chamar addPageHeader.
+  // ═════════════════════════════════════════════════════════════════════
+  let _tipoRel = 'preventiva';
+  function _tituloRel(){ return _tipoRel === 'inspecao' ? 'RELATORIO DE INSPECAO' : 'RELATORIO DE VISITA PREVENTIVA'; }
+  function _tituloRelCurto(){ return _tipoRel === 'inspecao' ? 'Relatorio de Inspecao' : 'Relatorio de Visita Preventiva'; }
   const agora = new Date();
   const dataHoje = agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
 
@@ -5753,7 +5786,7 @@ function pgpCreateReportBuilder() {
       doc.setFont('helvetica','bold');
       doc.setFontSize(11);
       doc.setTextColor(...WHITE);
-      doc.text(limparTextoPDF('RELATORIO DE VISITA PREVENTIVA'), PW - MR, 9, {align:'right'});
+      doc.text(limparTextoPDF(_tituloRel()), PW - MR, 9, {align:'right'});
       doc.setFont('helvetica','normal');
       doc.setFontSize(8);
       doc.setTextColor(200, 210, 230);
@@ -5765,7 +5798,7 @@ function pgpCreateReportBuilder() {
       doc.setFont('helvetica','bold');
       doc.setFontSize(9);
       doc.setTextColor(...WHITE);
-      doc.text(limparTextoPDF('PROPER COMPRESSORES · Relatorio de Visita Preventiva'), ML, 11);
+      doc.text(limparTextoPDF('PROPER COMPRESSORES · ' + _tituloRelCurto()), ML, 11);
       doc.text('Pág. ' + pageNum, PW - MR, 11, {align:'right'});
       doc.setFillColor(...ORANGE);
       doc.rect(0, 16, PW, 2, 'F');
@@ -5926,6 +5959,8 @@ function pgpCreateReportBuilder() {
     var prev = d.preventiva || {};
     var ass  = d.assinaturas|| {};
     var ehPistao = (d.perfilId === 'pistao');
+    _tipoRel = (d.tipoVisita === 'inspecao') ? 'inspecao' : 'preventiva';   // V73 (P3)
+    var ehInspecao = (_tipoRel === 'inspecao');
 
     // ── PÁGINA 1: HEADER ──────────────────────────────
     addPageHeader(isFirstPageOfDoc);
@@ -5960,6 +5995,12 @@ function pgpCreateReportBuilder() {
     y = infoRow2(y, [{label:'Tipo de Equipamento', value:maq.tipo}, {label:'Potência', value:maq.potencia}]);
     y = infoRow(y, 'Localização', maq.localizacao, false);
     y = infoRow2(y, [{label:'TAG', value:maq.tag}, {label:'Data da Visita', value:maq.data_visita}]);
+    // V73 (P2) — o relatório de uma visita vinculada a uma OS não dizia a QUAL
+    // OS pertencia. O número já viajava no payload e era gravado em VISITAS.
+    y = infoRow2(y, [
+      {label:'Ordem de Serviço', value: d.osNumero || '—'},
+      {label:'Tipo de Visita',   value: ehInspecao ? 'Inspeção' : 'Preventiva'}
+    ]);
     if (maq.obs_op && maq.obs_op !== '—') y = infoRow(y, 'Obs. Operacional', maq.obs_op, true);
     y += 3;
 
@@ -6004,10 +6045,18 @@ function pgpCreateReportBuilder() {
     // v27: coluna "Referência" dedicada — antes a referência era desenhada
     // sobre a mesma linha de base do nome da peça (colidiam visualmente).
     // Larguras somam exatamente CW (182mm).
-    const colsP = [40, 26, 22, 22, 22, 22, 28];
+    // ═════════════════════════════════════════════════════════════════
+    // V73 (P1) — A AÇÃO EXECUTADA POR PEÇA NÃO SAÍA EM NENHUM RELATÓRIO.
+    // É o dado central de uma preventiva (e o ÚNICO campo por peça que o GAS
+    // valida como obrigatório): trocada × conferida × N/A. Era coletado,
+    // gravado em PECAS_LOG e devolvido na leitura — e o PDF não o imprimia.
+    // Só o resumo de WhatsApp e o histórico do PCM mostravam.
+    // 8 colunas somando exatamente CW (182mm).
+    // ═════════════════════════════════════════════════════════════════
+    const colsP = [34, 18, 24, 22, 20, 20, 20, 24];
     const headP = ehPistao
-      ? ['Item', 'Referência', 'Últ. troca', 'Ciclo (d)', 'Dias', 'Restam', 'Estado']
-      : ['Peça', 'Referência', 'Últ.Troca(h)', 'Intervalo(h)', 'H.Rodadas', 'H.Restantes', 'Status'];
+      ? ['Item', 'Ação', 'Referência', 'Últ. troca', 'Ciclo (d)', 'Dias', 'Restam', 'Estado']
+      : ['Peça', 'Ação', 'Referência', 'Últ.Troca(h)', 'Interv.(h)', 'H.Rodadas', 'H.Restam', 'Status'];
     const rowHP = 7;
 
     y = checkY(y, rowHP + 2);
@@ -6025,6 +6074,7 @@ function pgpCreateReportBuilder() {
     // peças (parts_obs) aparecia no PDF, perdendo o campo de observação
     // por peça (${pk}_obs, ex: "etiqueta ilegível, horímetro zerado...").
     const partsObsList = d.pecasObs || [];
+    let _temConflitoEstado = false;   // V73 (L3)
 
     (d.pecas || []).forEach((pt, pi) => {
       y = checkY(y, rowHP);
@@ -6042,7 +6092,9 @@ function pgpCreateReportBuilder() {
         doc.setTextColor(150, 100, 180);
         doc.text(limparTextoPDF(pt.label), ML + 2, y + 5);
         doc.setFont('helvetica','normal');
-        doc.text(limparTextoPDF('Não Aplicável'), ML + colsP[0] + 2, y + 5);
+        doc.text(limparTextoPDF('N/A'), ML + colsP[0] + 2, y + 5);
+        doc.setFontSize(6.5);
+        doc.text(limparTextoPDF('Não Aplicável'), ML + colsP[0] + colsP[1] + 2, y + 5);
       } else {
         const status = pt.status || '';
         const statusColor = corStatusPeca(status);
@@ -6052,29 +6104,62 @@ function pgpCreateReportBuilder() {
         doc.setTextColor(...DARK);
         doc.text(limparTextoPDF(pt.label), ML + 2, y + 5);
 
+        // V73 (P1) — AÇÃO. Trocada em laranja/negrito porque é a que gera custo
+        // e troca de referência; em inspeção não existe ação e sai '—'.
+        const _acao = String(pt.acao || '').toLowerCase();
+        const _acaoTxt = ehInspecao ? '—'
+          : (_acao === 'trocada' ? 'Trocada' : _acao === 'conferida' ? 'Conferida' : _acao === 'na' ? 'N/A' : '—');
+        doc.setFont('helvetica', _acao === 'trocada' && !ehInspecao ? 'bold' : 'normal');
+        doc.setFontSize(6.8);
+        doc.setTextColor.apply(doc, (_acao === 'trocada' && !ehInspecao) ? ORANGE : DARK);
+        doc.text(limparTextoPDF(_acaoTxt), ML + colsP[0] + 2, y + 5);
+
         // v27: referência em coluna própria, mesma linha de base do nome —
         // não sobrepõe mais nenhum outro texto.
+        // V73 (P4): peça trocada mostra a referência ANTERIOR embaixo — o dado
+        // já existia em PECAS_LOG (Ref_Anterior) e nunca era impresso.
         doc.setFont('helvetica','normal');
         doc.setFontSize(6.5);
         doc.setTextColor(100, 100, 100);
-        doc.text(limparTextoPDF(pt.ref || '—'), ML + colsP[0] + 2, y + 5);
+        const _xRef = ML + colsP[0] + colsP[1] + 2;
+        doc.text(limparTextoPDF(pt.ref || '—'), _xRef, y + 4);
+        if (pt.refAnterior && pt.refAnterior !== pt.ref) {
+          doc.setFontSize(5.5);
+          doc.setTextColor(150, 150, 150);
+          doc.text(limparTextoPDF('era: ' + pt.refAnterior), _xRef, y + 6.6);
+        }
 
         doc.setFont('helvetica','normal');
         doc.setFontSize(7);
         doc.setTextColor(...DARK);
-        let xc = ML + colsP[0] + colsP[1] + 1;
+        let xc = ML + colsP[0] + colsP[1] + colsP[2] + 1;
         [pt.ult || '—', pt.interval || '—', pt.rodadas || '—', pt.restantes || '—'].forEach((v, ci) => {
           doc.text(limparTextoPDF(String(v)), xc + 1, y + 5);
-          xc += colsP[ci + 2];
+          xc += colsP[ci + 3];
         });
         if (status) {
           doc.setFont('helvetica','bold');
           doc.setTextColor(...statusColor);
-          doc.text(limparTextoPDF(status), xc + 1, y + 5);
+          // V73 (L3) — quando o técnico marcou CONFORME mas o PRAZO está
+          // vencido/em atenção, os dois fatos eram fundidos numa palavra só e o
+          // "conforme" sumia. O asterisco preserva ambos (nota abaixo da tabela).
+          const _conflito = (String(pt.estado||'') === 'ok') && (status === 'VENCIDO' || status === 'ATENÇÃO');
+          if (_conflito) _temConflitoEstado = true;
+          doc.text(limparTextoPDF(status + (_conflito ? '*' : '')), xc + 1, y + 5);
         }
       }
       y += rowHP;
     });
+
+    // V73 (L3) — legenda do asterisco, só quando houve conflito de fato.
+    if (_temConflitoEstado) {
+      y = checkY(y, 5);
+      doc.setFont('helvetica','italic');
+      doc.setFontSize(6.5);
+      doc.setTextColor(120, 120, 120);
+      doc.text(limparTextoPDF('* peca encontrada em bom estado (conforme); o PRAZO de troca e que esta vencido/em atencao.'), ML + 1, y + 3.5);
+      y += 5;
+    }
 
     // v27: observações individuais por peça (ver comentário acima do loop)
     if (partsObsList.length) {
@@ -6322,12 +6407,14 @@ function pgpCreateReportBuilder() {
 // Formato:
 // {
 //   perfilId: 'pistao'|'parafuso',
+//   tipoVisita: 'preventiva'|'inspecao',   // V73: título do PDF
+//   osNumero:  'PGP-2026-0026' | '',       // V73: seção 2
 //   cliente:    {razao_social,filial,cnpj,contato,telefone,email,cidade,ult_visita,prox_visita},
 //   maquina:    {marca,modelo,ns,ano,tipo,potencia,localizacao,tag,data_visita,obs_op},
 //   horimetro:  {total,data_leitura,regime,h_sem_total,tecnico},
 //   preventiva: {auxiliar,hora_inicio,hora_fim},
 //   cenario:    {id,title} | null,
-//   pecas:      [{label,na,ref,ult,interval,rodadas,restantes,status}],
+//   pecas:      [{label,na,acao,ref,refAnterior,estado,ult,interval,rodadas,restantes,status}],
 //   pecasObs:   ['Filtro de Oleo: ...'],
 //   partsObs:   'obs geral do checklist',
 //   obsGerais:  '...',
@@ -6355,7 +6442,9 @@ function pgpColetarDadosPdf(midx) {
     const ptObsV = ptObsEl ? String(ptObsEl.value || '').trim() : '';
     if (ptObsV) pecasObs.push(pt.label + ': ' + ptObsV);
 
-    if (isNA) return { label: pt.label, na: true, ref: '', ult: '', interval: '', rodadas: '', restantes: '', status: '' };
+    const acaoEl = document.getElementById(pk + '_acao');
+    const acao = acaoEl ? String(acaoEl.value || '') : '';
+    if (isNA) return { label: pt.label, na: true, acao: 'na', ref: '', refAnterior: '', estado: '', ult: '', interval: '', rodadas: '', restantes: '', status: '' };
 
     const vm   = (document.getElementById(pk + '_valor_mostrado') || {}).value || '';
     const intV = (document.getElementById(pk + '_int') || {}).value || String(pt.intDefault);
@@ -6400,7 +6489,14 @@ function pgpColetarDadosPdf(midx) {
       status = 'Ver horímetro';
     }
 
-    return { label: pt.label, na: false, ref: ref, ult: ult, interval: intV, rodadas: rodadas, restantes: restantes, status: status };
+    return {
+      label: pt.label, na: false,
+      acao: acao,                       // V73: trocada | conferida | na | ''
+      ref: ref,
+      refAnterior: '',                  // só o histórico (PCM) conhece a anterior
+      estado: (document.getElementById(pk + '_estado') || {}).value || '',
+      ult: ult, interval: intV, rodadas: rodadas, restantes: restantes, status: status
+    };
   });
 
   // ── Status fotográfico (seção 6) ──
@@ -6457,6 +6553,9 @@ function pgpColetarDadosPdf(midx) {
 
   return {
     perfilId: ehPistao ? 'pistao' : 'parafuso',
+    // V73 — o relatório precisa dizer O QUE ELE É e A QUE OS PERTENCE.
+    tipoVisita: (typeof _pgpTipoVisita !== 'undefined') ? _pgpTipoVisita : 'preventiva',
+    osNumero: String(window._PGP_OS_NUMERO || window._PGP_OS_ID || ''),
     cliente: {
       razao_social: g('razao_social'), filial: g('filial'), cnpj: g('cnpj'),
       contato: g('contato'), telefone: g('telefone'), email: g('email'),
@@ -6896,6 +6995,30 @@ function pgpBuildVisitRequest(payload){
     auxiliar:   payload.auxiliar   || '',
     horaInicio: payload.horaInicio || '',
     horaFim:    payload.horaFim    || '',
+    // ═══════════════════════════════════════════════════════════════════
+    // V73 — ESTA FUNÇÃO É UMA WHITELIST, E ERA O RALO DA INSPEÇÃO.
+    // Tudo que o pgpBuildPayload monta e não estivesse copiado aqui morria
+    // no caminho — só a PREVENTIVA (que manda o payload inteiro) escapava.
+    // O que estava se perdendo em TODA inspeção:
+    //   os_id      -> o GAS chama autoCompletarTarefa(body.os_id, 'inspecao')
+    //                 com undefined: a tarefa auto:inspecao de uma OS NUNCA
+    //                 fechava, e a visita ficava sem vínculo com a OS.
+    //   tarefa_id  -> mesmo defeito que a preventiva já tinha corrigido: com
+    //                 2 tarefas do mesmo tipo, fechava a primeira que achasse.
+    //   horimetro_estimado -> a auto-calibração do fator de regime (v51) só
+    //                 acontecia em preventiva; metade das visitas não calibrava.
+    //   client_uid -> o dedupe adicional do v79 F-09 (feito justamente para
+    //                 retries que regeneram o visit_id) estava morto aqui.
+    // ═══════════════════════════════════════════════════════════════════
+    os_id:      payload.os_id      || '',
+    tarefa_id:  (window._PGP_TAREFA_ID || ''),
+    client_uid: payload.client_uid || '',
+    horimetro_estimado: payload.horimetro_estimado || '',
+    tipo:       payload.tipoVisita || 'inspecao',
+    // V73 — campos novos (par do GAS v81)
+    dataLeitura: payload.dataLeitura || '',
+    partsObs:    payload.partsObs    || '',
+    perfil:      payload.perfil      || '',
   };
 }
 
@@ -9547,6 +9670,7 @@ function pgpBuildPreventivaPayload(midx=currentMachine){
         contador:'calendario',
         horasRodadas:  _calP ? String(Math.max(0,_calP.rodados)) : '',
         horasRestantes:_calP ? String(_calP.restantes) : '',
+        estado:_estP,   // V73: estado ENCONTRADO cru, separado do prazo
         status:_stP
       };
       return;
@@ -9601,6 +9725,7 @@ function pgpBuildPreventivaPayload(midx=currentMachine){
       contador:      contVal,
       horasRodadas,
       horasRestantes,
+      estado: (document.getElementById(pk+'_estado')||{}).value || '',  // V73
       status: partStatus
     };
   });
@@ -9655,6 +9780,15 @@ function pgpBuildPreventivaPayload(midx=currentMachine){
     // NUNCA era copiado para o payload da preventiva — por isso o
     // registrarHorimetroReal do GAS nunca recalibrava e o fator ficava 1,000.
     horimetro_estimado: base.horimetro_estimado || '',
+    // ═══════════════════════════════════════════════════════════════════
+    // V73 — MESMA CLASSE DO F-20 e do ralo da inspeção: este objeto também é
+    // uma WHITELIST montada campo a campo sobre `base`. Tudo que o
+    // pgpBuildPayload passe a produzir e não seja copiado aqui morre no
+    // caminho, em silêncio. Foi o que aconteceu com os campos novos.
+    // ═══════════════════════════════════════════════════════════════════
+    dataLeitura: base.dataLeitura || '',
+    partsObs:    base.partsObs    || '',
+    perfil:      base.perfil      || '',
     machine_id:base.machine_id,
     serial:base.serial,
     tag:base.tag,
@@ -10159,6 +10293,10 @@ function pgpBuildPayload(midx=currentMachine){
       else if (_estP === 'ok' && !_stP) _stP = 'OK';
       parts[aid]={name:pgpPartNameMapDe(idx)[pt.k]||pt.label||pt.k,lastChange:0,interval,
         ref:refEl?.value.trim()||'',obs:obsEl?.value.trim()||'',na:isNA,
+        // V73: o ESTADO ENCONTRADO cru (ok|nao_conforme) passa a viajar
+        // separado do `status` de PRAZO. Antes os dois eram fundidos e
+        // "peça conforme com a troca vencida" perdia o "conforme".
+        estado:_estP,
         contador:'calendario', valorMostrado:vmEl?.value.trim()||'',
         horasRodadas:  _calP ? String(Math.max(0,_calP.rodados)) : '',
         horasRestantes:_calP ? String(_calP.restantes) : '',
@@ -10167,6 +10305,8 @@ function pgpBuildPayload(midx=currentMachine){
     }
     parts[aid]={name:pgpPartNameMapDe(idx)[pt.k]||pt.k,lastChange:Math.max(0,lastChange),interval,
       ref:refEl?.value.trim()||'',obs:obsEl?.value.trim()||'',na:isNA,
+      // V73: o parafuso não tem pill de estado — vai '' e o PDF mostra o prazo.
+      estado:(document.getElementById(`${pk}_estado`)||{}).value||'',
       // v8.4.4:
       contador:contVal, valorMostrado:vmEl?.value.trim()||'',
       horasRodadas, horasRestantes, status:partStatus};
@@ -10242,7 +10382,23 @@ function pgpBuildPayload(midx=currentMachine){
     cnpj:    gv('cnpj')      || '',
     phone:   gv('telefone')  || '',
     email:   gv('email')     || '',
-    city:    [gv('cidade'), gv('estado')].filter(Boolean).join(' / ') || '',
+    // V73: gv('estado') referenciava um input de UF que NUNCA EXISTIU no
+    // formulário — sempre '' e o join nunca acrescentava nada. Código morto
+    // removido; o rótulo "Cidade / Estado" do PDF segue igual.
+    city:    gv('cidade')    || '',
+    // ═══════════════════════════════════════════════════════════════════
+    // V73 — DADOS QUE MORRIAM NO APARELHO.
+    // A data da leitura do horímetro e a observação geral do checklist eram
+    // coletadas, apareciam no PDF gerado ali na hora... e NUNCA eram enviadas.
+    // Fechar o app apagava as duas para sempre, e o relatório regerado pelo
+    // PCM jamais poderia ficar completo. Par: GAS v81 (colunas Data_Leitura
+    // e Parts_Obs, ao final de VISITAS).
+    // ═══════════════════════════════════════════════════════════════════
+    dataLeitura: gv('data_leitura') || '',
+    partsObs:    gv('parts_obs')    || '',
+    // V73: perfil de equipamento da máquina (pistao|parafuso). Antes só era
+    // possível INFERIR pelo contador='calendario' das peças.
+    perfil:  (document.querySelector(`[data-key="${p}perfil"]`)||{}).value || '',
     // v8.4.4: campos novos
     contact: gv('contato')   || '',
     nextVisit: gv('prox_visita') || '',
@@ -10258,6 +10414,17 @@ function pgpBuildPayload(midx=currentMachine){
     // no item da fila offline, já que a fila reaproveita este mesmo objeto payload — permitindo
     // ao GAS auto-completar a tarefa correspondente e gravar o vínculo visita↔OS.
     os_id: pgpOsIdSeguro(),
+    // V73 — CONTRATO F-06 também na inspeção: client_uid = visit_id estável.
+    // O dedupe adicional do v79 F-09 existe exatamente para o caso em que o
+    // front regenera o visit_id entre retries; na inspeção ele nunca chegava.
+    client_uid: pgpVisitIdFor(
+      (pgpOsIdSeguro()||'') + '|' + pgpMachineKey(gv('razao_social'),gv('marca'),gv('modelo'),gv('ns')),
+      (gv('data_visita') || new Date().toISOString().slice(0,10))
+    ),
+    // V73 — tipo de VISITA (não confundir com tipoEquip): o GAS grava a coluna
+    // Tipo e decide se mexe em MACHINE_PARTS. Antes o saveVisit recebia o
+    // payload sem `tipo` e caía sempre no default 'inspecao'.
+    tipoVisita: (typeof _pgpTipoVisita !== 'undefined') ? _pgpTipoVisita : 'inspecao',
     // V64 — visit_id estável (idempotência do reenvio). Chave por OS+máquina+data:
     // reenviar a mesma visita não cria linha nova (o GAS deduplica por visit_id).
     visit_id: pgpVisitIdFor(
@@ -11923,6 +12090,7 @@ async function pfAbrirForm(tarefaId, formUrl, btn) {
     // V67: caminho interno não navega — devolve o botão ao estado normal
     if (btn) { btn.disabled = false; btn.classList.remove('is-busy'); btn.textContent = '📋 Abrir formulário'; }
     window._PGP_OS_ID = _pfOsId;
+    window._PGP_OS_NUMERO = (osObj && osObj.numero_os) ? String(osObj.numero_os) : ''; // V73 (P2)
     window._PGP_TAREFA_ID = tarefaId;
     window._PGP_PREVENTIVA_INICIO_ISO = inicioPreventivaISO;
     var _ovPf = document.getElementById('pfOverlay');
