@@ -1,3 +1,41 @@
+<!-- V72 (31/07/2026) — UX DE CAMPO + MOTOR DE PDF.
+     Par obrigatório: sw.js com CACHE='propertech-v72'. Back-end: NENHUMA
+     mudança de GAS (roda com o v79 ou o v80 no ar).
+
+     P1  Limpeza visual: removida a caixa "📌 Instruções" (texto estático que
+         empurrava a coleta para baixo no celular) e a dica do checklist de
+         pistão encolhida para uma linha.
+     P2  MODO OS no banco de máquinas: dentro de uma OS o banner "Carregar
+         máquina do banco" some e vira "Incluir/Selecionar máquina de <cliente
+         da OS>". Causa do defeito: só pgpStep1/pgpStep2 eram escondidos — os
+         chips RECENTES (globais do aparelho) seguiam vivos e reabriam a busca
+         livre de QUALQUER cliente (pgpQuickSearch -> pgpBackToStep1), o mesmo
+         acontecendo pelo "✕ Limpar" do card verde. Guards em pgpBackToStep1 /
+         pgpQuickSearch / pgpRenderLastClients, cliente travado no cadastro
+         rápido e máquina nova sempre em painel NOVO.
+     P3  Barreira de tipo de visita nos DOIS sentidos (_PGP_TIPO_ESPERADO +
+         pgpSetTipoVisitaUsuario). Causas da troca automática: (a) restoreDraft
+         aplicava o tipo de um rascunho GLOBAL de outra coleta e ainda
+         sobrescrevia _PGP_OS_ID/_PGP_OS_CLIENTE em silêncio; (b) pfAbrirForm
+         decidia "é preventiva" só pela substring modo=preventiva no Form_URL —
+         agora olha o Tipo da tarefa (auto:preventiva).
+     P4  Seta ▸ da peça voltou a fechar (o teste lia display:'' como fechado
+         desde a V70.1) e a caixa de PRAZO saiu de trás dela: agora vive no
+         cartão, sempre visível.
+     P5  Foto salva no aparelho por download direto (navigator.share rodava
+         depois da compressão async, já sem transient activation, e o fallback
+         falhava em silêncio) + toast de sucesso/erro.
+     P6  ASSINATURAS SOBREPOSTAS ÀS FOTOS no PDF: com nº ÍMPAR de fotos o laço
+         da seção 7 terminava sem avançar a última linha e a seção 8 era
+         desenhada por cima. Corrigido junto com o rowStartY obsoleto na
+         quebra de página.
+     P7  Motor de PDF separado em pgpColetarDadosPdf (lê o DOM) +
+         renderPreventivaPdf (desenho PURO) — este último é ESPELHADO no
+         PCM V100, que agora gera o mesmo relatório a partir da visita
+         registrada. As assinaturas passam a subir como anexo 'assinatura'.
+     EXTRA "Nova coleta" agora desliga de fato o contexto da OS
+         (_PGP_OS_ID/_PGP_OS_CLIENTE/_PGP_TAREFA_ID sobreviviam à limpeza).
+-->
 <!-- V71 (30/07/2026) — FIX DEFINITIVO: a COLETA DO TÉCNICO deixa de ser apagada.
      Par obrigatório: sw.js com CACHE='propertech-v71'; back-end GAS v80 (aditivo;
      a V71 também funciona com o v79 no ar).
@@ -376,8 +414,8 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ProperCare Field · PGP Preventivas v34 · build PCF_V71</title>
-<meta name="app-build" content="PCF_V70" data-date="2026-07-29">
+<title>ProperCare Field · PGP Preventivas v34 · build PCF_V72</title>
+<meta name="app-build" content="PCF_V72" data-date="2026-07-31">
 <meta name="theme-color" content="#0f172a">
 <!-- PWA (fix 19/07/2026): o repo já tinha manifest.webmanifest + sw.js + proper-pwa.js,
      mas o index.html não os referenciava — sem estas 3 linhas o SW nunca registra,
@@ -1605,6 +1643,18 @@ if (!window.jspdf) { document.write('<script src="https://cdnjs.cloudflare.com/a
   border:1px solid var(--gray-mid);border-top:none;border-left:3px solid var(--brand-start);
   border-radius:0;background:var(--bg-elev)}
 .pt-table.pt-perfil-pistao tr.pt-detail-row>td .pt-detail-box{border-radius:0 0 10px 10px}
+/* V72 (P2) — barra de máquinas da OS (substitui o banco de máquinas) */
+.pgp-os-maq-bar{display:flex;gap:8px;align-items:center;margin:10px 12px 0}
+.pgp-os-maq-btn{flex:1;min-height:46px;padding:10px 12px;border-radius:10px;cursor:pointer;
+  background:var(--bg-elev);color:var(--brand-start);border:1.5px dashed rgba(245,130,32,.55);
+  font-family:'Inter',sans-serif;font-weight:800;font-size:12px;letter-spacing:.03em;
+  text-transform:uppercase;text-align:center;transition:all .15s}
+.pgp-os-maq-btn:active{transform:scale(.98)}
+.pgp-os-maq-cancel{min-height:46px;padding:10px 12px;border-radius:10px;cursor:pointer;
+  background:transparent;color:var(--text-light);border:1.5px solid var(--gray-mid);
+  font-family:'Inter',sans-serif;font-weight:700;font-size:12px}
+/* V72 (P4) — caixa de prazo agora vive no cartão (fora da seta ▸) */
+.pt-calc-inline:not(:empty){margin-top:10px}
 .pt-table.pt-perfil-pistao tr.pt-group.pt-nao-conforme{border-top-color:var(--red)}
 /* dois botões de foto lado a lado (1 toque em vez de 2) */
 .pt-foto-dupla{display:flex;gap:8px}
@@ -1658,7 +1708,7 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
       <div class="proper-logo-mark">H</div>
       <div class="proper-logo-text">
         <span class="brand">PROPER</span>
-        <span class="brand-sub">Field · V71</span>
+        <span class="brand-sub">Field · V72</span>
       </div>
     </div>
     <div class="header-right">
@@ -1710,7 +1760,7 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
 </div>
 
 <!-- ── BUSCA PGP ── -->
-<div class="pgp-banner">
+<div class="pgp-banner" id="pgpBancoBanner">
   <div class="pgp-banner-head">
     <span style="font-size:15px">🔍</span>
     <span class="pgp-banner-title">Carregar máquina do banco</span>
@@ -1731,7 +1781,7 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
          style="display:none;font-size:12px;color:var(--text-light);padding:4px 0">
       Buscando clientes...
     </div>
-    <button class="pgp-link-btn" onclick="pgpClientSearchFallback()"
+    <button class="pgp-link-btn pgp-so-avulso" onclick="pgpClientSearchFallback()"
             style="margin-top:8px">
       Buscar por série ou TAG →
     </button>
@@ -1745,7 +1795,7 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
     </div>
     <div id="pgpMachineList" class="pgp-machine-list"></div>
     <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
-      <button class="pgp-link-btn" onclick="pgpBackToStep1()">
+      <button class="pgp-link-btn pgp-so-avulso" onclick="pgpBackToStep1()">
         ← Trocar cliente
       </button>
     </div>
@@ -1763,7 +1813,7 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
     </div>
     <div style="display:flex;gap:8px;margin-top:8px">
       <button class="pgp-search-btn" onclick="pgpDoSerialSearch(this)">Buscar</button>
-      <button class="pgp-link-btn" onclick="pgpBackToStep1()">← Voltar</button>
+      <button class="pgp-link-btn pgp-so-avulso" onclick="pgpBackToStep1()">← Voltar</button>
     </div>
   </div>
   <div id="pgpLastClientsWrap" class="pgp-last-clients" style="display:none">
@@ -1771,6 +1821,22 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
   </div>
   <div class="pgp-found" id="pgpFound"></div>
   <div class="pgp-notfound" id="pgpNotFound"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     V72 (P2) — DENTRO DE UMA OS O BANCO DE MÁQUINAS SOME E VIRA ISTO.
+     Antes, com a OS aberta, o banner "Carregar máquina do banco" continuava
+     vivo com os chips RECENTES (que são globais, do aparelho, sem nenhum
+     vínculo com a OS): um toque abria a lista de máquinas de OUTRO cliente
+     e a coleta ia parar no painel da OS errada — reproduzido em 30/07 na OS
+     da PROPER locação oferecendo máquina da Fundição Realeza.
+     Aqui o único caminho é incluir outra máquina DO CLIENTE DA OS.
+     ═══════════════════════════════════════════════════════════════════════ -->
+<div id="pgpOsMaquinasBar" class="pgp-os-maq-bar" style="display:none">
+  <button type="button" id="pgpOsMaquinasBtn" class="pgp-os-maq-btn" onclick="pgpIncluirMaquinaDaOS()">
+    <span id="pgpOsMaquinasLabel">➕ Incluir outra máquina desta OS</span>
+  </button>
+  <button type="button" id="pgpOsMaquinasCancel" class="pgp-os-maq-cancel" style="display:none" onclick="pgpCancelarIncluirMaquina()">✕ Cancelar</button>
 </div>
 
 <!-- Card de máquina carregada -->
@@ -1821,22 +1887,22 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
   </div>
 </div>
 
-<div class="tip-box">
-  <strong>📌 Instruções</strong>
-  Toque em cada item para expandir e preencher. Marque como coletado. Use <b>N/A</b> nas peças que não se aplicam. Para múltiplas máquinas no mesmo cliente, use <b>+ Máquina</b> (dados do cliente copiam automaticamente).
-</div>
+<!-- V72 (P1) — a caixa ".tip-box / 📌 Instruções" foi REMOVIDA: era texto
+     estático no topo de toda coleta, empurrava o conteúdo real para baixo no
+     celular e não ensinava nada que o técnico já não soubesse depois da 1ª
+     visita. A classe .tip-box continua no CSS (usada por outros pontos). -->
 
 <div id="pgpTipoVisitaWrap" style="padding:10px 12px 0">
   <div style="font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Tipo de visita</div>
   <div style="display:flex;gap:8px">
     <button id="btnTipoInspecao"
             class="pgp-tipo-btn pgp-tipo-btn-active"
-            onclick="pgpSetTipoVisita('inspecao')">
+            onclick="pgpSetTipoVisitaUsuario('inspecao')">
       🔍 Inspeção
     </button>
     <button id="btnTipoPreventiva"
             class="pgp-tipo-btn"
-            onclick="pgpSetTipoVisita('preventiva')">
+            onclick="pgpSetTipoVisitaUsuario('preventiva')">
       🔧 Preventiva
     </button>
   </div>
@@ -2282,6 +2348,7 @@ function limparSessaoStorage() {
           pgpSetTipoVisita('preventiva');
         }
       }
+      try { if (typeof pgpAtualizarModoOS === 'function') pgpAtualizarModoOS(); } catch(e) {} // V72 (P2)
       if (window._INITIAL_MODO === 'pipeline') {
         if (typeof pfAbrir === 'function') pfAbrir();
         // v28: se a URL já traz os_id, pula a lista de OS e abre o pipeline direto nela
@@ -2726,48 +2793,53 @@ function updatePartStatusForPhotoKey(midx, photoKey) {
   if (partK) updatePartCompletionStatus('m' + midx + '_' + partK);
 }
 
-function savePhotoToDevice(dataUrl, photoKey, label) {
-  try {
-    // Gera nome de arquivo com data/hora para evitar sobrescrita
-    const ts = new Date();
-    const dateStr = ts.getFullYear().toString() +
-      String(ts.getMonth()+1).padStart(2,'0') +
-      String(ts.getDate()).padStart(2,'0') + '_' +
-      String(ts.getHours()).padStart(2,'0') +
-      String(ts.getMinutes()).padStart(2,'0') +
-      String(ts.getSeconds()).padStart(2,'0');
-    const safeName = (photoKey || 'foto').replace(/[^a-zA-Z0-9_]/g, '_');
-    const fileName = 'PGP_' + safeName + '_' + dateStr + '.jpg';
+// ══════════════════════════════════════════════════════════════════════════
+// V72 (P5) — SALVAR A FOTO NO APARELHO: caminho DETERMINÍSTICO + feedback.
+//
+// Por que mudou (o "as fotos da preventiva de pistão não salvam no celular"):
+// o pipeline de foto é UM SÓ para todos os perfis (fotoDireto/overlay ->
+// capturePhotoLinked -> storePhotosFromFileList -> storePhotoBase64), então
+// não havia ramo faltando no pistão. O elo fraco era ESTA função, para TODO
+// mundo:
+//   (a) ela roda DEPOIS da compressão assíncrona da imagem. Quando chegava em
+//       navigator.share(), a "transient activation" do toque já tinha expirado
+//       e o Android/PWA rejeitava com NotAllowedError;
+//   (b) o fallback de download só fazia console.warn em caso de erro — falhava
+//       EM SILÊNCIO, e o técnico só descobria depois, sem a foto;
+//   (c) foto tirada por <input capture="environment"> NÃO entra na galeria do
+//       Android por conta do SO — este download é a única cópia local.
+// Agora: download por Blob direto (determinístico) + toast de sucesso/erro.
+// A galeria continua não re-salvando (a foto já está no aparelho) — por design.
+// ══════════════════════════════════════════════════════════════════════════
+function pgpNomeArquivoFoto(photoKey) {
+  const ts = new Date();
+  const dateStr = ts.getFullYear().toString() +
+    String(ts.getMonth()+1).padStart(2,'0') +
+    String(ts.getDate()).padStart(2,'0') + '_' +
+    String(ts.getHours()).padStart(2,'0') +
+    String(ts.getMinutes()).padStart(2,'0') +
+    String(ts.getSeconds()).padStart(2,'0');
+  const safeName = (photoKey || 'foto').replace(/[^a-zA-Z0-9_]/g, '_');
+  return 'PGP_' + safeName + '_' + dateStr + '.jpg';
+}
 
-    // Web Share API — tenta primeiro (funciona melhor em apps Android/iOS nativos)
-    if (navigator.canShare) {
-      // Converte dataUrl em Blob/File
-      fetch(dataUrl)
-        .then(r => r.blob())
-        .then(blob => {
-          const file = new File([blob], fileName, { type: 'image/jpeg' });
-          if (navigator.canShare({ files: [file] })) {
-            navigator.share({ files: [file], title: 'PGP – ' + (label || 'Foto') })
-              .catch(() => {
-                // Usuário cancelou o share ou não suportado — fallback para download
-                downloadPhotoFallback(dataUrl, fileName);
-              });
-          } else {
-            downloadPhotoFallback(dataUrl, fileName);
-          }
-        })
-        .catch(() => downloadPhotoFallback(dataUrl, fileName));
-    } else {
-      downloadPhotoFallback(dataUrl, fileName);
-    }
+function savePhotoToDevice(dataUrl, photoKey, label) {
+  var fileName = 'PGP_foto.jpg';
+  try {
+    fileName = pgpNomeArquivoFoto(photoKey);
+    return downloadPhotoFallback(dataUrl, fileName);
   } catch(err) {
     console.warn('savePhotoToDevice error:', err);
+    try { showFotoToast('⚠ Não foi possível salvar a foto no aparelho (' + (err && err.message ? err.message : 'erro') + ')'); } catch(e2) {}
+    return Promise.resolve(false);
   }
 }
 
 function downloadPhotoFallback(dataUrl, fileName) {
-  // Converte dataUrl em Blob para forçar download como arquivo de imagem
-  fetch(dataUrl)
+  // Converte dataUrl em Blob para forçar download como arquivo de imagem.
+  // V72 (P5): devolve Promise<bool> e AVISA na tela — antes um erro aqui
+  // morria num console.warn que ninguém lê no celular.
+  return fetch(dataUrl)
     .then(r => r.blob())
     .then(blob => {
       const url = URL.createObjectURL(blob);
@@ -2778,8 +2850,14 @@ function downloadPhotoFallback(dataUrl, fileName) {
       document.body.appendChild(a);
       a.click();
       setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+      try { showFotoToast('📥 Foto salva no aparelho: ' + fileName); } catch(e) {}
+      return true;
     })
-    .catch(err => console.warn('downloadPhotoFallback error:', err));
+    .catch(err => {
+      console.warn('downloadPhotoFallback error:', err);
+      try { showFotoToast('⚠ Falha ao salvar a foto no aparelho — ela continua no relatório e na fila do Drive'); } catch(e) {}
+      return false;
+    });
 }
 
 // PARTES com dados de horímetro na seção 4
@@ -3412,8 +3490,18 @@ function togglePartDetail(pk, intDefault, e) {
     return;
   }
 
-  const open = det.style.display === 'none' || det.style.display === '';
-  det.style.display = open ? '' : 'none'; // V70.1
+  // ═══════════════════════════════════════════════════════════════════════
+  // V72 (P4) — A SETA ▸ NUNCA FECHAVA (defeito introduzido na V70.1).
+  // Naquele acabamento o estado "aberto" deixou de ser display:'table-row' e
+  // passou a ser display:'' (o CSS decide, por causa do layout em cartões do
+  // pistão). Só que este teste continuou lendo '' como "FECHADO": no 1º toque
+  // abria, e do 2º em diante `open` era sempre true — reabria o que já estava
+  // aberto. Em campo isso lê como "o botão não faz nada".
+  // Fonte da verdade agora é a classe .pt-detail-open, que o próprio código
+  // já mantinha na linha de baixo.
+  // ═══════════════════════════════════════════════════════════════════════
+  const open = !(tr && tr.classList.contains('pt-detail-open'));
+  det.style.display = open ? '' : 'none';
   if (btn) btn.classList.toggle('open', open);
   if (tr)  tr.classList.toggle('pt-detail-open', open);
   if (open) {
@@ -4551,13 +4639,44 @@ async function novaColeta() {
   createPanel(0);
   renderTabs();
   updateProgress();
-  document.getElementById('clientBanner').style.display = 'none';
+  // ═════════════════════════════════════════════════════════════════════
+  // V72 (ACHADO EXTRA — bug P0 silencioso, anterior à V71).
+  // O elemento 'clientBanner' NÃO EXISTE no HTML deste app (é referência
+  // órfã, provavelmente sobra de uma versão antiga). Como estava sem guard,
+  // esta linha lançava TypeError e ABORTAVA novaColeta() no meio: tudo que
+  // vinha DEPOIS nunca rodava —
+  //   • o rascunho (DRAFT_KEY) NÃO era descartado -> o banner "↩ Rascunho
+  //     encontrado" da coleta anterior voltava na cara do técnico;
+  //   • o banner de restauração continuava na tela;
+  //   • _editingSessionIndex/_currentSessionId não zeravam -> o próximo
+  //     "Salvar coleta" podia sobrescrever a coleta ANTERIOR;
+  //   • pgpClearMachine() nunca rodava -> o card verde seguia mostrando a
+  //     máquina do cliente anterior numa "coleta nova".
+  // Guard defensivo em todos os getElementById daqui para baixo.
+  // ═════════════════════════════════════════════════════════════════════
+  try { const _cb = document.getElementById('clientBanner'); if (_cb) _cb.style.display = 'none'; } catch(e){}
   const draft = localStorage.getItem(DRAFT_KEY);
   if (draft) localStorage.removeItem(DRAFT_KEY);
-  document.getElementById('restoreBanner').style.display = 'none';
+  try { const _rb = document.getElementById('restoreBanner'); if (_rb) _rb.style.display = 'none'; } catch(e){}
   _editingSessionIndex = -1;
   _currentSessionId = null; // nova coleta = novo ID
+  // ═════════════════════════════════════════════════════════════════════
+  // V72 (achado extra) — "Nova coleta" NÃO desligava o contexto da OS:
+  // window._PGP_OS_ID/_PGP_OS_CLIENTE/_PGP_TAREFA_ID sobreviviam à limpeza
+  // (só o pgpOsIdSeguro, por comparação de cliente, evitava gravar na OS
+  // errada). Com o modo OS do P2 isso também deixaria o técnico preso sem
+  // o banco de máquinas. Nova coleta = contexto zerado, como todo o resto.
+  // ═════════════════════════════════════════════════════════════════════
+  window._PGP_OS_ID = null;
+  window._PGP_OS_CLIENTE = null;
+  window._PGP_TAREFA_ID = null;
+  window._PGP_OS_ID_CARREGADA = '';
+  window._PGP_TIPO_ESPERADO = null;
+  try { const _rw = document.getElementById('pgpReturnToOSContainer'); if(_rw){ _rw.style.display='none'; _rw.innerHTML=''; } } catch(e){}
+  _pgpTravaClienteOS = false;
+  _pgpDestinoNovoPainel = false;
   pgpClearMachine();        // limpar máquina carregada do banco
+  try { pgpAtualizarModoOS(); pgpRenderLastClients(); } catch(e){}
 }
 
 // ── BACK GUARD (botão voltar mobile) ─────────────────
@@ -5285,17 +5404,58 @@ function checkRestoreDraft() {
 // V68 — F-30: quantidade de fotos que o backup local tem esperando (0 = nenhuma).
 let _pgpDraftFotosPendentes = 0;
 
-function restoreDraft() {
+async function restoreDraft() {
   const draft = getDraft();
   if (!draft) return;
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // V72 (P3) — O RASCUNHO É GLOBAL (uma única chave 'pgp_draft_v1' para o app
+  // inteiro). Este era o caminho nº 1 do "abri a OS de preventiva e o botão
+  // estava em Inspeção": restaurar um rascunho de OUTRA coleta aplicava o
+  // tipo de visita dela E sobrescrevia _PGP_OS_ID/_PGP_OS_CLIENTE, em
+  // silêncio, com a OS de preventiva já aberta na tela.
+  // Agora: rascunho de outra OS exige confirmação, e trocar o tipo esperado
+  // pela OS também.
+  // ═══════════════════════════════════════════════════════════════════════
+  if (pgpEmOS() && draft.osId && String(draft.osId) !== String(window._PGP_OS_ID)) {
+    let okOutra = false;
+    try {
+      okOutra = await AppDialog.confirm(
+        'O rascunho guardado é de OUTRA coleta (OS ' + draft.osId + ').\n\n' +
+        'Você está com a OS ' + window._PGP_OS_ID + ' aberta. Restaurar agora substitui a coleta desta OS ' +
+        'pelos dados do rascunho antigo.',
+        { title: 'Rascunho de outra OS', okLabel: 'Restaurar mesmo assim', cancelLabel: 'Manter esta OS', danger: true }
+      );
+    } catch(e) { okOutra = false; }
+    if (!okOutra) { try { document.getElementById('restoreBanner').style.display = 'none'; } catch(e2){} return; }
+  }
+
   document.querySelectorAll('.machine-panel').forEach(p => p.remove());
   machines = [{}];
   createPanel(0);
   restoreState(draft);
   // FIX retomada (aditivo): volta ao ponto exato - tipo de visita, OS em curso,
   // fotos (via IndexedDB) e a maquina que estava aberta.
-  try { if (draft.tipoVisita) pgpSetTipoVisita(draft.tipoVisita); } catch(e){}
-  try { if (draft.osId) { window._PGP_OS_ID = draft.osId; window._PGP_OS_CLIENTE = draft.osCliente || ''; } } catch(e){}
+  try {
+    if (draft.tipoVisita) {
+      const _esp = window._PGP_TIPO_ESPERADO;
+      if (_esp && draft.tipoVisita !== _esp) {
+        let okTipo = false;
+        try {
+          okTipo = await AppDialog.confirm(
+            'O rascunho estava em ' + (_PGP_TIPO_NOME[draft.tipoVisita] || draft.tipoVisita) +
+            ', mas esta OS prevê ' + (_PGP_TIPO_NOME[_esp] || _esp) + '.\n\nQual manter?',
+            { title: 'Tipo de visita do rascunho', okLabel: 'Usar o do rascunho', cancelLabel: 'Manter ' + (_PGP_TIPO_NOME[_esp] || _esp) }
+          );
+        } catch(e) { okTipo = false; }
+        if (okTipo) pgpSetTipoVisita(draft.tipoVisita);
+      } else {
+        pgpSetTipoVisita(draft.tipoVisita);
+      }
+    }
+  } catch(e){}
+  try { if (draft.osId && !pgpEmOS()) { window._PGP_OS_ID = draft.osId; window._PGP_OS_CLIENTE = draft.osCliente || ''; } } catch(e){}
+  try { pgpAtualizarModoOS(); } catch(e){}
   try { pgpRestaurarFotosIDB('draft'); } catch(e){}
   try { _pgpDraftFotosPendentes = 0; } catch(e){} // V68 — F-30: fotos já voltaram
   try {
@@ -5726,8 +5886,47 @@ function pgpCreateReportBuilder() {
   // isFirstPageOfDoc: true = desenha header alto com logo (topo do PDF)
   // consolidatedInfo: {index,total} só em modo consolidado, desenha a faixa
   //   "MÁQUINA N DE TOTAL" — não faz sentido em PDF individual por máquina.
+  //
+  // V72 (31/07/2026) — SEPARAÇÃO COLETA × DESENHO.
+  // Antes, TODO o relatório era desenhado lendo o DOM vivo da coleta
+  // (document.getElementById('m<i>_...'), photoStore, _PGP_ASSINATURAS).
+  // Isso prendia o gerador ao PCF: no PCM (onde quem gera é o ADM, a partir
+  // de uma visita JÁ registrada) não existe esse DOM. Agora:
+  //   pgpColetarDadosPdf(midx) -> objeto `dados` PURO (essa parte lê o DOM)
+  //   renderPreventivaPdf(dados, ...) -> desenho PURO (zero document.*)
+  // renderMachine(midx, ...) é o atalho que encadeia os dois — assinatura
+  // preservada, gerarPDF/gerarPDFConsolidado não mudaram.
+  // O bloco `renderPreventivaPdf` + helpers é ESPELHADO no PCM (V100):
+  // ALTERAR SEMPRE NOS DOIS.
   // ══════════════════════════════════════════════════════
-  function renderMachine(midx, isFirstPageOfDoc, consolidatedInfo) {
+
+  // Cor do texto de status de peça — derivada do status (apresentação fica
+  // no desenho; o cálculo fica na coleta). Aceita as grafias do perfil
+  // parafuso (OK/ATENÇÃO/VENCIDO) e do pistão (Conforme/NAO CONFORME).
+  function corStatusPeca(st) {
+    var s = String(st || '').toUpperCase();
+    if (s === 'VENCIDO' || s === 'NAO CONFORME' || s === 'NÃO CONFORME') return [192, 57, 43];
+    if (s === 'ATENÇÃO'  || s === 'ATENCAO')                             return [200, 100, 0];
+    if (s === 'OK'       || s === 'CONFORME')                            return GREEN;
+    return [100, 100, 100];
+  }
+
+  function corStatusFoto(stat) {
+    if (stat === 'Fotografado')   return GREEN;
+    if (stat === 'Não Aplicável') return [150, 150, 150];
+    if (stat === 'Não disponível')return [150, 150, 150];
+    return [192, 57, 43];
+  }
+
+  function renderPreventivaPdf(d, isFirstPageOfDoc, consolidatedInfo) {
+    d = d || {};
+    var cli  = d.cliente    || {};
+    var maq  = d.maquina    || {};
+    var hor  = d.horimetro  || {};
+    var prev = d.preventiva || {};
+    var ass  = d.assinaturas|| {};
+    var ehPistao = (d.perfilId === 'pistao');
+
     // ── PÁGINA 1: HEADER ──────────────────────────────
     addPageHeader(isFirstPageOfDoc);
     let y = isFirstPageOfDoc ? 40 : 24;
@@ -5743,35 +5942,32 @@ function pgpCreateReportBuilder() {
       y += 9;
     }
 
-    const g = (key) => vg(midx, key);
-
     // ── SEÇÃO 1: DADOS DO CLIENTE ──────────────────────
     y = sectionTitle(y, '[C]', '1. Dados do Cliente');
-    y = infoRow(y, 'Razão Social / Nome', g('razao_social'), false);
-    y = infoRow(y, 'Filial / Unidade', g('filial'), true);
-    y = infoRow(y, 'CNPJ / CPF', g('cnpj'), false);
-    y = infoRow(y, 'Contato', g('contato'), true);
-    y = infoRow2(y, [{label:'Telefone', value:g('telefone')}, {label:'E-mail', value:g('email')}]);
-    y = infoRow2(y, [{label:'Cidade / Estado', value:g('cidade')}, {label:'Últ. Visita', value:g('ult_visita')}]);
-    y = infoRow(y, 'Próxima Visita', g('prox_visita'), false);
+    y = infoRow(y, 'Razão Social / Nome', cli.razao_social, false);
+    y = infoRow(y, 'Filial / Unidade', cli.filial, true);
+    y = infoRow(y, 'CNPJ / CPF', cli.cnpj, false);
+    y = infoRow(y, 'Contato', cli.contato, true);
+    y = infoRow2(y, [{label:'Telefone', value:cli.telefone}, {label:'E-mail', value:cli.email}]);
+    y = infoRow2(y, [{label:'Cidade / Estado', value:cli.cidade}, {label:'Últ. Visita', value:cli.ult_visita}]);
+    y = infoRow(y, 'Próxima Visita', cli.prox_visita, false);
     y += 3;
 
     // ── SEÇÃO 2: IDENTIFICAÇÃO DA MÁQUINA ────────────
     y = sectionTitle(y, '[M]', '2. Identificação da Máquina');
-    y = infoRow2(y, [{label:'Marca', value:g('marca')}, {label:'Modelo', value:g('modelo')}]);
-    y = infoRow2(y, [{label:'Nº de Série', value:g('ns')}, {label:'Ano', value:g('ano')}]);
-    y = infoRow2(y, [{label:'Tipo de Equipamento', value:g('tipo')}, {label:'Potência', value:g('potencia')}]);
-    y = infoRow(y, 'Localização', g('localizacao'), false);
-    y = infoRow2(y, [{label:'TAG', value:g('tag')}, {label:'Data da Visita', value:g('data_visita')||g('ult_visita')}]);
-    const obsOp = g('obs_op');
-    if (obsOp !== '—') y = infoRow(y, 'Obs. Operacional', obsOp, true);
+    y = infoRow2(y, [{label:'Marca', value:maq.marca}, {label:'Modelo', value:maq.modelo}]);
+    y = infoRow2(y, [{label:'Nº de Série', value:maq.ns}, {label:'Ano', value:maq.ano}]);
+    y = infoRow2(y, [{label:'Tipo de Equipamento', value:maq.tipo}, {label:'Potência', value:maq.potencia}]);
+    y = infoRow(y, 'Localização', maq.localizacao, false);
+    y = infoRow2(y, [{label:'TAG', value:maq.tag}, {label:'Data da Visita', value:maq.data_visita}]);
+    if (maq.obs_op && maq.obs_op !== '—') y = infoRow(y, 'Obs. Operacional', maq.obs_op, true);
     y += 3;
 
     // ── SEÇÃO 3: HORÍMETRO E REGIME ──────────────────
     y = sectionTitle(y, '[H]', '3. Horímetro e Regime de Trabalho');
-    y = infoRow2(y, [{label:'Horímetro Total (h)', value:g('horimetro')}, {label:'Data da Leitura', value:g('data_leitura')}]);
-    y = infoRowWrap(y, 'Regime de Trabalho', g('h_dia'), false);
-    y = infoRow2(y, [{label:'Total h/Semana', value:g('h_sem_total') !== '—' ? g('h_sem_total')+' h' : '—'}, {label:'Responsável', value:g('tecnico')}]);
+    y = infoRow2(y, [{label:'Horímetro Total (h)', value:hor.total}, {label:'Data da Leitura', value:hor.data_leitura}]);
+    y = infoRowWrap(y, 'Regime de Trabalho', hor.regime, false);
+    y = infoRow2(y, [{label:'Total h/Semana', value:(hor.h_sem_total && hor.h_sem_total !== '—') ? hor.h_sem_total+' h' : '—'}, {label:'Responsável', value:hor.tecnico}]);
     y += 3;
 
     // ── SEÇÃO 3.1: DADOS DA PREVENTIVA ───────────────
@@ -5780,14 +5976,14 @@ function pgpCreateReportBuilder() {
     // se pelo menos um destes campos foi preenchido (visitas antigas, sem
     // esses dados, não ganham uma seção vazia no relatório).
     {
-      const auxiliarV = g('auxiliar');
-      const horaIniV = g('hora_inicio');
-      const horaFimV = g('hora_fim');
+      const auxiliarV = prev.auxiliar || '—';
+      const horaIniV  = prev.hora_inicio || '—';
+      const horaFimV  = prev.hora_fim || '—';
       if (auxiliarV !== '—' || horaIniV !== '—' || horaFimV !== '—') {
         const duracaoV = (() => {
           if (horaIniV === '—' || horaFimV === '—') return '—';
-          const [h1, m1] = horaIniV.split(':').map(Number);
-          const [h2, m2] = horaFimV.split(':').map(Number);
+          const [h1, m1] = String(horaIniV).split(':').map(Number);
+          const [h2, m2] = String(horaFimV).split(':').map(Number);
           if ([h1, m1, h2, m2].some(isNaN)) return '—';
           let mins = (h2 * 60 + m2) - (h1 * 60 + m1);
           if (mins < 0) mins += 24 * 60; // preventiva atravessou a meia-noite
@@ -5802,16 +5998,14 @@ function pgpCreateReportBuilder() {
 
     // ── SEÇÃO 4: PEÇAS ────────────────────────────────
     y = checkY(y, 12);
-    const _perfPdf = pgpPerfil(midx);
-    const _ehPistaoPdf = _perfPdf.id === 'pistao';
-    y = sectionTitle(y, '[P]', _ehPistaoPdf ? '4. Checklist de Preventiva (Pistao)' : '4. Peças de Preventiva');
+    y = sectionTitle(y, '[P]', ehPistao ? '4. Checklist de Preventiva (Pistao)' : '4. Peças de Preventiva');
 
     // Cabeçalho da tabela
     // v27: coluna "Referência" dedicada — antes a referência era desenhada
     // sobre a mesma linha de base do nome da peça (colidiam visualmente).
     // Larguras somam exatamente CW (182mm).
     const colsP = [40, 26, 22, 22, 22, 22, 28];
-    const headP = _ehPistaoPdf
+    const headP = ehPistao
       ? ['Item', 'Referência', 'Últ. troca', 'Ciclo (d)', 'Dias', 'Restam', 'Estado']
       : ['Peça', 'Referência', 'Últ.Troca(h)', 'Intervalo(h)', 'H.Rodadas', 'H.Restantes', 'Status'];
     const rowHP = 7;
@@ -5827,23 +6021,13 @@ function pgpCreateReportBuilder() {
     y += rowHP;
 
     // Linha por peça
-    const scenEl = document.getElementById('m' + midx + '_scenario');
-    const scenId = scenEl ? scenEl.value : '';
-    const scenObj = (_perfPdf.scenarios || SCENARIOS).find(s => s.id === scenId);
     // v27: observações individuais por peça — antes só a obs geral das
     // peças (parts_obs) aparecia no PDF, perdendo o campo de observação
     // por peça (${pk}_obs, ex: "etiqueta ilegível, horímetro zerado...").
-    const partsObsList = [];
+    const partsObsList = d.pecasObs || [];
 
-    _perfPdf.parts.forEach((pt, pi) => {
+    (d.pecas || []).forEach((pt, pi) => {
       y = checkY(y, rowHP);
-      const pk = 'm' + midx + '_' + pt.k;
-      const naBtn = document.getElementById(pk + '_na');
-      const isNA = naBtn && naBtn.classList.contains('active');
-
-      const ptObsEl = document.getElementById(pk + '_obs');
-      const ptObsV = ptObsEl ? ptObsEl.value.trim() : '';
-      if (ptObsV) partsObsList.push(pt.label + ': ' + ptObsV);
 
       const bg = pi % 2 === 0 ? [248, 249, 252] : WHITE;
       doc.setFillColor(...bg);
@@ -5852,7 +6036,7 @@ function pgpCreateReportBuilder() {
       doc.setLineWidth(0.15);
       doc.rect(ML, y, CW, rowHP, 'S');
 
-      if (isNA) {
+      if (pt.na) {
         doc.setFont('helvetica','bold');
         doc.setFontSize(7);
         doc.setTextColor(150, 100, 180);
@@ -5860,50 +6044,8 @@ function pgpCreateReportBuilder() {
         doc.setFont('helvetica','normal');
         doc.text(limparTextoPDF('Não Aplicável'), ML + colsP[0] + 2, y + 5);
       } else {
-        const vm  = (document.getElementById(pk + '_valor_mostrado') || {}).value || '';
-        const intV = (document.getElementById(pk + '_int') || {}).value || String(pt.intDefault);
-        const cont = (document.getElementById(pk + '_contador') || {}).value || '';
-        const ref  = (document.getElementById(pk + '_ref') || {}).value || '';
-        // v31 item 8: campo "Última troca" foi removido da UI (item 3) — o
-        // input hidden só carrega valor se veio de uma coleta/rascunho antigo
-        // com edição manual; caso contrário, calcular sempre pela mesma
-        // fórmula usada nos payloads (calcUltimaTroca).
-        let ult = (document.getElementById(pk + '_ult') || {}).value || '';
-        if (!ult) {
-          const calcUlt = calcUltimaTroca(g('horimetro'), vm, intV, cont);
-          if (calcUlt !== null) ult = String(Math.max(0, calcUlt).toFixed(0));
-        }
-
-        let rodadas = '', restantes = '', status = '', statusColor = DARK;
-        // V69 — perfil pistão: as colunas viram data/dias e o estado
-        // encontrado (conforme / não conforme) tem precedência no "Estado".
-        if (cont === 'calendario') {
-          const _calPdf = pgpCalendarioInfo(vm, intV);
-          if (_calPdf) {
-            ult = pgpFmtDataBR(pgpParseDataLocal(vm));
-            rodadas   = String(Math.max(0, _calPdf.rodados));
-            restantes = String(_calPdf.restantes);
-            status = _calPdf.status;
-            statusColor = _calPdf.status === 'VENCIDO' ? [192, 57, 43]
-                        : _calPdf.status === 'ATENÇÃO' ? [200, 100, 0] : GREEN;
-          } else {
-            ult = '—';
-          }
-          const _estPdf = (document.getElementById(pk + '_estado') || {}).value || '';
-          if (_estPdf === 'nao_conforme') { status = 'NAO CONFORME'; statusColor = [192, 57, 43]; }
-          else if (_estPdf === 'ok' && !status) { status = 'Conforme'; statusColor = GREEN; }
-        } else
-        if (!isNaN(parseFloat(vm)) && !isNaN(parseFloat(intV)) && (cont === 'progressivo' || cont === 'regressivo')) {
-          const vmN = parseFloat(vm), intN = parseFloat(intV);
-          rodadas   = cont === 'progressivo' ? vmN.toFixed(0) : (intN - vmN).toFixed(0);
-          restantes = cont === 'progressivo' ? (intN - vmN).toFixed(0) : vmN.toFixed(0);
-          const pct = (parseFloat(rodadas) / intN) * 100;
-          if (pct >= 100 || parseFloat(restantes) <= 0) { status = 'VENCIDO'; statusColor = [192, 57, 43]; }
-          else if (pct >= 80) { status = 'ATENÇÃO'; statusColor = [200, 100, 0]; }
-          else { status = 'OK'; statusColor = GREEN; }
-        } else if (scenId === 'A') {
-          status = 'Ver horímetro'; statusColor = [100, 100, 100];
-        }
+        const status = pt.status || '';
+        const statusColor = corStatusPeca(status);
 
         doc.setFont('helvetica','bold');
         doc.setFontSize(7);
@@ -5915,13 +6057,13 @@ function pgpCreateReportBuilder() {
         doc.setFont('helvetica','normal');
         doc.setFontSize(6.5);
         doc.setTextColor(100, 100, 100);
-        doc.text(limparTextoPDF(ref || '—'), ML + colsP[0] + 2, y + 5);
+        doc.text(limparTextoPDF(pt.ref || '—'), ML + colsP[0] + 2, y + 5);
 
         doc.setFont('helvetica','normal');
         doc.setFontSize(7);
         doc.setTextColor(...DARK);
         let xc = ML + colsP[0] + colsP[1] + 1;
-        [ult || '—', intV || '—', rodadas || '—', restantes || '—'].forEach((v, ci) => {
+        [pt.ult || '—', pt.interval || '—', pt.rodadas || '—', pt.restantes || '—'].forEach((v, ci) => {
           doc.text(limparTextoPDF(String(v)), xc + 1, y + 5);
           xc += colsP[ci + 2];
         });
@@ -5949,17 +6091,17 @@ function pgpCreateReportBuilder() {
     }
 
     // Cenário e obs
-    if (scenObj) {
+    if (d.cenario) {
       y = checkY(y, 8);
       doc.setFillColor(255, 247, 230);
       doc.rect(ML, y, CW, 7, 'F');
       doc.setFont('helvetica','italic');
       doc.setFontSize(7);
       doc.setTextColor(123, 64, 0);
-      doc.text(limparTextoPDF('Cenario ' + scenObj.id + ': ' + scenObj.title), ML + 2, y + 4.8);
+      doc.text(limparTextoPDF('Cenario ' + d.cenario.id + ': ' + d.cenario.title), ML + 2, y + 4.8);
       y += 9;
     }
-    const obsP = (document.getElementById('m' + midx + '_parts_obs') || {}).value || '';
+    const obsP = d.partsObs || '';
     if (obsP) {
       y = checkY(y, 10);
       doc.setFillColor(255, 253, 245);
@@ -5974,7 +6116,7 @@ function pgpCreateReportBuilder() {
     y += 3;
 
     // ── SEÇÃO 5: OBSERVAÇÕES FINAIS ───────────────────
-    const obsG = g('obs_gerais');
+    const obsG = d.obsGerais || '—';
     if (obsG !== '—') {
       y = checkY(y, 12);
       y = sectionTitle(y, '[OBS]', '5. Observações Gerais');
@@ -5994,35 +6136,9 @@ function pgpCreateReportBuilder() {
     y = checkY(y, 12);
     y = sectionTitle(y, '[F]', '6. Registro Fotográfico – Status');
 
-    const panel = document.getElementById('panel-' + midx);
-    const photoItemsEl = panel ? panel.querySelectorAll('.photo-item') : [];
     const photoColW = CW / 2;
-    let photoStatusLines = [];
-    photoItemsEl.forEach((item, pidx) => {
-      const name = item.querySelector('.photo-pname').textContent.trim();
-      // v27: se a foto está vinculada a uma peça marcada N/A, o status é
-      // "Não Aplicável" (peça não existe na máquina) e não "Não disponível"
-      // (que fica reservado a foto de peça existente ainda não tirada).
-      const _phPdf = _perfPdf.photos[pidx];
-      const photoKey = (_phPdf && _phPdf.photoKey) || '';
-      const linkedPartK = PART_PHOTO_MAP_REV[photoKey];
-      let linkedPartNA = false;
-      if (linkedPartK) {
-        const naBtn = document.getElementById('m' + midx + '_' + linkedPartK + '_na');
-        linkedPartNA = !!(naBtn && naBtn.classList.contains('active'));
-      }
-      // v31 item 11: símbolos ✔/➖/✗/○ fora do charset padrão do jsPDF
-      // (helvetica/WinAnsi) renderizavam como caracteres corrompidos —
-      // trocados por texto simples, seguindo o mesmo padrão já usado sem
-      // problema na coluna "Status" da tabela de peças (seção 4).
-      const stat = item.classList.contains('photo-checked') ? 'Fotografado'
-                 : linkedPartNA ? 'Não Aplicável'
-                 : item.classList.contains('photo-nd') ? 'Não disponível'
-                 : 'Pendente';
-      const col = item.classList.contains('photo-checked') ? GREEN
-                : linkedPartNA ? [150,150,150]
-                : item.classList.contains('photo-nd') ? [150,150,150] : [192,57,43];
-      photoStatusLines.push({ name, stat, col });
+    const photoStatusLines = (d.fotosStatus || []).map(function (f) {
+      return { name: f.name, stat: f.stat, col: corStatusFoto(f.stat) };
     });
 
     const rowHPh = 6;
@@ -6048,16 +6164,9 @@ function pgpCreateReportBuilder() {
     y += 4;
 
     // ── SEÇÃO 7: FOTOS ────────────────────────────────
-    // v23: cada photoKey agora guarda uma LISTA de fotos (até 3) — achatar para a galeria do PDF,
-    // numerando a legenda quando houver mais de uma foto do mesmo item.
-    const machinePhotos = photoStore[midx] || {};
-    const photoEntries = [];
-    Object.values(machinePhotos).forEach(list => {
-      const arr = Array.isArray(list) ? list : [list]; // compat. com rascunhos antigos (objeto único)
-      arr.filter(p => p && p.dataUrl).forEach((p, i) => {
-        photoEntries.push(arr.length > 1 ? Object.assign({}, p, { label: (p.label || '') + ' (' + (i+1) + '/' + arr.length + ')' }) : p);
-      });
-    });
+    // v23: cada photoKey guarda uma LISTA de fotos (até 3) — a coleta já
+    // entrega achatado e com a legenda numerada quando há mais de uma.
+    const photoEntries = d.fotos || [];
 
     if (photoEntries.length > 0) {
       // Nova página para fotos
@@ -6091,11 +6200,16 @@ function pgpCreateReportBuilder() {
         rowMaxH = Math.max(rowMaxH, blockH);
 
         y = checkY(rowStartY, blockH);
-        if (y !== rowStartY && col !== 0) {
-          // mudou de página — reinicia linha
-          col = 0;
-          rowStartY = y;
-          rowMaxH = blockH;
+        // ═══════════════════════════════════════════════════════════════
+        // V72 (P6) — o cursor da LINHA precisa acompanhar a quebra de página.
+        // Antes, o reset só existia para `col !== 0`: quando a quebra caía na
+        // PRIMEIRA foto de uma linha, `rowStartY` ficava com o valor da página
+        // ANTERIOR e a 2ª foto da linha era posicionada por um checkY com base
+        // velha (bloco fora de lugar / sobreposto).
+        // ═══════════════════════════════════════════════════════════════
+        if (y !== rowStartY) {
+          rowStartY = y;                       // sempre re-sincroniza
+          if (col !== 0) { col = 0; rowMaxH = blockH; } // linha recomeça na nova página
         }
 
         const x = ML + col * (PHOTO_W + GAP);
@@ -6129,14 +6243,23 @@ function pgpCreateReportBuilder() {
           y = rowStartY;
         }
       }
+
+      // ═══════════════════════════════════════════════════════════════
+      // V72 (P6) — ESTE É O BUG DAS ASSINATURAS SOBREPOSTAS.
+      // Com um número ÍMPAR de fotos o laço termina com col === 1, ou seja,
+      // o avanço de linha acima (rowStartY += rowMaxH + GAP) NUNCA rodou para
+      // a última linha: `y` ficava no TOPO do último bloco de foto e a
+      // SEÇÃO 8 era desenhada POR CIMA da foto. Com número par não acontecia
+      // — por isso o defeito era intermitente.
+      // ═══════════════════════════════════════════════════════════════
+      if (col !== 0) y = rowStartY + rowMaxH + GAP;
     }
 
     // ── SEÇÃO 8: ASSINATURAS ──────────────────────────
     // Assinaturas manuscritas coletadas em campo (técnico + responsável do
     // cliente), cada uma com nome e data/hora da coleta. Só entram se o
-    // contexto (OS/cliente) bater com esta máquina (pgpAssinaturasContextoOk).
-    var _ass = window._PGP_ASSINATURAS || {};
-    if ((_ass.tecnico || _ass.responsavel) && pgpAssinaturasContextoOk(midx)) {
+    // contexto (OS/cliente) bater com esta máquina — checagem feita na coleta.
+    if (ass.tecnico || ass.responsavel) {
       var boxH = 40, gap = 6;
       y = checkY(y + 2, boxH + 12);
       y = sectionTitle(y, '', '8. Assinaturas');
@@ -6144,8 +6267,8 @@ function pgpCreateReportBuilder() {
       var boxW = (CW - gap) / 2;
       var rowY = y;
       var _sigs = [
-        { a: _ass.tecnico,     papel: 'Tecnico responsavel' },
-        { a: _ass.responsavel, papel: 'Responsavel pelo cliente' }
+        { a: ass.tecnico,     papel: 'Tecnico responsavel' },
+        { a: ass.responsavel, papel: 'Responsavel pelo cliente' }
       ];
       _sigs.forEach(function (s, i) {
         var x = ML + i * (boxW + gap);
@@ -6170,8 +6293,8 @@ function pgpCreateReportBuilder() {
         doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); doc.setTextColor.apply(doc, DARK);
         var dh = '';
         if (s.a && s.a.ts) {
-          var d = new Date(s.a.ts);
-          dh = 'Coletada em ' + d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+          var dts = new Date(s.a.ts);
+          dh = 'Coletada em ' + dts.toLocaleDateString('pt-BR') + ' ' + dts.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         }
         doc.text(limparTextoPDF(dh), x + 3, lineY + 9);
       });
@@ -6181,7 +6304,183 @@ function pgpCreateReportBuilder() {
     addPageFooter();
   }
 
-  return { doc, renderMachine, newPage, checkY, addPageHeader, addPageFooter, agora, get pageNum(){ return pageNum; } };
+  // Atalho: coleta do DOM + desenho. Mantém a assinatura histórica usada por
+  // gerarPDF (1 doc por máquina) e gerarPDFConsolidado (doc único com índice).
+  function renderMachine(midx, isFirstPageOfDoc, consolidatedInfo) {
+    return renderPreventivaPdf(pgpColetarDadosPdf(midx), isFirstPageOfDoc, consolidatedInfo);
+  }
+
+  return { doc, renderMachine, renderPreventivaPdf, newPage, checkY, addPageHeader, addPageFooter, agora, get pageNum(){ return pageNum; } };
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// V72 (31/07/2026) — COLETA DOS DADOS DO RELATÓRIO (única parte que lê o DOM)
+// Devolve o objeto `dados` consumido por renderPreventivaPdf. É o contrato
+// entre PCF (coleta viva, em campo) e PCM (coleta a partir da visita já
+// registrada). Mudou campo aqui? Atualizar pcmMontarDadosPdf no PCM V100.
+//
+// Formato:
+// {
+//   perfilId: 'pistao'|'parafuso',
+//   cliente:    {razao_social,filial,cnpj,contato,telefone,email,cidade,ult_visita,prox_visita},
+//   maquina:    {marca,modelo,ns,ano,tipo,potencia,localizacao,tag,data_visita,obs_op},
+//   horimetro:  {total,data_leitura,regime,h_sem_total,tecnico},
+//   preventiva: {auxiliar,hora_inicio,hora_fim},
+//   cenario:    {id,title} | null,
+//   pecas:      [{label,na,ref,ult,interval,rodadas,restantes,status}],
+//   pecasObs:   ['Filtro de Oleo: ...'],
+//   partsObs:   'obs geral do checklist',
+//   obsGerais:  '...',
+//   fotosStatus:[{name,stat}],           // stat: Fotografado|Não Aplicável|Não disponível|Pendente
+//   fotos:      [{label,dataUrl,w,h}],
+//   assinaturas:{tecnico:{nome,dataUrl,w,h,ts}|null, responsavel:{...}|null}
+// }
+// ══════════════════════════════════════════════════════════════════════════
+function pgpColetarDadosPdf(midx) {
+  const g = (key) => vg(midx, key);
+  const perf = pgpPerfil(midx);
+  const ehPistao = perf.id === 'pistao';
+
+  const scenEl = document.getElementById('m' + midx + '_scenario');
+  const scenId = scenEl ? scenEl.value : '';
+  const scenObj = (perf.scenarios || SCENARIOS).find(s => s.id === scenId);
+
+  const pecasObs = [];
+  const pecas = (perf.parts || []).map(pt => {
+    const pk = 'm' + midx + '_' + pt.k;
+    const naBtn = document.getElementById(pk + '_na');
+    const isNA = !!(naBtn && naBtn.classList.contains('active'));
+
+    const ptObsEl = document.getElementById(pk + '_obs');
+    const ptObsV = ptObsEl ? String(ptObsEl.value || '').trim() : '';
+    if (ptObsV) pecasObs.push(pt.label + ': ' + ptObsV);
+
+    if (isNA) return { label: pt.label, na: true, ref: '', ult: '', interval: '', rodadas: '', restantes: '', status: '' };
+
+    const vm   = (document.getElementById(pk + '_valor_mostrado') || {}).value || '';
+    const intV = (document.getElementById(pk + '_int') || {}).value || String(pt.intDefault);
+    const cont = (document.getElementById(pk + '_contador') || {}).value || '';
+    const ref  = (document.getElementById(pk + '_ref') || {}).value || '';
+    // v31 item 8: campo "Última troca" foi removido da UI (item 3) — o
+    // input hidden só carrega valor se veio de uma coleta/rascunho antigo
+    // com edição manual; caso contrário, calcular sempre pela mesma
+    // fórmula usada nos payloads (calcUltimaTroca).
+    let ult = (document.getElementById(pk + '_ult') || {}).value || '';
+    if (!ult) {
+      const calcUlt = calcUltimaTroca(g('horimetro'), vm, intV, cont);
+      if (calcUlt !== null) ult = String(Math.max(0, calcUlt).toFixed(0));
+    }
+
+    let rodadas = '', restantes = '', status = '';
+    // V69 — perfil pistão: as colunas viram data/dias e o estado
+    // encontrado (conforme / não conforme) tem precedência no "Estado".
+    if (cont === 'calendario') {
+      const _cal = pgpCalendarioInfo(vm, intV);
+      if (_cal) {
+        ult = pgpFmtDataBR(pgpParseDataLocal(vm));
+        rodadas   = String(Math.max(0, _cal.rodados));
+        restantes = String(_cal.restantes);
+        status = _cal.status;
+      } else {
+        ult = '—';
+      }
+      const _est = (document.getElementById(pk + '_estado') || {}).value || '';
+      if (_est === 'nao_conforme') status = 'NAO CONFORME';
+      else if (_est === 'ok' && !status) status = 'Conforme';
+    } else
+    if (!isNaN(parseFloat(vm)) && !isNaN(parseFloat(intV)) && (cont === 'progressivo' || cont === 'regressivo')) {
+      const vmN = parseFloat(vm), intN = parseFloat(intV);
+      rodadas   = cont === 'progressivo' ? vmN.toFixed(0) : (intN - vmN).toFixed(0);
+      restantes = cont === 'progressivo' ? (intN - vmN).toFixed(0) : vmN.toFixed(0);
+      const pct = (parseFloat(rodadas) / intN) * 100;
+      if (pct >= 100 || parseFloat(restantes) <= 0) status = 'VENCIDO';
+      else if (pct >= 80) status = 'ATENÇÃO';
+      else status = 'OK';
+    } else if (scenId === 'A') {
+      status = 'Ver horímetro';
+    }
+
+    return { label: pt.label, na: false, ref: ref, ult: ult, interval: intV, rodadas: rodadas, restantes: restantes, status: status };
+  });
+
+  // ── Status fotográfico (seção 6) ──
+  const panel = document.getElementById('panel-' + midx);
+  const photoItemsEl = panel ? panel.querySelectorAll('.photo-item') : [];
+  const fotosStatus = [];
+  photoItemsEl.forEach((item, pidx) => {
+    const nameEl = item.querySelector('.photo-pname');
+    const name = nameEl ? nameEl.textContent.trim() : '';
+    // v27: se a foto está vinculada a uma peça marcada N/A, o status é
+    // "Não Aplicável" (peça não existe na máquina) e não "Não disponível"
+    // (que fica reservado a foto de peça existente ainda não tirada).
+    const _ph = (perf.photos || [])[pidx];
+    const photoKey = (_ph && _ph.photoKey) || '';
+    const linkedPartK = PART_PHOTO_MAP_REV[photoKey];
+    let linkedPartNA = false;
+    if (linkedPartK) {
+      const naBtn = document.getElementById('m' + midx + '_' + linkedPartK + '_na');
+      linkedPartNA = !!(naBtn && naBtn.classList.contains('active'));
+    }
+    // v31 item 11: símbolos ✔/➖/✗/○ fora do charset padrão do jsPDF
+    // (helvetica/WinAnsi) renderizavam como caracteres corrompidos —
+    // trocados por texto simples, seguindo o mesmo padrão já usado sem
+    // problema na coluna "Status" da tabela de peças (seção 4).
+    const stat = item.classList.contains('photo-checked') ? 'Fotografado'
+               : linkedPartNA ? 'Não Aplicável'
+               : item.classList.contains('photo-nd') ? 'Não disponível'
+               : 'Pendente';
+    fotosStatus.push({ name: name, stat: stat });
+  });
+
+  // ── Fotos (seção 7) ──
+  // v23: cada photoKey guarda uma LISTA de fotos (até 3) — achatar para a
+  // galeria do PDF, numerando a legenda quando houver mais de uma do mesmo item.
+  const machinePhotos = photoStore[midx] || {};
+  const fotos = [];
+  Object.values(machinePhotos).forEach(list => {
+    const arr = Array.isArray(list) ? list : [list]; // compat. com rascunhos antigos (objeto único)
+    arr.filter(p => p && p.dataUrl).forEach((p, i) => {
+      fotos.push({
+        label: arr.length > 1 ? ((p.label || '') + ' (' + (i + 1) + '/' + arr.length + ')') : (p.label || ''),
+        dataUrl: p.dataUrl, w: p.w, h: p.h
+      });
+    });
+  });
+
+  // ── Assinaturas (seção 8) ──
+  const _ass = window._PGP_ASSINATURAS || {};
+  const ctxOk = pgpAssinaturasContextoOk(midx);
+  const assinaturas = {
+    tecnico:     (ctxOk && _ass.tecnico)     ? _ass.tecnico     : null,
+    responsavel: (ctxOk && _ass.responsavel) ? _ass.responsavel : null
+  };
+
+  return {
+    perfilId: ehPistao ? 'pistao' : 'parafuso',
+    cliente: {
+      razao_social: g('razao_social'), filial: g('filial'), cnpj: g('cnpj'),
+      contato: g('contato'), telefone: g('telefone'), email: g('email'),
+      cidade: g('cidade'), ult_visita: g('ult_visita'), prox_visita: g('prox_visita')
+    },
+    maquina: {
+      marca: g('marca'), modelo: g('modelo'), ns: g('ns'), ano: g('ano'),
+      tipo: g('tipo'), potencia: g('potencia'), localizacao: g('localizacao'),
+      tag: g('tag'), data_visita: g('data_visita') || g('ult_visita'), obs_op: g('obs_op')
+    },
+    horimetro: {
+      total: g('horimetro'), data_leitura: g('data_leitura'),
+      regime: g('h_dia'), h_sem_total: g('h_sem_total'), tecnico: g('tecnico')
+    },
+    preventiva: { auxiliar: g('auxiliar'), hora_inicio: g('hora_inicio'), hora_fim: g('hora_fim') },
+    cenario: scenObj ? { id: scenObj.id, title: scenObj.title } : null,
+    pecas: pecas,
+    pecasObs: pecasObs,
+    partsObs: (document.getElementById('m' + midx + '_parts_obs') || {}).value || '',
+    obsGerais: g('obs_gerais'),
+    fotosStatus: fotosStatus,
+    fotos: fotos,
+    assinaturas: assinaturas
+  };
 }
 
 // v27 item 8: nome de arquivo por máquina — Cliente_Modelo_Serie_Data.pdf,
@@ -7199,17 +7498,22 @@ function buildPartsTablePistao(p, midx){
     +       '<button class="pgp-acao-pill" id="'+pk+'_acao_na" onclick="event.stopPropagation();pgpSetAcao(\''+pk+'\',\'na\')">N/A</button>'
     +     '</div>'
     +   '</div>'
+    // V72 (P4) — a caixa de PRAZO (OK / ATENÇÃO / VENCIDO) morava dentro da
+    // pt-detail-row, ou seja, ATRÁS da seta ▸. O dado mais importante do
+    // checklist por calendário nascia escondido e (com a seta quebrada) o
+    // técnico nunca via. Agora ela vive no cartão, sempre visível. O id não
+    // mudou — pgpCalcPartRowCalendario continua achando por getElementById.
+    +   '<div id="'+pk+'_calc_box" class="pt-calc-inline"></div>'
     + '</div></td></tr>'
     + '<tr class="pt-detail-row pt-group-cont" id="'+pk+'_detail_row" style="display:none"><td colspan="10"><div class="pt-detail-box">'
-    +   '<div class="pt-box-partname">'+pt.label+' — observação e prazo</div>'
+    +   '<div class="pt-box-partname">'+pt.label+' — observação</div>'
     +   '<div class="pt-det-field"><label>Observação</label>'
     +     '<textarea placeholder="Ex: correia com microtrincas, trocar na próxima visita..." id="'+pk+'_obs" data-key="'+pk+'_obs" rows="2"></textarea></div>'
-    +   '<div id="'+pk+'_calc_box"></div>'
     + '</div></td></tr>';
   }).join('');
 
   return ''
-  + '<div class="sc-hint">📅 Preventiva de pistão é por CALENDÁRIO. Informe a data da última troca/conferência de cada ponto e o ciclo em dias — o prazo é calculado sozinho (ATENÇÃO a '+PGP_ATENCAO_DIAS+' dias do vencimento). O horímetro é opcional.</div>'
+  + '<div class="sc-hint">📅 Prazo por DATA: informe a última troca e o ciclo em dias (alerta a '+PGP_ATENCAO_DIAS+' dias do vencimento).</div>'
   + '<table class="pt-table pt-perfil-pistao">'
   +   '<colgroup><col class="pt-col-name"><col class="pt-col-main"><col class="pt-col-extra"><col class="pt-col-na"><col class="pt-col-detail"></colgroup>'
   +   '<thead><tr><th>Item</th><th class="th-center">Última troca</th><th class="th-center">Ciclo (d)</th><th class="th-center">N/A</th><th class="th-center">▸</th></tr></thead>'
@@ -7517,12 +7821,23 @@ function pgpSaveLastClient(name){
 function pgpRenderLastClients(){
   const last=pgpGetLastClients();
   const wrap=document.getElementById('pgpLastClientsWrap');
+  if(!wrap) return;
+  // V72 (P2): sem chips de clientes recentes dentro de uma OS.
+  if(pgpEmOS()){wrap.style.display='none';return;}
   if(!last.length){wrap.style.display='none';return;}
   wrap.style.display='flex';
   wrap.innerHTML='<span class="pgp-last-label">Recentes</span>'+
     last.map(c=>`<button class="pgp-chip" onclick="pgpQuickSearch('${c.replace(/'/g,"\\'")}')">${c}</button>`).join('');
 }
 function pgpQuickSearch(name){
+  // V72 (P2): o chip "Recentes" é global do aparelho. Dentro de uma OS ele
+  // levava direto para as máquinas de outro cliente — bloqueado.
+  if(pgpEmOS()){
+    showNotification('🔒 Você está numa OS. Use "Incluir outra máquina de ' +
+      (window._PGP_OS_CLIENTE || 'cliente da OS') + '" — o banco completo volta ao sair da OS.');
+    pgpAtualizarModoOS();
+    return;
+  }
   pgpBackToStep1();
   pgpSelectClient(name);
 }
@@ -8049,6 +8364,18 @@ function pgpHorimetroInt_(v){
   return n === '' ? 0 : Math.trunc(n);
 }
 
+// V71.1 — faixa "Personalizado" SEM nenhum dia marcado: passa pelos filtros
+// (tem dias='custom', início e fim) mas vale ZERO hora por semana, então o regime
+// é gravado e continua inútil — o horímetro nunca projeta. Achado em produção em
+// 30/07 em 2 máquinas (Localiza BQR143640 e Pama PAU707873), gravadas assim meses
+// atrás. É a mesma família do bug do regime: dado que parece salvo e não serve.
+function pgpFaixasCustomSemDia(regime){
+  try{
+    return (regime||[]).filter(t => String(t && t.dias) === 'custom'
+      && !((t.customDays || []).length)).length;
+  }catch(_){ return 0; }
+}
+
 // V71 (FIX 4) — TRIPWIRE de regime. Espelha o tripwire de perfil do V70: se o
 // payload está prestes a sair SEM regime numa máquina que comprovadamente opera
 // (h/semana no cadastro, h/semana calculada na tela, ou regime já conhecido),
@@ -8058,6 +8385,17 @@ async function pgpTripwireRegime(idx, payload, opts){
   opts = opts || {};
   try{
     const regime = (payload && Array.isArray(payload.regimeData)) ? payload.regimeData : [];
+    // V71.1 — faixa personalizada sem dia marcado: bloqueia ANTES do caso "regime
+    // vazio", porque aqui o técnico ACHA que preencheu (a faixa está na tela).
+    const _semDia = pgpFaixasCustomSemDia(regime);
+    if(_semDia){
+      const msgD = '⚠ ' + _semDia + ' faixa(s) de horário está(ão) como "Personalizado" SEM nenhum dia da semana marcado.\n\n'
+        + 'Assim o regime vale ZERO hora por semana: ele é gravado mas não serve para nada — o horímetro não vai projetar '
+        + 'e a preventiva não vai ser calculada.\n\nMarque os dias na seção 3 (ou troque para uma opção pronta, ex.: Seg–Sex).';
+      if(opts.silent) return { ok:false, motivo:'faixa personalizada sem dia marcado' };
+      try{ showNotification(msgD); }catch(_){ try{ alert(msgD); }catch(__){} }
+      return { ok:false, motivo:'faixa personalizada sem dia marcado' };
+    }
     if(regime.length) return { ok:true };
     const eq = pgpGetLoadedMachineForIndex(idx) || {};
     const cadastroTinhaRegime = !!(eq.regimeData && eq.regimeData.length);
@@ -8347,6 +8685,9 @@ function renderMachineHistory(hist, loading) {
 // ── ETAPA 4 — FLUXO CLIENTE → MÁQUINA ────────────────────────────────────
 
 function pgpBackToStep1(){
+  // V72 (P2): dentro de uma OS a busca livre não reabre — nem pelo "← Trocar
+  // cliente", nem pelo "✕ Limpar" do card verde (que chama esta função).
+  if(pgpEmOS() && !_pgpTravaClienteOS){ pgpAtualizarModoOS(); return; }
   const s1=document.getElementById('pgpStep1');
   const s2=document.getElementById('pgpStep2');
   const sf=document.getElementById('pgpStepFallback');
@@ -8593,6 +8934,9 @@ function pgpMachineCardNew(client){
 }
 
 function pgpSelectClientMachine(eq){
+  // V72 (P2): quando veio de "Incluir outra máquina desta OS", a máquina entra
+  // num painel NOVO — nunca por cima da coleta que já está na tela.
+  pgpConsumirDestinoNovoPainel();
   const localDb=pgpGetLocalMachines();
   let found=null;
 
@@ -8647,6 +8991,7 @@ function pgpSelectClientMachine(eq){
     const idx=currentMachine;
     pgpLoadMachine(machineToLoad,null,idx,eq?.clientData||null);
   }
+  pgpFinalizarInclusaoOS(); // V72 (P2): máquina na tela → banco de máquinas some de novo
 }
 
 // V69: pré-seleciona no cadastro rápido o tipo correspondente ao perfil ativo.
@@ -8662,6 +9007,9 @@ function pgpNewMachineForClient(client){
   pgpPreSelecionarTipoNovo();
   document.getElementById('pgpStep2').style.display='none';
   document.getElementById('nm_client').value=client;
+  // V72 (P2): dentro de uma OS o cliente do cadastro rápido é o da OS e não
+  // pode ser digitado por cima (era outra porta para máquina de outro cliente).
+  try{ document.getElementById('nm_client').readOnly = pgpEmOS(); }catch(_){}
   document.getElementById('pgpNewMachine').classList.add('show');
   document.getElementById('pgpNotFound').classList.remove('show');
 }
@@ -8670,6 +9018,109 @@ function pgpClientSearchFallback(){
   document.getElementById('pgpStep1').style.display='none';
   document.getElementById('pgpStepFallback').style.display='';
   document.getElementById('pgpSearchInput').focus();
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// V72 (P2) — MODO OS: o banco de máquinas não pode oferecer outro cliente.
+//
+// Diagnóstico: pgpIniciarPreventivaDeOS escondia apenas pgpStep1/pgpStep2. O
+// resto do banner seguia na tela — inclusive os chips RECENTES, que vêm de
+// localStorage.proper_last_clients (globais do aparelho, sem nenhuma noção de
+// OS). Tocar num chip chamava pgpQuickSearch -> pgpBackToStep1(), que REABRIA
+// a busca livre de QUALQUER cliente dentro da OS. O mesmo acontecia pelo
+// "✕ Limpar" do card verde (pgpClearMachine também chama pgpBackToStep1).
+// A única proteção existente era pgpOsIdSeguro(), que apenas SUPRIME o os_id
+// quando o cliente diverge: evitava gravar na OS errada, mas deixava o técnico
+// coletar a visita inteira achando que estava dentro da OS.
+// ══════════════════════════════════════════════════════════════════════════
+function pgpEmOS(){ return !!window._PGP_OS_ID; }
+
+// banner reaberto propositalmente, travado no cliente da OS
+var _pgpTravaClienteOS   = false;
+// a próxima máquina escolhida deve entrar num painel NOVO (não sobrescrever
+// a coleta que já está na tela)
+var _pgpDestinoNovoPainel = false;
+
+function pgpAtualizarModoOS(){
+  var emOS   = pgpEmOS();
+  var banner = document.getElementById('pgpBancoBanner');
+  var bar    = document.getElementById('pgpOsMaquinasBar');
+  if(banner) banner.style.display = (emOS && !_pgpTravaClienteOS) ? 'none' : '';
+  if(bar){
+    bar.style.display = emOS ? 'flex' : 'none';
+    var lbl = document.getElementById('pgpOsMaquinasLabel');
+    var cli = window._PGP_OS_CLIENTE || '';
+    // Rótulo adaptativo: numa tarefa de INSPEÇÃO de OS o painel nasce vazio e o
+    // técnico ainda PRECISA escolher a máquina — aí o texto é "selecionar".
+    var _jaTem = false;
+    try{ _jaTem = !!pgpGetLoadedMachineForIndex(currentMachine); }catch(_){}
+    if(lbl) lbl.textContent = _jaTem
+      ? (cli ? ('➕ Incluir outra máquina de ' + cli) : '➕ Incluir outra máquina desta OS')
+      : (cli ? ('🔍 Selecionar máquina de ' + cli)   : '🔍 Selecionar máquina desta OS');
+    var btn = document.getElementById('pgpOsMaquinasBtn');
+    var can = document.getElementById('pgpOsMaquinasCancel');
+    if(btn) btn.style.display = _pgpTravaClienteOS ? 'none' : '';
+    if(can) can.style.display = _pgpTravaClienteOS ? '' : 'none';
+  }
+  // controles de busca livre não existem dentro de uma OS
+  try{
+    document.querySelectorAll('.pgp-so-avulso').forEach(function(el){
+      el.style.display = emOS ? 'none' : '';
+    });
+  }catch(_){}
+  if(emOS){
+    var w = document.getElementById('pgpLastClientsWrap');
+    if(w) w.style.display = 'none';
+    var s1 = document.getElementById('pgpStep1');
+    if(s1) s1.style.display = 'none';
+    var sf = document.getElementById('pgpStepFallback');
+    if(sf) sf.style.display = 'none';
+  }
+}
+
+async function pgpIncluirMaquinaDaOS(){
+  var cliente = window._PGP_OS_CLIENTE || '';
+  if(!cliente){
+    showNotification('⚠ Não sei qual é o cliente desta OS — reabra a OS pelo pipeline para incluir outra máquina.');
+    return;
+  }
+  _pgpTravaClienteOS    = true;
+  // Painel NOVO só se o atual já estiver ocupado (máquina carregada ou coleta
+  // em andamento) — na inspeção de OS o painel 0 nasce vazio e deve ser usado.
+  var _idxAtual = pgpGetMachineIndex(currentMachine);
+  var _ocupado = false;
+  try{ _ocupado = !!pgpGetLoadedMachineForIndex(_idxAtual) || pgpPainelTemColeta(_idxAtual); }catch(_){}
+  _pgpDestinoNovoPainel = _ocupado;
+  pgpAtualizarModoOS();           // reexibe o banner, já sem os controles de busca livre
+  try{ await pgpSelectClient(cliente); }
+  catch(e){ showNotification('⚠ Falha ao listar máquinas de ' + cliente + ': ' + (e && e.message ? e.message : e)); }
+}
+
+function pgpCancelarIncluirMaquina(){
+  _pgpTravaClienteOS    = false;
+  _pgpDestinoNovoPainel = false;
+  var s2 = document.getElementById('pgpStep2');
+  if(s2) s2.style.display = 'none';
+  var nm = document.getElementById('pgpNewMachine');
+  if(nm) nm.classList.remove('show');
+  pgpAtualizarModoOS();
+}
+
+// Consome o pedido de "painel novo". Chamado por TODOS os caminhos que
+// carregam uma máquina a partir do banner (escolher da lista e cadastrar nova).
+function pgpConsumirDestinoNovoPainel(){
+  if(!_pgpDestinoNovoPainel) return false;
+  _pgpDestinoNovoPainel = false;
+  try{ addMachine(); }catch(e){ console.warn('[PCF V72] addMachine falhou:', e && e.message); return false; }
+  return true;
+}
+
+// Encerra o modo travado depois que a máquina entrou na tela.
+function pgpFinalizarInclusaoOS(){
+  if(_pgpTravaClienteOS){
+    _pgpTravaClienteOS = false;
+    pgpAtualizarModoOS();
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -8694,8 +9145,10 @@ async function pgpIniciarPreventivaDeOS(osId){
       const _s2r = document.getElementById('pgpStep2');
       if(_s1r) _s1r.style.display = 'none';
       if(_s2r) _s2r.style.display = 'none';
+      window._PGP_TIPO_ESPERADO = 'preventiva';   // V72 (P3)
       try{ pgpSetTipoVisita('preventiva'); }catch(_){}
       try{ pgpAtualizarAcoesPorTipoVisita(); }catch(_){}
+      try{ pgpAtualizarModoOS(); }catch(_){}       // V72 (P2)
       try{ machines.forEach((_,i)=>pgpSyncCheckedComValores(i)); }catch(_){}
       try{ document.querySelectorAll('[data-section]').forEach(s=>refreshSection(s)); updateProgress(); }catch(_){}
       showNotification('↩ Coleta desta OS já estava aberta — seus dados foram mantidos.');
@@ -8703,7 +9156,9 @@ async function pgpIniciarPreventivaDeOS(osId){
       return;
     }
   }catch(_){}
+  window._PGP_TIPO_ESPERADO = 'preventiva';        // V72 (P3)
   pgpSetTipoVisita('preventiva');
+  try{ pgpAtualizarModoOS(); }catch(_){}           // V72 (P2)
 
   // v47 — Fix F (P0 contaminação cruzada): mesmo padrão de novaColeta() — garante que
   // estado deixado por um fluxo de Inspeção avulsa anterior (mesma sessão/painel) nunca
@@ -8750,6 +9205,7 @@ async function pgpIniciarPreventivaDeOS(osId){
     window._PGP_OS_CLIENTE = (r.os && r.os.cliente) ? String(r.os.cliente).trim() : '';
     // V71 (FIX 2): carimbo de "esta OS já está na tela" — base do guard de reentrada.
     window._PGP_OS_ID_CARREGADA = String(osId||'');
+    try{ pgpAtualizarModoOS(); }catch(_){}  // V72 (P2): já sabemos o cliente da OS
 
     if(osMachines.length === 0){
       const clienteOS = r.os && r.os.cliente ? String(r.os.cliente).trim() : '';
@@ -8853,6 +9309,77 @@ async function pgpCarregarMaquinaOS(eq, idx){
   }
 }
 
+// ══════════════════════════════════════════════════════════════════════════
+// V72 (P7.4) — AS ASSINATURAS PASSAM A SER PERSISTIDAS.
+//
+// Até a V71 as assinaturas de campo viviam SÓ em window._PGP_ASSINATURAS
+// (espelhado em localStorage 'pgp_assinaturas_v1') e eram desenhadas na
+// seção 8 do PDF gerado ali, no aparelho. Não iam para lugar nenhum: quem
+// apagasse o app, trocasse de celular ou quisesse REGERAR o relatório depois
+// (o ADM, pelo PCM) perdia as assinaturas para sempre — e o PDF do PCM não
+// teria como reproduzi-las.
+// Agora elas sobem como anexo da visita, categoria 'assinatura' (que o PCM
+// já classifica em _docCatClass), pelo MESMO canal das fotos — inclusive a
+// fila offline. Idempotência local por visit_id+papel, e o nome do arquivo é
+// determinístico (ASSIN_<papel>_<visit_id>) para não duplicar no Drive nem
+// em reenvio da fila. ZERO GAS: salvarFotosDrivePGP não tem whitelist de
+// categoria.
+// ══════════════════════════════════════════════════════════════════════════
+var _PGP_ASSIN_ENVIADAS_KEY = 'pgp_assin_enviadas_v1';
+
+function pgpSubirAssinaturasDaVisita(payload, midx){
+  try{
+    var a = window._PGP_ASSINATURAS || {};
+    if(!a.tecnico && !a.responsavel) return;
+    if(!pgpAssinaturasContextoOk(midx)) return;
+    var vid = String((payload && payload.visit_id) || '');
+    if(!vid) return;
+
+    var enviadas = {};
+    try{ enviadas = JSON.parse(localStorage.getItem(_PGP_ASSIN_ENVIADAS_KEY) || '{}') || {}; }catch(_){ enviadas = {}; }
+
+    [{k:'tecnico', rot:'Tecnico responsavel'}, {k:'responsavel', rot:'Responsavel pelo cliente'}].forEach(function(s){
+      var sig = a[s.k];
+      if(!sig || !sig.dataUrl) return;
+      var chave = vid + '|' + s.k;
+      if(enviadas[chave]) return;                       // já subiu nesta visita
+      var m = /^data:([^;,]+)[;,]/.exec(String(sig.dataUrl));
+      var mime = (m && m[1]) || 'image/png';
+      var ext  = mime.indexOf('jpeg') >= 0 ? 'jpg' : 'png';
+      var b64  = String(sig.dataUrl).split(',')[1] || '';
+      if(!b64) return;
+      var dt = sig.ts ? new Date(sig.ts) : new Date();
+      var quando = dt.toLocaleDateString('pt-BR') + ' ' +
+                   dt.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+      pgpSendOrQueueDrive('photo', 'salvarFotosDrivePGP', {
+        clientName:    pgpDriveClientName(0),
+        os_id:         pgpOsIdSeguro(),
+        maquina_id:    pgpDriveMaquinaId(midx),
+        maquina_label: pgpDriveMaquinaLabel(midx),
+        dataBase64:    b64,
+        mime:          mime,
+        fileName:      'ASSIN_' + s.k + '_' + vid + '.' + ext,
+        attachmentType:'assinatura',
+        caption:       s.rot + ' — ' + (sig.nome || '-') + ' — ' + quando,
+        entityType:    'assinatura',
+        entityId:      vid,
+        createdBy:     pgpFieldVal(midx, 'tecnico')
+      }, null);
+      enviadas[chave] = Date.now();
+    });
+
+    // poda: guarda no máximo as 200 mais recentes (a chave é por visita)
+    try{
+      var ks = Object.keys(enviadas);
+      if(ks.length > 200){
+        ks.sort(function(x,y){ return (enviadas[x]||0) - (enviadas[y]||0); });
+        while(ks.length > 200) delete enviadas[ks.shift()];
+      }
+      localStorage.setItem(_PGP_ASSIN_ENVIADAS_KEY, JSON.stringify(enviadas));
+    }catch(_){}
+  }catch(e){ console.warn('[PCF V72] assinaturas não subiram:', e && e.message); }
+}
+
 // ── ETAPA 5 — REGISTRAR PREVENTIVA ───────────────────────────────────────────
 
 function pgpSetAcao(pk, acao){
@@ -8887,6 +9414,39 @@ function pgpAtualizarAcoesPorTipoVisita(){
   if(statusMain) statusMain.style.display = isPrev ? 'none' : '';
   var esconderHora = (isPrev && !!window._PGP_OS_ID);
   document.querySelectorAll('[data-key$="_hora_wrap"]').forEach(function(el){ el.style.display = esconderHora ? 'none' : ''; });
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// V72 (P3) — BARREIRA CONTRA TROCA ACIDENTAL DE TIPO DE VISITA.
+//
+// Regra de negócio (Fernando, 30/07): numa MESMA OS o cliente pode ter uma
+// máquina em preventiva e outra só em inspeção de rotina — vale para qualquer
+// tipo de equipamento. Então trocar NÃO é proibido: é uma decisão que precisa
+// ser consciente. window._PGP_TIPO_ESPERADO guarda o que a OS previa; só o
+// clique HUMANO passa por aqui. Todas as chamadas programáticas continuam
+// usando pgpSetTipoVisita() direto, sem pop-up (boot, carga da OS, registro,
+// retomada de rascunho da MESMA OS).
+// ══════════════════════════════════════════════════════════════════════════
+window._PGP_TIPO_ESPERADO = window._PGP_TIPO_ESPERADO || null;
+var _PGP_TIPO_NOME = { preventiva: 'PREVENTIVA', inspecao: 'INSPEÇÃO' };
+
+async function pgpSetTipoVisitaUsuario(tipo){
+  var esperado = window._PGP_TIPO_ESPERADO;
+  if (esperado && tipo !== esperado) {
+    var ok = false;
+    try {
+      ok = await AppDialog.confirm(
+        'Esta OS prevê ' + (_PGP_TIPO_NOME[esperado] || esperado) + ' nesta visita.\n\n' +
+        'Mudar para ' + (_PGP_TIPO_NOME[tipo] || tipo) + ' mesmo assim?\n\n' +
+        'É normal quando o cliente tem uma máquina em preventiva e outra só em inspeção de rotina — ' +
+        'mas confirme para não trocar sem querer.',
+        { title: 'Trocar o tipo de visita?', okLabel: 'Sim, trocar', cancelLabel: 'Manter ' + (_PGP_TIPO_NOME[esperado] || esperado), danger: true }
+      );
+    } catch(e) { ok = true; } // sem diálogo disponível: não bloqueia o técnico
+    if (!ok) return false;
+  }
+  pgpSetTipoVisita(tipo);
+  return true;
 }
 
 function pgpSetTipoVisita(tipo){
@@ -9334,6 +9894,7 @@ async function pgpEnviarPreventiva(midx=currentMachine, opts){
     }
     // V68 — F-18a: desfecho positivo ⇒ agora sim o espelho local pode registrar.
     pgpUpdateAdminLocal(payload);
+    pgpSubirAssinaturasDaVisita(payload, idx); // V72 (P7.4)
     if(silent) return { status:'queued' };
     showNotification('⚠ Muitas fotos/observações — dados salvos na fila (' + qResultSize.count + '/' + QUEUE_LIMIT + '). Envie em partes ou reduza fotos.');
     return;
@@ -9369,6 +9930,7 @@ async function pgpEnviarPreventiva(midx=currentMachine, opts){
     }
     // V68 — F-18a: só espelha localmente depois de a fila confirmar a gravação.
     pgpUpdateAdminLocal(payload);
+    pgpSubirAssinaturasDaVisita(payload, idx); // V72 (P7.4)
     if(silent) return { status:'queued' };
     showNotification('📋 Preventiva salva na fila (' + qResult.count + '/' + QUEUE_LIMIT + ') — enviada ao conectar');
     return;
@@ -9379,11 +9941,13 @@ async function pgpEnviarPreventiva(midx=currentMachine, opts){
     if(d.duplicate){
       // V68 — F-18a: o servidor JÁ tem esta preventiva ⇒ espelhar é correto.
       pgpUpdateAdminLocal(payload);
+      pgpSubirAssinaturasDaVisita(payload, idx); // V72 (P7.4)
       if(silent) return { status:'duplicate' };
       showNotification('ℹ Esta preventiva já foi registrada');
     } else if(d.status==='ok'){
       // V68 — F-18a: gravado no servidor ⇒ espelho local pode acompanhar.
       pgpUpdateAdminLocal(payload);
+      pgpSubirAssinaturasDaVisita(payload, idx); // V72 (P7.4)
       if(silent) return { status:'ok' };
       showNotification('✅ Preventiva registrada — '+nTrocadas+' peça(s) atualizada(s)');
       if(window._PGP_OS_ID){ pgpMostrarVoltarParaOS(); }
@@ -9410,6 +9974,7 @@ async function pgpEnviarPreventiva(midx=currentMachine, opts){
       } else {
         // V68 — F-18a: fila confirmou a gravação ⇒ espelho local pode acompanhar.
         pgpUpdateAdminLocal(payload);
+        pgpSubirAssinaturasDaVisita(payload, idx); // V72 (P7.4)
         if(silent) return { status:'queued' };
         showNotification('⏳ Falha — preventiva salva na fila (' + qResult.count + '/' + QUEUE_LIMIT + ')');
       }
@@ -9503,8 +10068,10 @@ async function pgpRegisterNew(){
   document.getElementById('pgpNewMachine').classList.remove('show');
   document.getElementById('pgpNotFound').classList.remove('show');
   pgpSaveLastClient(client);pgpRenderLastClients();
+  pgpConsumirDestinoNovoPainel(); // V72 (P2): cadastro rápido dentro da OS também vai para painel novo
   const idx=currentMachine;
   pgpLoadMachine(eq,null,idx);
+  pgpFinalizarInclusaoOS();
 
   if(_pgpGsConnected&&_pgpGsUrl){
     try {
@@ -10292,6 +10859,7 @@ function pgpUpdateAdminLocal(payload){
 }
 
 (async()=>{
+  try{ pgpAtualizarModoOS(); }catch(e){}   // V72 (P2)
   pgpRenderLastClients();
   pgpUpdatePendingBadge();
   if(_pgpGsUrl){
@@ -11359,6 +11927,17 @@ async function pfAbrirForm(tarefaId, formUrl, btn) {
     window._PGP_PREVENTIVA_INICIO_ISO = inicioPreventivaISO;
     var _ovPf = document.getElementById('pfOverlay');
     if (_ovPf) _ovPf.style.display = 'none';
+    // ═══════════════════════════════════════════════════════════════════
+    // V72 (P3) — decidir PREVENTIVA pelo TIPO DA TAREFA, não só pela URL.
+    // Antes, uma tarefa auto:preventiva cujo Form_URL não trouxesse
+    // "modo=preventiva" caía no ramo de inspeção e a tela ficava no default
+    // 'inspecao' — outra origem do "abri a preventiva e estava em Inspeção".
+    // ═══════════════════════════════════════════════════════════════════
+    var _tObj  = (_pfTarefas || []).find(function(x){ return String(x.Tarefa_ID) === String(tarefaId); });
+    var _tTipo = String((_tObj && _tObj.Tipo) || '').toLowerCase();
+    var _tPrev = _tTipo.indexOf('preventiva') >= 0 || _tTipo.indexOf('pistao') >= 0 || _tTipo.indexOf('pistão') >= 0;
+    var _tInsp = _tTipo.indexOf('inspecao') >= 0 || _tTipo.indexOf('inspeção') >= 0;
+
     // V69: ?modo=pistao é tratado como preventiva com perfil de pistão.
     if (formUrl.indexOf('modo=pistao') >= 0) {
       window._PGP_PERFIL_DEFAULT = 'pistao';
@@ -11366,11 +11945,17 @@ async function pfAbrirForm(tarefaId, formUrl, btn) {
       // definir só o default não bastava — era preciso aplicá-lo na tela.
       try{ for (var _i = 0; _i < (machines||[]).length; _i++) pgpAplicarPerfilDaOS(_i); }catch(_){}
     }
-    if ((formUrl.indexOf('modo=preventiva') >= 0 || formUrl.indexOf('modo=pistao') >= 0) && typeof pgpIniciarPreventivaDeOS === 'function') {
+    if ((formUrl.indexOf('modo=preventiva') >= 0 || formUrl.indexOf('modo=pistao') >= 0 || _tPrev) && typeof pgpIniciarPreventivaDeOS === 'function') {
+      window._PGP_TIPO_ESPERADO = 'preventiva';   // V72 (P3)
       await pgpIniciarPreventivaDeOS(_pfOsId);
     } else {
       // Inspeção: o app já está aberto no modo padrão; os_id passa a viajar nos
       // payloads via pgpOsIdSeguro (mesmo efeito do ?os_id= da URL).
+      // V72 (P2/P3): a inspeção de OS também é uma OS — o cliente fica travado
+      // e o banco de máquinas vira "Selecionar máquina de <cliente>".
+      window._PGP_TIPO_ESPERADO = _tInsp ? 'inspecao' : null;
+      window._PGP_OS_CLIENTE = _pfOsNome || window._PGP_OS_CLIENTE || '';
+      try { pgpAtualizarModoOS(); } catch(_) {}
       showNotification('🔧 Inspeção da OS #' + ((osObj && osObj.numero_os) || _pfOsId) +
         ' — selecione a máquina e colete normalmente.');
     }
