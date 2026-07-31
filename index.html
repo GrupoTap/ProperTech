@@ -1698,6 +1698,59 @@ if (!window.jspdf) { document.write('<script src="https://cdnjs.cloudflare.com/a
 .pgp-os-maq-cancel{min-height:46px;padding:10px 12px;border-radius:10px;cursor:pointer;
   background:transparent;color:var(--text-light);border:1.5px solid var(--gray-mid);
   font-family:'Inter',sans-serif;font-weight:700;font-size:12px}
+/* ═══ V75 — TESTE SOFT GERAL 31/07/2026 (pré-migração Supabase/React) ═══════
+   Par: PCM V103. Varredura de bugs LEVES de UX no uso de CAMPO (6 modos abertos,
+   439 botões clicados em Chromium headless a 414px). 10 correções, todas ADITIVAS.
+
+   B1 (P1) "Coleta salva com sucesso" MENTIROSO. saveCurrentSession é async e tem um
+           caminho que ABORTA sem gravar (await AppDialog.confirm de sobrescrita →
+           if(!overwrite) return). salvarColeta, salvarSessaoManual e guardarSair
+           chamavam SEM await e anunciavam sucesso na linha seguinte; como o AppDialog
+           empilha backdrops, o alerta verde aparecia POR CIMA do confirm — o técnico
+           tocava OK no verde, Cancelar no confirm atrás, e saía convencido de que
+           salvou. Mesma classe do "✓ mentiroso" do syncToGS (V74). Agora
+           saveCurrentSession devolve true/false e as 3 mensagens seguem o resultado
+           REAL; guardarSair não sai da tela se a sobrescrita for cancelada.
+   B2 (P1) pgpDoSerialSearch: `catch(e){}` engolia falha de rede e o app AFIRMAVA
+           "Série/TAG não encontrada" abrindo o formulário de cadastro. _pgpGsConnected
+           só cai no evento 'offline' do browser — sinal fraco/portal cativo mantém
+           true. Era assim que nascia a 2ª ficha da MESMA máquina física.
+   B3 (P1) pgpFetchMachinesByClient: idem. Cache local vazio (aparelho novo/dados
+           limpos) + rede ruim dizia "Nenhuma máquina encontrada" e oferecia
+           "+ cadastrar nova" num cliente com 8 máquinas no servidor. Agora avisa,
+           NÃO oferece o card de cadastro e dá "↻ Tentar de novo". Timeout de 12s
+           nos dois fetches.
+   B4 (P2) pgpTestGs sem timeout: num portal cativo (socket abre, resposta nunca vem)
+           a promise nunca resolvia, _pgpAutoPingBusy ficava true para sempre e o
+           setInterval de 90s + os handlers de online/visibilitychange passavam a sair
+           na 1ª linha — o app NUNCA MAIS reconectava sem recarregar, com o pill preso
+           em "Conectando...". AbortSignal.timeout(12000) + finally na trava.
+   B5 (P2) pfConfirmarTarefa era a ÚNICA ação do pipeline sem caminho offline
+           (pfAssumirTarefa e pfLiberarTarefa já enfileiravam). Sem sinal o técnico só
+           via "⚠ Erro: Failed to fetch", a tarefa não ia para a fila e o trabalho
+           feito na oficina nunca chegava ao sistema.
+   B6 (P2) gerarPDF: entre o clique e o 1º feedback há um POST ao GAS com 2 retries
+           (1s + 2,5s) e o diálogo de assinaturas — 4 a 10s de tela muda em rede ruim.
+           Dedo grosso tocava de novo e saíam DOIS PDFs com dois uploads no Drive.
+           Trava _pgpGerarPdfBusy + "⏳ Preparando relatório..." imediato.
+   B7 (P2) pgpColetarAssinaturasPreventiva sobre #pgpSignOverlay SINGLETON: dois
+           toques registravam dois onConfirm nos mesmos botões — um toque resolvia as
+           duas promises, o cleanup da 1ª escondia o overlay e a 2ª cadeia ficava
+           esperando clique num overlay invisível (tela travada), com técnico e
+           responsável gravados fora de ordem.
+   B8 (P3) calcPartRow: intervalo "0" é string TRUTHY; com valor 0 nenhum guard de <0
+           disparava e 0/0 imprimia "NaN% do intervalo (0 h)".
+   B9 (P3) Guard anti-autofill completo em pgpClientInput e pgpSearchInput (só tinham
+           autocomplete=off — a lição das 3 ocorrências do "REcebimento de máquina" é
+           que isso sozinho não segura).
+   B10(P2) fetchMachineHistory devolvia null em QUALQUER falha e o render tratava null
+           igual a histórico vazio: o técnico lia "Sem visitas anteriores registradas"
+           e decidia troca de peça achando que a máquina nunca foi atendida.
+
+   100% ADITIVO: nenhuma função, id, data-key, rota ou chave de payload renomeada ou
+   removida. 32 testes de verificação + 4 baterias de regressão, 0 falhas.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 /* ═══ V74 — TRAVA DE CADASTRO DENTRO DA OS ═══════════════════════════════ */
 .pgp-cad-lock{background:var(--gray-light,#f1f5f9)!important;color:var(--text-light,#64748b)!important;
   cursor:not-allowed;border-style:dashed!important}
@@ -1832,10 +1885,14 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
   <div id="pgpStep1" class="pgp-step">
     <div class="pgp-step-label">1. Selecione o cliente</div>
     <div class="pgp-autocomplete-wrap">
+      <!-- V75 (P3): guard anti-autofill COMPLETO (lição das 3 ocorrências do
+           "REcebimento de máquina": autocomplete=off sozinho não segura). O
+           removeAttribute vem antes da busca, no mesmo onfocus. -->
       <input type="text" id="pgpClientInput" class="pgp-search-input"
              placeholder="Digite o nome do cliente..."
              oninput="pgpClientSearch()" onkeydown="pgpClientKey(event)"
-             onfocus="pgpClientSearch()"
+             onfocus="this.removeAttribute('readonly');pgpClientSearch()"
+             readonly name="pcf_cliente_busca_nofill" data-lpignore="true" data-1p-ignore
              autocomplete="off">
       <div class="pgp-autocomplete-list" id="pgpClientAcList"></div>
     </div>
@@ -1867,9 +1924,12 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
   <div id="pgpStepFallback" style="display:none" class="pgp-step">
     <div class="pgp-step-label">Busca por série ou TAG</div>
     <div class="pgp-autocomplete-wrap">
+      <!-- V75 (P3): guard anti-autofill completo (idem pgpClientInput). -->
       <input type="text" id="pgpSearchInput" class="pgp-search-input"
              placeholder="N° série, TAG ou cliente..."
              oninput="pgpOnInput()" onkeydown="pgpOnKey(event)"
+             onfocus="this.removeAttribute('readonly')"
+             readonly name="pcf_serie_busca_nofill" data-lpignore="true" data-1p-ignore
              autocomplete="off">
       <div class="pgp-autocomplete-list" id="pgpAcList"></div>
     </div>
@@ -1982,7 +2042,7 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
 </div>
 <div class="actions" style="padding-top:6px">
   <button class="btn btn-reset" onclick="salvarColeta()" style="background:var(--blue);color:white;border-color:var(--blue)">💾 Salvar Coleta</button>
-  <button class="btn btn-reset" onclick="gerarPDF()" style="background:#c0392b;color:white;border-color:#c0392b;flex:none;padding:12px 18px;font-size:14px">📄 Gerar PDF</button>
+  <button class="btn btn-reset" onclick="gerarPDF(this)" style="background:#c0392b;color:white;border-color:#c0392b;flex:none;padding:12px 18px;font-size:14px">📄 Gerar PDF</button><!-- V75 (P2): passa o botão p/ trava de duplo-toque -->
   <!-- v27 item 8: gerarPDF agora emite 1 PDF por máquina; este botão gera
        adicionalmente um PDF único consolidado com índice. Só aparece com
        2+ máquinas na coleta. -->
@@ -3615,6 +3675,14 @@ function calcPartRow(pk, intDefault) {
     updatePartCompletionStatus(pk);
     return;
   }
+  // V75 (P3) — intervalo "0" é string TRUTHY, então digitar 0 em "Interv.(h)"
+  // passava direto: com valor=0 nenhum guard de <0 disparava e 0/0 imprimia
+  // "NaN% do intervalo (0 h)" na linha vermelha.
+  if (!(intervalo > 0)) {
+    calcBox.innerHTML = `<div class="pt-calc-line pt-calc-warn">⚠️ Informe um intervalo maior que zero para calcular.</div>`;
+    updatePartCompletionStatus(pk);
+    return;
+  }
   let rodadas, restantes;
   if (contador === 'progressivo') { rodadas = valor; restantes = intervalo - valor; }
   else                            { rodadas = intervalo - valor; restantes = valor; }
@@ -4705,7 +4773,15 @@ async function salvarColeta() {
     AppDialog.alert('Nenhum dado preenchido para salvar.', {variant:'warn', title:'Salvar coleta'});
     return;
   }
-  saveCurrentSession();
+  // V75 (P1) — era `saveCurrentSession()` SEM await seguido do alerta de sucesso:
+  // no caminho de sobrescrita o "sucesso" aparecia por cima do confirm e o técnico
+  // saía achando que tinha salvado depois de cancelar. Agora a mensagem segue o
+  // que REALMENTE aconteceu.
+  const _salvou = await saveCurrentSession();
+  if (_salvou === false) {
+    AppDialog.alert('Coleta NÃO salva — você cancelou a sobrescrita da coleta anterior.', {variant:'warn', title:'Não salvo'});
+    return;
+  }
   AppDialog.alert('Coleta salva com sucesso.', {variant:'success', title:'Salvo'});
 }
 
@@ -4819,10 +4895,17 @@ function guardarFicar() {
   document.getElementById('backGuard').classList.remove('open');
 }
 
-function guardarSair() {
-  // Salva antes de permitir sair
+async function guardarSair() {
+  // V75 (P1) — o `saveCurrentSession()` sem await disparava o history.back() ANTES
+  // de o salvamento terminar: no caminho de sobrescrita o confirm abria numa página
+  // que já estava saindo, e a coleta não entrava em pgp_sessions (sobrava só o
+  // rascunho). Agora espera; se o técnico cancelar a sobrescrita, NÃO sai da tela.
   if (temDadosPreenchidos()) {
-    saveCurrentSession();
+    const _salvou = await saveCurrentSession();
+    if (_salvou === false) {
+      if (typeof showNotification === 'function') showNotification('⚠ Saída cancelada — a coleta não foi salva.');
+      return;
+    }
   }
   _allowLeave = true;
   // Tenta sair via history.back()
@@ -5448,7 +5531,7 @@ async function saveCurrentSession() {
       sessions[existingIdxById] = state;
     } else if (existingIdxBySignature >= 0) {
       const overwrite = await AppDialog.confirm('Já existe uma coleta salva para esta mesma máquina deste cliente. Deseja sobrescrever a anterior?', {title:'Sobrescrever coleta', okLabel:'Sobrescrever', danger:true});
-      if (!overwrite) return;
+      if (!overwrite) return false; // V75 (P1): sinaliza "NÃO salvei" a quem chamou
       state.sessionId = sessions[existingIdxBySignature].sessionId || state.sessionId;
       _currentSessionId = state.sessionId;
       sessions[existingIdxBySignature] = state;
@@ -5460,6 +5543,7 @@ async function saveCurrentSession() {
 
   persistSessionsSafely(sessions);
   try { localStorage.removeItem(DRAFT_KEY); } catch(e) {}
+  return true; // V75 (P1): salvou de verdade
 }
 
 function checkRestoreDraft() {
@@ -5641,10 +5725,15 @@ async function deletarSessao(idx) {
   renderSessoesList();
 }
 
-function salvarSessaoManual() {
-  saveCurrentSession();
+async function salvarSessaoManual() {
+  // V75 (P1) — mesmo "salvo com sucesso" mentiroso do salvarColeta: a função nem
+  // era async, então o await interno da sobrescrita nunca era esperado.
+  const _salvou = await saveCurrentSession();
   const body = document.getElementById('sessionsBody');
-  body.innerHTML = '<div style="text-align:center;padding:20px;font-size:13px;color:var(--green);font-weight:600">✅ Coleta salva com sucesso!</div>';
+  if (!body) return;
+  body.innerHTML = (_salvou === false)
+    ? '<div style="text-align:center;padding:20px;font-size:13px;color:var(--orange);font-weight:600">⚠ Coleta NÃO salva — você cancelou a sobrescrita.</div>'
+    : '<div style="text-align:center;padding:20px;font-size:13px;color:var(--green);font-weight:600">✅ Coleta salva com sucesso!</div>';
   setTimeout(() => renderSessoesList(), 1400);
 }
 
@@ -6665,7 +6754,26 @@ function montarNomeArquivo(razao, modelo, serial, dataStr) {
   return `${limpar(razao)}_${limpar(modelo)}_${limpar(serial)}_${dataStr}.pdf`;
 }
 
-async function gerarPDF() {
+// V75 (P2) — TESTE SOFT 31/07: entre o clique e o 1º showNotification há um
+// `await pgpGarantirOSInspecaoAvulsa` (POST ao GAS com 2 retries de 1s e 2,5s) e,
+// na preventiva, um diálogo de assinaturas. Em rede ruim são 4-10 s de tela
+// totalmente muda: dedo grosso toca de novo e saem DOIS PDFs, com dois uploads no
+// Drive (a OS em si já estava protegida por _pgpOSInspecaoPromise; o PDF não).
+var _pgpGerarPdfBusy = false;
+async function gerarPDF(btnEl) {
+  if (_pgpGerarPdfBusy) return;
+  _pgpGerarPdfBusy = true;
+  if (btnEl) { btnEl.disabled = true; btnEl.classList.add('is-busy'); }
+  try { showNotification('⏳ Preparando relatório...'); } catch(e) {}
+  try {
+    return await _gerarPDF_(btnEl);
+  } finally {
+    _pgpGerarPdfBusy = false;
+    if (btnEl) { btnEl.disabled = false; btnEl.classList.remove('is-busy'); }
+  }
+}
+
+async function _gerarPDF_(btnEl) {
   if (machines.length === 0) { AppDialog.alert('Nenhuma máquina para gerar relatório.', {variant:'warn', title:'Relatório'}); return; }
   // v53 — garante a OS de Inspeção antes de subir o PDF, para o relatório cair na
   // OS/pasta certa (e não em _SEM_OS) quando a coleta é avulsa.
@@ -7953,7 +8061,14 @@ async function pgpTestGs(){
   if(!_pgpGsUrl){pgpSetGsStatus('off');return false;}
   pgpSetGsStatus('sync');
   try{
-    const r=await fetch(_pgpGsUrl+'?action=ping'+gcParam(),{method:'GET'});
+    // V75 (P2) — TESTE SOFT 31/07: este fetch não tinha timeout. Num portal cativo
+    // de galpão (socket abre, resposta nunca vem) a promise nunca resolvia:
+    // _pgpAutoPingBusy ficava true para sempre, o setInterval de 90s e os handlers
+    // de 'online'/visibilitychange passavam a sair na 1ª linha, e o app NUNCA MAIS
+    // tentava reconectar sem recarregar — com o pill preso em "Conectando...".
+    // fetchMachineHistory já usava AbortSignal.timeout(8000); aqui faltava.
+    const r=await fetch(_pgpGsUrl+'?action=ping'+gcParam(),{method:'GET',
+      signal:(typeof AbortSignal!=='undefined'&&AbortSignal.timeout)?AbortSignal.timeout(12000):undefined});
     const txt=await r.text();
     // Apps Script mal configurado retorna HTML de login — detectar antes de parsear
     if(txt.trim().startsWith('<')){
@@ -8145,12 +8260,14 @@ async function pgpDoSerialSearch(btnEl){
   );
 
   // Busca no GAS se não encontrou localmente
+  let _erroConsulta=false; // V75 (P1)
   if(!found&&_pgpGsConnected){
     try{
-      const r=await fetch(_pgpGsUrl+'?action=searchMachine&q='+encodeURIComponent(q)+'&key='+_AUTH_HASH+gcParam());
+      const r=await fetch(_pgpGsUrl+'?action=searchMachine&q='+encodeURIComponent(q)+'&key='+_AUTH_HASH+gcParam(),
+        {signal: (typeof AbortSignal!=='undefined'&&AbortSignal.timeout)?AbortSignal.timeout(12000):undefined});
       const d=await r.json();
       if(d.status==='ok'&&d.machine) found=d.machine;
-    }catch(e){}
+    }catch(e){ _erroConsulta=true; console.warn('[V75] searchMachine falhou:',e&&e.message); }
   }
 
   if(found){
@@ -8164,6 +8281,13 @@ async function pgpDoSerialSearch(btnEl){
     document.getElementById('pgpFound').textContent='✓ Carregado: '+found.brand+' '+found.model+' — '+found.client;
     document.getElementById('pgpFound').classList.add('show');
     console.log('[PCF] pgpDoSerialSearch: cliente correto="'+found.client+'" query="'+q+'"');
+  } else if(_erroConsulta){
+    // V75 (P1) — NÃO dá para afirmar "não existe" quando a consulta ao servidor
+    // falhou. Antes o catch vazio jogava direto no ramo de cadastro e o técnico
+    // criava uma 2ª ficha da MESMA máquina física.
+    document.getElementById('pgpNotFound').textContent='📴 Sem resposta do servidor — não dá para saber se esta máquina já está cadastrada. NÃO cadastre agora: tente de novo com sinal.';
+    document.getElementById('pgpNotFound').classList.add('show');
+    document.getElementById('pgpNewMachine').classList.remove('show');
   } else {
     document.getElementById('pgpNotFound').textContent='Série/TAG não encontrada. Preencha manualmente ou cadastre.';
     document.getElementById('pgpNotFound').classList.add('show');
@@ -8821,13 +8945,17 @@ async function fetchMachineHistory(machineId) {
       '&key=' + _AUTH_HASH + gcParam(),
       { signal: AbortSignal.timeout(8000) }
     );
-    if (!r.ok) return null;
+    // V75 (P2) — antes TODA falha devolvia null e o render tratava null igual a
+    // "histórico vazio": o técnico lia "Sem visitas anteriores registradas" e
+    // decidia troca de peça achando que a máquina nunca foi atendida. Agora falha
+    // de rede é DISTINTA de histórico realmente vazio.
+    if (!r.ok) return { erro: true };
     const d = await r.json();
-    if (d.status !== 'ok') return null;
+    if (d.status !== 'ok') return { erro: true };
     return { visits: d.visits || [], pecasLog: d.pecasLog || {} };
   } catch (e) {
     console.warn('fetchMachineHistory falhou:', e.message || e);
-    return null;
+    return { erro: true };
   }
 }
 
@@ -8849,6 +8977,11 @@ function renderMachineHistory(hist, loading) {
     return;
   }
 
+  if (hist && hist.erro) {
+    // V75 (P2): não afirmar "sem visitas" quando na verdade não deu para consultar.
+    el.innerHTML = '<span style="color:var(--orange,#f59e0b)">📴 Histórico indisponível offline — isso NÃO quer dizer que a máquina não tem visitas.</span>';
+    return;
+  }
   if (!hist || !hist.visits || hist.visits.length === 0) {
     el.innerHTML = '<span style="color:var(--text2,#888)">Sem visitas anteriores registradas.</span>';
     return;
@@ -9066,12 +9199,14 @@ async function pgpFetchMachinesByClient(client){
 
   // 2. Buscar no GAS se conectado
   let serverMachines=[];
+  let _falhouServidor=false; // V75 (P1)
   if(_pgpGsConnected&&_pgpGsUrl){
     try{
       const r=await fetch(
         _pgpGsUrl+'?action=getMachinesByClient'+
         '&client='+encodeURIComponent(client)+
-        '&key='+_AUTH_HASH+gcParam()
+        '&key='+_AUTH_HASH+gcParam(),
+        {signal: (typeof AbortSignal!=='undefined'&&AbortSignal.timeout)?AbortSignal.timeout(12000):undefined}
       );
       const d=await r.json();
       if(d.status==='ok'){
@@ -9084,7 +9219,7 @@ async function pgpFetchMachinesByClient(client){
         // v26: limpa do cache local qualquer registro órfão que já existe no servidor
         pgpReconcileLocalMachines(serverMachines);
       }
-    }catch(e){}
+    }catch(e){ _falhouServidor=true; console.warn('[V75] getMachinesByClient falhou:',e&&e.message); }
   }
 
   // Mesclar: server é fonte de verdade, local complementa
@@ -9100,6 +9235,16 @@ async function pgpFetchMachinesByClient(client){
     machines.push(m);
   });
 
+  if(!machines.length && _falhouServidor){
+    // V75 (P1) — cache local vazio (aparelho novo / dados limpos) + rede ruim dizia
+    // "Nenhuma máquina encontrada" e oferecia "+ cadastrar nova": duplicata certa
+    // num cliente que tem 8 máquinas no servidor.
+    listEl.innerHTML=
+      '<div style="font-size:12px;color:var(--orange);padding:4px 0;font-weight:600">📴 Não consegui consultar o servidor.</div>'+
+      '<div style="font-size:12px;color:var(--text-light);padding:0 0 4px">Este cliente pode já ter máquinas cadastradas. Conecte antes de cadastrar uma nova.</div>'+
+      '<button class="btn btn-secondary" style="font-size:12px" onclick="pgpFetchMachinesByClient(' + JSON.stringify(client) + ')">↻ Tentar de novo</button>';
+    return;
+  }
   if(!machines.length){
     listEl.innerHTML=
       '<div style="font-size:12px;color:var(--text-light);padding:4px 0">Nenhuma máquina encontrada para este cliente.</div>'+
@@ -11443,10 +11588,12 @@ var _pgpAutoPingBusy = false;
 function pgpAutoPing() {
   if (_pgpAutoPingBusy || !_pgpGsUrl) return;
   _pgpAutoPingBusy = true;
+  // V75 (P2) — cinto e suspensório do timeout acima: `finally` garante que a trava
+  // volte a false mesmo se pgpTestGs quebrar de um jeito que o .then não pegue.
   Promise.resolve()
     .then(function(){ return pgpTestGs(); })
     .catch(function(){})
-    .then(function(){ _pgpAutoPingBusy = false; });
+    .finally(function(){ _pgpAutoPingBusy = false; });
 }
 window.addEventListener('online', pgpAutoPing);
 window.addEventListener('offline', function(){
@@ -12416,6 +12563,27 @@ async function pfConfirmarTarefa(tarefaId) {
     ? (window.PROPER_SESSION.tecnico.id || window.PROPER_SESSION.tecnico.nome || '')
     : '';
 
+  // V75 (P2) — TESTE SOFT 31/07: pfAssumirTarefa e pfLiberarTarefa já enfileiravam
+  // offline; CONFIRMAR (a ação que realmente fecha a tarefa) era a única sem esse
+  // caminho. Sem sinal o técnico só via "⚠ Erro: Failed to fetch", a tarefa não ia
+  // para a fila e o trabalho feito na oficina nunca chegava ao sistema.
+  if (!_pgpGsConnected && navigator.onLine === false) {
+    pgpQueueRequest('updateTarefaStatus', {
+      os_id:      _pfOsId,
+      tarefa_id:  tarefaId,
+      status:     'completo',
+      usuario:    usuario,
+      observacao: obs,
+      hora_inicio_estimada: horaInicioEstimada,
+      hora_fim_estimada: horaFimEstimada,
+      respostas_json: JSON.stringify(_pfRespostas[tarefaId] || {})
+    });
+    pfShowUnlockBanner('📴 Concluída offline — sincroniza quando houver sinal.');
+    if (btnEl) { btnEl.classList.remove('is-busy'); btnEl.textContent = '📴 Na fila'; }
+    await pfLoadPipeline({ soft: true });
+    return;
+  }
+
   try {
     await pgpPostJson('updateTarefaStatus', {
       os_id:      _pfOsId,
@@ -12922,7 +13090,16 @@ function pgpColetarAssinatura(cfg) {
 
 // Orquestra as DUAS assinaturas (técnico → responsável do cliente) e persiste.
 // Retorna true só quando ambas foram coletadas.
+var _pgpAssinBusy = false; // V75 (P2)
 async function pgpColetarAssinaturasPreventiva() {
+  // V75 (P2) — #pgpSignOverlay é ÚNICO e cada chamada registra os próprios
+  // listeners nos mesmos botões. Dois toques em "✍️ Coletar Assinaturas"
+  // registravam dois onConfirm: um toque resolvia as duas promises, o cleanup da
+  // primeira escondia o overlay e a segunda cadeia ficava esperando um clique num
+  // overlay invisível — tela travada e tecnico/responsavel gravados fora de ordem.
+  if (_pgpAssinBusy) return false;
+  _pgpAssinBusy = true;
+  try {
   window._PGP_ASSINATURAS = window._PGP_ASSINATURAS || { tecnico: null, responsavel: null, osId: null, cliente: '' };
   var a = window._PGP_ASSINATURAS;
   var midx = (typeof currentMachine === 'number') ? currentMachine : 0;
@@ -12961,6 +13138,7 @@ async function pgpColetarAssinaturasPreventiva() {
   pgpAtualizarStatusAssinaturas();
   try { showNotification('✅ Assinaturas coletadas'); } catch (e) {}
   return true;
+  } finally { _pgpAssinBusy = false; } // V75 (P2): libera a trava em TODOS os returns acima
 }
 
 // ── BOOT (relocado para o fim: precisa rodar DEPOIS de todas as
