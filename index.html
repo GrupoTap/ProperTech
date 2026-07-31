@@ -252,6 +252,30 @@
      100% aditivo; nenhum id/data-key/rota/função renomeado. -->
 <!-- V60 (Fases A + B/C, STAGED — NÃO PUBLICADO). Fase A: confirmação reforçada ao concluir tarefa terminal (t.Acao_Terminal). Fase B: modal de conclusão renderiza slots de foto (pfRenderRequisitosHtml/pfUploadFotoTarefa reusam compressPhotoForDrive + salvarFotosDrivePGP, chave os|tarefa|slot); trava no mínimo. Fase C: checklist (rádio/checkbox) gateia a conclusão. pfConfirmarTarefa valida e envia respostas_json. Requer GAS v72 (colunas Requisitos_JSON/Respostas_JSON; getPipelineByOS já devolve via getSheetDataActive) + PCM V82. Renomear arquivo para PCF_V60.html ao publicar. Ver PATCH_FASES_BCD_2026-07-15.md. -->
 <!-- v58: FILTRO Todas/Minhas na lista de OS (par do GAS_properCare_v69.js). O técnico passa a enxergar TODAS as OS (getOS com escopo:'todas'), não só as vinculadas a ele, para poder assumir tarefas de qualquer OS. Nova linha de chips "Todas as OS"/"Minhas" (padrão: Todas as OS). "Minhas" filtra por o.designada_para_mim (flag vinda do getOS = usuário no vínculo da OS OU Usuario_Designado de alguma tarefa, qualquer fase). Novas: var _pfOsDesignFilter, função pfSetOSDesignFilter, chips .pf-os-design-filter-chip; pfLoadOS acrescenta params.escopo='todas'; pfRenderOS aplica o filtro e o toggle de chip. 100% aditivo; nenhum id/data-key/rota/função existente renomeado. Publicar como PCF_V58.html. -->
+<!-- V74: CADASTRO DE CLIENTE VIRA ATO DE ADMIN DENTRO DA OS (par do GAS v82 / PCM V102).
+     CASO REAL: o técnico cadastrou "Herculano Mineradora" ao lado da "Herculano Mineração"
+     já existente. O vetor não era um botão de "cadastrar cliente" — é que TODO envio de
+     visita disparava saveClient com o que estivesse na seção "1. Dados do Cliente", e o
+     GAS, não achando o nome (clientKey diferente), INSERIA cliente novo em silêncio.
+     (T1) Seção 1 SOMENTE-LEITURA quando a coleta acontece dentro de uma OS (pgpEmOS() e
+          cliente da OS conhecido) — razao_social, contato, telefone, email, cidade, cnpj,
+          filial ganham 🔒. Datas de visita e TUDO da máquina seguem editáveis: a decisão
+          foi travar CADASTRO, não coleta. Fora de OS nada muda (liberdade total).
+     (T2) O payload de saveClient do envio passa a mandar origem: dentro da OS vai
+          `campo_os` e SEM os campos cadastrais (o GAS v82 recusa INSERT e descarta
+          cadastro nessa origem — defesa final contra fila antiga/aparelho velho).
+     (T3) Botão "✏️ Solicitar correção": o que o técnico vê de errado não some. Abre modal
+          com os campos travados, ele escreve o certo + a justificativa e vira uma
+          solicitação (saveSolicitacaoCadastro) que o admin aprova no PCM V102. Passa pela
+          FILA OFFLINE como qualquer envio (pgpQueueSolicitacao, dedup por client_uid).
+     (T4) Cadastro rápido de máquina dentro da OS: nm_client nasce preenchido com o cliente
+          da OS e travado — era por ali que um nome novo entrava sem ninguém perceber.
+     (T5) Fluxo AVULSO (sem OS): liberdade preservada, mas pgpRegisterNew agora BLOQUEIA
+          para confirmar quando o nome digitado se parece com um cliente já cadastrado
+          (pgpClientesParecidos: normalização + primeiro token + similaridade por bigramas).
+          O alerta antigo só pegava igualdade normalizada exata — "Mineradora" x "Mineração"
+          passava batido. 100% local, funciona offline.
+     Aditivo: nenhum id/data-key/rota/função renomeado. -->
 <!-- v57: Sprint F — rename form08→form02 (par GAS_properCare_v68.js/PCM v78/Hub v15). pfGetFormUrl (~L8333): case 'auto:form02' agora retorna .../ProperForms/form02.html; case 'auto:form08' mantido como alias legado apontando para a mesma URL. pfAbrirForm (~L8688): resolve osObj via _pfOsList.find (mesmo padrão de pfSelecionarOS) e acrescenta cliente/os_numero na urlComOs (&cliente=/&os_numero=), sem criar globals novas. 100% aditivo; nenhum id/data-key/rota/função existente renomeado. -->
 <!-- v56: ENVIO PARCIAL SEGURO (frontend-only, sem GAS) — ver PROMPT_CLAUDE_CODE_ENVIO_PARCIAL_2026-07-11.md. 100% aditivo; nenhum id/data-view/data-key/rota/função existente renomeado; node --check real passa nos 3 blocos de script. Dois predicados novos, cada um com critério de propósito diferente: pgpMaquinaPronta(midx) — ESTRITO, replica a MESMA validação que pgpEnviarPreventiva já aplica (horímetro informado + toda peça não-N/A com ação + toda "trocada" com referência); usado só como leitura prévia, pgpEnviarPreventiva NÃO foi alterado. pgpMaquinaTemConteudo(midx) — FROUXO (≥1 peça com ação/N-A OU ≥1 foto, SEM exigir horímetro pois este vem pré-preenchido desde o v51 e não sinaliza inspeção real). FIX 1: gerarPDF() (~L5424) agora pula (sem gerar nem subir ao Drive) qualquer máquina sem pgpMaquinaTemConteudo — corrige PDFs em branco poluindo a pasta da OS quando o cliente tem mais máquinas carregadas do que inspecionadas; toast final honesto ("N PDFs gerados · M sem inspeção pulada(s)") e alerta dedicado se nenhuma máquina tinha conteúdo. FIX 2: pgpEnviarTodasPreventivas() (~L7203) calcula ANTES quais máquinas estão prontas (pgpMaquinaPronta) e confirma "Registrar N de TOTAL máquina(s)?" listando as incompletas como "ficam para depois" (não mais tratado como erro); o loop de envio passa a percorrer só as prontas (_prontasIdx); o pop-up final de "Pendências" foi substituído por "Falha no envio", disparado só quando pgpEnviarPreventiva de fato falha — envio parcial deliberado deixa de acionar esse alerta. -->
 <!-- v55: CORREÇÕES DE UX (par PCM v77) — ver PROMPT_CLAUDE_CODE_UX_FRONTS_2026-07-11.md. 100% aditivo; nenhum id/data-view/data-key/rota/função renomeado; node --check real passa nos 3 blocos de script. (1) pgpEnviarGS(srcBtn) — o clique em btnEnviarGSMain (tela principal) não dava feedback nenhum (só o botão do modal btnEnviarGS recebia disabled/texto), então o usuário clicava de novo e disparava 2 envios concorrentes. Agora mira o botão realmente clicado (srcBtn), trava AMBOS os botões (guarda reentrante _pgpEnviarGSBusy + finally garante reabilitação mesmo em erro), espelha o status também na tela principal (novo #pgpSendStatusMain) e mostra aviso visível "🔴 Sem conexão — salvo na fila, reenvio automático" em vez de enfileirar em silêncio. (2) Barreira de toque na borda inferior: viewport-fit=cover + env(safe-area-inset-bottom) em .modal-body/.cfg-box/.foto-picker-box e nas telas do #pfOverlay (pipeline), para o rodapé de ações não cair atrás da barra de gestos do celular. (3) Feedback de processamento: novo CSS .btn.is-busy/.pf-btn.is-busy/.btn-preventiva.is-busy (spinner) + helper _comLoadingBtn_ portado do PCM, aplicado a pgpEnviarGS, pgpDoSerialSearch, pfAssumirTarefa/pfLiberarTarefa/pfConfirmarTarefa e pgpEnviarTodasPreventivas (botões de rede prioritários). -->
@@ -1674,6 +1698,23 @@ if (!window.jspdf) { document.write('<script src="https://cdnjs.cloudflare.com/a
 .pgp-os-maq-cancel{min-height:46px;padding:10px 12px;border-radius:10px;cursor:pointer;
   background:transparent;color:var(--text-light);border:1.5px solid var(--gray-mid);
   font-family:'Inter',sans-serif;font-weight:700;font-size:12px}
+/* ═══ V74 — TRAVA DE CADASTRO DENTRO DA OS ═══════════════════════════════ */
+.pgp-cad-lock{background:var(--gray-light,#f1f5f9)!important;color:var(--text-light,#64748b)!important;
+  cursor:not-allowed;border-style:dashed!important}
+.pgp-cad-lock-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;
+  background:#eef4ff;border-left:4px solid var(--blue-mid,#3b82f6);border-radius:0 8px 8px 0;
+  padding:8px 10px;margin:0 0 10px;font-size:11.5px;color:#1e3a8a;line-height:1.45}
+.pgp-cad-lock-bar b{font-weight:800}
+.pgp-cad-lock-btn{margin-left:auto;background:var(--blue-mid,#3b82f6);color:#fff;border:0;
+  border-radius:8px;padding:8px 12px;font-size:11.5px;font-weight:800;cursor:pointer;
+  font-family:'Inter',sans-serif;letter-spacing:.03em;min-height:38px}
+.pgp-cad-lock-btn:active{transform:scale(.98)}
+.pgp-solic-field{margin-bottom:9px}
+.pgp-solic-field label{display:block;font-size:10px;font-weight:800;color:#64748b;
+  text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
+.pgp-solic-field input,.pgp-solic-field textarea{width:100%;box-sizing:border-box;padding:9px 10px;
+  border:1px solid #cbd5e1;border-radius:8px;font-size:14px;font-family:inherit;color:#0f172a;background:#fff}
+.pgp-solic-atual{font-size:10.5px;color:#94a3b8;margin-top:2px}
 /* V72 (P4) — caixa de prazo agora vive no cartão (fora da seta ▸) */
 .pt-calc-inline:not(:empty){margin-top:10px}
 .pt-table.pt-perfil-pistao tr.pt-group.pt-nao-conforme{border-top-color:var(--red)}
@@ -2001,6 +2042,28 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
       <button type="button" class="pgp-sign-btn" id="pgpSignBackBtn">← Voltar</button>
       <button type="button" class="pgp-sign-btn" id="pgpSignClearBtn">↺ Limpar</button>
       <button type="button" class="pgp-sign-btn primary" id="pgpSignConfirmBtn">✓ Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- V74 — SOLICITAÇÃO DE CORREÇÃO DE CADASTRO (campo → admin).
+     Modal próprio (e não AppDialog) porque precisa de vários campos editáveis. -->
+<div id="pgpSolicOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100002;align-items:flex-end;justify-content:center" onclick="if(event.target===this)pgpFecharSolicitacao()">
+  <div style="background:#fff;color:#0f172a;width:100%;max-width:640px;max-height:88vh;overflow:auto;border-radius:14px 14px 0 0;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom, 16px));font-family:'Barlow Condensed',system-ui,sans-serif">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <b style="font-size:17px">✏️ Solicitar correção de cadastro</b>
+      <span onclick="pgpFecharSolicitacao()" style="cursor:pointer;font-size:22px;color:#64748b;line-height:1">✕</span>
+    </div>
+    <div id="pgpSolicSub" style="font-size:12px;color:#64748b;margin-bottom:12px;line-height:1.5"></div>
+    <div id="pgpSolicCampos"></div>
+    <div class="pgp-solic-field">
+      <label>Por que precisa mudar? *</label>
+      <textarea id="pgpSolicJustificativa" rows="3" placeholder="Ex: a placa na portaria diz Herculano Mineração S/A e o CNPJ bate com o da nota"></textarea>
+    </div>
+    <div id="pgpSolicStatus" style="font-size:12px;margin:6px 0;min-height:16px"></div>
+    <button id="pgpSolicEnviar" onclick="pgpEnviarSolicitacaoCadastro()" style="width:100%;background:#3b82f6;color:#fff;border:0;border-radius:10px;padding:13px;font-weight:700;font-size:15px;margin-top:6px;cursor:pointer">📤 Enviar pedido ao escritório</button>
+    <div style="font-size:11px;color:#94a3b8;text-align:center;margin-top:8px;line-height:1.5">
+      Nada muda no cadastro agora. O pedido fica registrado e o administrador aplica (ou não) no ProperAdmin.
     </div>
   </div>
 </div>
@@ -3670,6 +3733,14 @@ function buildPanelHTML(idx) {
       <span class="badge" data-section-badge>0/3</span><span class="chevron">▼</span>
     </div>
     <div class="section-body">
+      <!-- V74 (T1/T3): só aparece quando a coleta está dentro de uma OS.
+           pgpAplicarTravaCadastro() liga/desliga — nunca fica visível no avulso. -->
+      <div class="pgp-cad-lock-bar" id="${p}cad_lock_bar" data-cad-lock-slot style="display:none">
+        <span>🔒 <b>Cadastro do cliente vem do escritório nesta OS.</b>
+          O que estiver errado não se corrige aqui — mande um pedido.</span>
+        <button type="button" class="pgp-cad-lock-btn"
+                onclick="event.stopPropagation();pgpAbrirSolicitacaoCadastro(${idx})">✏️ Solicitar correção</button>
+      </div>
       <div class="field-item" onclick="toggleField(this,${idx})">
         <div class="field-label"><div class="checkbox">✓</div>
           <div class="label-text"><div class="label-main">Razão Social / Nome</div></div></div>
@@ -3923,6 +3994,8 @@ function createPanel(idx) {
   // v8.4.4: preencher data_visita com hoje automaticamente
   const dvEl = document.querySelector(`[data-key="m${idx}_data_visita"]`);
   if(dvEl && !dvEl.value) dvEl.value = new Date().toISOString().slice(0,10);
+  // V74: painel novo nasce com os inputs destravados — reaplica a trava neles.
+  try{ pgpAplicarTravaCadastro(); }catch(_){}
 }
 
 function addMachine() {
@@ -9156,6 +9229,280 @@ function pgpClientSearchFallback(){
 // quando o cliente diverge: evitava gravar na OS errada, mas deixava o técnico
 // coletar a visita inteira achando que estava dentro da OS.
 // ══════════════════════════════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════════════════════════
+// V74 — TRAVA DE CADASTRO DE CLIENTE DENTRO DA OS + SOLICITAÇÃO DE CORREÇÃO
+//
+// Por que existe: o cliente "Herculano Mineradora" nasceu de um envio de visita
+// comum. A seção 1 é digitável, todo envio manda saveClient com o que estiver
+// nela, e o GAS insere quando não acha o nome. Dentro de uma OS isso nunca faz
+// sentido — a OS já foi aberta pelo escritório PARA um cliente cadastrado.
+//
+// Escolha de escopo (Fernando, 31/07): trava só CADASTRO DE CLIENTE. Marca,
+// modelo, série, TAG, horímetro, peças, fotos e as datas de visita seguem 100%
+// editáveis dentro da OS — travar coleta seria trocar um problema por outro.
+// ══════════════════════════════════════════════════════════════════════════
+
+// data-key (sem o prefixo m<i>_) dos campos que o cadastro do cliente possui.
+// ult_visita/prox_visita/data_visita ficam DE FORA de propósito: são operação.
+var PGP_CAMPOS_CAD_CLIENTE = ['razao_social','contato','telefone','email','cidade','cnpj','filial'];
+
+// Rótulo + chave do GAS de cada campo travado (usado no modal e no payload).
+var PGP_CAD_LABELS = {
+  razao_social: { label:'Razão Social / Nome', chave:'nome'     },
+  cnpj:         { label:'CNPJ / CPF',          chave:'cnpj'     },
+  contato:      { label:'Contato',             chave:'contato'  },
+  telefone:     { label:'Telefone',            chave:'telefone' },
+  email:        { label:'E-mail',              chave:'email'    },
+  cidade:       { label:'Cidade / Estado',     chave:'cidade'   },
+  filial:       { label:'Filial / Unidade',    chave:'filial'   }
+};
+
+// A trava exige as DUAS coisas: estar numa OS E saber quem é o cliente dela.
+// Sem o cliente conhecido (pipeline que ainda não respondeu) não se trava nada:
+// travar um campo sem saber o valor certo prenderia o técnico sem saída.
+function pgpCadTravado(){
+  try { return pgpEmOS() && !!String(window._PGP_OS_CLIENTE || '').trim(); }
+  catch(e){ return false; }
+}
+
+function pgpAplicarTravaCadastro(){
+  var travado = pgpCadTravado();
+  try{
+    document.querySelectorAll('[data-key]').forEach(function(el){
+      var k = String((el.dataset && el.dataset.key) || '');
+      var m = k.match(/^m\d+_(.+)$/);
+      if(!m) return;
+      if(PGP_CAMPOS_CAD_CLIENTE.indexOf(m[1]) < 0) return;
+      if(travado){
+        el.readOnly = true;
+        el.classList.add('pgp-cad-lock');
+        el.setAttribute('title','Cadastro do cliente é definido pelo escritório nesta OS. Use "Solicitar correção".');
+      } else {
+        el.readOnly = false;
+        el.classList.remove('pgp-cad-lock');
+        el.removeAttribute('title');
+      }
+    });
+    document.querySelectorAll('[data-cad-lock-slot]').forEach(function(slot){
+      slot.style.display = travado ? '' : 'none';
+    });
+    // (T4) cadastro rápido de máquina: dentro da OS o cliente é o da OS, e ponto.
+    var nmc = document.getElementById('nm_client');
+    if(nmc){
+      if(travado){
+        nmc.value = String(window._PGP_OS_CLIENTE || '');
+        nmc.readOnly = true;
+        nmc.classList.add('pgp-cad-lock');
+        var alerta = document.getElementById('pgpClientSimilarAlert');
+        if(alerta) alerta.style.display = 'none';
+      } else {
+        nmc.readOnly = false;
+        nmc.classList.remove('pgp-cad-lock');
+      }
+    }
+  }catch(e){ console.warn('[V74] pgpAplicarTravaCadastro:', e); }
+}
+
+// ── (T5) CLIENTES PARECIDOS ────────────────────────────────────────────────
+// O alerta da v8 só pegava igualdade normalizada — "Herculano Mineradora" e
+// "Herculano Mineração" normalizam diferente e passavam batido. Aqui vale
+// similaridade por BIGRAMAS (Dice) + primeiro token igual, tudo local/offline.
+function _pgpBigramas(str){
+  var out = {}, t = String(str||'');
+  for(var i=0;i<t.length-1;i++){ var b=t.substr(i,2); out[b]=(out[b]||0)+1; }
+  return out;
+}
+function pgpSimilaridade(a, b){
+  a = String(a||''); b = String(b||'');
+  if(!a || !b) return 0;
+  if(a === b) return 1;
+  var ba = _pgpBigramas(a), bb = _pgpBigramas(b), inter = 0, na = 0, nb = 0, k;
+  for(k in ba) na += ba[k];
+  for(k in bb) nb += bb[k];
+  for(k in ba) if(bb[k]) inter += Math.min(ba[k], bb[k]);
+  if(!na || !nb) return 0;
+  return (2 * inter) / (na + nb);
+}
+// Devolve [{nome, score}] ordenado, do mais parecido para o menos.
+function pgpClientesParecidos(nome, limiar){
+  limiar = (typeof limiar === 'number') ? limiar : 0.62;
+  var alvo = normalizeEntityName(nome);
+  if(!alvo || alvo.length < 3) return [];
+  var lista = [];
+  try{
+    var aDb = JSON.parse(localStorage.getItem('proper_admin_v2') || 'null');
+    lista = (aDb && aDb.clients) ? aDb.clients : [];
+  }catch(e){ lista = []; }
+  var tok = alvo.split(' ')[0];
+  var out = [];
+  for(var i=0;i<lista.length;i++){
+    var nomeC = String((lista[i] && lista[i].nome) || '');
+    if(!nomeC) continue;
+    var norm = normalizeEntityName(nomeC);
+    if(!norm || norm === alvo) {
+      // idêntico depois de normalizar: é o MESMO cliente escrito diferente —
+      // sempre entra, com score máximo.
+      if(norm === alvo && nomeC !== nome) out.push({ nome:nomeC, score:1 });
+      continue;
+    }
+    var sc = pgpSimilaridade(alvo, norm);
+    // primeiro token igual (Herculano/Herculano) puxa o score para cima: é o
+    // padrão real de filial/razão social escrita de outro jeito.
+    var tokC = norm.split(' ')[0];
+    if(tok && tokC && tok === tokC && tok.length >= 4) sc = Math.max(sc, 0.75);
+    if(sc >= limiar) out.push({ nome:nomeC, score:sc });
+  }
+  out.sort(function(a,b){ return b.score - a.score; });
+  return out.slice(0, 5);
+}
+
+// Confirmação BLOQUEANTE antes de deixar nascer um cliente novo no avulso.
+// Devolve o nome a usar (o existente, se o técnico aceitar) ou null se ele
+// desistir. Fora de OS apenas — dentro da OS o nome nem é digitável.
+async function pgpConfirmarClienteNovo(nomeDigitado){
+  var pare = pgpClientesParecidos(nomeDigitado);
+  if(!pare.length) return nomeDigitado;
+  var top = pare[0];
+  var listaTxt = pare.map(function(p){ return '• ' + p.nome; }).join('\n');
+  var usar = await AppDialog.confirm(
+    'Você digitou "' + nomeDigitado + '".\n\nJá existe cadastrado:\n' + listaTxt +
+    '\n\nÉ o mesmo cliente? Usar o cadastro que já existe evita duplicar o parque de máquinas.',
+    { title:'Cliente parecido já cadastrado',
+      okLabel:'Usar "' + top.nome + '"',
+      cancelLabel:'É outro cliente' }
+  );
+  if(usar) return top.nome;
+  var confirmaNovo = await AppDialog.confirm(
+    'Criar "' + nomeDigitado + '" como cliente NOVO, separado de "' + top.nome + '"?\n\n' +
+    'Se for a mesma empresa com o nome escrito de outro jeito, o parque fica dividido em dois ' +
+    'e o histórico da máquina se perde.',
+    { title:'Confirmar cliente novo', okLabel:'Sim, é cliente novo', cancelLabel:'Voltar', danger:true }
+  );
+  return confirmaNovo ? nomeDigitado : null;
+}
+
+// ── (T3) SOLICITAÇÃO DE CORREÇÃO ───────────────────────────────────────────
+var _pgpSolicMidx = 0;
+
+function pgpAbrirSolicitacaoCadastro(midx){
+  var idx = (typeof midx === 'number') ? midx : currentMachine;
+  _pgpSolicMidx = idx;
+  var ov = document.getElementById('pgpSolicOverlay');
+  var cont = document.getElementById('pgpSolicCampos');
+  if(!ov || !cont) return;
+  var p = 'm' + pgpGetMachineIndex(idx) + '_';
+  var html = '';
+  PGP_CAMPOS_CAD_CLIENTE.forEach(function(campo){
+    var meta = PGP_CAD_LABELS[campo] || { label:campo };
+    var el = document.querySelector('[data-key="' + p + campo + '"]');
+    var atual = el ? String(el.value || '') : '';
+    html += '<div class="pgp-solic-field">'
+          +   '<label>' + pgpEscHtml(meta.label) + '</label>'
+          +   '<input type="text" id="pgpSolicC_' + campo + '" value="' + pgpEscHtml(atual) + '">'
+          +   '<div class="pgp-solic-atual">hoje no cadastro: ' + (atual ? pgpEscHtml(atual) : '(vazio)') + '</div>'
+          + '</div>';
+  });
+  cont.innerHTML = html;
+  var sub = document.getElementById('pgpSolicSub');
+  if(sub){
+    sub.innerHTML = 'Cliente <b>' + pgpEscHtml(String(window._PGP_OS_CLIENTE || '—')) + '</b>'
+      + (window._PGP_OS_NUMERO ? (' · OS <b>' + pgpEscHtml(String(window._PGP_OS_NUMERO)) + '</b>') : '')
+      + '<br>Corrija abaixo o que estiver errado e explique o porquê. Só o administrador aplica.';
+  }
+  var jus = document.getElementById('pgpSolicJustificativa');
+  if(jus) jus.value = '';
+  var st = document.getElementById('pgpSolicStatus');
+  if(st) st.textContent = '';
+  ov.style.display = 'flex';
+}
+
+function pgpFecharSolicitacao(){
+  var ov = document.getElementById('pgpSolicOverlay');
+  if(ov) ov.style.display = 'none';
+}
+
+// Fila offline dedicada. NÃO usa pgpQueueRequest: a assinatura dele não olha
+// client_uid, e duas solicitações da mesma OS colidiriam (a segunda apagaria a
+// primeira). Mesmo shape de retorno de savePendingQueue.
+function pgpQueueSolicitacao(body){
+  var list = pgpGetPending();
+  var sig = 'solic|' + String((body && body.client_uid) || '');
+  var next = list.filter(function(item){
+    return !(item && item.action === 'saveSolicitacaoCadastro' && String(item.signature||'') === sig);
+  });
+  next.push({ action:'saveSolicitacaoCadastro', body:body, signature:sig, ts:Date.now() });
+  var q = savePendingQueue(next);
+  if(q.saved) pgpUpdatePendingBadge();
+  return q;
+}
+
+async function pgpEnviarSolicitacaoCadastro(){
+  var btn = document.getElementById('pgpSolicEnviar');
+  var st  = document.getElementById('pgpSolicStatus');
+  var setSt = function(html){ if(st) st.innerHTML = html; };
+  var jus = String((document.getElementById('pgpSolicJustificativa')||{}).value || '').trim();
+
+  // Só viajam os campos que o técnico REALMENTE mudou — assim o admin enxerga o
+  // pedido e não um retrato inteiro do cadastro.
+  var p = 'm' + pgpGetMachineIndex(_pgpSolicMidx) + '_';
+  var campos = {}, mudou = 0;
+  PGP_CAMPOS_CAD_CLIENTE.forEach(function(campo){
+    var inp = document.getElementById('pgpSolicC_' + campo);
+    if(!inp) return;
+    var novo = String(inp.value || '').trim();
+    var el = document.querySelector('[data-key="' + p + campo + '"]');
+    var atual = el ? String(el.value || '').trim() : '';
+    if(novo && novo !== atual){
+      campos[(PGP_CAD_LABELS[campo] || {}).chave || campo] = novo;
+      mudou++;
+    }
+  });
+  if(!mudou && !jus){
+    setSt('<span style="color:#dc2626">Mude ao menos um campo ou escreva a justificativa.</span>');
+    return;
+  }
+  if(!jus){
+    setSt('<span style="color:#dc2626">Escreva o porquê — é o que o administrador lê para decidir.</span>');
+    return;
+  }
+
+  var sess = (window.PROPER_SESSION && window.PROPER_SESSION.tecnico) || {};
+  var body = {
+    client_uid:    'SOL-' + Date.now().toString(36) + '-' + pgpUid(),
+    escopo:        'cliente',
+    entidade_nome: String(window._PGP_OS_CLIENTE || ''),
+    entidade_id:   String(window._PGP_OS_CLIENTE_ID || ''),
+    os_id:         String(window._PGP_OS_ID || ''),
+    os_numero:     String(window._PGP_OS_NUMERO || ''),
+    campos:        campos,
+    justificativa: jus,
+    usuario:       String(sess.id || ''),
+    usuario_nome:  String(sess.nome || ''),
+    solicitado_em: new Date().toISOString()
+  };
+
+  if(btn){ btn.disabled = true; btn.textContent = 'Enviando…'; }
+  try{
+    if(!_pgpGsConnected || !_pgpGsUrl) throw new Error('sem conexão');
+    await pgpPostJson('saveSolicitacaoCadastro', body);
+    setSt('<span style="color:var(--green,#16a34a)">✅ Pedido enviado ao escritório.</span>');
+    showNotification('✅ Pedido de correção enviado — o administrador vai avaliar.');
+    setTimeout(pgpFecharSolicitacao, 900);
+  }catch(e){
+    var q = pgpQueueSolicitacao(body);
+    if(q && q.blocked){
+      setSt('<span style="color:#dc2626">🚫 Fila cheia — o pedido NÃO foi guardado. Sincronize e tente de novo.</span>');
+    } else {
+      setSt('<span style="color:var(--orange,#f58220)">⏳ Sem conexão — pedido salvo na fila e enviado sozinho ao sincronizar.</span>');
+      showNotification('⏳ Pedido de correção salvo na fila.');
+      setTimeout(pgpFecharSolicitacao, 1200);
+    }
+  }finally{
+    if(btn){ btn.disabled = false; btn.textContent = '📤 Enviar pedido ao escritório'; }
+  }
+}
+
 function pgpEmOS(){ return !!window._PGP_OS_ID; }
 
 // banner reaberto propositalmente, travado no cliente da OS
@@ -9199,6 +9546,10 @@ function pgpAtualizarModoOS(){
     var sf = document.getElementById('pgpStepFallback');
     if(sf) sf.style.display = 'none';
   }
+  // V74: este é o ponto por onde TODA entrada e saída de modo OS passa (12 call
+  // sites desde a V72), inclusive quando o pipeline finalmente responde quem é o
+  // cliente da OS. Aplicar a trava aqui evita espalhar chamada por todo lado.
+  try{ pgpAplicarTravaCadastro(); }catch(_){}
 }
 
 async function pgpIncluirMaquinaDaOS(){
@@ -10156,10 +10507,29 @@ function pgpVoltarParaOS(){
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function pgpRegisterNew(){
-  const client=document.getElementById('nm_client').value.trim();
+  let client=document.getElementById('nm_client').value.trim();
   const brand =document.getElementById('nm_brand').value.trim();
   const model =document.getElementById('nm_model').value.trim();
   if(!client||!brand||!model){showNotification('⚠ Informe cliente, marca e modelo');return;}
+  // V74 (T4): dentro de uma OS o cliente é o da OS — não o que estiver no input.
+  // (o input já nasce preenchido e travado; isto é a segunda barreira, para o
+  //  caso de alguém chegar aqui com o campo editado por outro caminho.)
+  if(pgpCadTravado()){
+    const _cliOS = String(window._PGP_OS_CLIENTE || '').trim();
+    if(_cliOS && clientKey(_cliOS) !== clientKey(client)){
+      showNotification('🔒 Dentro da OS a máquina é cadastrada em ' + _cliOS + '.');
+    }
+    if(_cliOS) client = _cliOS;
+  } else {
+    // V74 (T5): fluxo avulso segue livre, mas cliente parecido para a criação
+    // para o técnico confirmar. É exatamente o passo que faltava no caso
+    // "Herculano Mineradora" x "Herculano Mineração".
+    const _escolhido = await pgpConfirmarClienteNovo(client);
+    if(_escolhido === null){ showNotification('Cadastro cancelado.'); return; }
+    client = _escolhido;
+    const _nmc = document.getElementById('nm_client');
+    if(_nmc) _nmc.value = client;
+  }
   // Resolver nome canônico: buscar cliente similar no admin local
   const _clientCanonical = (() => {
     try {
@@ -10870,23 +11240,44 @@ async function pgpEnviarGS(srcBtn){
       try {
         const clientNome = payload.client || '';
         if (clientNome) {
-          await pgpPostJson('saveClient', {
-            client: {
-              nome:      clientNome,
-              cnpj:      payload.cnpj    || '',
-              telefone:  payload.phone   || '',
-              email:     payload.email   || '',
-              cidade:    payload.city    || '',
-              // v8.4.4:
-              contato:   payload.contact  || '',
-              filial:    payload.branch   || '',
-              nextVisit: payload.nextVisit|| '',
-              lastVisit: payload.lastVisit|| '',
-              // v10: endereço e UF
-              endereco:  payload.endereco || '',
-              uf:        payload.uf       || '',
-            }
+          // V74 (T2) — AQUI nascia o cliente fantasma: este saveClient roda em
+          // TODO envio de visita e o GAS INSERE quando não acha o nome. Dentro de
+          // uma OS o cadastro não é do técnico: manda-se `origem:'campo_os'` e
+          // NENHUM campo cadastral — só as datas de visita, que são operação.
+          // O GAS v82 recusa INSERT e descarta cadastro nessa origem (defesa
+          // final: fila antiga e aparelho em versão velha não passam pelo cadeado).
+          const _cadTravado = (typeof pgpCadTravado === 'function') ? pgpCadTravado() : false;
+          const _clientBody = _cadTravado
+            ? {
+                nome:      clientNome,
+                nextVisit: payload.nextVisit || '',
+                lastVisit: payload.lastVisit || '',
+                origem:    'campo_os'
+              }
+            : {
+                nome:      clientNome,
+                cnpj:      payload.cnpj    || '',
+                telefone:  payload.phone   || '',
+                email:     payload.email   || '',
+                cidade:    payload.city    || '',
+                // v8.4.4:
+                contato:   payload.contact  || '',
+                filial:    payload.branch   || '',
+                nextVisit: payload.nextVisit|| '',
+                lastVisit: payload.lastVisit|| '',
+                // v10: endereço e UF
+                endereco:  payload.endereco || '',
+                uf:        payload.uf       || '',
+                origem:    'campo'
+              };
+          const _respCli = await pgpPostJson('saveClient', {
+            client: _clientBody,
+            origem: _clientBody.origem,
+            os_id:  String(window._PGP_OS_ID || '')
           });
+          if (_respCli && _respCli.action === 'blocked') {
+            console.warn('[V74] saveClient bloqueado pelo GAS (origem campo_os):', _respCli.motivo);
+          }
         }
       } catch(clientErr) {
         console.warn('saveClient falhou (não crítico):', clientErr);

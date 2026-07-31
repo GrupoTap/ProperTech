@@ -8,7 +8,7 @@
  * DISCIPLINA DE VERSÃO: bump em CACHE a cada deploy do app (v43 -> v44 ...).
  * O activate abaixo apaga qualquer cache antigo com prefixo 'propertech-'.
  */
-const CACHE = 'propertech-v73'; // 31/07/2026: par do index PCF_V73 + GAS v81 — NADA COLETADO SE PERDE: data da leitura do horímetro, observação geral do checklist e ESTADO encontrado da peça passam a ser enviados (morriam no aparelho); a INSPEÇÃO volta a mandar os_id/tarefa_id/client_uid/horimetro_estimado (a whitelist pgpBuildVisitRequest engolia os 4: tarefa auto:inspecao nunca fechava, visita sem vínculo com a OS, dedupe F-09 morto e auto-calibração do regime só em preventiva). NO PDF: coluna AÇÃO por peça, Nº da OS, título que deixa de mentir em inspeção, ref anterior da peça trocada e VENCIDO* quando a peça está conforme. Anterior: PCF_V72 (UX de campo + motor de PDF separado/espelhado). Bump junto com cada deploy
+const CACHE = 'propertech-v74'; // 31/07/2026: par do index PCF_V74 + GAS v82 + PCM V102 — CADASTRO DE CLIENTE VIRA ATO DE ADMIN DENTRO DA OS: a seção "1. Dados do Cliente" fica somente-leitura quando a coleta acontece dentro de uma OS (era por ali que "Herculano Mineradora" nasceu — todo envio de visita disparava saveClient e o GAS inseria cliente novo ao não achar o nome); o payload passa a mandar origem=campo_os SEM campos cadastrais (o GAS v82 recusa o INSERT); botão "Solicitar correção" manda o pedido para o admin aprovar no PCM (com fila offline); e no fluxo AVULSO, cliente com nome parecido passa a exigir confirmação bloqueante antes de virar cadastro novo. Anterior: PCF_V73 (nada coletado se perde + PDF). Bump junto com cada deploy
 const SCOPE_PREFIX = '/ProperTech/';
 const APP_SHELL = [
   '/ProperTech/',
