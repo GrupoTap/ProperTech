@@ -459,8 +459,8 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ProperCare Field · PGP Preventivas v34 · build PCF_V73</title>
-<meta name="app-build" content="PCF_V73" data-date="2026-07-31">
+<title>ProperCare Field · PGP Preventivas v34 · build PCF_V76</title>
+<meta name="app-build" content="PCF_V76" data-date="2026-07-31">
 <meta name="theme-color" content="#0f172a">
 <!-- PWA (fix 19/07/2026): o repo já tinha manifest.webmanifest + sw.js + proper-pwa.js,
      mas o index.html não os referenciava — sem estas 3 linhas o SW nunca registra,
@@ -469,12 +469,35 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <script src="proper-pwa.js" defer></script>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<!-- V76 (F1c): fontes deixam de bloquear o primeiro paint. media="print" faz o
+     browser baixar a folha SEM segurar o render; no onload ela vira 'all' e as
+     fontes entram. Fallback do sistema aparece de imediato (display=swap já era
+     usado). noscript mantém o comportamento antigo p/ JS desligado. -->
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"></noscript>
 <!-- O1.4 (V61): jsPDF servido do próprio repo (mesma origem → cacheado pelo SW → PDF offline).
      Se o arquivo local faltar num deploy incompleto, cai para o CDN (comportamento antigo). -->
-<script src="jspdf.umd.min.js"></script>
+<script src="jspdf.umd.min.js" defer></script>
 <script>
-if (!window.jspdf) { document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"><\/script>'); }
+// V76 (F1b) — o jspdf.umd.min.js (364KB) era SÍNCRONO no head: bloqueava o parse
+// do HTML de ~750KB em toda abertura, para uma biblioteca que só é usada na hora
+// de gerar PDF. Agora carrega com defer, e o fallback de CDN (document.write NÃO
+// funciona em script deferido) virou pgpEnsureJsPDF(): checada no início de cada
+// geração de PDF, injeta o CDN sob demanda e espera o onload.
+function pgpEnsureJsPDF() {
+  if (window.jspdf && window.jspdf.jsPDF) return Promise.resolve(true);
+  if (window._pgpJsPdfLoading) return window._pgpJsPdfLoading;
+  window._pgpJsPdfLoading = new Promise(function (resolve) {
+    var sc = document.createElement('script');
+    sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    sc.onload = function () { resolve(!!(window.jspdf && window.jspdf.jsPDF)); };
+    sc.onerror = function () { resolve(false); };
+    document.head.appendChild(sc);
+    setTimeout(function () { resolve(!!(window.jspdf && window.jspdf.jsPDF)); }, 15000);
+  }).then(function (ok) { window._pgpJsPdfLoading = null; return ok; });
+  return window._pgpJsPdfLoading;
+}
 </script>
 <style>
   :root{
@@ -1698,6 +1721,48 @@ if (!window.jspdf) { document.write('<script src="https://cdnjs.cloudflare.com/a
 .pgp-os-maq-cancel{min-height:46px;padding:10px 12px;border-radius:10px;cursor:pointer;
   background:transparent;color:var(--text-light);border:1.5px solid var(--gray-mid);
   font-family:'Inter',sans-serif;font-weight:700;font-size:12px}
+/* ═══ V76 — FLUIDEZ E VELOCIDADE (execução do PROMPT_MELHORIA_FLUIDEZ) ═══════
+   31/07/2026. Par: sw.js v76 (CACHE='propertech-v76') — PUBLICAR EM PAR. Zero GAS.
+   Queixa dos técnicos: telas lentas, sem spinner, segundo clique desnecessário.
+
+   F1 ABRIR RÁPIDO — sw.js: navegação network-first ganhou CORRIDA de 3s contra o
+      cache (abrir o app não espera mais o HTML de ~750KB da rede; a versão nova
+      entra na abertura seguinte — disciplina de bump do CACHE inalterada).
+      jspdf.umd.min.js (364KB) saiu do caminho de parse (defer) e o fallback de
+      CDN virou pgpEnsureJsPDF() sob demanda (document.write não roda em defer).
+      Google Fonts sem bloquear o 1º paint (media=print→all + preconnect).
+      title/meta app-build atualizados (diziam PCF_V73 desde a V73).
+   F2 CACHE MORNO PINTA JÁ — pf_os_cache_v1 e pf_pipeline_cache_v1 existiam desde
+      o V61 mas só eram usados em ERRO; agora pintam de imediato com selo
+      "↻ atualizando…" e a rede re-renderiza por cima (regra V67 mantida: cache
+      VAZIO de pipeline nunca é servido). getMaquinasByOS ganhou feedback imediato
+      (⏳) — SEM pintar máquinas 2× (classe V71/FIX2 de perda de coleta).
+      Máquinas do cache local pintam na hora em pgpFetchMachinesByClient.
+      Histórico de máquina com memo de sessão: trocar de aba não refaz rede nem
+      apaga o histórico exibido.
+   F3 REDE FORA DO TOQUE — notificação navega JÁ (marcarNotifLida virou
+      fire-and-forget, padrão do registrarAbertura/V67); retries agora são
+      VISÍVEIS (onRetry opcional em _pgpFetchComRetry_/pfGet/pgpPostJson) e mais
+      curtos (1 nas leituras com fallback de cache; 0 nas decorativas/poll);
+      OS sem pipeline confirmada entra em memo de 5 min (não paga mais 2,5s +
+      2ª chamada em toda abertura); badge de notificações não espera o getOS;
+      1º poll não dispara banner nem refresh (era o getPipelineByOS DUPLICADO
+      do boot, medido a +1274ms e +2693ms).
+   F4 MENOS CHAMADAS — OS fechadas só sob demanda (chip Concluídas/Todas);
+      fotos anteriores só do painel ATIVO (pendentes carregam no switchMachine);
+      poll não roda com a aba em 2º plano e o setInterval agora TEM clearInterval
+      (pfFechar/pfHubLogout); reconexão com throttle de 10 min no refetch de
+      clientes.
+   F5 DIGITAÇÃO — #pgpClientSearching (existia no HTML com ZERO referências no
+      JS) finalmente aparece durante a carga do cache de clientes + timeout de
+      12s no getClientsForField; dropdown de clientes limitado a 30 itens;
+      consulta de catálogo com debounce de 250ms e índice de similares
+      memoizado (invalidado no pgpSaveCatalogCache).
+
+   100% ADITIVO: nenhuma função, id, data-key, rota ou chave de payload renomeada
+   ou removida (parâmetros novos são todos opcionais no fim da assinatura).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 /* ═══ V75 — TESTE SOFT GERAL 31/07/2026 (pré-migração Supabase/React) ═══════
    Par: PCM V103. Varredura de bugs LEVES de UX no uso de CAMPO (6 modos abertos,
    439 botões clicados em Chromium headless a 414px). 10 correções, todas ADITIVAS.
@@ -1862,7 +1927,7 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
   <input type="text" id="catalogLookupInput"
     placeholder="Referência, nome da peça ou modelo..."
     style="width:100%;border:1.5px solid var(--gray-mid);border-radius:7px;padding:8px 10px;font-size:14px;background:var(--gray);margin-bottom:8px;box-sizing:border-box"
-    oninput="pgpRenderCatalogLookup()" />
+    oninput="pgpCatalogLookupDebounced()" /><!-- V76 (F5b): debounce 250ms — o índice do catálogo INTEIRO era reconstruído a cada tecla -->
   <div id="catalogLookupResults" style="max-height:260px;overflow-y:auto"></div>
 </div>
 
@@ -4094,6 +4159,12 @@ function switchMachine(idx) {
   if (tab) tab.classList.add('active');
   document.getElementById('machineCounter').textContent = 'Máquina '+(idx+1)+' de '+machines.length;
   pgpRenderLoadedCard(idx);
+  // V76 (F4b): dispara a carga de fotos que ficou pendente enquanto o painel
+  // não estava na tela (histórico já vem pelo pgpRenderLoadedCard acima).
+  if (window._pfFotosPendentes && window._pfFotosPendentes[idx]) {
+    delete window._pfFotosPendentes[idx];
+    try { pfCarregarFotosMaquina(idx); } catch(eF) {}
+  }
   updateProgress();
   checkDone();
 }
@@ -6766,6 +6837,10 @@ async function gerarPDF(btnEl) {
   if (btnEl) { btnEl.disabled = true; btnEl.classList.add('is-busy'); }
   try { showNotification('⏳ Preparando relatório...'); } catch(e) {}
   try {
+    // V76 (F1b): garante a biblioteca ANTES do fluxo (com defer ela pode ainda
+    // não ter chegado num toque muito rápido pós-boot, ou faltar num deploy manco).
+    const _jsOk = await pgpEnsureJsPDF();
+    if (!_jsOk) { AppDialog.alert('Biblioteca PDF não carregou (sem conexão?). Tente de novo com sinal.', {variant:'danger', title:'PDF'}); return; }
     return await _gerarPDF_(btnEl);
   } finally {
     _pgpGerarPdfBusy = false;
@@ -6860,6 +6935,7 @@ async function _gerarPDF_(btnEl) {
 // adicional, não substitui a geração individual.
 async function gerarPDFConsolidado() {
   if (machines.length < 2) return;
+  if (!(await pgpEnsureJsPDF())) { AppDialog.alert('Biblioteca PDF não carregou (sem conexão?). Tente de novo com sinal.', {variant:'danger', title:'PDF'}); return; } // V76 (F1b)
 
   await gerarPDF();
 
@@ -6992,8 +7068,21 @@ function pgpRenderLoadedCard(midx=currentMachine){
       `${eq.brand||''} ${eq.model||''} — ${eq.client||''}<small>Série: ${eq.serial||'—'} · TAG: ${eq.tag||'—'} · ${(eq.hourTotal||0).toLocaleString('pt-BR')}h</small>`;
   }
   card.classList.add('show');
-  renderMachineHistory(null, true);
-  fetchMachineHistory(eq.id || eq.machine_id || '').then(hist => renderMachineHistory(hist, false));
+  // V76 (F2e/F4b) — troca de aba NÃO refaz rede nem apaga o histórico exibido:
+  // com memo da sessão, pinta direto (sem estado "Carregando"); sem memo, só o
+  // painel ATIVO consulta a rede (OS de 4 máquinas disparava 1 getVisitsByMachine
+  // POR PAINEL no load — o painel que não está na tela busca quando for aberto,
+  // via switchMachine → pgpRenderLoadedCard).
+  var _histId = eq.id || eq.machine_id || '';
+  var _histMemo = _histId ? (window._pgpHistCache || {})[_histId] : null;
+  if (_histMemo) {
+    renderMachineHistory(_histMemo, false);
+  } else if (idx === currentMachine) {
+    renderMachineHistory(null, true);
+    fetchMachineHistory(_histId).then(hist => renderMachineHistory(hist, false));
+  } else if (histEl) {
+    histEl.style.display = 'none';
+  }
 }
 
 // ── FILA DE PENDÊNCIAS ────────────────────────────────────
@@ -7245,6 +7334,7 @@ function pgpLoadCatalogCache() {
 }
 
 function pgpSaveCatalogCache(data) {
+  try { window._pgpSimIdx = null; } catch(eI) {} // V76 (F5b): catálogo novo invalida o índice memoizado
   try { localStorage.setItem(CATALOG_CACHE_KEY, JSON.stringify({ ts: new Date().toISOString(), ...data })); }
   catch (e) { console.warn('Erro ao salvar cache de catálogo:', e); }
 }
@@ -7261,6 +7351,13 @@ async function pgpEnsureCatalogCache() {
     }
   } catch (e) { console.warn('Erro ao carregar catálogo do GAS:', e); }
   return null;
+}
+
+// V76 (F5b): debounce no padrão do autoSaveDraft — 10 teclas = 1 render, não 10.
+var _pgpCatLookupTimer = null;
+function pgpCatalogLookupDebounced() {
+  clearTimeout(_pgpCatLookupTimer);
+  _pgpCatLookupTimer = setTimeout(function(){ pgpRenderCatalogLookup(); }, 250);
 }
 
 async function pgpRenderCatalogLookup() {
@@ -7292,12 +7389,21 @@ async function pgpRenderCatalogLookup() {
   const allSims    = cat.similarities || [];
 
   // Índice de similares por Part_ID+Model_ID
-  const simByPart = {};
-  allSims.forEach(s => {
-    const key = (s.Model_ID || s.modelId || '') + '::' + (s.Part_ID || s.partId || '');
-    if (!simByPart[key]) simByPart[key] = [];
-    simByPart[key].push(s.Ref_Similar || s.refSimilar || '');
-  });
+  // V76 (F5b): memoizado — era reconstruído sobre TODAS as similarities a cada
+  // tecla. Chave = ts do cache + tamanho; pgpSaveCatalogCache invalida.
+  const _simKey = String(cat.ts || '') + ':' + allSims.length;
+  let simByPart;
+  if (window._pgpSimIdx && window._pgpSimIdx.key === _simKey) {
+    simByPart = window._pgpSimIdx.idx;
+  } else {
+    simByPart = {};
+    allSims.forEach(s => {
+      const key = (s.Model_ID || s.modelId || '') + '::' + (s.Part_ID || s.partId || '');
+      if (!simByPart[key]) simByPart[key] = [];
+      simByPart[key].push(s.Ref_Similar || s.refSimilar || '');
+    });
+    window._pgpSimIdx = { key: _simKey, idx: simByPart };
+  }
 
   const modelById = {};
   allModels.forEach(m => { modelById[m.ID || m.id || ''] = m; });
@@ -7458,11 +7564,11 @@ function pgpUpdatePendingBadge(){
   }
 }
 
-async function pgpPostJson(action, body){
+async function pgpPostJson(action, body, retries, onRetry){ // V76 (F3b): idem pfGet — opcionais, aditivo
   const d = await _pgpFetchComRetry_(_pgpGsUrl, {
     method:'POST',
     body:gcBody({action, key:_AUTH_HASH, ...body})
-  });
+  }, retries, onRetry);
   if(!d || d.status!=='ok'){
     // V64 — resposta do servidor com veredito de negócio (locked/duplicate/erro de
     // validação) = falha PERMANENTE: reenviar em loop não resolve. Marca o erro para
@@ -8938,6 +9044,12 @@ function pgpClearMachine(){
 
 async function fetchMachineHistory(machineId) {
   if (!machineId || !_pgpGsUrl) return null;
+  // V76 (F2e): memo de sessão — o histórico de visitas não muda no meio de uma
+  // coleta; só resultado de SUCESSO entra no memo ({erro:true} do V75 fica fora).
+  try {
+    var _hm = (window._pgpHistCache || {})[machineId];
+    if (_hm) return _hm;
+  } catch(eM) {}
   try {
     const r = await fetch(
       _pgpGsUrl + '?action=getVisitsByMachine' +
@@ -8952,7 +9064,9 @@ async function fetchMachineHistory(machineId) {
     if (!r.ok) return { erro: true };
     const d = await r.json();
     if (d.status !== 'ok') return { erro: true };
-    return { visits: d.visits || [], pecasLog: d.pecasLog || {} };
+    const _res = { visits: d.visits || [], pecasLog: d.pecasLog || {} };
+    (window._pgpHistCache = window._pgpHistCache || {})[machineId] = _res; // V76 (F2e)
+    return _res;
   } catch (e) {
     console.warn('fetchMachineHistory falhou:', e.message || e);
     return { erro: true };
@@ -9041,6 +9155,14 @@ let _pgpAllClientsCacheOk = false; // true somente após carregar com _pgpGsConn
 let _pgpClientsCacheLoading = false;
 
 async function pgpEnsureClientsCache(force){
+  // V76 (F4d) — em rede de galpão que oscila, cada "reconectou" do ping refazia
+  // clientes+catálogo inteiros (pgpSetGsStatus('ok') chama com force=true).
+  // Cache completo com menos de 10 min não refaz por force — só a chamada
+  // explícita do técnico (digitação com cache vazio segue normal).
+  if (force && _pgpAllClientsCacheOk && window._pgpClientsCacheTs &&
+      (Date.now() - window._pgpClientsCacheTs) < 600000) {
+    force = false;
+  }
   if(_pgpAllClientsCache !== null && _pgpAllClientsCacheOk && !force) return;
   if(_pgpClientsCacheLoading) return;
   _pgpClientsCacheLoading = true;
@@ -9061,7 +9183,8 @@ async function pgpEnsureClientsCache(force){
   let serverClients=[];
   if(_pgpGsConnected&&_pgpGsUrl){
     try{
-      const r=await fetch(_pgpGsUrl+'?action=getClientsForField&key='+_AUTH_HASH+gcParam());
+      const r=await fetch(_pgpGsUrl+'?action=getClientsForField&key='+_AUTH_HASH+gcParam(),
+        {signal:(typeof AbortSignal!=='undefined'&&AbortSignal.timeout)?AbortSignal.timeout(12000):undefined}); // V76 (F5a): sem timeout, portal cativo prendia o cache de clientes para sempre
       const d=await r.json();
       if(d.status==='ok'){
         serverClients=d.clients||[];
@@ -9079,6 +9202,7 @@ async function pgpEnsureClientsCache(force){
   });
   _pgpAllClientsCache = all.sort((a,b)=>a.localeCompare(b,'pt-BR'));
   _pgpAllClientsCacheOk = _pgpGsConnected; // só marca "definitivo" se buscou do servidor conectado
+  if (_pgpAllClientsCacheOk) window._pgpClientsCacheTs = Date.now(); // V76 (F4d): carimbo do throttle de reconexão
   _pgpClientsCacheLoading = false;
 }
 
@@ -9086,8 +9210,17 @@ async function pgpClientSearch(){
   const q=(document.getElementById('pgpClientInput').value||'').trim();
   const acList=document.getElementById('pgpClientAcList');
 
+  // V76 (F5a) — o "Buscando clientes..." (#pgpClientSearching) existia no HTML
+  // desde sempre e tinha ZERO referências no JS: enquanto o getClientsForField
+  // rodava (1–5s+), o guard _pgpClientsCacheLoading fazia as teclas seguintes
+  // saírem com cache null → dropdown escondido → o técnico redigitava/reclicava
+  // sem nenhum sinal. Agora o aviso aparece enquanto o cache carrega.
+  const _searching = document.getElementById('pgpClientSearching');
+  if (_searching && _pgpClientsCacheLoading) _searching.style.display = 'block';
+
   // v8.5.4: garantir cache carregado
   await pgpEnsureClientsCache();
+  if (_searching) _searching.style.display = 'none';
 
   const norm=v=>String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
   const nq=norm(q);
@@ -9101,11 +9234,16 @@ async function pgpClientSearch(){
   if(!filtered.length){acList.style.display='none';return;}
 
   acList.style.display='block';
-  acList.innerHTML=filtered.map(c=>
+  // V76 (F5b): com o campo vazio (o onfocus também busca) o dropdown remontava a
+  // lista COMPLETA de clientes a cada tecla. 30 é mais do que cabe na tela.
+  const _fShow = filtered.slice(0, 30);
+  acList.innerHTML=_fShow.map(c=>
     `<div class="pgp-ac-item" onclick="pgpSelectClient('${c.replace(/'/g,"\\'")}')">
        <span class="pgp-ac-main">${c}</span>
      </div>`
-  ).join('');
+  ).join('') + (filtered.length > _fShow.length
+    ? `<div class="pgp-ac-item" style="opacity:.6;pointer-events:none">… e mais ${filtered.length - _fShow.length} — continue digitando</div>`
+    : '');
 }
 
 function pgpClientKey(e){
@@ -9790,6 +9928,14 @@ async function pgpIniciarPreventivaDeOS(osId){
   if(step1) step1.style.display = 'none';
   if(step2) step2.style.display = 'none';
 
+  // V76 (F2c) — entre o toque em "Abrir formulário" e as máquinas aparecerem
+  // havia 1–8s de tela MORTA (o overlay do pipeline já fechou, o botão já voltou
+  // ao normal, e o getMaquinasByOS ainda está na rede com retries). Feedback
+  // imediato. NÃO pintamos do pf_maqos_cache_v1 aqui de propósito: renderizar
+  // máquinas 2× passaria pelo clear de pgpLoadMachine — exatamente a classe do
+  // V71/FIX2 que apagava coleta em andamento. O cache segue como fallback de erro.
+  try { showNotification('⏳ Carregando máquinas da OS…'); } catch(eN) {}
+
   try{
     // O1.2 (V61): mesma tolerância offline dos outros GETs do pipeline —
     // sucesso grava cache; falha de rede serve o cache com aviso 📴.
@@ -9797,7 +9943,9 @@ async function pgpIniciarPreventivaDeOS(osId){
     let _maqOffline = null;
     try {
       if (!_pgpGsConnected && navigator.onLine === false) throw new Error('offline');
-      r = await pfGet('getMaquinasByOS', { id_os: osId });
+      r = await pfGet('getMaquinasByOS', { id_os: osId }, 1, function(){
+        try { showNotification('📶 Sinal fraco — tentando carregar as máquinas de novo…'); } catch(eR) {}
+      }); // V76 (F3b): tem cache de fallback → 1 retry basta, e com aviso
       try {
         const _mCache = JSON.parse(localStorage.getItem('pf_maqos_cache_v1') || '{}');
         _mCache[osId] = { ts: Date.now(), machines: r.machines || [], os: r.os || null };
@@ -11628,7 +11776,10 @@ function loginEntrar() {
 // v33 — Resiliência de rede em campo: retry com backoff (1000ms/2500ms,
 // mais longo que o PCM porque a rede de campo demora mais pra se
 // recuperar). NÃO retenta erro de negócio nem HTML de config incorreta.
-async function _pgpFetchComRetry_(url, options, maxRetries) {
+// V76 (F3b): 4º parâmetro opcional onRetry(tentativa) — o retry deixa de ser
+// silencioso (antes o aviso ia só pro console.warn e o técnico ficava até 3,5s
+// extra olhando uma tela parada sem saber por quê).
+async function _pgpFetchComRetry_(url, options, maxRetries, onRetry) {
   if (maxRetries === undefined) maxRetries = 2;
   var lastErr;
   for (var tentativa = 0; tentativa <= maxRetries; tentativa++) {
@@ -11656,6 +11807,7 @@ async function _pgpFetchComRetry_(url, options, maxRetries) {
         /GAS retornou HTML/.test(e.message);
       if (!infraTransitoria || tentativa === maxRetries) throw e;
       var delayMs = tentativa === 0 ? 1000 : 2500;
+      try { if (typeof onRetry === 'function') onRetry(tentativa + 1); } catch(eCb) {} // V76 (F3b)
       console.warn('[pgpFetch] tentativa ' + (tentativa + 1) + ' falhou (' +
         e.message + ') — retry em ' + delayMs + 'ms');
       await new Promise(function(res) { setTimeout(res, delayMs); });
@@ -11664,11 +11816,11 @@ async function _pgpFetchComRetry_(url, options, maxRetries) {
   throw lastErr;
 }
 
-async function pfGet(action, params) {
+async function pfGet(action, params, retries, onRetry) { // V76 (F3b): retries/onRetry opcionais — chamadas antigas seguem idênticas
   if (!_pgpGsUrl) throw new Error('URL do servidor não configurada. Acesse Configurações no ProperTech.');
   params = params || {};
   const qs = new URLSearchParams(Object.assign({ action, key: _AUTH_HASH }, params));
-  const d = await _pgpFetchComRetry_(_pgpGsUrl + '?' + qs.toString() + gcParam(), { method: 'GET' });
+  const d = await _pgpFetchComRetry_(_pgpGsUrl + '?' + qs.toString() + gcParam(), { method: 'GET' }, retries, onRetry);
   if (!d || d.status !== 'ok') throw new Error(d?.error || 'Erro GAS');
   return d;
 }
@@ -11695,14 +11847,24 @@ async function pfAbrir() {
   _pfOsFilter = 'todas';
   _pfOsStatusFilter = 'ativas';
   _pfOsDesignFilter = 'todas';
-  await pfLoadOS();
+  // V76 (F3d) — o badge de notificações esperava o getOS terminar (duas chamadas
+  // independentes serializadas). Agora dispara antes, fire-and-forget.
   if (!_pfNotifInterval) {
     _pfNotifInterval = setInterval(pollPfNotificacoes, 60000);
     pollPfNotificacoes();
   }
+  await pfLoadOS();
+  // V76 (F3d): o poll disparado acima pode ter saído cedo (a conexão só é
+  // marcada quando o getOS responde) — este garante o badge logo após a lista,
+  // fire-and-forget, sem segurar nada.
+  try { pollPfNotificacoes(); } catch(eN) {}
 }
 
 function pfFechar() {
+  // V76 (F4c): fechar o pipeline encerra o poll de notificações — antes o
+  // setInterval NUNCA era limpo (zero clearInterval no arquivo) e o
+  // getNotificacoes seguia rodando a cada 60s durante toda a coleta.
+  if (_pfNotifInterval) { clearInterval(_pfNotifInterval); _pfNotifInterval = null; }
   if (window._PF_VEIO_DO_HUB) {
     window.location.href = 'https://grupotap.github.io/ProperHub/';
     return;
@@ -11721,6 +11883,7 @@ function pfVoltarOS() {
 
 // ── Logout por expiração JWT ──────────────────────────────────────────────────
 function pfHubLogout() {
+  if (_pfNotifInterval) { try { clearInterval(_pfNotifInterval); } catch(eI) {} _pfNotifInterval = null; } // V76 (F4c)
   limparSessaoStorage();
   window.location.href = 'https://grupotap.github.io/ProperHub/';
 }
@@ -11738,18 +11901,46 @@ function pfCacheHora(ts) {
 async function pfLoadOS() {
   var statusEl = document.getElementById('pfOsStatus');
   var listaEl  = document.getElementById('pfOsLista');
-  statusEl.textContent = 'Carregando ordens de serviço…';
-  statusEl.style.display = 'block';
-  listaEl.innerHTML = '';
+
+  // V76 (F2a) — CACHE MORNO PINTA JÁ. O pf_os_cache_v1 existia desde o V61 mas
+  // só era usado quando a rede dava ERRO: em rede lenta-porém-viva o técnico
+  // encarava "Carregando…" o round-trip inteiro (com retries, até ~18s) com a
+  // lista no bolso. Agora: pinta o cache na hora com o selo "↻ Atualizando…" e
+  // a resposta da rede re-renderiza por cima (o fallback de erro não mudou).
+  var _warmPintou = false;
+  try {
+    var _warmOS = JSON.parse(localStorage.getItem('pf_os_cache_v1') || 'null');
+    if (_warmOS && _warmOS.os && _warmOS.os.length) {
+      _pfOsList = _warmOS.os;
+      pfRenderOS(); // pode esconder o status — o selo entra DEPOIS dele
+      statusEl.textContent = '↻ Atualizando lista (' + pfCacheHora(_warmOS.ts) + ')…';
+      statusEl.style.display = 'block';
+      _warmPintou = true;
+    }
+  } catch(eW) {}
+  if (!_warmPintou) {
+    statusEl.textContent = 'Carregando ordens de serviço…';
+    statusEl.style.display = 'block';
+    listaEl.innerHTML = '';
+  }
 
   try {
     var usuarioId = window.PROPER_SESSION && window.PROPER_SESSION.tecnico
       ? window.PROPER_SESSION.tecnico.id
       : null;
     var params = usuarioId ? { id_usuario: usuarioId } : {};
-    params.includeClosed = 'true';
+    // V76 (F4a) — o payload trazia TODAS as OS fechadas da história para um
+    // filtro padrão que só mostra ativas (as concluídas baixadas nem apareciam,
+    // e o payload + pf_os_cache_v1 cresciam sem limite). Agora as fechadas só
+    // vêm quando o chip "Concluídas"/"Todas" está ativo — pfSetOSStatusFilter
+    // recarrega sob demanda na 1ª vez.
+    params.includeClosed = (_pfOsStatusFilter === 'ativas') ? 'false' : 'true';
     params.escopo = 'todas'; // v58 — traz TODAS as OS; cada uma marcada com designada_para_mim
-    var r = await pfGet('getOS', params);
+    var r = await pfGet('getOS', params, 1, function(){
+      // V76 (F3b): retry deixa de ser silencioso — o técnico vê que está tentando
+      try { statusEl.textContent = '📶 Sinal fraco — tentando de novo…'; statusEl.style.display='block'; } catch(eR) {}
+    });
+    window._pfOsIncluiuFechadas = (params.includeClosed === 'true');
     _pfOsList = (r.os || []).filter(function(o) {
       var st = String(o.status || '').toLowerCase();
       return st !== 'cancelada';
@@ -11785,6 +11976,12 @@ function pfSetOSFilter(filtro) {
 function pfSetOSStatusFilter(filtro) {
   _pfOsStatusFilter = filtro || 'ativas';
   pfRenderOS();
+  // V76 (F4a): 1º toque em "Concluídas"/"Todas" numa lista carregada só com
+  // ativas → busca as fechadas sob demanda (pfLoadOS pinta o que já tem e
+  // atualiza por cima; nas próximas vezes a lista já as contém).
+  if (_pfOsStatusFilter !== 'ativas' && !window._pfOsIncluiuFechadas) {
+    pfLoadOS();
+  }
 }
 
 // v58 — filtro Todas/Minhas (designada ao usuário logado, por vínculo de OS OU
@@ -11876,6 +12073,19 @@ async function pfLoadPipeline(opts) {
   var conteudo  = document.getElementById('pfPipelineConteudo');
   var progLabel = document.getElementById('pfProgressLabel');
   var progBar   = document.getElementById('pfProgressBar');
+  // V76 (F2b) — CACHE MORNO PINTA JÁ (par do F2a): 1º passe renderiza o cache
+  // sem rede (opts._warmData reusa o MESMO caminho de render), 2º passe soft
+  // busca a rede por trás e re-renderiza sem apagar a tela. Regra V67 mantida:
+  // cache VAZIO nunca é servido.
+  if (!opts.soft && !opts._warmData && !opts._retentou) {
+    try {
+      var _wp = JSON.parse(localStorage.getItem('pf_pipeline_cache_v1') || '{}')[_pfOsId] || null;
+      if (_wp && (_wp.tarefas || []).length) {
+        await pfLoadPipeline({ _warmData: _wp });
+        return pfLoadPipeline({ soft: true });
+      }
+    } catch(eW) {}
+  }
   if (!opts.soft) {
     conteudo.innerHTML = '<div style="text-align:center;padding:24px;color:#64748b;font-size:13px">Carregando pipeline…</div>';
     progLabel.textContent = '';
@@ -11885,11 +12095,17 @@ async function pfLoadPipeline(opts) {
   window._pfPipelineOfflineTs = null; // O1.2 (V61)
   try {
     var r;
-    try {
+    if (opts._warmData) {
+      // V76 (F2b): 1º passe — dado do cache, ZERO rede aqui.
+      r = { tarefas: opts._warmData.tarefas || [] };
+    } else try {
       // O1.2 (V61): sem conexão E sem rede do navegador, nem tenta (fila de
       // retries demoraria); vai direto pro cache. Com sinal fraco, tenta normal.
       if (!_pgpGsConnected && navigator.onLine === false) throw new Error('offline');
-      r = await pgpPostJson('getPipelineByOS', { os_id: _pfOsId });
+      r = await pgpPostJson('getPipelineByOS', { os_id: _pfOsId }, 1, function(){
+        // V76 (F3b): aviso visível durante o retry (a tela tem placeholder ou conteúdo soft)
+        try { if (progLabel) progLabel.textContent = '📶 Sinal fraco — tentando de novo…'; } catch(eR) {}
+      });
       // Sucesso → guarda para leitura offline (mantém as 12 OS mais recentes)
       // V67: lista VAZIA não entra no cache — um cache de "0 tarefas" gravado
       // antes do pipeline ser instanciado fazia o modo offline mostrar
@@ -11920,7 +12136,13 @@ async function pfLoadPipeline(opts) {
       // antes já cravava "Nenhuma tarefa" na 1ª leitura (chamado do Fernando).
       // Agora: 1 retry automático após 2,5s; persistindo vazio, mostra o estado
       // com botão de recarregar.
-      if (!opts._retentou) {
+      // V76 (F3c) — OS legitimamente sem pipeline pagava o pedágio (2,5s de sono
+      // + 2ª chamada inteira) TODA vez que era aberta. O retry existe para OS
+      // recém-criada; depois que o vazio foi CONFIRMADO pelo retry, a OS entra
+      // num memo de 5 min e as próximas aberturas mostram o estado direto.
+      window._pfPipelineVazioConfirmado = window._pfPipelineVazioConfirmado || {};
+      var _vzTs = window._pfPipelineVazioConfirmado[_pfOsId] || 0;
+      if (!opts._retentou && (Date.now() - _vzTs) > 300000) {
         conteudo.innerHTML = '<div style="text-align:center;padding:32px 16px;color:#64748b">' +
           '<div style="font-size:32px;margin-bottom:12px">⏳</div>' +
           '<div style="font-size:13px;color:#94a3b8">Aguardando as tarefas da OS…</div>' +
@@ -11928,6 +12150,7 @@ async function pfLoadPipeline(opts) {
         await new Promise(function(res){ setTimeout(res, 2500); });
         return pfLoadPipeline({ _retentou: true });
       }
+      if (opts._retentou) { window._pfPipelineVazioConfirmado[_pfOsId] = Date.now(); }
       conteudo.innerHTML = '<div style="text-align:center;padding:32px 16px;color:#64748b">' +
         '<div style="font-size:32px;margin-bottom:12px">🔧</div>' +
         '<div style="font-size:14px;font-weight:600;color:#94a3b8;margin-bottom:6px">Nenhuma tarefa no pipeline</div>' +
@@ -11946,6 +12169,9 @@ async function pfLoadPipeline(opts) {
     // O1.2 (V61): sinaliza quando o pipeline mostrado veio do cache offline
     if (window._pfPipelineOfflineTs) {
       progLabel.textContent += ' · 📴 offline (' + pfCacheHora(window._pfPipelineOfflineTs) + ')';
+    }
+    if (opts._warmData) {
+      progLabel.textContent += ' · ↻ atualizando…'; // V76 (F2b): selo do passe morno
     }
 
     // Agrupar por fase
@@ -12280,6 +12506,14 @@ async function pfCarregarFotosMaquina(idx) {
   var box   = document.getElementById('m' + idx + '_prev_fotos');
   var badge = document.getElementById('m' + idx + '_prevfotos_badge');
   if (!box) return;
+  // V76 (F4b) — OS de 4 máquinas disparava esta chamada 4× no load (junto com
+  // histórico e calibração eram ~12 requisições competindo banda no galpão).
+  // Painel que NÃO está na tela fica pendente e carrega quando o técnico abrir
+  // a aba (switchMachine dispara o pendente).
+  if (typeof currentMachine === 'number' && idx !== currentMachine) {
+    (window._pfFotosPendentes = window._pfFotosPendentes || {})[idx] = true;
+    return;
+  }
   var eq = (typeof pgpGetLoadedMachineForIndex === 'function') ? pgpGetLoadedMachineForIndex(idx) : null;
   var machineId = (eq && (eq.id || eq.machine_id)) || '';
   var serial  = pgpFieldVal(idx, 'ns') || '';
@@ -12292,7 +12526,7 @@ async function pfCarregarFotosMaquina(idx) {
   box.innerHTML = '<div class="pf-prevfotos-empty">Carregando fotos anteriores…</div>';
   if (badge) badge.textContent = '…';
   try {
-    var r = await pfGet('getFotosMaquina', { machine_id: machineId, serial: serial, cliente: cliente, limit: 12 });
+    var r = await pfGet('getFotosMaquina', { machine_id: machineId, serial: serial, cliente: cliente, limit: 12 }, 0); // V76 (F3b): decorativa — sem retry roubando banda
     // a máquina ativa pode ter mudado enquanto a rede respondia
     var eqNow = (typeof pgpGetLoadedMachineForIndex === 'function') ? pgpGetLoadedMachineForIndex(idx) : null;
     var midNow = (eqNow && (eqNow.id || eqNow.machine_id)) || '';
@@ -12336,7 +12570,7 @@ async function pfProjetarHorimetros(idx, preservarColeta) {
   var machineId = pfHorimMachineId(idx);
   if (machineId) {
     try {
-      var r = await pgpPostJson('getHorimetroCalib', { machine_id: machineId });
+      var r = await pgpPostJson('getHorimetroCalib', { machine_id: machineId }, 0); // V76 (F3b): decorativa — sem retry
       if (r) {
         eq._horimCalib = {
           fator: (r.fator_correcao != null) ? Number(r.fator_correcao) : 1,
@@ -12694,6 +12928,8 @@ async function pfAbrirForm(tarefaId, formUrl, btn) {
 
 // ── Sistema de notificações ───────────────────────────────────────────────────
 async function pollPfNotificacoes() {
+  // V76 (F4c): aba em 2º plano não gasta dados/bateria com poll (volta no próximo tick)
+  if (document.visibilityState !== 'visible') return;
   var userId = window.PROPER_SESSION && window.PROPER_SESSION.tecnico
     ? window.PROPER_SESSION.tecnico.id
     : null;
@@ -12701,7 +12937,7 @@ async function pollPfNotificacoes() {
   if (!_pfGsConnected) return;
 
   try {
-    var r    = await pfGet('getNotificacoes', { usuario: userId });
+    var r    = await pfGet('getNotificacoes', { usuario: userId }, 0); // V76 (F4c): poll idempotente — volta sozinho em 60s
     var novas = r.notificacoes || [];
 
     var idsAntes = _pfNotifList.map(function(n) { return n.Notif_ID; });
@@ -12710,8 +12946,15 @@ async function pollPfNotificacoes() {
     _pfNotifList = novas;
     pfRenderNotifBadge(_pfNotifList);
 
+    // V76 (F3e) — no 1º poll TODA notificação pendente parecia "nova": o banner
+    // disparava e o pfLoadPipeline({soft:true}) rodava DE NOVO logo após o boot
+    // (era o getPipelineByOS duplicado medido a +1274ms e +2693ms). O 1º poll
+    // agora só popula badge/lista; banner + refresh ficam para novidade REAL.
+    var _primeiroPoll = !window._pfNotifJaPolou;
+    window._pfNotifJaPolou = true;
+
     var ov = document.getElementById('pfOverlay');
-    if (ov && ov.style.display !== 'none' && novasIds.length > 0) {
+    if (!_primeiroPoll && ov && ov.style.display !== 'none' && novasIds.length > 0) {
       pfShowUnlockBanner('🔔 ' + novasIds[0].Mensagem);
       if (_pfOsId && document.getElementById('pfScreenPipeline').style.display !== 'none') {
         pfLoadPipeline({ soft: true }); // V67: notificação não apaga a tela
@@ -12784,13 +13027,18 @@ async function pfOnNotifClick(notifId, osId) {
   if (panel) panel.style.display = 'none';
 
   if (notifId) {
-    try {
-      await pgpPostJson('marcarNotifLida', { notif_id: notifId });
-      _pfNotifList = _pfNotifList.filter(function(n) { return n.Notif_ID !== notifId; });
-      pfRenderNotifBadge(_pfNotifList);
-    } catch(e) {
-      if (e.message && e.message.includes('AUTH_GOOGLE')) { pfHubLogout(); return; }
-    }
+    // V76 (F3a) — a navegação NÃO depende do ack do servidor, mas ficava atrás
+    // dele: com retries, até ~10s de painel fechado e NADA acontecendo (segundo
+    // clique garantido). Agora o "marcar como lida" é fire-and-forget (mesmo
+    // padrão que o V67 aplicou ao registrarAbertura) e a lista/badge atualizam
+    // otimista na hora.
+    _pfNotifList = _pfNotifList.filter(function(n) { return n.Notif_ID !== notifId; });
+    pfRenderNotifBadge(_pfNotifList);
+    pgpPostJson('marcarNotifLida', { notif_id: notifId }, 0)
+      .catch(function(e) {
+        if (e && e.message && e.message.includes('AUTH_GOOGLE')) { pfHubLogout(); return; }
+        console.warn('marcarNotifLida (bg):', e && e.message); // o poll de 60s reconcilia
+      });
   }
 
   if (osId) {
