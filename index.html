@@ -459,8 +459,8 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ProperCare Field · PGP Preventivas v34 · build PCF_V76</title>
-<meta name="app-build" content="PCF_V76" data-date="2026-07-31">
+<title>ProperCare Field · PGP Preventivas v34 · build PCF_V77</title>
+<meta name="app-build" content="PCF_V77" data-date="2026-07-31">
 <meta name="theme-color" content="#0f172a">
 <!-- PWA (fix 19/07/2026): o repo já tinha manifest.webmanifest + sw.js + proper-pwa.js,
      mas o index.html não os referenciava — sem estas 3 linhas o SW nunca registra,
@@ -487,6 +487,16 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 // geração de PDF, injeta o CDN sob demanda e espera o onload.
 function pgpEnsureJsPDF() {
   if (window.jspdf && window.jspdf.jsPDF) return Promise.resolve(true);
+  // V77 (G10) — o fallback de CDN só faz sentido COM rede. Sem ela (ou em modo
+  // offline) esperar os 15s do timeout é 15s de tela parada antes de o técnico
+  // descobrir que o PDF não sai. O caminho normal é o jspdf.umd.min.js local,
+  // que o service worker mantém no APP_SHELL — este ramo é só rede de segurança
+  // para um deploy incompleto.
+  try {
+    if (navigator.onLine === false || (typeof pgpModoOfflineAtivo === 'function' && pgpModoOfflineAtivo())) {
+      return Promise.resolve(false);
+    }
+  } catch (e) {}
   if (window._pgpJsPdfLoading) return window._pgpJsPdfLoading;
   window._pgpJsPdfLoading = new Promise(function (resolve) {
     var sc = document.createElement('script');
@@ -1868,6 +1878,18 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
 </head>
 <body>
 
+<!-- ══ V77 (F1): BARRA DO MODO OFFLINE ═══════════════════════════════════════
+     Fica no RODAPÉ e com z-index acima de tudo de propósito: o <header> do app
+     desaparece atrás do overlay do pipeline, e este estado não pode ser
+     escondível. É a única coisa na tela que garante que o técnico não trabalhe
+     o dia inteiro sem perceber que nada está sendo enviado. ══════════════ -->
+<div id="pgpBarraOffline" style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:99999;background:linear-gradient(90deg,#b45309,#f59e0b);color:#111827;padding:9px 12px calc(9px + env(safe-area-inset-bottom, 0px));box-shadow:0 -3px 14px rgba(0,0,0,.45);font-family:'Barlow',sans-serif">
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:space-between">
+    <div id="pgpBarraOfflineTxt" style="font-size:12.5px;line-height:1.35;flex:1;min-width:180px"></div>
+    <button onclick="pgpDesligarModoOffline(this)" style="background:#111827;color:#fde68a;border:0;border-radius:9px;padding:9px 13px;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap">🔌 Voltar para online e enviar tudo</button>
+  </div>
+  <div id="pgpBarraOfflineProg" style="display:none;font-size:11.5px;margin-top:5px;color:#1f2937;font-weight:700"></div>
+</div>
 
 <!-- ── TELA DE LOGIN ── -->
 <div class="login-overlay" id="loginOverlay">
@@ -1888,7 +1910,7 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
       <div class="proper-logo-mark">H</div>
       <div class="proper-logo-text">
         <span class="brand">PROPER</span>
-        <span class="brand-sub">Field · V73</span>
+        <span class="brand-sub">Field · V77</span>
       </div>
     </div>
     <div class="header-right">
@@ -1902,6 +1924,8 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
           </div>
         </div>
         <span id="pgpPendingBadge" style="display:none;background:#f97316;color:white;font-size:10px;font-weight:700;padding:3px 8px;border-radius:12px;cursor:pointer;white-space:nowrap;font-family:'Barlow Condensed',sans-serif" onclick="pgpAbrirFilaPanel()" title="Toque para ver a fila de envios">⏳</span>
+        <!-- V77 (F1): modo offline deliberado -->
+        <button class="btn-sessions-header" id="btnModoOffline" onclick="pgpToggleModoOffline(this)" title="Ligar modo offline (o app para de procurar rede)">📴</button>
         <button class="btn-sessions-header" id="btnCatalogLookup" onclick="pgpToggleCatalogPanel()" title="Consulta de peças">🔍</button>
         <button class="btn-sessions-header" onclick="salvarColeta()" title="Salvar coleta">💾</button>
         <button class="btn-sessions-header" onclick="novaColeta()" title="Iniciar nova coleta">➕</button>
@@ -2285,6 +2309,238 @@ function pgpUid(){
 }
 </script>
 <script>
+// ══════════════════════════════════════════════════════════════════════════
+// V77 — MÓDULO OFFLINE-FIRST (F1 modo offline deliberado + F2 fila de anexos
+// fora do localStorage + F3 "perdidos" visíveis).
+//
+// Fica AQUI, no topo do bloco principal, porque `_pgpFetchComRetry_`,
+// `pgpTestGs`, `pgpEnqueueDriveUpload` e o poll de notificações precisam
+// consultar `pgpRedeBloqueada()` — e todos vivem neste mesmo <script>
+// (declarações de função hoistam; o módulo poderia estar em qualquer ponto do
+// bloco, mas no topo fica óbvio para quem for manter).
+//
+// REGRA DE OURO desta versão: o modo offline é CONFORTO por cima do conserto
+// automático (G1/G2), nunca no lugar dele. O técnico vai esquecer de ligar o
+// botão em metade das visitas — nessas, o app tem que degradar sozinho.
+// ══════════════════════════════════════════════════════════════════════════
+
+var _PGP_MODO_OFF_KEY  = 'pgp_modo_offline_v1';
+var _PGP_PERDIDOS_KEY  = 'pgp_anexos_perdidos_v1';
+var _pgpModoOffCache   = null;
+var _pgpForcarRedeAte  = 0;   // janela do "buscar mesmo assim"
+
+function pgpModoOfflineEstado(){
+  if (_pgpModoOffCache) return _pgpModoOffCache;
+  try {
+    _pgpModoOffCache = JSON.parse(localStorage.getItem(_PGP_MODO_OFF_KEY) || 'null') || { on:false, desde:0 };
+  } catch(e){ _pgpModoOffCache = { on:false, desde:0 }; }
+  return _pgpModoOffCache;
+}
+function pgpModoOfflineAtivo(){
+  try { return !!pgpModoOfflineEstado().on; } catch(e){ return false; }
+}
+function _pgpModoOffGravar(st){
+  _pgpModoOffCache = st;
+  try { localStorage.setItem(_PGP_MODO_OFF_KEY, JSON.stringify(st)); } catch(e){}
+}
+
+// O único teste que o resto do app precisa fazer. Devolve true quando NENHUMA
+// requisição deve sair do aparelho. A janela de exceção existe para o botão
+// "🔓 Buscar mesmo assim" — ela cobre a OPERAÇÃO inteira (abrir uma OS dispara
+// getPipelineByOS + getMaquinasByOS), não uma requisição só.
+function pgpRedeBloqueada(){
+  if (!pgpModoOfflineAtivo()) return false;
+  return Date.now() > _pgpForcarRedeAte;
+}
+function pgpForcarRedeJanela(ms){
+  _pgpForcarRedeAte = Date.now() + (ms || 60000);
+  try { pgpRenderBarraOffline(); } catch(e){}
+}
+function pgpErroModoOffline(){
+  var e = new Error('MODO_OFFLINE');
+  e.modoOffline = true;
+  return e;
+}
+// Tradutor de erro para texto de gente. Sem isso o técnico leria "MODO_OFFLINE"
+// e "Failed to fetch" na tela.
+function pgpMsgErro(e){
+  var m = String((e && e.message) || e || 'falha');
+  if (e && e.modoOffline) return '📴 Modo offline ligado — nada foi buscado na rede.';
+  if (/Failed to fetch|NetworkError|Load failed|AbortError|signal is aborted/i.test(m)) return '📶 Sem resposta do servidor.';
+  if (/GAS retornou HTML/.test(m)) return '📶 A rede respondeu, mas não era o servidor (portal de wi-fi?).';
+  return m;
+}
+
+// ── Anexos que NÃO puderam ser guardados ────────────────────────────────────
+// Rob-2 do backlog de 19/07: o descarte era `console.warn` e mais nada. Agora
+// vira lista visível no painel da fila + aviso na hora.
+function pgpGetPerdidos(){
+  try { return JSON.parse(localStorage.getItem(_PGP_PERDIDOS_KEY) || '[]'); } catch(e){ return []; }
+}
+function pgpLimparPerdidos(){
+  try { localStorage.removeItem(_PGP_PERDIDOS_KEY); } catch(e){}
+  try { pgpUpdatePendingBadge(); } catch(e){}
+  try { pgpRenderFilaPanel(); } catch(e){}
+}
+function _pgpDriveMarcarPerdido(item, motivo){
+  var b = (item && item.body) || {};
+  try {
+    var l = pgpGetPerdidos();
+    l.push({
+      fileName: b.fileName || '(sem nome)',
+      tipo:     b.attachmentType || b.entityType || '',
+      os_id:    b.os_id || '',
+      maquina:  b.maquina_label || '',
+      motivo:   String(motivo || 'desconhecido'),
+      ts:       Date.now()
+    });
+    while (l.length > 50) l.shift();
+    localStorage.setItem(_PGP_PERDIDOS_KEY, JSON.stringify(l));
+  } catch(e){}
+  try { showNotification('⚠ Um anexo NÃO pôde ser guardado (' + motivo + '). Toque no ⏳ para ver qual.'); } catch(e){}
+  try { pgpUpdatePendingBadge(); } catch(e){}
+}
+
+// ── Barra fixa do modo offline ──────────────────────────────────────────────
+// Fica no RODAPÉ e com z-index acima de tudo, de propósito: o header do app
+// some atrás do overlay do pipeline, e este estado não pode ser escondível.
+function pgpModoOffProgresso(txt){
+  var el = document.getElementById('pgpBarraOfflineProg');
+  if (!el) return;
+  el.textContent = txt || '';
+  el.style.display = txt ? 'block' : 'none';
+}
+function pgpRenderBarraOffline(){
+  var el = document.getElementById('pgpBarraOffline');
+  if (!el) return;
+  if (!pgpModoOfflineAtivo()) { el.style.display = 'none'; return; }
+  var st = pgpModoOfflineEstado();
+  var quando = '';
+  try {
+    var d = new Date(st.desde || Date.now());
+    quando = ('0'+d.getDate()).slice(-2) + '/' + ('0'+(d.getMonth()+1)).slice(-2) +
+             ' ' + ('0'+d.getHours()).slice(-2) + ':' + ('0'+d.getMinutes()).slice(-2);
+  } catch(e){}
+  var n = 0;
+  try { n = pgpGetPending().length + pgpGetDriveQueue().length; } catch(e){}
+  var janela = (_pgpForcarRedeAte > Date.now());
+  var lbl = document.getElementById('pgpBarraOfflineTxt');
+  if (lbl) {
+    lbl.innerHTML = '<strong>📴 MODO OFFLINE</strong> · desde ' + quando +
+      ' · <strong>' + n + '</strong> item(ns) guardado(s)' +
+      (janela ? ' · <span style="color:#fde68a">🔓 rede liberada por 1 min</span>' : '');
+  }
+  el.style.display = 'block';
+}
+
+function pgpLigarModoOffline(){
+  _pgpModoOffGravar({ on:true, desde: Date.now() });
+  _pgpForcarRedeAte = 0;
+  try { pgpSetGsStatus('off'); } catch(e){}
+  // Para o poll de notificações: era ele que acordava o rádio de 60 em 60s
+  // mesmo com o técnico sem querer falar com o servidor.
+  try { if (typeof _pfNotifInterval !== 'undefined' && _pfNotifInterval) { clearInterval(_pfNotifInterval); _pfNotifInterval = null; } } catch(e){}
+  try { pgpRenderBarraOffline(); } catch(e){}
+  try { pgpAtualizarBtnModoOffline(); } catch(e){}
+  try { showNotification('📴 Modo offline LIGADO — o app para de procurar rede. Nada será enviado até você desligar.'); } catch(e){}
+}
+
+// Desligar NÃO é instantâneo de propósito: acompanha o esvaziamento real da
+// fila em vez de mostrar um "✅ pronto" por cima de um envio a meio caminho
+// (a família de bug do "✓ mentiroso", já vista 3× neste sistema).
+async function pgpDesligarModoOffline(btn){
+  var pend0 = 0;
+  try { pend0 = pgpGetPending().length + pgpGetDriveQueue().length; } catch(e){}
+  if (btn) { btn.disabled = true; btn.textContent = 'Reconectando…'; }
+  _pgpModoOffGravar({ on:false, desde:0 });
+  _pgpForcarRedeAte = 0;
+  try { pgpAtualizarBtnModoOffline(); } catch(e){}
+
+  var okPing = false;
+  pgpModoOffProgresso('🔌 Testando a conexão…');
+  try { okPing = await pgpTestGs(); } catch(e){}
+
+  if (!okPing) {
+    pgpModoOffProgresso('');
+    try { pgpRenderBarraOffline(); } catch(e){}
+    if (btn) { btn.disabled = false; btn.textContent = '🔌 Voltar para online e enviar tudo'; }
+    _pgpModoOffGravar({ on:true, desde: (pgpModoOfflineEstado().desde || Date.now()) });
+    try { pgpRenderBarraOffline(); } catch(e){}
+    try { showNotification('⚠ O servidor não respondeu — segue em modo offline com ' + pend0 + ' item(ns) guardado(s). Tente de novo num ponto com sinal melhor.'); } catch(e){}
+    return false;
+  }
+
+  // O pgpTestGs, ao dar ok, já dispara pgpFlushPending pelo pgpSetGsStatus.
+  // Aqui a gente ACOMPANHA até a fila esvaziar de verdade (teto de 3 min).
+  if (pend0 > 0) {
+    var t0 = Date.now();
+    while (Date.now() - t0 < 180000) {
+      var resta = 0;
+      try { resta = pgpGetPending().length + pgpGetDriveQueue().length; } catch(e){}
+      if (!resta) break;
+      pgpModoOffProgresso('📤 Enviando… faltam ' + resta + ' de ' + pend0);
+      await new Promise(function(r){ setTimeout(r, 700); });
+      try {
+        if (!_pgpSyncFlushBusy && !_pgpDriveFlushBusy) pgpFlushPending();
+      } catch(e){}
+    }
+  }
+
+  var sobrou = 0;
+  try { sobrou = pgpGetPending().length + pgpGetDriveQueue().length; } catch(e){}
+  pgpModoOffProgresso('');
+  try { pgpRenderBarraOffline(); } catch(e){}
+  try { pgpAtualizarBtnModoOffline(); } catch(e){}
+  if (btn) { btn.disabled = false; btn.textContent = '🔌 Voltar para online e enviar tudo'; }
+  try {
+    if (!pend0)      showNotification('✅ Online de novo — não havia nada na fila.');
+    else if (!sobrou) showNotification('✅ Online de novo — os ' + pend0 + ' item(ns) da fila foram enviados.');
+    else              showNotification('⚠ Online, mas ' + sobrou + ' de ' + pend0 + ' item(ns) ainda não subiram. Toque no ⏳ para ver o que travou.');
+  } catch(e){}
+  return true;
+}
+
+function pgpToggleModoOffline(btn){
+  if (pgpModoOfflineAtivo()) return pgpDesligarModoOffline(btn);
+  pgpLigarModoOffline();
+  return Promise.resolve(true);
+}
+function pgpAtualizarBtnModoOffline(){
+  var b = document.getElementById('btnModoOffline');
+  if (!b) return;
+  var on = pgpModoOfflineAtivo();
+  b.textContent = on ? '🔌' : '📴';
+  b.title = on ? 'Modo offline LIGADO — tocar para voltar ao online e enviar tudo'
+               : 'Ligar modo offline (o app para de procurar rede)';
+  b.style.background = on ? '#f59e0b' : '';
+}
+
+// Escape do modo "bloqueia tudo": libera a rede por 1 minuto e refaz a ação.
+async function pgpBuscarMesmoAssim(fn){
+  pgpForcarRedeJanela(60000);
+  try { showNotification('🔓 Rede liberada por 1 minuto — buscando…'); } catch(e){}
+  try { if (typeof fn === 'function') await fn(); } catch(e){}
+}
+
+// V77 (G9) — selo de idade do catálogo. Offline honesto não é só funcionar sem
+// rede: é dizer DE QUANDO é o dado que está na tela.
+function pgpCatalogSelo(cat){
+  try {
+    var t = Date.parse((cat && cat.ts) || '');
+    if (isNaN(t)) return '';
+    var d = new Date(t);
+    var dias = Math.floor((Date.now() - t) / 86400000);
+    var quando = ('0'+d.getDate()).slice(-2) + '/' + ('0'+(d.getMonth()+1)).slice(-2) +
+                 ' ' + ('0'+d.getHours()).slice(-2) + ':' + ('0'+d.getMinutes()).slice(-2);
+    var velho = dias >= 1;
+    return '<div style="font-size:10px;color:' + (velho ? '#f59e0b' : 'var(--text-light)') +
+           ';text-align:center;margin-top:8px;padding-top:6px;border-top:1px solid var(--gray-mid)">' +
+           (velho ? '⚠ ' : '') + 'Catálogo local de ' + quando +
+           (velho ? (' (' + dias + ' dia' + (dias>1?'s':'') + ') — conecte para atualizar') : '') +
+           '</div>';
+  } catch(e){ return ''; }
+}
+
 // ══════════════════════════════════════════════════════════════════════════
 // CHANGELOG v35 (Fix PCF: rótulo de OS exibe numero_os)
 // ══════════════════════════════════════════════════════════════════════════
@@ -2676,24 +2932,99 @@ function compressPhotoForDrive(file) {
 // fila vivia só em memória e se perdia ao recarregar; agora o payload completo
 // (já com base64) é persistido no localStorage e reenviado no boot/reconexão.
 const DRIVE_PENDING_KEY = 'pgp_pending_drive';
-const DRIVE_QUEUE_LIMIT = 30; // backups são "extra"; ao exceder, descarta o mais antigo
+// V77 (G3) — o teto era 30 ITENS porque cada item carregava o base64 inteiro
+// dentro do localStorage de ~5MB. Com o corpo no IndexedDB o índice fica leve
+// (uns 300 bytes por item), então o teto passa a ser generoso de verdade.
+const DRIVE_QUEUE_LIMIT = 300;
+const DRIVE_QUEUE_WARN  = 120;
 
 function pgpGetDriveQueue(){
   try { return JSON.parse(localStorage.getItem(DRIVE_PENDING_KEY) || '[]'); }
   catch(e){ return []; }
 }
-// Persiste a fila. À prova de cota: base64 é pesado; se o localStorage estourar,
-// não quebra o app — apenas loga (o item já tentou subir na hora da captura).
 function pgpSaveDriveQueue(list){
   try { localStorage.setItem(DRIVE_PENDING_KEY, JSON.stringify(list)); return true; }
-  catch(e){ console.warn('pgp_pending_drive: falha ao persistir (cota do localStorage?):', e && e.message); return false; }
+  catch(e){ console.warn('pgp_pending_drive: falha ao persistir:', e && e.message); return false; }
 }
-// Enfileira um upload de Drive pendente. entry = { kind, action, body, ts }.
+
+// ══════════════════════════════════════════════════════════════════════════
+// V77 (G3) — ENFILEIRAMENTO DE ANEXO, REESCRITO.
+//
+// Como era até a V76 (e por que doía):
+//   - o payload COM base64 ia inteiro para o localStorage;
+//   - uma foto a 1600px/q0.88 dá ~250-500KB → ~330-660KB em base64;
+//   - o localStorage tem ~5MB TOTAL, dividido com rascunho, pf_os_cache,
+//     pf_pipeline_cache (12 OS), pf_maqos_cache (12 OS), catálogo e a fila
+//     crítica ⇒ entre 6 e 10 fotos e estourava;
+//   - e estourava em SILÊNCIO, em dois pontos: o `while(...) list.shift()`
+//     descartava a mais antiga sem avisar, e o catch da cota só fazia
+//     console.warn com o retorno ignorado pelo chamador. A miniatura seguia
+//     marcada 'pending' para sempre, para uma foto já jogada fora.
+//
+// Como é agora:
+//   - o base64 vai para o IndexedDB (mesmo store 'photos' que já existe e já
+//     é usado pelo rascunho — chave prefixada 'dq::', SEM bump de versão do
+//     schema, que seria o pedaço arriscado da migração);
+//   - o localStorage guarda só o índice (ação, metadados, ponteiro, bytes);
+//   - nada some calado: o que não couber vira registro em
+//     'pgp_anexos_perdidos_v1', aviso na hora e linha no painel da fila.
+//
+// Itens gravados por versões ANTIGAS (com body.dataBase64 inline e sem
+// blobKey) continuam válidos — o flush reconhece os dois formatos.
+// ══════════════════════════════════════════════════════════════════════════
 function pgpEnqueueDriveUpload(entry){
-  const list = pgpGetDriveQueue();
-  while (list.length >= DRIVE_QUEUE_LIMIT) list.shift(); // mantém os mais recentes
-  list.push(entry);
-  pgpSaveDriveQueue(list);
+  var body = (entry && entry.body) || {};
+  var b64  = body.dataBase64 || '';
+  var list = pgpGetDriveQueue();
+  var item;
+
+  if (b64) {
+    var blobKey = 'dq::' + Date.now().toString(36) + '::' + pgpUid();
+    var leve = {};
+    for (var k in body) { if (Object.prototype.hasOwnProperty.call(body, k) && k !== 'dataBase64') leve[k] = body[k]; }
+    item = { kind:(entry&&entry.kind)||'', action:(entry&&entry.action)||'', body:leve,
+             blobKey:blobKey, ts:(entry&&entry.ts)||Date.now(), bytes:b64.length };
+    pgpIdbSet(blobKey, b64).then(function(ok){
+      if (ok) return;
+      _pgpDriveRemoverDaFila(blobKey);
+      _pgpDriveMarcarPerdido(item, 'o armazenamento do aparelho recusou o anexo');
+    }).catch(function(){
+      _pgpDriveRemoverDaFila(blobKey);
+      _pgpDriveMarcarPerdido(item, 'falha ao gravar no armazenamento do aparelho');
+    });
+  } else {
+    item = { kind:(entry&&entry.kind)||'', action:(entry&&entry.action)||'', body:body, ts:(entry&&entry.ts)||Date.now() };
+  }
+
+  list.push(item);
+
+  if (list.length > DRIVE_QUEUE_LIMIT) {
+    var fora = list.splice(0, list.length - DRIVE_QUEUE_LIMIT);
+    fora.forEach(function(d){
+      try { if (d && d.blobKey) pgpIdbDel(d.blobKey); } catch(e){}
+      _pgpDriveMarcarPerdido(d, 'fila de anexos cheia (' + DRIVE_QUEUE_LIMIT + ' itens)');
+    });
+  }
+
+  if (!pgpSaveDriveQueue(list)) {
+    // Nem o índice coube: o item mais novo não entra, e o técnico fica sabendo.
+    list.pop();
+    pgpSaveDriveQueue(list);
+    try { if (item && item.blobKey) pgpIdbDel(item.blobKey); } catch(e){}
+    _pgpDriveMarcarPerdido(item, 'armazenamento local sem espaço');
+    return;
+  }
+  if (list.length === DRIVE_QUEUE_WARN) {
+    try { showNotification('⚠️ ' + list.length + ' anexos guardados no aparelho aguardando envio. Sincronize quando puder.'); } catch(e){}
+  }
+  try { pgpUpdatePendingBadge(); } catch(e){}
+}
+
+function _pgpDriveRemoverDaFila(blobKey){
+  try {
+    var l = pgpGetDriveQueue().filter(function(x){ return !(x && x.blobKey === blobKey); });
+    pgpSaveDriveQueue(l);
+  } catch(e){}
 }
 
 // Lê um campo de uma máquina específica pelo data-key (mesmo padrão usado em
@@ -2835,6 +3166,7 @@ async function pgpSendOrQueueDrive(kind, action, body, ui) {
 var _pgpDriveFlushBusy = false;
 async function flushPendingDriveUploads() {
   if (!_pgpGsConnected) return;
+  if (pgpRedeBloqueada()) return; // V77 (F1)
   if (_pgpDriveFlushBusy) return; // V62
   _pgpDriveFlushBusy = true;
   try {
@@ -2843,13 +3175,31 @@ async function flushPendingDriveUploads() {
     const failed = [];
     for (let i = 0; i < list.length; i++) {
       const entry = list[i];
-      try { await pgpPostJson(entry.action, entry.body || {}); }
+      try {
+        // V77 (G3): reidrata o base64 do IndexedDB. Itens antigos (formato
+        // pré-V77, com o base64 inline) passam direto por aqui sem blobKey.
+        var _body = entry.body || {};
+        if (entry.blobKey) {
+          var _b64 = await pgpIdbGet(entry.blobKey);
+          if (!_b64) {
+            // O ponteiro existe mas o corpo sumiu (usuário limpou os dados do
+            // site, por exemplo). Não dá para reenviar — mas TEM que aparecer.
+            _pgpDriveMarcarPerdido(entry, 'o anexo não está mais no armazenamento do aparelho');
+            pgpSaveDriveQueue(failed.concat(list.slice(i + 1)));
+            continue;
+          }
+          _body = Object.assign({}, _body, { dataBase64: _b64 });
+        }
+        await pgpPostJson(entry.action, _body);
+        if (entry.blobKey) { try { pgpIdbDel(entry.blobKey); } catch(eD){} }
+      }
       catch (e) { failed.push(entry); }
       // V62 — persistência INCREMENTAL: item enviado sai da fila JÁ (antes a fila
       // só era regravada no fim do laço; fechar o app no meio reenviava tudo).
       pgpSaveDriveQueue(failed.concat(list.slice(i + 1)));
     }
     pgpSaveDriveQueue(failed);
+    try { pgpUpdatePendingBadge(); } catch(eB){}
   } finally { _pgpDriveFlushBusy = false; }
 }
 
@@ -7115,8 +7465,28 @@ function savePendingQueue(list) {
     );
   }
 
+  // V77 (G4) — o teto de 40 conta ITENS, mas quem estoura primeiro é a COTA:
+  // uma visita de preventiva com peças, observações e horímetros é um objeto
+  // grande, e dava para ser bloqueado no item 12 sem nada explicar por quê.
+  // Agora o limite também é medido em bytes, com aviso ANTES do erro seco.
+  var _json;
+  try { _json = JSON.stringify(list); }
+  catch (eJ) {
+    showNotification('❌ Erro ao preparar a fila offline.');
+    return { saved: false, blocked: false, count };
+  }
+  if (_json.length > 3000000) {
+    showNotification('🚫 Fila offline no limite de espaço do aparelho (' +
+      Math.round(_json.length / 1024) + ' KB). Conecte-se para esvaziar antes de continuar.');
+    return { saved: false, blocked: true, count };
+  }
+  if (_json.length > 2000000) {
+    showNotification('⚠️ Fila offline já ocupa ' + Math.round(_json.length / 1024) +
+      ' KB do aparelho. Sincronize em breve.');
+  }
+
   try {
-    localStorage.setItem(PENDING_KEY, JSON.stringify(list));
+    localStorage.setItem(PENDING_KEY, _json);
   } catch (e) {
     showNotification('❌ Erro ao salvar fila offline: ' + (e.message || 'falha no armazenamento'));
     return { saved: false, blocked: false, count };
@@ -7339,10 +7709,22 @@ function pgpSaveCatalogCache(data) {
   catch (e) { console.warn('Erro ao salvar cache de catálogo:', e); }
 }
 
+const CATALOG_TTL_MS = 24 * 60 * 60 * 1000; // V77 (G9)
+function pgpCatalogIdadeMs(cache){
+  try { var t = Date.parse((cache && cache.ts) || ''); return isNaN(t) ? Infinity : (Date.now() - t); }
+  catch (e) { return Infinity; }
+}
+// V77 (G9) — até a V76 esta função retornava cedo assim que HOUVESSE cache, e
+// para sempre: `if (cache?.models?.length) return cache;`. Como ela é chamada a
+// cada reconexão (pgpSetGsStatus('ok')), o efeito era que uma peça nova
+// cadastrada no catálogo NUNCA chegava ao celular do técnico até alguém limpar
+// o armazenamento do navegador. Agora envelhece em 24h — e o cache velho segue
+// servindo se a atualização falhar (nunca devolve vazio tendo dado em mãos).
 async function pgpEnsureCatalogCache() {
   const cache = pgpLoadCatalogCache();
-  if (cache?.models?.length) return cache;
-  if (!_pgpGsConnected || !_pgpGsUrl) return null;
+  const temDado = !!(cache && cache.models && cache.models.length);
+  if (temDado && pgpCatalogIdadeMs(cache) < CATALOG_TTL_MS) return cache;
+  if (!_pgpGsConnected || !_pgpGsUrl || pgpRedeBloqueada()) return (temDado ? cache : null);
   try {
     const d = await pgpPostJson('getCatalogFull', {});
     if (d?.status === 'ok') {
@@ -7350,7 +7732,7 @@ async function pgpEnsureCatalogCache() {
       return d;
     }
   } catch (e) { console.warn('Erro ao carregar catálogo do GAS:', e); }
-  return null;
+  return (temDado ? cache : null);
 }
 
 // V76 (F5b): debounce no padrão do autoSaveDraft — 10 teclas = 1 render, não 10.
@@ -7448,7 +7830,8 @@ async function pgpRenderCatalogLookup() {
       </div>
     </div>`;
   }).join('') +
-  (results.length > 20 ? `<div style="font-size:11px;color:var(--text-light);text-align:center">+${results.length - 20} resultados — refine a busca.</div>` : '');
+  (results.length > 20 ? `<div style="font-size:11px;color:var(--text-light);text-align:center">+${results.length - 20} resultados — refine a busca.</div>` : '') +
+  pgpCatalogSelo(cat); // V77 (G9): o técnico passa a saber DE QUANDO é o catálogo
 }
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -7539,24 +7922,51 @@ function pgpRenderFilaPanel(){
        +'</div>'):'')
       +'</div>';
   }
+  var perdidos = (typeof pgpGetPerdidos === 'function') ? pgpGetPerdidos() : [];
   var html='';
-  if(!pend.length && !dead.length){ html='<div style="color:#64748b;font-size:13px;text-align:center;padding:20px">Fila vazia — tudo sincronizado. ✅</div>'; }
+  if(!pend.length && !dead.length && !perdidos.length){ html='<div style="color:#64748b;font-size:13px;text-align:center;padding:20px">Fila vazia — tudo sincronizado. ✅</div>'; }
   if(pend.length){ html+='<div style="font-size:12px;color:#3b82f6;font-weight:700;margin:4px 0">Aguardando envio ('+pend.length+')</div>'+pend.map(function(it){ return card(it,null,false); }).join(''); }
   if(dead.length){ html+='<div style="font-size:12px;color:#dc2626;font-weight:700;margin:10px 0 4px">Para revisar ('+dead.length+')</div>'
       +dead.map(function(it,i){ return card(it,i,true); }).join('')
       +'<button onclick="pgpDescartarDead(null)" style="width:100%;background:#fee2e2;color:#b91c1c;border:0;border-radius:8px;padding:9px;font-size:12px;margin-top:4px;cursor:pointer">Descartar todos os de revisão</button>'; }
+  // V77 (Rob-2 do backlog de 19/07) — ANEXOS QUE NÃO COUBERAM.
+  // Até a V76 esse descarte era `console.warn` e mais nada: a foto sumia e a
+  // miniatura seguia marcada "pending" para sempre. Agora aparece aqui, com
+  // nome, OS e motivo — o técnico consegue refotografar sabendo o que faltou.
+  if(perdidos.length){
+    html += '<div style="font-size:12px;color:#f59e0b;font-weight:700;margin:10px 0 4px">Anexos NÃO guardados ('+perdidos.length+')</div>'
+      + '<div style="font-size:11px;color:#94a3b8;margin-bottom:6px">Não couberam no aparelho e não serão enviados. Se for foto de evidência, tire de novo.</div>'
+      + perdidos.slice().reverse().map(function(p){
+          var q=''; try{ var d=new Date(p.ts); q=d.toLocaleString('pt-BR'); }catch(e){}
+          return '<div style="border:1px solid #78350f;border-radius:10px;padding:9px;margin-bottom:6px;background:#2a1c07">'
+            +'<div style="font-weight:700;font-size:12px;color:#fde68a">'+pgpEscHtml(String(p.fileName||'(sem nome)'))+'</div>'
+            +'<div style="font-size:11px;color:#cbd5e1">'+pgpEscHtml(String(p.tipo||''))+(p.os_id?(' · OS '+pgpEscHtml(String(p.os_id))):'')+(p.maquina?(' · '+pgpEscHtml(String(p.maquina))):'')+'</div>'
+            +'<div style="font-size:11px;color:#f59e0b;margin-top:3px">'+pgpEscHtml(String(p.motivo||''))+'</div>'
+            +'<div style="font-size:10px;color:#94a3b8">'+pgpEscHtml(q)+'</div>'
+          +'</div>';
+        }).join('')
+      + '<button onclick="pgpLimparPerdidos()" style="width:100%;background:#78350f;color:#fde68a;border:0;border-radius:8px;padding:9px;font-size:12px;margin-top:4px;cursor:pointer">Já resolvi — limpar esta lista</button>';
+  }
   body.innerHTML=html;
 }
 
 function pgpUpdatePendingBadge(){
   const n = pgpGetPending().length;
   const dn = pgpGetDead().length;   // V64 — inclui itens em revisão para não sumirem
+  // V77 (G3): anexos aguardando e anexos que NÃO couberam entram no contador —
+  // o badge era o único lugar onde a fila de Drive nunca aparecia.
+  let an = 0, pn = 0;
+  try { an = pgpGetDriveQueue().length; } catch(e) {}
+  try { pn = pgpGetPerdidos().length; }   catch(e) {}
   const el = document.getElementById('pgpPendingBadge');
+  try { pgpRenderBarraOffline(); } catch(e) {}
   if(!el) return;
-  if(n>0 || dn>0){
+  if(n>0 || dn>0 || an>0 || pn>0){
     let t = '';
-    if(n>0) t = `⏳ ${n} pendente${n>1?'s':''}`;
+    if(n>0)  t = `⏳ ${n} pendente${n>1?'s':''}`;
+    if(an>0) t = (t?t+' · ':'') + `📎 ${an}`;
     if(dn>0) t = (t?t+' · ':'') + `⚠ ${dn} revisar`;
+    if(pn>0) t = (t?t+' · ':'') + `⛔ ${pn}`;
     el.textContent = t;
     el.style.display='inline-flex';
   } else {
@@ -7586,6 +7996,7 @@ async function pgpPostJson(action, body, retries, onRetry){ // V76 (F3b): idem p
 var _pgpSyncFlushBusy = false; // V62 — mesma trava de reentrância da fila de Drive
 async function pgpFlushPending(){
   if(!_pgpGsConnected||!_pgpGsUrl) return;
+  if(pgpRedeBloqueada()) return; // V77 (F1)
   // v48 (A1): reenvia backups de foto/PDF pendentes da fila PERSISTENTE
   // 'pgp_pending_drive' (separada, não bloqueia o fluxo crítico abaixo).
   flushPendingDriveUploads();
@@ -7616,6 +8027,19 @@ async function pgpFlushPending(){
         dead.push(item); deadNew++;
       } else {
         failed.push(item);
+      }
+      // V77 (G2c) — PARA A PASSADA quando a rede caiu.
+      // O laço percorria a fila inteira queimando uma tentativa em CADA item
+      // mesmo depois de já estar claro que não havia rede. Isso era tolerável
+      // enquanto o flush só rodava na reconexão; com o heartbeat do G2b (a cada
+      // 90s havendo pendências) e PGP_MAX_TRIES = 5, uma área de sinal ruim
+      // mandaria a fila inteira para "revisar" em poucos minutos. Os itens
+      // restantes ficam intactos, com a contagem de tentativas preservada.
+      if (!(e && e.permanent) && !_pgpGsConnected) {
+        localStorage.setItem(PENDING_KEY, JSON.stringify(failed.concat(list.slice(_i + 1))));
+        pgpSaveDead(dead);
+        pgpUpdatePendingBadge();
+        return;
       }
     }
     // V62/V64 — persistência incremental (fila ativa = retentáveis + restantes; revisão à parte)
@@ -8140,6 +8564,10 @@ function pgpOnTipoChange(midx){
 function pgpSetGsStatus(state){
   const dot=document.getElementById('gsDotPgp');
   const txt=document.getElementById('gsTextPgp');
+  // V77 (F1): com o modo offline ligado nada pode pintar verde — o status é a
+  // única coisa que o técnico olha para decidir se pode confiar no envio.
+  if (pgpRedeBloqueada() && state === 'ok') state = 'off';
+  if (!dot || !txt) { if (state !== 'ok') { _pgpGsConnected = false; } return; }
   dot.style.background='';
   if(state==='ok'){
     dot.className='gs-dot-pgp';
@@ -8158,13 +8586,16 @@ function pgpSetGsStatus(state){
     txt.textContent='Conectando...';
   } else {
     dot.className='gs-dot-pgp off';
-    txt.textContent='Sheets';
+    txt.textContent = pgpModoOfflineAtivo() ? '📴 Offline' : 'Sheets';
     _pgpGsConnected=false;
   }
 }
 
 async function pgpTestGs(){
   if(!_pgpGsUrl){pgpSetGsStatus('off');return false;}
+  // V77 (F1): no modo offline o ping nem sai — é justamente ele o que mais
+  // acordava o rádio à toa.
+  if(pgpRedeBloqueada()){ pgpSetGsStatus('off'); return false; }
   pgpSetGsStatus('sync');
   try{
     // V75 (P2) — TESTE SOFT 31/07: este fetch não tinha timeout. Num portal cativo
@@ -9946,16 +10377,7 @@ async function pgpIniciarPreventivaDeOS(osId){
       r = await pfGet('getMaquinasByOS', { id_os: osId }, 1, function(){
         try { showNotification('📶 Sinal fraco — tentando carregar as máquinas de novo…'); } catch(eR) {}
       }); // V76 (F3b): tem cache de fallback → 1 retry basta, e com aviso
-      try {
-        const _mCache = JSON.parse(localStorage.getItem('pf_maqos_cache_v1') || '{}');
-        _mCache[osId] = { ts: Date.now(), machines: r.machines || [], os: r.os || null };
-        const _mKeys = Object.keys(_mCache);
-        if (_mKeys.length > 12) {
-          _mKeys.sort((a,b) => (_mCache[a].ts||0) - (_mCache[b].ts||0));
-          while (_mKeys.length > 12) delete _mCache[_mKeys.shift()];
-        }
-        localStorage.setItem('pf_maqos_cache_v1', JSON.stringify(_mCache));
-      } catch(eC) {}
+      pfCacheGravarMaqOS(osId, r.machines || [], r.os || null); // V77 (G5): regra única de cache
     } catch(eNet) {
       if (eNet.message && eNet.message.includes('AUTH_GOOGLE')) throw eNet;
       let _mc = null;
@@ -10012,7 +10434,12 @@ async function pgpIniciarPreventivaDeOS(osId){
     }
   }catch(e){
     if(e.message && e.message.includes('AUTH_GOOGLE')){ pfHubLogout(); return; }
-    showNotification('⚠ Erro ao carregar máquinas da OS: ' + e.message);
+    // V77 (F1): mensagem de gente + saída explícita no modo offline.
+    if (pgpModoOfflineAtivo()){
+      showNotification('📴 Esta OS não foi baixada para uso offline. Abra o pipeline e use "🔓 Buscar mesmo assim", ou toque em "📥 Preparar o dia" quando tiver sinal.');
+    } else {
+      showNotification('⚠ Erro ao carregar máquinas da OS: ' + pgpMsgErro(e));
+    }
   }
 }
 
@@ -11712,7 +12139,18 @@ function pgpUpdateAdminLocal(payload){
 (async()=>{
   try{ pgpAtualizarModoOS(); }catch(e){}   // V72 (P2)
   pgpRenderLastClients();
+  // V77 (F1): o modo offline sobrevive ao reload — o app recarrega bastante, e
+  // um estado que se perdesse no refresh seria pior do que não existir.
+  try{ pgpRenderBarraOffline(); pgpAtualizarBtnModoOffline(); }catch(e){}
   pgpUpdatePendingBadge();
+  if (pgpModoOfflineAtivo()){
+    pgpSetGsStatus('off');
+    pgpUpdateGsStatusDisplay();
+    var _nOff = 0;
+    try { _nOff = pgpGetPending().length + pgpGetDriveQueue().length; } catch(e){}
+    try { showNotification('📴 Modo offline continua LIGADO' + (_nOff ? (' — ' + _nOff + ' item(ns) guardado(s) esperando você voltar para online.') : '.')); } catch(e){}
+    return;   // nada de ping: é exatamente disso que o modo protege
+  }
   if(_pgpGsUrl){
     let ok = await pgpTestGs();
     // v26: cold start do Apps Script pode falhar na primeira tentativa — tenta mais 2x
@@ -11734,6 +12172,7 @@ function pgpUpdateAdminLocal(payload){
 // caches. Nada mudou lá.
 var _pgpAutoPingBusy = false;
 function pgpAutoPing() {
+  if (pgpRedeBloqueada()) return;   // V77 (F1)
   if (_pgpAutoPingBusy || !_pgpGsUrl) return;
   _pgpAutoPingBusy = true;
   // V75 (P2) — cinto e suspensório do timeout acima: `finally` garante que a trava
@@ -11754,7 +12193,16 @@ document.addEventListener('visibilitychange', function(){
 });
 setInterval(function(){
   if (document.visibilityState !== 'visible') return; // não gasta bateria/dados em 2º plano
-  if (!_pgpGsConnected) pgpAutoPing();
+  if (pgpRedeBloqueada()) return;                     // V77 (F1)
+  if (!_pgpGsConnected) { pgpAutoPing(); return; }
+  // V77 (G2b) — HEARTBEAT DA FILA. Até a V76 este timer só servia para
+  // RECONECTAR: com o status verde ele não fazia nada. Só que um item podia
+  // cair na fila por timeout SEM derrubar o status (ver G2a) — e aí ficava
+  // parado para sempre. Agora, havendo pendências, o flush é tentado mesmo
+  // com o status ok.
+  try {
+    if ((pgpGetPending().length + pgpGetDriveQueue().length) > 0) pgpFlushPending();
+  } catch(eHB) {}
 }, 90000);
 
 
@@ -11780,6 +12228,11 @@ function loginEntrar() {
 // silencioso (antes o aviso ia só pro console.warn e o técnico ficava até 3,5s
 // extra olhando uma tela parada sem saber por quê).
 async function _pgpFetchComRetry_(url, options, maxRetries, onRetry) {
+  // V77 (F1) — MODO OFFLINE DELIBERADO: nem tenta. Este é o choke point de
+  // pfGet E de pgpPostJson, então basta este teste para o app inteiro parar de
+  // procurar rede (é daí que vinham os 10-20s de tela travada por ação numa
+  // rede morta: 3 tentativas x timeout de socket + 1000ms + 2500ms).
+  if (pgpRedeBloqueada()) throw pgpErroModoOffline();
   if (maxRetries === undefined) maxRetries = 2;
   var lastErr;
   for (var tentativa = 0; tentativa <= maxRetries; tentativa++) {
@@ -11805,7 +12258,16 @@ async function _pgpFetchComRetry_(url, options, maxRetries, onRetry) {
       var infraTransitoria = /^HTTP \d+$/.test(e.message) ||
         /Failed to fetch|NetworkError|Load failed/i.test(e.message) ||
         /GAS retornou HTML/.test(e.message);
-      if (!infraTransitoria || tentativa === maxRetries) throw e;
+      // V77 (G2a) — DESISTIU: o status tem que CAIR. Até a V76 `_pgpGsConnected`
+      // só virava false no evento 'offline' do navegador ou na falha do ping —
+      // uma escrita que estourava por timeout deixava o pill em "Sheets ✓", o
+      // auto-ping (que só roda com status off) nunca acordava e, como não houve
+      // evento 'offline', também não haveria 'online' na volta do sinal: a fila
+      // ficava parada indefinidamente com a luz verde.
+      if (!infraTransitoria || tentativa === maxRetries) {
+        if (infraTransitoria) { try { if (typeof _pgpGsConnected !== 'undefined' && _pgpGsConnected) pgpSetGsStatus('off'); } catch(eS) {} }
+        throw e;
+      }
       var delayMs = tentativa === 0 ? 1000 : 2500;
       try { if (typeof onRetry === 'function') onRetry(tentativa + 1); } catch(eCb) {} // V76 (F3b)
       console.warn('[pgpFetch] tentativa ' + (tentativa + 1) + ' falhou (' +
@@ -11823,6 +12285,134 @@ async function pfGet(action, params, retries, onRetry) { // V76 (F3b): retries/o
   const d = await _pgpFetchComRetry_(_pgpGsUrl + '?' + qs.toString() + gcParam(), { method: 'GET' }, retries, onRetry);
   if (!d || d.status !== 'ok') throw new Error(d?.error || 'Erro GAS');
   return d;
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════
+// V77 (G5) — CACHE DO PIPELINE: escrita unificada + teto maior.
+// A regra de trim estava duplicada em pfLoadPipeline e em
+// pgpIniciarPreventivaDeOS, com o teto cravado em 12 nos dois. Agora existe um
+// lugar só — que é o que torna a "Preparar o dia" possível sem que ela expulse
+// do cache justamente as OS que acabou de baixar.
+// ══════════════════════════════════════════════════════════════════════════
+var PF_CACHE_MAX_OS = 25;
+function _pfCacheTrim(c, max){
+  var k = Object.keys(c);
+  if (k.length <= max) return;
+  k.sort(function(a,b){ return (c[a].ts||0) - (c[b].ts||0); });
+  while (k.length > max) delete c[k.shift()];
+}
+function pfCacheGravarPipeline(osId, tarefas){
+  try{
+    // V67 mantido: cache de "0 tarefas" NUNCA é gravado — ele mentia
+    // "Nenhuma tarefa" para OS que já tinha pipeline.
+    if (!(tarefas || []).length) return false;
+    var c = JSON.parse(localStorage.getItem('pf_pipeline_cache_v1') || '{}');
+    c[osId] = { ts: Date.now(), tarefas: tarefas };
+    _pfCacheTrim(c, PF_CACHE_MAX_OS);
+    localStorage.setItem('pf_pipeline_cache_v1', JSON.stringify(c));
+    return true;
+  }catch(e){ return false; }
+}
+function pfCacheGravarMaqOS(osId, machines, os){
+  try{
+    var c = JSON.parse(localStorage.getItem('pf_maqos_cache_v1') || '{}');
+    c[osId] = { ts: Date.now(), machines: machines || [], os: os || null };
+    _pfCacheTrim(c, PF_CACHE_MAX_OS);
+    localStorage.setItem('pf_maqos_cache_v1', JSON.stringify(c));
+    return true;
+  }catch(e){ return false; }
+}
+function pfOsTemCache(osId){
+  try{
+    var p = JSON.parse(localStorage.getItem('pf_pipeline_cache_v1') || '{}')[osId];
+    var m = JSON.parse(localStorage.getItem('pf_maqos_cache_v1')   || '{}')[osId];
+    return !!(p || m);
+  }catch(e){ return false; }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// V77 (G5) — "📥 PREPARAR O DIA".
+//
+// Até a V76 os caches do pipeline eram EFEITO COLATERAL de o técnico ter
+// aberto aquela tela com sinal. O plano de 19/07 já assumia isso e chamava de
+// "regra prática: abrir a OS do dia de manhã no wifi" — mas isso é HÁBITO, não
+// recurso. Quem saísse sem ter aberto a OS-0042 descobria no cliente que a
+// OS-0042 não existia offline.
+//
+// Aqui não há chamada nova de backend: são as MESMAS duas leituras que o app
+// já faz ao abrir uma OS (getPipelineByOS + getMaquinasByOS), só que
+// antecipadas e gravadas nos mesmos caches. Zero GAS.
+// ══════════════════════════════════════════════════════════════════════════
+var _pfPrepararBusy = false;
+async function pfPrepararODia(btn){
+  if (_pfPrepararBusy) return;
+  var statusEl = document.getElementById('pfOsStatus');
+  var setSt = function(t){ if (statusEl){ statusEl.innerHTML = t; statusEl.style.display='block'; } };
+
+  if (!_pfOsList || !_pfOsList.length){
+    setSt('⚠ Carregue a lista de OS primeiro (toque em ↻).');
+    return;
+  }
+
+  var ativas = _pfOsList.filter(function(o){
+    var st = String(o.status || '').toLowerCase();
+    return st === 'aberta' || st === 'em_andamento';
+  });
+  if (!ativas.length){ setSt('Nenhuma OS ativa para preparar.'); return; }
+
+  // Designadas ao técnico primeiro — são as que ele mais provavelmente vai abrir.
+  var alvo = ativas.slice().sort(function(a,b){
+    return (b.designada_para_mim ? 1 : 0) - (a.designada_para_mim ? 1 : 0);
+  });
+  var cortadas = 0;
+  if (alvo.length > PF_CACHE_MAX_OS){ cortadas = alvo.length - PF_CACHE_MAX_OS; alvo = alvo.slice(0, PF_CACHE_MAX_OS); }
+
+  _pfPrepararBusy = true;
+  if (btn){ btn.disabled = true; btn.textContent = '📥 Preparando…'; }
+  // Modo offline ligado + wifi bom = cenário legítimo. Abre a janela em vez de
+  // obrigar o técnico a desligar e religar o modo.
+  var eraOffline = pgpModoOfflineAtivo();
+  if (eraOffline) pgpForcarRedeJanela(10 * 60000);
+
+  var ok = 0, falhou = 0, semPipeline = 0;
+  try {
+    for (var i = 0; i < alvo.length; i++){
+      var os   = alvo[i];
+      var osId = String(os.id_os || '');
+      if (!osId) continue;
+      var rot = String(os.numero_os || osId);
+      setSt('📥 Preparando o dia… <strong>' + (i+1) + ' de ' + alvo.length + '</strong> — OS ' + rot);
+
+      var algo = false;
+      try {
+        var rp = await pgpPostJson('getPipelineByOS', { os_id: osId }, 0);
+        if (pfCacheGravarPipeline(osId, rp.tarefas || [])) algo = true;
+        else semPipeline++;
+      } catch(e){ if (e && e.message && e.message.indexOf('AUTH_GOOGLE') >= 0){ pfHubLogout(); return; } }
+
+      try {
+        var rm = await pfGet('getMaquinasByOS', { id_os: osId }, 0);
+        pfCacheGravarMaqOS(osId, rm.machines || [], rm.os || null);
+        algo = true;
+      } catch(e2){ if (e2 && e2.message && e2.message.indexOf('AUTH_GOOGLE') >= 0){ pfHubLogout(); return; } }
+
+      if (algo) ok++; else falhou++;
+    }
+  } finally {
+    _pfPrepararBusy = false;
+    if (btn){ btn.disabled = false; btn.textContent = '📥 Preparar o dia'; }
+    if (eraOffline) _pgpForcarRedeAte = 0;   // fecha a janela na hora
+    try { pgpRenderBarraOffline(); } catch(e){}
+  }
+
+  // "No silent caps": o que ficou de fora é dito, não escondido.
+  var msg = '✅ <strong>' + ok + ' OS</strong> prontas para uso offline (' + pfCacheHora(Date.now()) + ').';
+  if (semPipeline) msg += ' ' + semPipeline + ' sem pipeline instanciado.';
+  if (falhou)      msg += ' <span style="color:#f59e0b">' + falhou + ' não baixaram — repita num ponto com sinal melhor.</span>';
+  if (cortadas)    msg += ' <span style="color:#f59e0b">' + cortadas + ' OS ativas ficaram de fora (teto de ' + PF_CACHE_MAX_OS + ').</span>';
+  setSt(msg);
+  try { showNotification(ok ? ('📥 ' + ok + ' OS prontas para o campo.') : '⚠ Nenhuma OS pôde ser preparada agora.'); } catch(e){}
 }
 
 // ── PIPELINE STATE ────────────────────────────────────────────────────────────
@@ -11963,7 +12553,7 @@ async function pfLoadOS() {
       statusEl.style.display = 'block';
       return;
     }
-    statusEl.textContent = '⚠ Erro ao carregar OS: ' + e.message;
+    statusEl.textContent = '⚠ Não foi possível carregar as OS: ' + pgpMsgErro(e); // V77
   }
 }
 
@@ -12110,17 +12700,7 @@ async function pfLoadPipeline(opts) {
       // V67: lista VAZIA não entra no cache — um cache de "0 tarefas" gravado
       // antes do pipeline ser instanciado fazia o modo offline mostrar
       // "Nenhuma tarefa" para uma OS que JÁ tinha tarefas.
-      try {
-        if (!(r.tarefas || []).length) throw new Error('vazio — não cachear');
-        var _pipeCache = JSON.parse(localStorage.getItem('pf_pipeline_cache_v1') || '{}');
-        _pipeCache[_pfOsId] = { ts: Date.now(), tarefas: r.tarefas || [] };
-        var _pcKeys = Object.keys(_pipeCache);
-        if (_pcKeys.length > 12) {
-          _pcKeys.sort(function(a,b){ return (_pipeCache[a].ts||0) - (_pipeCache[b].ts||0); });
-          while (_pcKeys.length > 12) delete _pipeCache[_pcKeys.shift()];
-        }
-        localStorage.setItem('pf_pipeline_cache_v1', JSON.stringify(_pipeCache));
-      } catch(eC) {}
+      pfCacheGravarPipeline(_pfOsId, r.tarefas || []); // V77 (G5): regra única de cache
     } catch(eNet) {
       if (eNet.message && eNet.message.includes('AUTH_GOOGLE')) throw eNet;
       var _pc = null;
@@ -12202,9 +12782,15 @@ async function pfLoadPipeline(opts) {
 
   } catch(e) {
     if (e.message && e.message.includes('AUTH_GOOGLE')) { pfHubLogout(); return; }
+    // V77 (F1) — no modo offline, uma OS que não foi preparada cai aqui. Em vez
+    // de um erro seco, o técnico ganha a saída explícita: liberar a rede por
+    // 1 minuto SEM desligar o modo.
+    var _escape = pgpModoOfflineAtivo()
+      ? '<br><br><div style="color:#94a3b8;font-size:12px">Esta OS não foi baixada para uso offline.</div>' +
+        '<br><button onclick="pgpBuscarMesmoAssim(function(){ return pfLoadPipeline(); })" style="background:#f59e0b;border:0;color:#111827;padding:9px 16px;border-radius:8px;cursor:pointer;font-family:\'Barlow Condensed\',sans-serif;font-size:13px;font-weight:800">🔓 Buscar mesmo assim (1 min de rede)</button>'
+      : '<br><br><button onclick="pfLoadPipeline()" style="background:#1e293b;border:1px solid #334155;color:#94a3b8;padding:8px 16px;border-radius:8px;cursor:pointer;font-family:\'Barlow Condensed\',sans-serif;font-size:13px;font-weight:700">Tentar novamente</button>';
     conteudo.innerHTML = '<div style="text-align:center;padding:24px;color:#ef4444;font-size:13px">' +
-      '⚠ Erro ao carregar pipeline: ' + e.message +
-      '<br><br><button onclick="pfLoadPipeline()" style="background:#1e293b;border:1px solid #334155;color:#94a3b8;padding:8px 16px;border-radius:8px;cursor:pointer;font-family:\'Barlow Condensed\',sans-serif;font-size:13px;font-weight:700">Tentar novamente</button>' +
+      '⚠ ' + pgpMsgErro(e) + _escape +
     '</div>';
   }
 }
@@ -12420,8 +13006,17 @@ async function pfAssumirTarefa(tarefaId, btn) {
     await pfLoadPipeline({ soft: true }); // V67: refresh sem apagar a tela
   } catch(e) {
     if (e.message && e.message.includes('AUTH_GOOGLE')) { pfHubLogout(); return; }
+    // V77 (G1) — REDE-FANTASMA. Até a V76 a fila só era usada quando
+    // `navigator.onLine === false` (modo avião). Em galpão, portal cativo ou 3G
+    // morto o navegador diz que está ONLINE, o POST estourava, e a ação
+    // simplesmente SUMIA dentro de um alert. Agora QUALQUER falha de envio cai
+    // na fila — o mesmo shape que pgpEnviarPreventiva e
+    // pgpEnviarSolicitacaoCadastro já usavam em produção.
+    pgpQueueRequest('assumirTarefa', { os_id: _pfOsId, tarefa_id: tarefaId, usuario: usuario });
+    pfLockLocalOffline(tarefaId, usuario);
     if (btn) { btn.disabled = false; btn.classList.remove('is-busy'); btn.textContent = '🔒 Assumir tarefa'; }
-    alert('Erro ao assumir tarefa: ' + e.message);
+    if (typeof pfToast === 'function') pfToast('⏳ ' + pgpMsgErro(e) + ' Assumida na fila — sobe ao sincronizar.');
+    await pfLoadPipeline({ soft: true });
   }
 }
 
@@ -12442,8 +13037,11 @@ async function pfLiberarTarefa(tarefaId, btn) {
     await pfLoadPipeline({ soft: true }); // V67: refresh sem apagar a tela
   } catch(e) {
     if (e.message && e.message.includes('AUTH_GOOGLE')) { pfHubLogout(); return; }
+    pgpQueueRequest('liberarTarefa', { os_id: _pfOsId, tarefa_id: tarefaId, usuario: usuario }); // V77 (G1)
+    pfLockLocalOffline(tarefaId, '');
     if (btn) { btn.disabled = false; btn.classList.remove('is-busy'); btn.textContent = 'Liberar tarefa'; }
-    alert('Erro ao liberar tarefa: ' + e.message);
+    if (typeof pfToast === 'function') pfToast('⏳ ' + pgpMsgErro(e) + ' Liberada na fila — sobe ao sincronizar.');
+    await pfLoadPipeline({ soft: true });
   }
 }
 
@@ -12455,13 +13053,22 @@ async function pfResolverDecisao(tarefaId, valor, btn) {
   if (btn) { btn.disabled = true; btn.classList.add('is-busy'); }
   var usuario = (window.PROPER_SESSION && window.PROPER_SESSION.tecnico)
     ? (window.PROPER_SESSION.tecnico.id || window.PROPER_SESSION.tecnico.nome || '') : '';
+  // V77 (G7) — pfResolverDecisao era a ÚNICA ação do pipeline SEM nenhum
+  // caminho offline: nem o gate de navigator.onLine, nem catch→fila. Só um
+  // alert. Ficou incoerente quando a V75 levou updateTarefaStatus para a fila:
+  // o técnico conseguia CONCLUIR uma tarefa offline mas não conseguia
+  // responder um gateway Sim/Não, que é a ação mais barata das duas.
+  var _decBody = { os_id: _pfOsId, tarefa_id: tarefaId, valor: valor, usuario: usuario };
   try {
-    await pgpPostJson('resolverDecisao', { os_id: _pfOsId, tarefa_id: tarefaId, valor: valor, usuario: usuario });
+    if (!_pgpGsConnected || pgpRedeBloqueada()) throw pgpErroModoOffline();
+    await pgpPostJson('resolverDecisao', _decBody);
     await pfLoadPipeline({ soft: true }); // V67: refresh sem apagar a tela
   } catch(e) {
     if (e.message && e.message.includes('AUTH_GOOGLE')) { pfHubLogout(); return; }
+    pgpQueueRequest('resolverDecisao', _decBody);
     if (btn) { btn.disabled = false; btn.classList.remove('is-busy'); }
-    alert('Erro ao registrar decisão: ' + e.message);
+    if (typeof pfToast === 'function') pfToast('⏳ ' + pgpMsgErro(e) + ' Decisão na fila — sobe ao sincronizar.');
+    await pfLoadPipeline({ soft: true });
   }
 }
 
@@ -12700,8 +13307,18 @@ function pfExpandirConfirmar(tarefaId, btn) {
     var usuario = (window.PROPER_SESSION && window.PROPER_SESSION.tecnico)
       ? (window.PROPER_SESSION.tecnico.id || window.PROPER_SESSION.tecnico.nome || '')
       : '';
-    pgpPostJson('registrarAbertura', { os_id: _pfOsId, tarefa_id: tarefaId, usuario: usuario })
-      .catch(function(e) { console.warn('[pfExpandirConfirmar] registrarAbertura falhou:', e.message); });
+    // V77 (G8) — registrarAbertura tinha DOIS donos e só um enfileirava:
+    // pfAbrirForm mandava para a fila, este aqui só dava console.warn e a
+    // abertura da tarefa manual offline se perdia (como antes do V61).
+    var _abBody = { os_id: _pfOsId, tarefa_id: tarefaId, usuario: usuario };
+    if (!_pgpGsConnected || pgpRedeBloqueada()) {
+      pgpQueueRequest('registrarAbertura', _abBody);
+    } else {
+      pgpPostJson('registrarAbertura', _abBody).catch(function(e) {
+        console.warn('[pfExpandirConfirmar] registrarAbertura falhou — enfileirada:', e.message);
+        pgpQueueRequest('registrarAbertura', _abBody);
+      });
+    }
   }
 }
 
@@ -12833,8 +13450,20 @@ async function pfConfirmarTarefa(tarefaId) {
     pfLoadPipeline({ soft: true }); // V67: refresh sem apagar a tela
   } catch(e) {
     if (e.message && e.message.includes('AUTH_GOOGLE')) { pfHubLogout(); return; }
-    if (btnEl) { btnEl.disabled = false; btnEl.classList.remove('is-busy'); btnEl.textContent = '✓ Confirmar'; }
-    pfShowUnlockBanner('⚠ Erro: ' + e.message, true);
+    // V77 (G1) — o trabalho feito na oficina não pode morrer num banner de erro.
+    pgpQueueRequest('updateTarefaStatus', {
+      os_id:      _pfOsId,
+      tarefa_id:  tarefaId,
+      status:     'completo',
+      usuario:    usuario,
+      observacao: obs,
+      hora_inicio_estimada: horaInicioEstimada,
+      hora_fim_estimada: horaFimEstimada,
+      respostas_json: JSON.stringify(_pfRespostas[tarefaId] || {})
+    });
+    if (btnEl) { btnEl.classList.remove('is-busy'); btnEl.textContent = '📴 Na fila'; }
+    pfShowUnlockBanner('⏳ ' + pgpMsgErro(e) + ' Conclusão guardada na fila — sobe ao sincronizar.');
+    await pfLoadPipeline({ soft: true });
   }
 }
 
@@ -12851,7 +13480,7 @@ async function pfAbrirForm(tarefaId, formUrl, btn) {
   // antes a abertura offline simplesmente se perdia (só um console.warn).
   // V67: e agora é FIRE-AND-FORGET — não bloqueia mais a navegação.
   var _aberturaBody = { os_id: _pfOsId, tarefa_id: tarefaId, usuario: usuario };
-  if (!_pgpGsConnected) {
+  if (!_pgpGsConnected || pgpRedeBloqueada()) {   // V77 (F1)
     pgpQueueRequest('registrarAbertura', _aberturaBody);
   } else {
     pgpPostJson('registrarAbertura', _aberturaBody).catch(function(e) {
@@ -12935,6 +13564,7 @@ async function pollPfNotificacoes() {
     : null;
   if (!userId) return;
   if (!_pfGsConnected) return;
+  if (pgpRedeBloqueada()) return;   // V77 (F1): era ele que acordava o rádio de 60 em 60s
 
   try {
     var r    = await pfGet('getNotificacoes', { usuario: userId }, 0); // V76 (F4c): poll idempotente — volta sozinho em 60s
@@ -13473,6 +14103,9 @@ if(window._PGP_OS_ID && (function(){ try { return localStorage.getItem('proper_p
       <button type="button" class="pf-os-filter-chip pf-os-status-filter-chip" data-status-filter="concluidas" onclick="pfSetOSStatusFilter('concluidas')">Concluídas</button>
       <button type="button" class="pf-os-filter-chip pf-os-status-filter-chip" data-status-filter="todas" onclick="pfSetOSStatusFilter('todas')">Todas</button>
     </div>
+    <!-- V77 (G5): baixa pipeline + máquinas das OS ativas para uso offline -->
+    <button id="pfBtnPrepararDia" onclick="pfPrepararODia(this)" style="width:100%;margin-top:10px;background:#0f766e;border:0;color:#ecfeff;padding:11px;border-radius:10px;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;cursor:pointer;letter-spacing:.03em">📥 Preparar o dia</button>
+    <div style="font-size:11px;color:#64748b;text-align:center;margin-top:5px;line-height:1.4">Baixa as tarefas e as máquinas das OS ativas para funcionarem sem sinal.</div>
     <div id="pfOsStatus" style="font-size:13px;color:#94a3b8;text-align:center;padding:20px 0">Conectando ao Sheets…</div>
     <div id="pfOsLista"></div>
   </div>
