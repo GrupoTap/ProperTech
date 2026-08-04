@@ -454,13 +454,58 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
   - pfAbrir: aguarda pfLoadOS() antes de iniciar polling de
     notificações, em vez de disparar as duas em paralelo.
 -->
+<!-- ══════════════════════════════════════════════════════════════════════════
+     PCF V80 — 04/08/2026 — P1 CORREÇÕES + P2 VISUALIZAÇÃO + P3 PRAZOS + INSPEÇÃO AVULSA
+     Par: GAS v85 · PCM V106 · sw v80 (SOBE EM PAR — sw velho serve o V77 do cache).
+     100% ADITIVO: nenhuma função, id, data-key, data-view ou rota renomeada.
+
+     ── P1 ────────────────────────────────────────────────────────────────────
+     C1  _pfOsCliente (NOME CANÔNICO) separado de _pfOsNome (RÓTULO de tela).
+         Até a V77 o rótulo "Cliente · TIPO_OS" era usado COMO SE FOSSE o nome do
+         cliente nos 3 caminhos de ESCRITA — cliente e pasta duplicados na Gestão
+         de Documentos e, o pior, _PGP_OS_CLIENTE sujo fazia pgpOsIdSeguro nunca
+         casar e SUPRIMIR o os_id de todo payload.
+     C2  Textos honestos de fechar_pipeline (o GAS v85 encerra a camada de
+         verdade; até o v82 era no-op declarado) + selo 🏁 de etapa encerrada +
+         a tela passa a NOMEAR as tarefas que seguram a OS em vez de um ✅ liso.
+     ADM Gate único em pfBuildCard lendo o Executor CARIMBADO (nunca o nome do
+         perfil: o carimbo é offline-safe e renomear perfil não reescreve o que
+         já roda). Tarefa de adm aparece TRAVADA — nunca escondida, e o
+         denominador do "X de Y" não muda.
+
+     ── INSPEÇÃO AVULSA (auditoria 04/08) ─────────────────────────────────────
+     A1  novaColeta passa a zerar _pgpOSInspecaoPromise. ESTA É A LACUNA G6:
+         da 2ª coleta em diante, na mesma sessão, TODA foto e PDF caíam em
+         _SEM_OS — e não desentalava nem voltando ao 1º cliente.
+     A2  pgpEnviarGS garante a OS de inspeção ANTES de montar o payload (coleta
+         sem foto e sem PDF saía órfã; o GAS só tinha fallback no savePreventiva).
+     A3  categoria do PDF por tipo de visita (era 'pdf_preventiva' literal).
+     A4  os call sites de pgpOsIdSeguro passam o cliente DO PAINEL — o parâmetro
+         era código morto e a guarda comparava sempre o painel 0.
+     A5  recarimbo do os_id no flush da fila de Drive, com data_ref = dia da
+         COLETA: o vazio ficava gravado para sempre e partia a mesma inspeção em
+         duas pastas.
+     A6  numero_os da INS- no PDF (imprimia o id interno).
+
+     ── P2 ────────────────────────────────────────────────────────────────────
+     K2  Tela de OS compacta: busca (guard anti-autofill completo), ordenação
+         Fila/Prazo/Minhas com preferência persistida, os 3 grupos de chips
+         antigos atrás de ⚙ (nenhum id renomeado), e card com prioridade,
+         posição na fila, dias, estágio e progresso.
+     ── P3 ────────────────────────────────────────────────────────────────────
+     §7  Chip "prev. dd/mm" no card, a partir do prazo que o motor calculou.
+
+     Bancada: 36 asserts de UI em Chromium headless (360×740 e 414×896) +
+     screenshots CONFERIDOS À VISTA — foi olhar a imagem, e não a suíte verde,
+     que pegou o ícone órfão, o selo flutuante e o número truncado.
+     ══════════════════════════════════════════════════════════════════════════ -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ProperCare Field · PGP Preventivas v34 · build PCF_V77</title>
-<meta name="app-build" content="PCF_V77" data-date="2026-07-31">
+<title>ProperCare Field · PGP Preventivas v34 · build PCF_V81</title>
+<meta name="app-build" content="PCF_V81" data-date="2026-08-04">
 <meta name="theme-color" content="#0f172a">
 <!-- PWA (fix 19/07/2026): o repo já tinha manifest.webmanifest + sw.js + proper-pwa.js,
      mas o index.html não os referenciava — sem estas 3 linhas o SW nunca registra,
@@ -535,6 +580,27 @@ function pgpEnsureJsPDF() {
   .progress-pill{background:var(--orange);color:white;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:15px;padding:4px 12px;border-radius:20px;white-space:nowrap}
   .machine-counter{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:white;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;padding:3px 10px;border-radius:20px;white-space:nowrap}
   .progress-bar-wrap{margin-top:9px;background:rgba(255,255,255,.2);border-radius:4px;height:5px;overflow:hidden}
+
+  /* ═══ V81 (04/08) — BARRA SUPERIOR LEGÍVEL E ESTÁVEL ══════════════════════
+     Queixa do Fernando: "no topo está muito confuso; clico e não vejo o que
+     está pendente". Além do conteúdo, o LAYOUT era instável: chips e botões
+     dividiam o MESMO flex-wrap, então cada vez que um chip aparecia/sumia ou
+     mudava de largura ("Sheets" -> "Conectando..." -> "Sheets ✓") a linha
+     refluía e os 6 botões-ícone TROCAVAM DE LUGAR — memória muscular
+     impossível. Agora são dois containers: chips em cima (altura reservada),
+     ícones embaixo em ordem FIXA e sem quebra. */
+  .pcf-chiprow{display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:flex-end;min-height:24px;width:100%}
+  .pcf-iconbar{display:flex;gap:5px;align-items:center;flex-wrap:nowrap!important;justify-content:flex-end;width:100%}
+  .pcf-iconbar>.btn-sessions-header{flex:0 0 auto}
+  /* Chips passam a ser alvo de toque de verdade (o app usa --touch-min no resto) */
+  .pcf-chip-tap{min-height:26px;display:inline-flex;align-items:center;cursor:pointer}
+  .progress-pill{cursor:pointer}
+  /* Destaque do item para onde o painel "Faltando preencher" levou o técnico */
+  .pcf-alvo{animation:pcfAlvo 1.6s ease 2;border-radius:8px}
+  @keyframes pcfAlvo{0%,100%{background:transparent}35%{background:rgba(245,130,32,.35)}}
+  .pcf-falta-row{border:1px solid #e2e8f0;border-radius:10px;padding:11px;margin-bottom:7px;background:#f8fafc;cursor:pointer;font-size:13px;color:#0f172a}
+  .pcf-falta-row:active{background:#ffedd5}
+  .pcf-falta-sec{font-size:11px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin:10px 0 5px}
   .progress-bar-fill{height:100%;background:var(--orange);border-radius:4px;transition:width .35s ease;width:0%}
 
   .machine-tabs-wrap{background:var(--blue-light);border-bottom:2px solid #c5d6f0;padding:8px 12px 0;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
@@ -666,6 +732,10 @@ function pgpEnsureJsPDF() {
   .photo-thumb-drive-ok{opacity:1;color:#6ee7b7}
   .photo-thumb-drive-error{opacity:1;color:#f87171}
   .photo-thumb-count{font-size:10.5px;color:var(--text-light);white-space:nowrap;font-weight:600}
+  /* V81 (04/08) — thumb SÓ LEITURA da visita anterior: borda tracejada + selo ↩
+     para nunca ser confundida com foto da coleta atual (borda sólida). */
+  .photo-thumb-prev{border-style:dashed!important;border-color:var(--text-light)!important;opacity:.85}
+  .photo-thumb-prev-tag{position:absolute;bottom:-1px;right:-1px;width:15px;height:15px;border-radius:50%;background:rgba(20,20,20,.75);color:#cbd5e1;font-size:9px;line-height:15px;text-align:center}
   .foto-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.35);z-index:900;max-width:88vw;text-align:center;opacity:0;transition:opacity .2s}
   .foto-toast.show{opacity:1}
 
@@ -877,6 +947,10 @@ function pgpEnsureJsPDF() {
     .header-right{max-width:none;width:100%}
     .header-right>div{gap:6px;flex-wrap:wrap}
     .btn-sessions-header{flex:1;min-height:48px;font-size:20px;padding:10px 6px;text-align:center;justify-content:center}
+    /* V81: no celular os ícones dividem a largura por igual, SEM quebrar linha */
+    .header-right>.pcf-iconbar{flex-wrap:nowrap!important;gap:6px}
+    .header-right>.pcf-iconbar>.btn-sessions-header{flex:1 1 0;min-width:0}
+    .header-right>.pcf-chiprow{flex-wrap:wrap;gap:6px}
     header h1{font-size:17px}
     .subtitle{font-size:10px}
     .machine-tab{min-height:var(--touch-min);padding:8px 18px;font-size:14px;border-radius:22px;display:flex;align-items:center}
@@ -1164,7 +1238,7 @@ function pgpEnsureJsPDF() {
   transition: border-color .15s, background .15s;
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;   /* V79: era center — o selo flutuava no meio */
   gap: 10px;
 }
 .pf-os-card:active { background: #263347; }
@@ -1186,6 +1260,8 @@ function pgpEnsureJsPDF() {
   font-weight: 700;
   font-family: 'Barlow Condensed', sans-serif;
   white-space: nowrap;
+  align-self: flex-start;   /* V79: ancorado no topo — flutuava no meio do card */
+  flex: 0 0 auto;
 }
 .pf-os-status.aberta       { background: #1e3a5f; color: #60a5fa; }
 .pf-os-status.em_andamento { background: #1e3a5f; color: #60a5fa; }
@@ -1216,6 +1292,65 @@ function pgpEnsureJsPDF() {
   background: #3b82f6;
   border-color: #60a5fa;
   color: white;
+}
+/* ══ V78/V79/V80 — tela de OS compacta, card informativo e badges ══════════
+   min-width:0 nos filhos flex é o que impede o corte horizontal no celular
+   (a mesma classe de defeito dos 3 cortes do form_locacao em 03/08).        */
+.pf-os-barra { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; }
+.pf-os-busca {
+  flex: 1; min-width: 0;
+  background: #1e293b; border: 1px solid #334155; color: #e2e8f0;
+  border-radius: 10px; padding: 10px 12px; font-size: 14px;
+}
+.pf-os-busca::placeholder { color: #64748b; }
+.pf-os-filtros-btn {
+  flex: 0 0 auto; width: 42px; height: 40px;
+  background: #1e293b; border: 1px solid #334155; color: #94a3b8;
+  border-radius: 10px; font-size: 16px; cursor: pointer;
+}
+.pf-os-filtros-btn.active { background: #3b82f6; border-color: #60a5fa; color: #fff; }
+.pf-os-sort { margin-bottom: 10px; }
+.pf-os-secao {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 800;
+  color: #64748b; text-transform: uppercase; letter-spacing: .06em;
+  margin: 14px 0 6px;
+}
+/* O chip de prioridade ocupa SEMPRE uma linha só dele quando existe:
+   - deixá-lo inline truncava o número da OS ("OS #PGP-2…"), que é justamente
+     o identificador que o técnico procura;
+   - deixá-lo quebrar por espaço disponível fazia a lista ficar irregular
+     (inline num card, acima noutro).
+   flex-basis:100% resolve os dois de uma vez, com aparência consistente. */
+.pf-os-topo { display: flex; align-items: center; gap: 4px 6px; flex-wrap: wrap; min-width: 0; }
+.pf-os-prio-linha { flex: 0 0 100%; display: flex; margin-bottom: 3px; }
+.pf-os-topo .pf-os-numero { white-space: normal; overflow-wrap: anywhere; min-width: 0; }
+.pf-os-prio {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 10px; font-weight: 800;
+  padding: 2px 7px; border-radius: 999px; letter-spacing: .04em; white-space: nowrap;
+}
+.pf-os-prio.urgente { background: #7f1d1d; color: #fca5a5; }
+.pf-os-prio.alta    { background: #78350f; color: #fcd34d; }
+/* O container quebra ENTRE itens; cada item (.pf-os-meta) é indivisível, para
+   o ícone nunca ficar órfão do texto que ele rotula. */
+.pf-os-linha3 {
+  display: flex; flex-wrap: wrap; gap: 2px 10px;
+  font-size: 11px; color: #94a3b8; margin-top: 5px; min-width: 0;
+}
+.pf-os-meta { white-space: nowrap; }
+/* Nome de fase longo é o único que pode quebrar — mas por palavra, não no meio. */
+.pf-os-meta:last-child { white-space: normal; overflow-wrap: anywhere; }
+.pf-os-prog-wrap { display: flex; align-items: center; gap: 8px; margin-top: 6px; min-width: 0; }
+.pf-os-prog { flex: 1; min-width: 0; height: 4px; background: #0f172a; border-radius: 2px; overflow: hidden; }
+.pf-os-prog-bar { height: 100%; background: #3b82f6; border-radius: 2px; }
+.pf-os-prog-lbl { font-size: 10px; color: #64748b; white-space: nowrap; }
+.pf-os-minha {
+  font-size: 10px; color: #4ade80; background: #14532d;
+  padding: 2px 6px; border-radius: 999px; white-space: nowrap;
+}
+.pf-badge-adm {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 10px; font-weight: 800;
+  background: #0c4a6e; color: #7dd3fc; padding: 2px 7px; border-radius: 999px;
+  margin-left: 6px; white-space: nowrap; letter-spacing: .03em;
 }
 .pf-notif-item {
   padding: 10px 14px;
@@ -1910,12 +2045,12 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
       <div class="proper-logo-mark">H</div>
       <div class="proper-logo-text">
         <span class="brand">PROPER</span>
-        <span class="brand-sub">Field · V77</span>
+        <span class="brand-sub">Field · V81</span>
       </div>
     </div>
     <div class="header-right">
-      <div class="progress-pill" id="progressPill">0 / 0</div>
-      <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
+      <div class="progress-pill" id="progressPill" onclick="pcfAbrirFaltaPanel()" title="Toque para ver o que falta preencher nesta máquina">0 / 0</div>
+      <div class="pcf-chiprow">
         <div class="machine-counter" id="machineCounter">Máquina 1 de 1</div>
         <div class="gs-pill-pgp" id="gsPill" onclick="abrirConfig()">
           <div style="display:flex;align-items:center;gap:4px;cursor:pointer" onclick="event.stopPropagation();pgpTestGs()" title="Toque para reconectar">
@@ -1924,6 +2059,8 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
           </div>
         </div>
         <span id="pgpPendingBadge" style="display:none;background:#f97316;color:white;font-size:10px;font-weight:700;padding:3px 8px;border-radius:12px;cursor:pointer;white-space:nowrap;font-family:'Barlow Condensed',sans-serif" onclick="pgpAbrirFilaPanel()" title="Toque para ver a fila de envios">⏳</span>
+      </div>
+      <div class="pcf-iconbar">
         <!-- V77 (F1): modo offline deliberado -->
         <button class="btn-sessions-header" id="btnModoOffline" onclick="pgpToggleModoOffline(this)" title="Ligar modo offline (o app para de procurar rede)">📴</button>
         <button class="btn-sessions-header" id="btnCatalogLookup" onclick="pgpToggleCatalogPanel()" title="Consulta de peças">🔍</button>
@@ -1933,7 +2070,13 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
         <!-- Sprint 4E-D: botão pipeline -->
         <button class="btn-sessions-header" id="btnPipeline" onclick="pfAbrir()" title="Pipeline de OS" style="position:relative">
           🔧
-          <span id="pfNotifBadge" style="display:none;position:absolute;top:-4px;right:-4px;background:#ef4444;color:white;font-size:9px;font-weight:700;padding:1px 4px;border-radius:10px;min-width:14px;text-align:center;line-height:1.4"></span>
+          <!-- V81 (04/08): o "9" vermelho era um <span> mudo dentro do botão do
+               pipeline. Ele NÃO é fila de envio nem campo faltando: são
+               NOTIFICAÇÕES do pipeline de OS (desbloqueios, mensagens do
+               escritório). Três números colados com significados sem relação
+               nenhuma faziam o técnico ler "tenho 12 problemas". Agora o badge
+               DIZ o que é (title) e o toque leva direto à lista. -->
+          <span id="pfNotifBadge" onclick="event.stopPropagation();pfAbrir();setTimeout(function(){try{pfToggleNotif();}catch(e){}},450)" title="Avisos do escritório sobre suas OSs — toque para ler" style="display:none;position:absolute;top:-4px;right:-4px;background:#ef4444;color:white;font-size:9px;font-weight:700;padding:1px 4px;border-radius:10px;min-width:14px;text-align:center;line-height:1.4;cursor:pointer"></span>
         </button>
       </div>
     </div>
@@ -2226,6 +2369,21 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
     </div>
     <div id="pgpFilaBody"></div>
     <button onclick="pgpFlushPending();setTimeout(pgpRenderFilaPanel,700)" style="width:100%;background:#3b82f6;color:#fff;border:0;border-radius:10px;padding:13px;font-weight:700;font-size:15px;margin-top:12px;cursor:pointer">🔄 Reenviar agora</button>
+    <!-- V81: diagnóstico copiável — o técnico manda no WhatsApp em vez de descrever -->
+    <button onclick="pgpCopiarFilaDiag()" style="width:100%;background:#e2e8f0;color:#334155;border:0;border-radius:10px;padding:10px;font-size:13px;margin-top:8px;cursor:pointer">📋 Copiar diagnóstico da fila</button>
+  </div>
+</div>
+
+<!-- V81 (04/08) — PAINEL "FALTANDO PREENCHER": dá destino ao contador do topo.
+     Nomeia cada item que falta e leva até ele (abre a seção, rola e destaca). -->
+<div id="pcfFaltaOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100001;align-items:flex-end;justify-content:center" onclick="if(event.target===this)pcfFecharFaltaPanel()">
+  <div style="background:#fff;color:#0f172a;width:100%;max-width:640px;max-height:82vh;overflow:auto;border-radius:14px 14px 0 0;padding:16px;font-family:'Barlow Condensed',system-ui,sans-serif">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <b style="font-size:17px">📝 Faltando preencher</b>
+      <span onclick="pcfFecharFaltaPanel()" style="cursor:pointer;font-size:22px;color:#64748b;line-height:1">✕</span>
+    </div>
+    <div style="font-size:12px;color:#64748b;margin-bottom:10px">Toque num item para ir direto até ele, nesta máquina. Nada aqui é obrigatório para enviar — é só o que ainda não foi marcado.</div>
+    <div id="pcfFaltaBody"></div>
   </div>
 </div>
 
@@ -2974,6 +3132,11 @@ function pgpSaveDriveQueue(list){
 // ══════════════════════════════════════════════════════════════════════════
 function pgpEnqueueDriveUpload(entry){
   var body = (entry && entry.body) || {};
+  // V81 (04/08) — carimba o TIPO DE VISITA no item da fila. O flush precisa
+  // dele para NÃO abrir OS de inspeção (INS-) ao recarimbar o os_id de um
+  // anexo de PREVENTIVA. No flush o _pgpTipoVisita já pode ser outro (ou de
+  // outra sessão), então o tipo tem de viajar junto com o item.
+  try { if (entry && !entry.tipoVisita) entry.tipoVisita = String(_pgpTipoVisita || ''); } catch(eT) {}
   var b64  = body.dataBase64 || '';
   var list = pgpGetDriveQueue();
   var item;
@@ -2983,7 +3146,8 @@ function pgpEnqueueDriveUpload(entry){
     var leve = {};
     for (var k in body) { if (Object.prototype.hasOwnProperty.call(body, k) && k !== 'dataBase64') leve[k] = body[k]; }
     item = { kind:(entry&&entry.kind)||'', action:(entry&&entry.action)||'', body:leve,
-             blobKey:blobKey, ts:(entry&&entry.ts)||Date.now(), bytes:b64.length };
+             blobKey:blobKey, ts:(entry&&entry.ts)||Date.now(), bytes:b64.length,
+             tipoVisita:(entry&&entry.tipoVisita)||'' };   // V81
     pgpIdbSet(blobKey, b64).then(function(ok){
       if (ok) return;
       _pgpDriveRemoverDaFila(blobKey);
@@ -2993,7 +3157,8 @@ function pgpEnqueueDriveUpload(entry){
       _pgpDriveMarcarPerdido(item, 'falha ao gravar no armazenamento do aparelho');
     });
   } else {
-    item = { kind:(entry&&entry.kind)||'', action:(entry&&entry.action)||'', body:body, ts:(entry&&entry.ts)||Date.now() };
+    item = { kind:(entry&&entry.kind)||'', action:(entry&&entry.action)||'', body:body, ts:(entry&&entry.ts)||Date.now(),
+             tipoVisita:(entry&&entry.tipoVisita)||'' };   // V81
   }
 
   list.push(item);
@@ -3130,6 +3295,9 @@ async function pgpGarantirOSInspecaoAvulsa(midx){
       if (r && r.status === 'ok' && r.id_os) {
         window._PGP_OS_ID = r.id_os;
         window._PGP_OS_CLIENTE = r.cliente || cliente;
+        // V78 (A6) — o GAS já devolve numero_os; sem isto o campo "Ordem de
+        // Serviço" do PDF imprimia o id interno (OS-000123) em vez de INS-2026-XXXX.
+        if (r.numero_os) window._PGP_OS_NUMERO = r.numero_os;
         return r.id_os;
       }
     } catch(e){ console.warn('[PCF] abrirOSInspecao falhou:', e && e.message); }
@@ -3190,10 +3358,74 @@ async function flushPendingDriveUploads() {
           }
           _body = Object.assign({}, _body, { dataBase64: _b64 });
         }
+        // ══════════════════════════════════════════════════════════════════
+        // V78 (A5) — RECARIMBO DO os_id.
+        // pgpGarantirOSInspecaoAvulsa é um POST de rede e NÃO checa
+        // _pgpGsConnected: offline ele falha, o catch engole, e o payload é
+        // enfileirado com os_id:''. Até a V77 o flush reenviava o corpo
+        // LITERALMENTE (só reidratava o base64), então o vazio ficava gravado
+        // para sempre — a foto era entregue meses depois, mas em _SEM_OS.
+        // Cenário de galpão: fotos 1-4 sem sinal → _SEM_OS; o técnico anda 20 m,
+        // pega sinal; foto 5 → pasta certa. A MESMA inspeção partida em duas.
+        // ⚠ data_ref = o DIA DA COLETA (entry.ts), não o dia do flush: a
+        //   idempotência do GAS é por cliente+máquina+DIA, então usar "hoje"
+        //   abriria uma OS nova e pioraria a dispersão. Depende do GAS v83.
+        // ⚠ Falha aqui é tolerada: segue com os_id vazio, como antes.
+        // ⚠ Não regrava a fila com o os_id novo — o item sai dela logo abaixo.
+        // ══════════════════════════════════════════════════════════════════
+        // ⚠ V81 (04/08) — GUARD DE TIPO QUE FALTAVA. O recarimbo A5 não olhava
+        //   o tipo de visita, então PDF de PREVENTIVA avulsa e PDF consolidado
+        //   enfileirados passavam a CRIAR OS de inspeção (INS-) no flush — o
+        //   oposto do que o item promete. pgpGarantirOSInspecaoAvulsa tem essa
+        //   guarda (`if (_pgpTipoVisita !== 'inspecao') return ''`); aqui não
+        //   tinha. Item gravado com o tipo é respeitado; item de versão antiga
+        //   (sem o campo) mantém o comportamento da V80 para não perder foto.
+        var _tipoEntry = String((_body.tipo_visita || _body.tipoVisita || entry.tipoVisita || '')).toLowerCase();
+        var _podeAbrirINS = !_tipoEntry || _tipoEntry.indexOf('inspecao') >= 0 || _tipoEntry.indexOf('inspeção') >= 0;
+        if (!_body.os_id && _podeAbrirINS && (_body.clientName || _body.cliente)) {
+          try {
+            var _rOS = await pgpPostJson('abrirOSInspecao', {
+              cliente:    _body.clientName || _body.cliente || '',
+              machine_id: _body.maquina_id || '',
+              data_ref:   new Date(entry.ts || Date.now()).toISOString(),
+              usuario:    _body.createdBy || ''
+            });
+            if (_rOS && _rOS.status === 'ok' && _rOS.id_os) {
+              _body = Object.assign({}, _body, { os_id: _rOS.id_os });
+            }
+          } catch (eR) { /* segue com os_id vazio — cai em _SEM_OS, como antes */ }
+        }
         await pgpPostJson(entry.action, _body);
         if (entry.blobKey) { try { pgpIdbDel(entry.blobKey); } catch(eD){} }
       }
-      catch (e) { failed.push(entry); }
+      catch (e) {
+        // ⚠ V81 (04/08) — a fila de ANEXOS não contava tentativas nem tinha
+        //   dead-letter (a de sync tem, desde a V64). Item com recusa
+        //   PERMANENTE do servidor voltava para `failed` e NUNCA saía: era
+        //   exatamente o "N na fila" que não drena, ocupando espaço e sendo
+        //   reenviado para sempre. Agora conta, e depois de PGP_MAX_TRIES sai
+        //   da fila para "Conferir" — visível, nomeado e com o motivo.
+        entry.tries = (entry.tries || 0) + 1;
+        entry.lastError = String((e && e.message) || e).slice(0, 160);
+        if ((e && e.permanent) || entry.tries >= PGP_MAX_TRIES) {
+          try {
+            var _dd = pgpGetDead();
+            _dd.push({ action: entry.action || 'salvarPdfDrive', body: (entry.body || {}),
+                       ts: entry.ts || Date.now(), tries: entry.tries,
+                       deadReason: 'anexo recusado pelo servidor: ' + entry.lastError });
+            pgpSaveDead(_dd);
+          } catch(eDL) {}
+          if (entry.blobKey) { try { pgpIdbDel(entry.blobKey); } catch(eD2){} }
+        } else {
+          failed.push(entry);
+        }
+        // Rede caiu no meio: PARA A PASSADA (mesma regra do G2c na fila de sync)
+        if (!(e && e.permanent) && !_pgpGsConnected) {
+          pgpSaveDriveQueue(failed.concat(list.slice(i + 1)));
+          try { pgpUpdatePendingBadge(); } catch(eB2){}
+          return;
+        }
+      }
       // V62 — persistência INCREMENTAL: item enviado sai da fila JÁ (antes a fila
       // só era regravada no fim do laço; fechar o app no meio reenviava tudo).
       pgpSaveDriveQueue(failed.concat(list.slice(i + 1)));
@@ -3216,8 +3448,14 @@ async function queuePhotoDriveUpload(midx, photoKey, label, fotoObj, file) {
     const { dataUrl: driveDataUrl } = await compressPhotoForDrive(file);
     const base64 = driveDataUrl.split(',')[1] || '';
     body = {
-      clientName: pgpDriveClientName(0),
-      os_id: pgpOsIdSeguro(),
+      // V78 (A4) — era pgpDriveClientName(0) com maquina_id(midx): numa sessão
+      // com painéis de clientes diferentes, a foto da máquina do cliente B ia
+      // para a pasta do cliente A. E pgpOsIdSeguro() SEM argumento comparava
+      // sempre contra o painel 0 (o parâmetro clientAtual era código morto nos
+      // 9 call sites) — a guarda anti-vazamento LIBERAVA o os_id do painel 0
+      // para máquinas de qualquer outro painel, o oposto do que promete.
+      clientName: pgpDriveClientName(midx),
+      os_id: pgpOsIdSeguro(pgpDriveClientName(midx)),
       maquina_id: pgpDriveMaquinaId(midx),
       maquina_label: pgpDriveMaquinaLabel(midx),
       dataBase64: base64,
@@ -3308,7 +3546,14 @@ function renderPhotoThumbs(midx, photoKey) {
         <img src="${foto.dataUrl}" alt="Foto">
         ${foto.driveStatus ? `<div class="photo-thumb-drive photo-thumb-drive-${foto.driveStatus}" title="${pgpDriveStatusLabel(foto.driveStatus)}">☁</div>` : ''}
         <div class="photo-thumb-del" onclick="event.stopPropagation();removePhotoDoStore(${midx},'${photoKey}',${i})">✕</div>
-      </div>`).join('') + (fotos.length ? `<span class="photo-thumb-count">${fotos.length}/${MAX_FOTOS_POR_ITEM}</span>` : '');
+      </div>`).join('') + (fotos.length ? `<span class="photo-thumb-count">${fotos.length}/${MAX_FOTOS_POR_ITEM}</span>` : '')
+      // V81 (04/08) — THUMBS DA VISITA ANTERIOR DESTE MESMO ITEM, depois do
+      // contador (que conta só o que o técnico tirou AGORA). Pedido do Fernando:
+      // "preciso sempre tirar as mesmas fotos repetidamente". Até aqui esta
+      // função lia SÓ o photoStore local; a seção "Fotos da última visita" (v65)
+      // existia, mas é uma galeria COLAPSADA da máquina inteira, não por item.
+      // Guard de typeof: se o bloco novo não carregar, o render antigo é idêntico.
+      + (typeof pfThumbsAnterioresHtml === 'function' ? pfThumbsAnterioresHtml(midx, photoKey) : '');
   });
 }
 
@@ -4515,6 +4760,10 @@ function switchMachine(idx) {
     delete window._pfFotosPendentes[idx];
     try { pfCarregarFotosMaquina(idx); } catch(eF) {}
   }
+  if (window._pfItensPendentes && window._pfItensPendentes[idx]) {   // V81
+    delete window._pfItensPendentes[idx];
+    try { pfCarregarFotosItensMaquina(idx); } catch(eI) {}
+  }
   updateProgress();
   checkDone();
 }
@@ -4778,7 +5027,13 @@ function updateProgress() {
   const done  = panel.querySelectorAll('.field-item.checked').length
               + panel.querySelectorAll('.photo-item.photo-checked').length
               + panel.querySelectorAll('.photo-item.photo-nd').length;
-  document.getElementById('progressPill').textContent = done+' / '+total;
+  // V81 (04/08): "7 / 25" não dizia de quê nem levava a lugar nenhum — não
+  // existia irParaProximoPendente/scrollToInvalid em todo o arquivo. O que o
+  // técnico precisa saber é quanto FALTA, e o número virou a porta do painel
+  // "Faltando preencher". (Conta campos + fotos da MÁQUINA ABERTA; "N/D" conta
+  // como feito, e não há campo obrigatório — chegar a zero não trava nada.)
+  var _falta = Math.max(0, total - done);
+  document.getElementById('progressPill').textContent = _falta ? ('Faltam '+_falta) : ('✓ '+done+'/'+total);
   document.getElementById('progressBar').style.width = (total>0?(done/total*100):0)+'%';
 }
 
@@ -5265,6 +5520,23 @@ async function novaColeta() {
   window._PGP_OS_NUMERO = '';
   window._PGP_OS_ID_CARREGADA = '';
   window._PGP_TIPO_ESPERADO = null;
+  // V81 (04/08) — zerava a EXPECTATIVA e deixava a TELA em preventiva: a coleta
+  // nova nascia marcada como preventiva E sem barreira (o guard do rascunho em
+  // restoreDraft exige _PGP_TIPO_ESPERADO). Volta ao default do app (7544).
+  try { pgpSetTipoVisita('inspecao'); pgpAtualizarAcoesPorTipoVisita(); } catch(e) {}
+  // ══════════════════════════════════════════════════════════════════════
+  // V78 (A1) — ESTA É A LACUNA G6 ("inspeção avulsa órfã em _SEM_OS").
+  // novaColeta zerava _PGP_OS_ID mas deixava a MEMOIZAÇÃO de pé. Na 2ª coleta
+  // pgpGarantirOSInspecaoAvulsa caía na linha `if (window._pgpOSInspecaoPromise)
+  // return ...`, devolvia a promise do cliente ANTERIOR e NUNCA reatribuía
+  // _PGP_OS_ID (a atribuição vive dentro da IIFE, que já rodou). Resultado:
+  // pgpOsIdSeguro caía em `if(!osId) return ''` e TODA foto/PDF da 2ª coleta em
+  // diante ia para _SEM_OS — e não desentalava nem voltando ao 1º cliente.
+  // Na prática: 4 clientes num dia sem fechar o app = 3 perdidos.
+  // O guard de troca de cliente (pgpGarantirOSInspecaoAvulsa) não salva: ele
+  // EXIGE _PGP_OS_ID preenchido, que a linha acima acabou de apagar.
+  // ══════════════════════════════════════════════════════════════════════
+  window._pgpOSInspecaoPromise = null;
   try { const _rw = document.getElementById('pgpReturnToOSContainer'); if(_rw){ _rw.style.display='none'; _rw.innerHTML=''; } } catch(e){}
   _pgpTravaClienteOS = false;
   _pgpDestinoNovoPainel = false;
@@ -6050,6 +6322,22 @@ async function restoreDraft() {
           );
         } catch(e) { okTipo = false; }
         if (okTipo) pgpSetTipoVisita(draft.tipoVisita);
+      } else if (!_esp && pgpEmOS() && draft.tipoVisita !== _pgpTipoVisita) {
+        // V81 (04/08) — a guarda da V72 só existia com _PGP_TIPO_ESPERADO
+        // PREENCHIDO. Dentro de uma OS ele fica null sempre que o Tipo da
+        // tarefa não casa com 'inspecao'/'preventiva', ou quando a entrada veio
+        // por ?os_id= sem ?modo= (checkHubSession nunca o seta). Aí o rascunho
+        // GLOBAL (chave única pgp_draft_v1) trocava o tipo da OS aberta sem uma
+        // palavra — o banner "Rascunho encontrado / CONTINUAR" das capturas.
+        let okTipo2 = false;
+        try {
+          okTipo2 = await AppDialog.confirm(
+            'O rascunho estava em ' + (_PGP_TIPO_NOME[draft.tipoVisita] || draft.tipoVisita) +
+            ', e a tela está em ' + (_PGP_TIPO_NOME[_pgpTipoVisita] || _pgpTipoVisita) + '.\n\nQual manter?',
+            { title: 'Tipo de visita do rascunho', okLabel: 'Usar o do rascunho', cancelLabel: 'Manter ' + (_PGP_TIPO_NOME[_pgpTipoVisita] || _pgpTipoVisita) }
+          );
+        } catch(e) { okTipo2 = false; }
+        if (okTipo2) pgpSetTipoVisita(draft.tipoVisita);
       } else {
         pgpSetTipoVisita(draft.tipoVisita);
       }
@@ -7237,12 +7525,14 @@ async function _gerarPDF_(btnEl) {
     const pdfBase64 = b.doc.output('datauristring').split(',')[1] || '';
     queuePdfDriveUpload({
       cliente: pgpDriveClientName(midx),
-      os_id: pgpOsIdSeguro(),
+      os_id: pgpOsIdSeguro(pgpDriveClientName(midx)),   // V78 (A4)
       maquina_id: pgpDriveMaquinaId(midx),
       maquina_label: pgpDriveMaquinaLabel(midx),
       base64: pdfBase64,
       fileName: nomeArq,
-      categoria: 'pdf_preventiva',
+      // V78 (A3) — era 'pdf_preventiva' LITERAL, mesmo numa inspeção: o PDF
+      // da coleta avulsa entrava na Gestão de Documentos na categoria errada.
+      categoria: ((typeof _pgpTipoVisita !== 'undefined' && _pgpTipoVisita === 'inspecao') ? 'pdf_inspecao' : 'pdf_preventiva'),
       createdBy: pgpFieldVal(midx, 'tecnico')
     });
 
@@ -7894,6 +8184,107 @@ function pgpClearPending(){
   pgpUpdatePendingBadge();
 }
 
+// ══════════════════════════════════════════════════════════════════════════
+// V81 (04/08) — PODA DAS FILAS. Até a V80 NENHUMA das quatro tinha retenção:
+// _PGP_RETENCAO_DIAS (15d) limpava só coletas salvas e o rascunho. A fila de
+// revisão ('pgp_pending_dead_v1') não tinha sequer TETO — crescia até estourar
+// a cota do localStorage e derrubar a fila crítica junto.
+// REGRA DE OURO: PODAR NUNCA APAGA TRABALHO EM SILÊNCIO.
+//   • item de sync parado > PGP_FILA_PARADO_DIAS: NÃO some — vai para CONFERIR,
+//     visível, com o motivo escrito e botão de reenviar;
+//   • item de conferir > PGP_DEAD_MAX_DIAS: aí sim é apagado (já foi visto, já
+//     teve chance de reenvio, e o PDF/relatório local continua intacto);
+//   • conferir também ganha teto duro (o mais antigo sai primeiro);
+//   • anexos: o ÍNDICE manda — blob 'dq::' órfão no IndexedDB é lixo puro
+//     (megabytes de base64 mortos, invisíveis a tudo).
+// ══════════════════════════════════════════════════════════════════════════
+var PGP_FILA_PARADO_DIAS = 7;
+var PGP_DEAD_MAX_DIAS    = 60;
+var PGP_DEAD_LIMIT       = 100;
+
+function pgpPodarFilas(opts){
+  opts = opts || {};
+  var agora = Date.now(), rel = { movidos:0, expurgados:0, orfaos:0 };
+  try {
+    var pend = pgpGetPending(), dead = pgpGetDead(), ativos = [];
+    pend.forEach(function(it){
+      var ts = (it && typeof it.ts === 'number') ? it.ts : 0;
+      if (ts && (agora - ts) > PGP_FILA_PARADO_DIAS * 86400000) {
+        it.deadReason = 'parado há ' + Math.floor((agora - ts)/86400000) +
+                        ' dias sem conseguir subir — confira e reenvie';
+        dead.push(it); rel.movidos++;
+      } else { ativos.push(it); }
+    });
+    var vivos = dead.filter(function(it){
+      var ts = (it && typeof it.ts === 'number') ? it.ts : 0;
+      if (ts && (agora - ts) > PGP_DEAD_MAX_DIAS * 86400000) { rel.expurgados++; return false; }
+      return true;
+    });
+    while (vivos.length > PGP_DEAD_LIMIT) { vivos.shift(); rel.expurgados++; }
+    if (rel.movidos || rel.expurgados) {
+      try { localStorage.setItem(PENDING_KEY, JSON.stringify(ativos)); } catch(e){}
+      pgpSaveDead(vivos);
+    }
+  } catch(e){}
+  try {
+    var vivosBlob = {};
+    pgpGetDriveQueue().forEach(function(x){ if (x && x.blobKey) vivosBlob[x.blobKey] = 1; });
+    _pgpIdbStore('readonly').then(function(st){
+      if (!st || !st.getAllKeys) return;
+      var rq = st.getAllKeys();
+      rq.onsuccess = function(){
+        (rq.result || []).forEach(function(k){
+          if (String(k).indexOf('dq::') === 0 && !vivosBlob[k]) { rel.orfaos++; try{ pgpIdbDel(k); }catch(e2){} }
+        });
+        if (rel.orfaos) console.warn('[V81 poda] ' + rel.orfaos + ' anexo(s) órfão(s) removido(s) do aparelho');
+      };
+    }).catch(function(){});
+  } catch(e){}
+  try { pgpUpdatePendingBadge(); } catch(e){}
+  if (!opts.silent && (rel.movidos || rel.expurgados)) {
+    try { showNotification('🧹 Fila revisada: ' + rel.movidos + ' item(ns) parado(s) há mais de ' +
+      PGP_FILA_PARADO_DIAS + ' dias foram para "Conferir"' +
+      (rel.expurgados ? (' · ' + rel.expurgados + ' registro(s) antigo(s) descartado(s)') : '') +
+      '. Toque no ⏳.'); } catch(e){}
+  }
+  return rel;
+}
+
+// V81 — descarte manual de item ATIVO. Confirmação explícita porque, ao
+// contrário da fila de conferir, este item ainda não teve veredito do servidor.
+function pgpDescartarPending(idx){
+  var list = pgpGetPending();
+  var it = list[idx]; if(!it) return;
+  var r = pgpFilaItemResumo(it);
+  if(!confirm('Descartar este envio?\n\n' + pgpFilaAcaoLabel(r.action) + ' · ' + r.maq + ' · ' + r.idade +
+              '\n\nEle NÃO será enviado ao Sheets. O PDF/relatório no aparelho continua intacto.')) return;
+  list.splice(idx,1);
+  try{ localStorage.setItem(PENDING_KEY, JSON.stringify(list)); }catch(e){}
+  pgpUpdatePendingBadge(); pgpRenderFilaPanel();
+}
+
+// V81 — diagnóstico copiável: o técnico manda no WhatsApp em vez de descrever.
+function pgpCopiarFilaDiag(){
+  var o = { versao:'PCF_V81', quando:new Date().toISOString(),
+    conectado:(typeof _pgpGsConnected!=='undefined')?_pgpGsConnected:'?',
+    sync:pgpGetPending().map(pgpFilaItemResumo),
+    conferir:pgpGetDead().map(pgpFilaItemResumo),
+    anexos:(function(){ try{ return pgpGetDriveQueue().length; }catch(e){ return -1; } })(),
+    perdidos:(function(){ try{ return pgpGetPerdidos().length; }catch(e){ return -1; } })() };
+  var s = JSON.stringify(o, null, 2);
+  try { navigator.clipboard.writeText(s); showNotification('📋 Diagnóstico copiado — cole no WhatsApp do escritório.'); }
+  catch(e){ try{ prompt('Copie este texto:', s); }catch(_){} }
+}
+
+// V81 — nomes de ação em português no painel da fila (o card mostrava a action
+// CRUA: "savePreventiva", "updateMachineParts"). Mapa ADITIVO: nada renomeado.
+function pgpFilaAcaoLabel(a){
+  var m = { savePreventiva:'Preventiva', saveVisit:'Visita / inspeção',
+            saveMachine:'Cadastro de máquina', updateMachineParts:'Peças da máquina',
+            salvarPdfDrive:'PDF / anexo', driveUpload:'Foto / anexo' };
+  return m[String(a||'')] || String(a||'Registro');
+}
+
 // V64 — painel da fila: mostra CADA item (tipo, máquina, OS, quando, tentativas,
 // erro) — resolve o "não consigo ver o que é". Fila ativa + fila de revisão.
 function pgpFilaItemResumo(item){
@@ -7902,33 +8293,133 @@ function pgpFilaItemResumo(item){
   var maq = b.serial || mb.serial || b.tag || mb.tag || b.machine_id || mb.id || '—';
   var os = b.os_id || (mb && mb.os_id) || '';
   var when = item && item.ts ? new Date(item.ts).toLocaleString('pt-BR') : '';
-  return { action:(item&&item.action)||'?', maq:maq, os:os, when:when, tries:(item&&item.tries)||0, err:(item&&(item.lastError||item.deadReason))||'' };
+  // V81 — IDADE. O painel mostrava só a data absoluta; "13/07 14:22" não conta a
+  // história de que o item está preso há 22 dias. Em campo, IDADE é o sinal.
+  var idade = '';
+  if (item && typeof item.ts === 'number' && item.ts) {
+    var _h = Math.floor((Date.now() - item.ts) / 3600000);
+    idade = (_h < 1) ? 'agora há pouco' : (_h < 24) ? ('parado há ' + _h + 'h')
+          : ('⚠ parado há ' + Math.floor(_h/24) + ' dia(s)');
+  } else { idade = 'sem data (item de versão antiga)'; }
+  return { action:(item&&item.action)||'?', maq:maq, os:(os||'(sem OS)'), when:when, idade:idade, tries:(item&&item.tries)||0, err:(item&&(item.lastError||item.deadReason))||'' };
 }
 function pgpAbrirFilaPanel(){ var o=document.getElementById('pgpFilaOverlay'); if(!o) return; o.style.display='flex'; pgpRenderFilaPanel(); }
 function pgpFecharFilaPanel(){ var o=document.getElementById('pgpFilaOverlay'); if(o) o.style.display='none'; }
+
+// ══════════════════════════════════════════════════════════════════════════
+// V81 (04/08) — "FALTANDO PREENCHER". O contador do topo media mas era um beco
+// sem saída. Estas funções são 100% ADITIVAS e usam as MESMAS classes que
+// updateProgress conta, então o painel NUNCA diverge do número exibido.
+// ══════════════════════════════════════════════════════════════════════════
+var _pcfFaltaCache = [];
+function pcfColetarFaltantes(){
+  var panel = document.getElementById('panel-'+currentMachine);
+  if(!panel) return [];
+  var out = [];
+  panel.querySelectorAll('.section').forEach(function(sec){
+    var tEl = sec.querySelector('.section-header .title');
+    var titulo = tEl ? tEl.textContent.trim() : 'Outros';
+    sec.querySelectorAll('.field-item:not(.checked)').forEach(function(el){
+      var n = el.querySelector('.label-main');
+      out.push({ sec:titulo, nome:(n?n.textContent.trim():'Campo'), el:el, tipo:'campo' });
+    });
+    sec.querySelectorAll('.photo-item:not(.photo-checked):not(.photo-nd)').forEach(function(el){
+      var n = el.querySelector('.photo-pname');
+      out.push({ sec:titulo, nome:(n?n.textContent.trim():'Foto'), el:el, tipo:'foto' });
+    });
+  });
+  return out;
+}
+function pcfRenderFaltaPanel(){
+  var body = document.getElementById('pcfFaltaBody'); if(!body) return;
+  _pcfFaltaCache = pcfColetarFaltantes();
+  if(!_pcfFaltaCache.length){
+    body.innerHTML = '<div style="color:#16a34a;font-size:14px;text-align:center;padding:22px;font-weight:700">Tudo preenchido nesta máquina. ✅</div>';
+    return;
+  }
+  var html = '', secAtual = null;
+  _pcfFaltaCache.forEach(function(it, i){
+    if(it.sec !== secAtual){ secAtual = it.sec; html += '<div class="pcf-falta-sec">'+pgpEscHtml(secAtual)+'</div>'; }
+    html += '<div class="pcf-falta-row" onclick="pcfIrAteFaltante('+i+')">'
+          + (it.tipo==='foto'?'📷 ':'⬜ ') + pgpEscHtml(it.nome) + '</div>';
+  });
+  body.innerHTML = html;
+}
+function pcfAbrirFaltaPanel(){
+  var o = document.getElementById('pcfFaltaOverlay'); if(!o) return;
+  pcfRenderFaltaPanel(); o.style.display='flex';
+}
+function pcfFecharFaltaPanel(){
+  var o = document.getElementById('pcfFaltaOverlay'); if(o) o.style.display='none';
+}
+function pcfIrAteFaltante(i){
+  var it = _pcfFaltaCache[i]; if(!it || !it.el) return;
+  pcfFecharFaltaPanel();
+  // A seção pode estar recolhida (toggleSection põe .hidden no irmão do header)
+  var sec = it.el.closest ? it.el.closest('.section') : null;
+  if(sec){
+    var h = sec.querySelector('.section-header');
+    if(h && h.classList.contains('collapsed')){
+      h.classList.remove('collapsed');
+      if(h.nextElementSibling) h.nextElementSibling.classList.remove('hidden');
+    }
+  }
+  setTimeout(function(){
+    try{ it.el.scrollIntoView({block:'center', behavior:'smooth'}); }catch(e){ try{ it.el.scrollIntoView(); }catch(_){} }
+    it.el.classList.remove('pcf-alvo');
+    void it.el.offsetWidth;              // reinicia a animação
+    it.el.classList.add('pcf-alvo');
+    setTimeout(function(){ it.el.classList.remove('pcf-alvo'); }, 3400);
+  }, 60);
+}
 function pgpRenderFilaPanel(){
   var body=document.getElementById('pgpFilaBody'); if(!body) return;
   var pend=pgpGetPending(), dead=pgpGetDead();
   function card(it, i, isDead){
     var r=pgpFilaItemResumo(it);
     return '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px;margin-bottom:8px;background:'+(isDead?'#fef2f2':'#f8fafc')+'">'
-      +'<div style="font-weight:700;font-size:13px">'+pgpEscHtml(r.action)+(isDead?' <span style="color:#dc2626">· revisar</span>':'')+'</div>'
+      +'<div style="font-weight:700;font-size:13px">'+pgpEscHtml(pgpFilaAcaoLabel(r.action))+(isDead?' <span style="color:#dc2626">· precisa conferir</span>':'')+'</div>'
       +'<div style="font-size:12px;color:#475569">Máquina: '+pgpEscHtml(String(r.maq))+(r.os?(' · OS '+pgpEscHtml(String(r.os))):'')+'</div>'
-      +'<div style="font-size:11px;color:#94a3b8">'+pgpEscHtml(r.when)+(r.tries?(' · '+r.tries+' tentativa(s)'):'')+'</div>'
+      +'<div style="font-size:11px;color:#94a3b8">'+pgpEscHtml(r.idade)+' · '+pgpEscHtml(r.when)+(r.tries?(' · '+r.tries+' tentativa(s)'):'')+'</div>'
       +(r.err?('<div style="font-size:11px;color:#dc2626;margin-top:3px">'+pgpEscHtml(String(r.err))+'</div>'):'')
-      +(isDead?('<div style="margin-top:6px;display:flex;gap:6px">'
-         +'<button onclick="pgpReviverDead('+i+')" style="flex:1;background:#3b82f6;color:#fff;border:0;border-radius:8px;padding:7px;font-size:12px;cursor:pointer">Reenviar</button>'
-         +'<button onclick="pgpDescartarDead('+i+')" style="flex:1;background:#e2e8f0;color:#334155;border:0;border-radius:8px;padding:7px;font-size:12px;cursor:pointer">Descartar</button>'
-       +'</div>'):'')
+      // V81 — os itens "aguardando" eram renderizados com card(it, null, false) e
+      // NÃO ganhavam botão nenhum: um item preso não tinha como ser tentado nem
+      // descartado pelo técnico em campo. Agora as DUAS seções têm ação.
+      +('<div style="margin-top:6px;display:flex;gap:6px">'
+        +(isDead
+          ? ('<button onclick="pgpReviverDead('+i+')" style="flex:1;background:#3b82f6;color:#fff;border:0;border-radius:8px;padding:7px;font-size:12px;cursor:pointer">Reenviar</button>'
+            +'<button onclick="pgpDescartarDead('+i+')" style="flex:1;background:#e2e8f0;color:#334155;border:0;border-radius:8px;padding:7px;font-size:12px;cursor:pointer">Descartar</button>')
+          : ('<button onclick="pgpFlushPending();setTimeout(pgpRenderFilaPanel,900)" style="flex:1;background:#3b82f6;color:#fff;border:0;border-radius:8px;padding:7px;font-size:12px;cursor:pointer">Tentar agora</button>'
+            +'<button onclick="pgpDescartarPending('+i+')" style="flex:1;background:#e2e8f0;color:#334155;border:0;border-radius:8px;padding:7px;font-size:12px;cursor:pointer">Descartar</button>'))
+       +'</div>')
       +'</div>';
   }
   var perdidos = (typeof pgpGetPerdidos === 'function') ? pgpGetPerdidos() : [];
+  // V81 (04/08) — DEFEITO REAL: o chip do topo contava a fila de anexos do Drive
+  // (pgpGetDriveQueue) mas este painel NUNCA a renderizava. Com só anexos na
+  // fila, o técnico via "📎 3" e, ao tocar, lia "Fila vazia — tudo sincronizado".
+  // Era literalmente o "clico e não consigo ver o que está pendente".
+  var driveQ = []; try { driveQ = pgpGetDriveQueue(); } catch(e) {}
   var html='';
-  if(!pend.length && !dead.length && !perdidos.length){ html='<div style="color:#64748b;font-size:13px;text-align:center;padding:20px">Fila vazia — tudo sincronizado. ✅</div>'; }
-  if(pend.length){ html+='<div style="font-size:12px;color:#3b82f6;font-weight:700;margin:4px 0">Aguardando envio ('+pend.length+')</div>'+pend.map(function(it){ return card(it,null,false); }).join(''); }
+  if(!pend.length && !dead.length && !perdidos.length && !driveQ.length){ html='<div style="color:#64748b;font-size:13px;text-align:center;padding:20px">Fila vazia — tudo sincronizado. ✅</div>'; }
+  if(pend.length){ html+='<div style="font-size:12px;color:#3b82f6;font-weight:700;margin:4px 0">Aguardando envio ('+pend.length+')</div>'
+      +'<div style="font-size:11px;color:#94a3b8;margin-bottom:6px">Cada visita costuma ocupar 2 linhas aqui (os dados + as peças). Nada foi perdido: sobe sozinho ao pegar sinal.</div>'
+      +pend.map(function(it,i){ return card(it,i,false); }).join(''); }
+  if(driveQ.length){
+    html += '<div style="font-size:12px;color:#3b82f6;font-weight:700;margin:10px 0 4px">Fotos e anexos aguardando envio ('+driveQ.length+')</div>'
+      + driveQ.map(function(d){
+          var q=''; try{ q=new Date(d.ts||Date.now()).toLocaleString('pt-BR'); }catch(e){}
+          var _b=(d&&d.body)||{};
+          return '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px;margin-bottom:8px;background:#f8fafc">'
+            +'<div style="font-weight:700;font-size:13px">'+pgpEscHtml(String(_b.fileName||_b.name||'Anexo'))+'</div>'
+            +'<div style="font-size:12px;color:#475569">'+pgpEscHtml(String(_b.categoria||d.kind||''))+(_b.os_id?(' · OS '+pgpEscHtml(String(_b.os_id))):' · (sem OS)')+'</div>'
+            +'<div style="font-size:11px;color:#94a3b8">'+pgpEscHtml(q)+(d.tries?(' · '+d.tries+' tentativa(s)'):'')+'</div>'
+          +'</div>';
+        }).join('');
+  }
   if(dead.length){ html+='<div style="font-size:12px;color:#dc2626;font-weight:700;margin:10px 0 4px">Para revisar ('+dead.length+')</div>'
       +dead.map(function(it,i){ return card(it,i,true); }).join('')
-      +'<button onclick="pgpDescartarDead(null)" style="width:100%;background:#fee2e2;color:#b91c1c;border:0;border-radius:8px;padding:9px;font-size:12px;margin-top:4px;cursor:pointer">Descartar todos os de revisão</button>'; }
+      +'<button onclick="pgpDescartarDead(null)" style="width:100%;background:#fee2e2;color:#b91c1c;border:0;border-radius:8px;padding:9px;font-size:12px;margin-top:4px;cursor:pointer">Descartar todos os de conferir</button>'; }
   // V77 (Rob-2 do backlog de 19/07) — ANEXOS QUE NÃO COUBERAM.
   // Até a V76 esse descarte era `console.warn` e mais nada: a foto sumia e a
   // miniatura seguia marcada "pending" para sempre. Agora aparece aqui, com
@@ -7960,14 +8451,25 @@ function pgpUpdatePendingBadge(){
   try { pn = pgpGetPerdidos().length; }   catch(e) {}
   const el = document.getElementById('pgpPendingBadge');
   try { pgpRenderBarraOffline(); } catch(e) {}
+  // V81 — o badge era repintado a cada mutação de fila e o rodapé não. Como é o
+  // rodapé que o técnico lê antes de sair do cliente, ele passa a ser atualizado
+  // no MESMO ponto. (pgpUpdateGsStatusDisplay não chama de volta — sem recursão.)
+  try { pgpUpdateGsStatusDisplay(); } catch(e) {}
   if(!el) return;
   if(n>0 || dn>0 || an>0 || pn>0){
+    // V81 (04/08) — VOCABULÁRIO ÚNICO DE CAMPO. "pendente/revisar/perdidos"
+    // eram 3 palavras internas que o técnico não distingue (e "revisar" ele lia
+    // como "dar uma olhada depois", ignorando). Agora só DUAS ideias:
+    //   AGUARDANDO ENVIO = vai sair sozinho quando pegar sinal;
+    //   CONFERIR         = precisa de decisão humana, não sai sozinho.
     let t = '';
-    if(n>0)  t = `⏳ ${n} pendente${n>1?'s':''}`;
-    if(an>0) t = (t?t+' · ':'') + `📎 ${an}`;
-    if(dn>0) t = (t?t+' · ':'') + `⚠ ${dn} revisar`;
-    if(pn>0) t = (t?t+' · ':'') + `⛔ ${pn}`;
+    const _aguard = n + an;     // fila de sync + fila de anexos do Drive
+    const _confer = dn + pn;    // recusados pelo servidor + anexos não guardados
+    if(_aguard>0) t = `⏳ Aguardando envio: ${_aguard}`;
+    if(_confer>0) t = (t?t+' · ':'') + `⚠ Conferir: ${_confer}`;
     el.textContent = t;
+    el.title = 'Toque para ver a lista, item por item';
+    el.classList.add('pcf-chip-tap');
     el.style.display='inline-flex';
   } else {
     el.style.display='none';
@@ -8051,6 +8553,14 @@ async function pgpFlushPending(){
   pgpUpdatePendingBadge();
   if(sent>0){
     showNotification(`✅ ${sent} envio${sent>1?'s':''} pendente${sent>1?'s':''} reenviado${sent>1?'s':''}!`);
+    // V81 (04/08) — o aviso "🔴 Sem conexão — salvo na fila" é escrito nos DOIS
+    // elementos (pgpSendStatus do modal e pgpSendStatusMain da tela principal),
+    // mas só o do modal era corrigido aqui. O da tela principal NUNCA era limpo
+    // por ninguém além do clique SEGUINTE em "Enviar" — por isso continuava
+    // vermelho horas depois de tudo já ter subido (captura de 04/08/2026).
+    const statusMainEl = document.getElementById('pgpSendStatusMain');
+    if(statusMainEl) statusMainEl.innerHTML =
+      `<span style="color:var(--green,#16a34a)">✅ Fila reenviada — ${sent} item(ns) subiram agora.</span>`;
     const statusEl = document.getElementById('pgpSendStatus');
     if(statusEl && statusEl.textContent !== '') {
       statusEl.innerHTML = `<span style="color:var(--blue,#3b82f6)">🔄 Reenviado — ${sent} visita${sent>1?'s':''} da fila processada${sent>1?'s':''} com sucesso.</span>`;
@@ -8589,6 +9099,12 @@ function pgpSetGsStatus(state){
     txt.textContent = pgpModoOfflineAtivo() ? '📴 Offline' : 'Sheets';
     _pgpGsConnected=false;
   }
+  // V81 (04/08) — FONTE ÚNICA DE VERDADE. O chip do topo e o "Status:" do rodapé
+  // sempre leram a MESMA variável (_pgpGsConnected), mas só o chip era repintado
+  // aqui: o rodapé só se atualizava ao abrir o Resumo, trocar para a aba Enviar
+  // ou terminar um envio — 7 call sites, nenhum reativo. Em campo isso dava chip
+  // verde "Sheets ✓" com o rodapé preso em "Sem conexão" de minutos antes.
+  try { pgpUpdateGsStatusDisplay(); } catch(e){}
 }
 
 async function pgpTestGs(){
@@ -8596,7 +9112,10 @@ async function pgpTestGs(){
   // V77 (F1): no modo offline o ping nem sai — é justamente ele o que mais
   // acordava o rádio à toa.
   if(pgpRedeBloqueada()){ pgpSetGsStatus('off'); return false; }
-  pgpSetGsStatus('sync');
+  // V81 (04/08): já verde NÃO vira amarelo. Reconfirmar não é "conectando" — era
+  // isto que transformava toda reconferência (heartbeat de 90s, volta do 2º
+  // plano, evento 'online') num piscar visível de "CONECTANDO..." para o técnico.
+  if (!_pgpGsConnected) pgpSetGsStatus('sync');
   try{
     // V75 (P2) — TESTE SOFT 31/07: este fetch não tinha timeout. Num portal cativo
     // de galpão (socket abre, resposta nunca vem) a promise nunca resolvia:
@@ -8619,11 +9138,33 @@ async function pgpTestGs(){
 }
 
 function pgpUpdateGsStatusDisplay(){
+  // ══════════════════════════════════════════════════════════════════════
+  // V81 (04/08) — SANITIZAÇÃO DO "2/40 na fila" (pedido do Fernando).
+  // O texto antigo era `${pending}/${QUEUE_LIMIT} na fila`, lido em campo como
+  // "2 de 40 processados". Não era isso: 40 é o TETO da fila (QUEUE_LIMIT),
+  // constante compilada, nunca varia — só importa acima de QUEUE_WARN_AT.
+  // Pior: a contagem enxergava SÓ pgp_pending_sync e ignorava as outras três
+  // coleções (anexos do Drive, revisão, perdidos) que o badge ⏳ já contava —
+  // o rodapé podia dizer "0" com 40 anexos parados no aparelho.
+  // E cada coleta de 1 máquina com peças enfileira DOIS itens (visita + peças),
+  // então "2" quase sempre era UMA visita, não duas.
+  // ══════════════════════════════════════════════════════════════════════
   const pending=pgpGetPending().length;
+  let _dq=0,_dl=0,_pd=0;
+  try { _dq = pgpGetDriveQueue().length; } catch(e){}
+  try { _dl = pgpGetDead().length; }       catch(e){}
+  try { _pd = pgpGetPerdidos().length; }   catch(e){}
+  const _partes=[];
+  if(pending) _partes.push(pending+' envio'+(pending>1?'s':'')+' aguardando');
+  if(_dq)     _partes.push(_dq+' anexo'+(_dq>1?'s':'')+' aguardando');
+  if(_dl)     _partes.push(_dl+' para conferir');
+  if(_pd)     _partes.push(_pd+' anexo'+(_pd>1?'s':'')+' NÃO guardado'+(_pd>1?'s':''));
+  const _detalhe=_partes.length?(' · '+_partes.join(' · ')+' — toque no ⏳'):'';
+  const _quaseCheia=(pending>=QUEUE_WARN_AT)?(' · ⚠ fila quase cheia ('+pending+' de '+QUEUE_LIMIT+')'):'';
   const txt=_pgpGsConnected
-    ?'✅ Conectado ao Google Sheets'+(pending?` · ${pending}/${QUEUE_LIMIT} pendente${pending>1?'s':''}`:' · tudo sincronizado')
-    :'⚠ Sem conexão — dados salvos localmente'+(pending?` · ${pending}/${QUEUE_LIMIT} na fila`:'');
-  const color=_pgpGsConnected?'var(--green)':'var(--orange)';
+    ?(_partes.length?('✅ Conectado — ainda subindo'+_detalhe+_quaseCheia):'✅ Conectado ao Google Sheets · tudo sincronizado')
+    :('⚠ Sem conexão — nada foi perdido, está guardado no aparelho'+_detalhe+_quaseCheia);
+  const color=_pgpGsConnected?(_partes.length?'var(--orange)':'var(--green)'):'var(--orange)';
   // v31 item 7: mesma lógica de status reaproveitada no botão novo da tela
   // principal (pgpGsStatusTextMain), além do texto já existente no modal.
   ['pgpGsStatusText','pgpGsStatusTextMain'].forEach(id=>{
@@ -9446,6 +9987,8 @@ function pgpLoadMachine(eq,localDb,midx=currentMachine,clientData=null){
   try { if(typeof pfProjetarHorimetros==='function') pfProjetarHorimetros(idx, modoMerge); } catch(e) { console.warn('pfProjetarHorimetros:', e); }
   // v65 — carrega (não-bloqueante) as fotos de visitas anteriores desta máquina
   try { if(typeof pfCarregarFotosMaquina==='function') pfCarregarFotosMaquina(idx); } catch(e) { console.warn('pfCarregarFotosMaquina:', e); }
+  // V81 — thumbs da visita anterior POR ITEM (cache-first, não bloqueia a UI)
+  try { if(typeof pfCarregarFotosItensMaquina==='function') pfCarregarFotosItensMaquina(idx); } catch(e) { console.warn('pfCarregarFotosItensMaquina:', e); }
   // v8.4.4 — destacar campos faltantes e campos variáveis após carga
   setTimeout(()=>{
     pgpHighlightMissingClientFields(idx);
@@ -9473,6 +10016,20 @@ function pgpClearMachine(){
   pgpBackToStep1();
 }
 
+// V81 (04/08) — recarga manual do histórico (botão "tentar de novo" da faixa).
+// O memo só guarda SUCESSO, então basta repetir a busca; e o retry manual do
+// técnico não deve esperar o heartbeat de 90s.
+function pgpRecarregarHistorico(){
+  try {
+    var _i = (typeof currentMachine === 'number') ? currentMachine : 0;
+    var _eq = (typeof pgpGetLoadedMachineForIndex === 'function') ? pgpGetLoadedMachineForIndex(_i) : null;
+    var _id = _eq && (_eq.id || _eq.machine_id);
+    if (!_id) return;
+    renderMachineHistory(null, true);
+    fetchMachineHistory(_id).then(function(h){ renderMachineHistory(h, false); });
+  } catch(e) {}
+}
+
 async function fetchMachineHistory(machineId) {
   if (!machineId || !_pgpGsUrl) return null;
   // V76 (F2e): memo de sessão — o histórico de visitas não muda no meio de uma
@@ -9481,27 +10038,59 @@ async function fetchMachineHistory(machineId) {
     var _hm = (window._pgpHistCache || {})[machineId];
     if (_hm) return _hm;
   } catch(eM) {}
-  try {
-    const r = await fetch(
-      _pgpGsUrl + '?action=getVisitsByMachine' +
-      '&machine_id=' + encodeURIComponent(machineId) +
-      '&key=' + _AUTH_HASH + gcParam(),
-      { signal: AbortSignal.timeout(8000) }
-    );
-    // V75 (P2) — antes TODA falha devolvia null e o render tratava null igual a
-    // "histórico vazio": o técnico lia "Sem visitas anteriores registradas" e
-    // decidia troca de peça achando que a máquina nunca foi atendida. Agora falha
-    // de rede é DISTINTA de histórico realmente vazio.
-    if (!r.ok) return { erro: true };
-    const d = await r.json();
-    if (d.status !== 'ok') return { erro: true };
-    const _res = { visits: d.visits || [], pecasLog: d.pecasLog || {} };
-    (window._pgpHistCache = window._pgpHistCache || {})[machineId] = _res; // V76 (F2e)
-    return _res;
-  } catch (e) {
-    console.warn('fetchMachineHistory falhou:', e.message || e);
-    return { erro: true };
+  // ══════════════════════════════════════════════════════════════════════
+  // V81 (04/08) — TRÊS DEFEITOS AQUI, todos reportados pelo Fernando com 4G bom:
+  //  (1) 8000ms era o MENOR timeout do app (o ping usa 12000), enquanto o
+  //      getVisitsByMachine do GAS varre VISITAS *e* PECAS_LOG inteiras e ainda
+  //      pode pegar cold start do Apps Script — 8s não dá nem com rede ótima;
+  //  (2) UMA tentativa só, embora esta chamada saia em rajada com
+  //      getFotosMaquina e getHorimetroCalib (o Apps Script SERIALIZA execuções
+  //      do mesmo usuário: o histórico fica na fila atrás das outras duas);
+  //  (3) timeout, HTTP 429/500 e erro de NEGÓCIO viravam o MESMO {erro:true} e
+  //      a tela AFIRMAVA "offline" para os quatro casos. Era falso em 3 deles.
+  // Restaura também o feature-guard de AbortSignal.timeout (este era o ÚNICO
+  // call site do arquivo sem ele — em WebView antiga lançava TypeError SÍNCRONO
+  // e a faixa aparecia SEMPRE, em toda máquina, com rede perfeita).
+  // ══════════════════════════════════════════════════════════════════════
+  var _sinalHist = function(ms){
+    return (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(ms) : undefined;
+  };
+  var _motivo = 'rede', _detalhe = '';
+  for (var _tent = 1; _tent <= 2; _tent++) {
+    var _t0 = Date.now();
+    try {
+      const r = await fetch(
+        _pgpGsUrl + '?action=getVisitsByMachine' +
+        '&machine_id=' + encodeURIComponent(machineId) +
+        '&key=' + _AUTH_HASH + gcParam(),
+        { signal: _sinalHist(15000) }
+      );
+      // V75 (P2) — falha de rede é DISTINTA de histórico realmente vazio.
+      if (!r.ok) {
+        _motivo = 'servidor'; _detalhe = 'HTTP ' + r.status;
+        if (_tent < 2) { await new Promise(function(res){ setTimeout(res, 1500); }); continue; }
+        break;
+      }
+      const d = await r.json();
+      // Erro de NEGÓCIO não é falta de rede e não melhora tentando de novo.
+      if (d.status !== 'ok') return { erro: true, motivo: 'servidor', detalhe: String(d.error || d.status || '') };
+      const _res = { visits: d.visits || [], pecasLog: d.pecasLog || {} };
+      (window._pgpHistCache = window._pgpHistCache || {})[machineId] = _res; // V76 (F2e)
+      return _res;
+    } catch (e) {
+      var _nome = String((e && (e.name || e.message)) || e);
+      var _ms = Date.now() - _t0;
+      // TimeoutError/AbortError = o servidor não respondeu a tempo (LENTO).
+      // TypeError/Failed to fetch = o aparelho não conseguiu falar (SEM REDE).
+      _motivo  = /Timeout|Abort/i.test(_nome) ? 'lento' : 'rede';
+      _detalhe = _nome + ' após ' + _ms + 'ms';
+      // INSTRUMENTAÇÃO: sem isto não há como separar bug de rede fraca em campo.
+      console.warn('[hist] tentativa ' + _tent + ' — motivo=' + _motivo + ' | ' + _detalhe +
+        ' | onLine=' + navigator.onLine + ' | rede=' + (((navigator.connection || {}).effectiveType) || '?'));
+      if (_tent < 2) { await new Promise(function(res){ setTimeout(res, 1500); }); continue; }
+    }
   }
+  return { erro: true, motivo: _motivo, detalhe: _detalhe };
 }
 
 function renderMachineHistory(hist, loading) {
@@ -9523,8 +10112,21 @@ function renderMachineHistory(hist, loading) {
   }
 
   if (hist && hist.erro) {
-    // V75 (P2): não afirmar "sem visitas" quando na verdade não deu para consultar.
-    el.innerHTML = '<span style="color:var(--orange,#f59e0b)">📴 Histórico indisponível offline — isso NÃO quer dizer que a máquina não tem visitas.</span>';
+    // V81 (04/08) — a V75 acertou em NÃO dizer "sem visitas", mas errou em dizer
+    // "offline": timeout do servidor e HTTP 429/500 nada têm a ver com falta de
+    // rede. Com 4G bom o técnico lia "offline" e perdia a confiança no app todo.
+    var _mt = (hist.motivo || 'rede');
+    var _txtH = _mt === 'lento'
+      ? '⏳ O servidor não respondeu a tempo — histórico não carregado. Isso NÃO quer dizer que a máquina não tem visitas.'
+      : (_mt === 'servidor'
+        ? '⚠ O servidor recusou a consulta do histórico. Isso NÃO quer dizer que a máquina não tem visitas.'
+        : '📴 Sem conexão para consultar o histórico — isso NÃO quer dizer que a máquina não tem visitas.');
+    el.innerHTML = '<span style="color:var(--orange,#f59e0b)">' + _txtH +
+      ' <button type="button" onclick="pgpRecarregarHistorico()" ' +
+      'style="margin-left:6px;padding:2px 8px;border-radius:6px;border:1px solid currentColor;' +
+      'background:transparent;color:inherit;font-size:11px;cursor:pointer">tentar de novo</button>' +
+      (hist.detalhe ? '<small style="display:block;opacity:.7;font-size:10px;margin-top:2px">' +
+        pgpEscHtml(String(hist.detalhe).slice(0, 70)) + '</small>' : '') + '</span>';
     return;
   }
   if (!hist || !hist.visits || hist.visits.length === 0) {
@@ -10333,8 +10935,13 @@ async function pgpIniciarPreventivaDeOS(osId){
       const _s2r = document.getElementById('pgpStep2');
       if(_s1r) _s1r.style.display = 'none';
       if(_s2r) _s2r.style.display = 'none';
-      window._PGP_TIPO_ESPERADO = 'preventiva';   // V72 (P3)
-      try{ pgpSetTipoVisita('preventiva'); }catch(_){}
+      // V81 (04/08) — a reentrada forçava PREVENTIVA incondicionalmente, mesmo
+      // quando quem chamou foi uma tarefa de INSPEÇÃO. Quem decide o tipo é o
+      // pfAbrirForm (pelo Tipo da tarefa); aqui só reafirmamos o já decidido.
+      if (window._PGP_TIPO_ESPERADO !== 'inspecao') {
+        window._PGP_TIPO_ESPERADO = 'preventiva';   // V72 (P3)
+        try{ pgpSetTipoVisita('preventiva'); }catch(_){}
+      }
       try{ pgpAtualizarAcoesPorTipoVisita(); }catch(_){}
       try{ pgpAtualizarModoOS(); }catch(_){}       // V72 (P2)
       try{ machines.forEach((_,i)=>pgpSyncCheckedComValores(i)); }catch(_){}
@@ -10546,8 +11153,8 @@ function pgpSubirAssinaturasDaVisita(payload, midx){
       var quando = dt.toLocaleDateString('pt-BR') + ' ' +
                    dt.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
       pgpSendOrQueueDrive('photo', 'salvarFotosDrivePGP', {
-        clientName:    pgpDriveClientName(0),
-        os_id:         pgpOsIdSeguro(),
+        clientName:    pgpDriveClientName(midx),          // V78 (A4)
+        os_id:         pgpOsIdSeguro(pgpDriveClientName(midx)),
         maquina_id:    pgpDriveMaquinaId(midx),
         maquina_label: pgpDriveMaquinaLabel(midx),
         dataBase64:    b64,
@@ -10813,7 +11420,7 @@ function pgpBuildPreventivaPayload(midx=currentMachine){
   // preventiva herdaria o visit_id que o pgpBuildPayload já gera para a inspeção
   // e uma preventiva feita no mesmo dia/máquina de uma inspeção voltaria como
   // duplicate:true (nada gravado). Com o prefixo os dois são estáveis e disjuntos.
-  const _prevOsId   = base.os_id || pgpOsIdSeguro() || '';
+  const _prevOsId   = base.os_id || pgpOsIdSeguro(pgpDriveClientName(idx)) || '';   // V78 (A4)
   const _prevMKey   = base.machine_id || '';
   const _prevDate   = base.visitDate || new Date().toISOString().slice(0,10);
   let visitId = '';
@@ -10887,7 +11494,7 @@ function pgpBuildPreventivaPayload(midx=currentMachine){
     location:   base.location || '',
     regimeData: base.regimeData || [],
     obsOp:      base.obsOp || '',
-    os_id:      base.os_id || pgpOsIdSeguro() || '',
+    os_id:      base.os_id || pgpOsIdSeguro(pgpDriveClientName(idx)) || '',   // V78 (A4)
     parts
   };
 }
@@ -11503,12 +12110,16 @@ function pgpBuildPayload(midx=currentMachine){
     // pipeline de uma OS (?os_id= na URL de entrada), viaja junto em toda gravação — inclusive
     // no item da fila offline, já que a fila reaproveita este mesmo objeto payload — permitindo
     // ao GAS auto-completar a tarefa correspondente e gravar o vínculo visita↔OS.
-    os_id: pgpOsIdSeguro(),
+    // V78 (A4) — era pgpOsIdSeguro() sem argumento, que compara contra o
+    // painel 0 mesmo esta função sendo parametrizada por idx. Numa sessão com
+    // painéis de clientes diferentes, o payload do painel 1 levava o os_id da
+    // OS do painel 0.
+    os_id: pgpOsIdSeguro(pgpDriveClientName(idx)),
     // V73 — CONTRATO F-06 também na inspeção: client_uid = visit_id estável.
     // O dedupe adicional do v79 F-09 existe exatamente para o caso em que o
     // front regenera o visit_id entre retries; na inspeção ele nunca chegava.
     client_uid: pgpVisitIdFor(
-      (pgpOsIdSeguro()||'') + '|' + pgpMachineKey(gv('razao_social'),gv('marca'),gv('modelo'),gv('ns')),
+      (pgpOsIdSeguro(pgpDriveClientName(idx))||'') + '|' + pgpMachineKey(gv('razao_social'),gv('marca'),gv('modelo'),gv('ns')),   // V78 (A4)
       (gv('data_visita') || new Date().toISOString().slice(0,10))
     ),
     // V73 — tipo de VISITA (não confundir com tipoEquip): o GAS grava a coluna
@@ -11518,7 +12129,7 @@ function pgpBuildPayload(midx=currentMachine){
     // V64 — visit_id estável (idempotência do reenvio). Chave por OS+máquina+data:
     // reenviar a mesma visita não cria linha nova (o GAS deduplica por visit_id).
     visit_id: pgpVisitIdFor(
-      (pgpOsIdSeguro()||'') + '|' + pgpMachineKey(gv('razao_social'),gv('marca'),gv('modelo'),gv('ns')),
+      (pgpOsIdSeguro(pgpDriveClientName(idx))||'') + '|' + pgpMachineKey(gv('razao_social'),gv('marca'),gv('modelo'),gv('ns')),   // V78 (A4)
       (gv('data_visita') || new Date().toISOString().slice(0,10))
     ),
   };
@@ -11916,6 +12527,26 @@ async function pgpEnviarGS(srcBtn){
   // Sempre salvar localmente primeiro
   pgpUpdateAdminLocal(payload);
 
+  // ══════════════════════════════════════════════════════════════════════
+  // V78 (A2) — a coleta enviada SEM foto e SEM PDF nunca passava por
+  // pgpGarantirOSInspecaoAvulsa (as 2 únicas chamadas no arquivo inteiro eram
+  // a captura de foto e a geração de PDF) e saía com os_id:'' e tarefa_id:''.
+  // E não há rede de segurança no backend: o fallback do GAS existe SÓ no
+  // savePreventiva — o saveVisit não tem.
+  // ⚠ TEM de ser ANTES do pgpBuildVisitRequest: depois dele, os_id, visit_id e
+  //   client_uid já foram congelados com escopo vazio.
+  // ⚠ Falha (offline/rede) é TOLERADA de propósito: o os_id sai vazio como
+  //   antes e o item A5 recupera no flush. Bloquear aqui impediria o técnico
+  //   sem sinal de enviar.
+  // ⚠ V81 (04/08) — ORDEM. Esta chamada estava ACIMA do teste de conexão, e
+  //   _pgpFetchComRetry_ só desiste cedo no modo offline DELIBERADO: sem sinal
+  //   eram 3 tentativas (1000ms + 2500ms + timeouts) ≈ 11s POR MÁQUINA, com a
+  //   memoização zerada a cada falha — 4 máquinas = 4 rodadas, e cada falha
+  //   derrubando o indicador de conexão. Era um gerador direto das queixas do
+  //   chip piscando e do rodapé "sem conexão". Sabendo que está offline, o
+  //   caminho correto já existe: enfileira e o flush recarimba o os_id.
+  if (_pgpGsConnected) { try { await pgpGarantirOSInspecaoAvulsa(i); } catch(e){} }
+
   const visitBody = pgpBuildVisitRequest(payload);
 
   if(!_pgpGsConnected){
@@ -12142,6 +12773,7 @@ function pgpUpdateAdminLocal(payload){
   // V77 (F1): o modo offline sobrevive ao reload — o app recarrega bastante, e
   // um estado que se perdesse no refresh seria pior do que não existir.
   try{ pgpRenderBarraOffline(); pgpAtualizarBtnModoOffline(); }catch(e){}
+  try { pgpPodarFilas(); } catch(e){}   // V81 — poda ANTES de contar, p/ badge e rodapé nascerem honestos
   pgpUpdatePendingBadge();
   if (pgpModoOfflineAtivo()){
     pgpSetGsStatus('off');
@@ -12227,6 +12859,28 @@ function loginEntrar() {
 // V76 (F3b): 4º parâmetro opcional onRetry(tentativa) — o retry deixa de ser
 // silencioso (antes o aviso ia só pro console.warn e o técnico ficava até 3,5s
 // extra olhando uma tela parada sem saber por quê).
+// ══════════════════════════════════════════════════════════════════════════
+// V81 (04/08) — HISTERESE DO INDICADOR DE CONEXÃO.
+// Regra: "sem conexão" é uma AFIRMAÇÃO sobre a rede, e só o ping tem autoridade
+// para fazê-la. Um GET que falhou prova apenas que AQUELA chamada falhou.
+// ══════════════════════════════════════════════════════════════════════════
+var _pgpFalhasInfra = 0, _pgpUltimaFalhaTs = 0, _pgpConfirmBusy = false;
+function pgpRegistrarFalhaInfra(){
+  var agora = Date.now();
+  if (agora - _pgpUltimaFalhaTs > 60000) _pgpFalhasInfra = 0;  // falhas espaçadas não somam
+  _pgpUltimaFalhaTs = agora;
+  _pgpFalhasInfra++;
+  if (_pgpFalhasInfra < 2) return;      // 1 erro isolado NÃO apaga o chip
+  if (!_pgpGsConnected) return;         // já está apagado
+  if (_pgpConfirmBusy) return;
+  _pgpConfirmBusy = true;
+  // Não afirma nada: PERGUNTA ao servidor. Quem pinta o resultado é pgpTestGs.
+  Promise.resolve().then(function(){ return pgpTestGs(); })
+    .catch(function(){})
+    .then(function(){ _pgpConfirmBusy = false; _pgpFalhasInfra = 0; });
+}
+function pgpZerarFalhasInfra(){ _pgpFalhasInfra = 0; }
+
 async function _pgpFetchComRetry_(url, options, maxRetries, onRetry) {
   // V77 (F1) — MODO OFFLINE DELIBERADO: nem tenta. Este é o choke point de
   // pfGet E de pgpPostJson, então basta este teste para o app inteiro parar de
@@ -12246,9 +12900,12 @@ async function _pgpFetchComRetry_(url, options, maxRetries, onRetry) {
         throw new Error('HTTP ' + r.status);
       }
       try {
-        return JSON.parse(txt);
+        var _j = JSON.parse(txt);
+        try { pgpZerarFalhasInfra(); } catch(eZ) {}   // V81: sucesso zera a contagem
+        return _j;
       } catch (e) {
-        throw new Error('Resposta inválida do GAS: ' + txt.slice(0, 80));
+        if (e instanceof SyntaxError) throw new Error('Resposta inválida do GAS: ' + txt.slice(0, 80));
+        throw e;
       }
     } catch (e) {
       lastErr = e;
@@ -12264,8 +12921,20 @@ async function _pgpFetchComRetry_(url, options, maxRetries, onRetry) {
       // auto-ping (que só roda com status off) nunca acordava e, como não houve
       // evento 'offline', também não haveria 'online' na volta do sinal: a fila
       // ficava parada indefinidamente com a luz verde.
+      // ═══════════════════════════════════════════════════════════════════
+      // V81 (04/08) — HISTERESE. A V77 (G2a) estava CERTA em querer que o
+      // status caísse, mas errou a dose: UMA falha isolada derrubava o estado
+      // global. Como 6 call sites passam retries=0 (getFotosMaquina e
+      // getHorimetroCalib são DECORATIVOS e saem em TODA carga de máquina;
+      // getNotificacoes sai a cada 60s) e como HTTP 429/500/HTML de cold start
+      // entram em infraTransitoria, uma MINIATURA que não carregou apagava o
+      // indicador de conexão do app inteiro. Pior: pgpSetGsStatus('ok') dispara
+      // catálogo+clientes+fila, que falham, que apagam de novo — o laço que
+      // fazia o chip piscar verde/cinza/amarelo em segundos (Fernando, 04/08).
+      // Agora a falha é CONTADA e quem AFIRMA "offline" é o ping, não um GET.
+      // ═══════════════════════════════════════════════════════════════════
       if (!infraTransitoria || tentativa === maxRetries) {
-        if (infraTransitoria) { try { if (typeof _pgpGsConnected !== 'undefined' && _pgpGsConnected) pgpSetGsStatus('off'); } catch(eS) {} }
+        if (infraTransitoria) { try { pgpRegistrarFalhaInfra(); } catch(eS) {} }
         throw e;
       }
       var delayMs = tentativa === 0 ? 1000 : 2500;
@@ -12421,7 +13090,13 @@ var _pfOsFilter = 'todas';
 var _pfOsStatusFilter = 'ativas';
 var _pfOsDesignFilter = 'todas'; // v58 — 'todas' | 'minhas' (designada_para_mim)
 var _pfOsId = null;
-var _pfOsNome = '';
+var _pfOsNome = '';    // RÓTULO de exibição — "Cliente · TIPO_OS". SÓ para tela.
+// V78 (P1/C1) — NOME CANÔNICO do cliente da OS. É este que vai em payload,
+// nome de pasta do Drive e no guardião de coerência _PGP_OS_CLIENTE.
+var _pfOsCliente = '';
+// V79 (P2/K2) — modo de ordenação da tela de OS: 'fila' | 'prazo' | 'minhas'.
+var _pfOsSort = 'fila';
+var _pfOsBusca = '';
 var _pfTarefas = [];
 var _pfNotifList = [];
 var _pfNotifInterval = null;
@@ -12432,6 +13107,11 @@ var _pfBannerTimeout = null;
 async function pfAbrir() {
   var ov = document.getElementById('pfOverlay');
   ov.style.display = 'flex';
+  // V79 (P2/K2) — preferência de ordenação sobrevive ao reload.
+  try {
+    var _sv = localStorage.getItem('pf_os_sort_v1');
+    if (_sv && ['fila','prazo','minhas'].indexOf(_sv) >= 0) _pfOsSort = _sv;
+  } catch (e) {}
   document.getElementById('pfScreenOS').style.display = 'block';
   document.getElementById('pfScreenPipeline').style.display = 'none';
   _pfOsFilter = 'todas';
@@ -12465,6 +13145,7 @@ function pfFechar() {
 function pfVoltarOS() {
   _pfOsId = null;
   _pfOsNome = '';
+  _pfOsCliente = '';   // V78 (C1)
   _pfTarefas = [];
   document.getElementById('pfScreenPipeline').style.display = 'none';
   document.getElementById('pfScreenOS').style.display = 'block';
@@ -12526,6 +13207,12 @@ async function pfLoadOS() {
     // recarrega sob demanda na 1ª vez.
     params.includeClosed = (_pfOsStatusFilter === 'ativas') ? 'false' : 'true';
     params.escopo = 'todas'; // v58 — traz TODAS as OS; cada uma marcada com designada_para_mim
+    // V79 (P2/G4) — campos de fila (posicao_fila, dias_na_fila, prioridade_rank,
+    // estagio, progresso, minha_tarefa). Viajam DENTRO do objeto da OS, que o
+    // pf_os_cache_v1 já guarda inteiro ⇒ offline sem mudança de schema de cache.
+    // Confirmado por leitura: não há whitelist no caminho de LEITURA da lista
+    // (as 3 whitelists conhecidas do PCF são todas de escrita).
+    params.com_fila = 'true';
     var r = await pfGet('getOS', params, 1, function(){
       // V76 (F3b): retry deixa de ser silencioso — o técnico vê que está tentando
       try { statusEl.textContent = '📶 Sinal fraco — tentando de novo…'; statusEl.style.display='block'; } catch(eR) {}
@@ -12581,6 +13268,66 @@ function pfSetOSDesignFilter(filtro) {
   pfRenderOS();
 }
 
+// ── V79 (P2/K2) — ORDENAÇÃO DA LISTA DE OS ─────────────────────────────────
+// A ordem até a V78 era a que o getOS devolveu, ou seja, a ordem das LINHAS DA
+// PLANILHA. O técnico não tinha como saber quem chegou primeiro nem o que era
+// urgente. Três modos, padrão 'fila'. Preferência persistida.
+function pfSetOSSort(modo) {
+  _pfOsSort = (['fila','prazo','minhas'].indexOf(modo) >= 0) ? modo : 'fila';
+  try { localStorage.setItem('pf_os_sort_v1', _pfOsSort); } catch (e) {}
+  pfRenderOS();
+}
+function pfOsBuscaInput(el) {
+  _pfOsBusca = String((el && el.value) || '').trim().toLowerCase();
+  pfRenderOS();
+}
+function pfToggleFiltrosOS() {
+  var box = document.getElementById('pfOsFiltrosExtra');
+  if (!box) return;
+  var aberto = box.style.display !== 'none';
+  box.style.display = aberto ? 'none' : 'block';
+  var b = document.getElementById('pfBtnFiltrosOS');
+  if (b) b.classList.toggle('active', !aberto);
+}
+// Ordenadores. ⚠ Cache frio (lista antiga, sem os campos novos) NÃO pode fazer
+// OS sumir nem quebrar a ordenação: sem prioridade_rank tudo vira rank 1 e a
+// ordem cai em data_abertura ASC, que é o comportamento honesto.
+function _pfRank(o) {
+  if (typeof o.prioridade_rank === 'number') return o.prioridade_rank;
+  var s = String(o.prioridade || '').trim().toLowerCase();
+  if (s === 'urgente') return 3;
+  if (s === 'alta') return 2;
+  return 1;
+}
+function _pfAb(o) { var t = o.data_abertura ? new Date(o.data_abertura).getTime() : NaN; return isNaN(t) ? Infinity : t; }
+function _pfOrdenarOS(lista) {
+  var arr = lista.slice();
+  function porFila(a, b) {
+    var ra = _pfRank(a), rb = _pfRank(b);
+    if (rb !== ra) return rb - ra;          // prioridade desc
+    return _pfAb(a) - _pfAb(b);             // FIFO
+  }
+  if (_pfOsSort === 'prazo') {
+    arr.sort(function (a, b) {
+      var pa = a.data_prevista ? new Date(a.data_prevista).getTime() : Infinity;
+      var pb = b.data_prevista ? new Date(b.data_prevista).getTime() : Infinity;
+      if (isNaN(pa)) pa = Infinity; if (isNaN(pb)) pb = Infinity;
+      if (pa !== pb) return pa - pb;        // vazias por ÚLTIMO, nunca primeiro
+      return porFila(a, b);
+    });
+  } else if (_pfOsSort === 'minhas') {
+    arr.sort(function (a, b) {
+      var ma = (a.minha_tarefa || a.designada_para_mim) ? 0 : 1;
+      var mb = (b.minha_tarefa || b.designada_para_mim) ? 0 : 1;
+      if (ma !== mb) return ma - mb;        // as minhas primeiro, SEM esconder as outras
+      return porFila(a, b);
+    });
+  } else {
+    arr.sort(porFila);
+  }
+  return arr;
+}
+
 function pfRenderOS() {
   var statusEl = document.getElementById('pfOsStatus');
   var listaEl  = document.getElementById('pfOsLista');
@@ -12597,6 +13344,12 @@ function pfRenderOS() {
     chip.classList.toggle('active', chip.getAttribute('data-design-filter') === _pfOsDesignFilter);
   });
 
+  // V79 (P2/K2) — reflete o modo de ordenação nos chips do segmento
+  var srtChips = document.querySelectorAll('.pf-os-sort-chip');
+  Array.prototype.forEach.call(srtChips, function(chip) {
+    chip.classList.toggle('active', chip.getAttribute('data-sort') === _pfOsSort);
+  });
+
   var filtered = _pfOsList.filter(function(o) {
     var local = String(o.local_atendimento || '').toLowerCase();
     var st = String(o.status || 'aberta').toLowerCase();
@@ -12605,10 +13358,21 @@ function pfRenderOS() {
     if (_pfOsFilter === 'externas') okLocal = local === 'externa' || local === 'externo';
     if (_pfOsFilter === 'internas') okLocal = local === 'interna' || local === 'interno';
     if (!okLocal) return false;
+    // V79 — busca por número, cliente ou máquina. String(x ?? '') sempre:
+    // numero_os é NUMBER no Sheets e já congelou filtro duas vezes neste projeto.
+    if (_pfOsBusca) {
+      var alvo = (String(o.numero_os == null ? '' : o.numero_os) + ' ' +
+                  String(o.cliente || '') + ' ' +
+                  String(o.tipo_os || '') + ' ' +
+                  (Array.isArray(o.maquinas_vinculadas) ? o.maquinas_vinculadas.join(' ') : String(o.maquinas_vinculadas || ''))
+                 ).toLowerCase();
+      if (alvo.indexOf(_pfOsBusca) < 0) return false;
+    }
     if (_pfOsStatusFilter === 'ativas') return st === 'aberta' || st === 'em_andamento';
     if (_pfOsStatusFilter === 'concluidas') return st === 'concluida';
     return true;
   });
+  filtered = _pfOrdenarOS(filtered);
 
   if (_pfOsList.length === 0) {
     statusEl.textContent = 'Nenhuma OS aberta no momento.';
@@ -12623,31 +13387,113 @@ function pfRenderOS() {
     return;
   }
   statusEl.style.display = 'none';
-  listaEl.innerHTML = filtered.map(function(o) {
-    var numeroDisplay = o.numero_os || o.id_os || '—';
+
+  // ── V79 (P2/K2) — CARD NOVO ───────────────────────────────────────────────
+  // Até a V78 o card trazia número, cliente·tipo e status. Nada de quando
+  // entrou, posição na fila, prioridade, em que etapa está, ou de a tarefa ser
+  // sua. Tudo abaixo é OPCIONAL: cache frio (lista antiga, sem os campos do
+  // com_fila) renderiza sem os chips — NUNCA esconde a OS.
+  function _pfCard(o) {
+    var numeroDisplay = String(o.numero_os == null || o.numero_os === '' ? (o.id_os || '—') : o.numero_os);
     var idOperacional = o.id_os || o.numero_os || '—';
     var cli   = o.cliente || '';
     var tipo  = o.tipo_os ? (' · ' + o.tipo_os) : '';
     var st    = String(o.status || 'aberta').toLowerCase();
     var stLbl = st === 'em_andamento' ? 'Em andamento' : (st.charAt(0).toUpperCase() + st.slice(1));
     var stCls = st.replace(/_/g, '_');
-    return '<div class="pf-os-card" onclick="pfSelecionarOS(\'' + String(idOperacional).replace(/'/g, "\\'") + '\',\'' + (cli + tipo).replace(/'/g, "\\'") + '\')">' +
-      '<div>' +
-        '<div class="pf-os-numero">OS #' + numeroDisplay + '</div>' +
-        '<div class="pf-os-cliente">' + (cli ? cli : '—') + tipo + '</div>' +
+
+    // Chip de prioridade — só aparece quando ≠ normal (ruído zero no caso comum)
+    var rank = _pfRank(o);
+    // O chip vai dentro de um invólucro de largura total: esticar o PRÓPRIO
+    // chip com flex-basis:100% o transformava numa barra vermelha atravessando
+    // o card. O invólucro ocupa a linha; o chip fica do tamanho do texto.
+    var prioHtml = rank >= 3 ? '<div class="pf-os-prio-linha"><span class="pf-os-prio urgente">🔴 URGENTE</span></div>'
+                 : rank === 2 ? '<div class="pf-os-prio-linha"><span class="pf-os-prio alta">🟠 ALTA</span></div>' : '';
+
+    // ⚠ Cada item é uma unidade INDIVISÍVEL (.pf-os-meta tem white-space:nowrap).
+    // Sem isso o ícone 📍 ficava órfão no fim da linha e o nome da fase caía
+    // sozinho na linha de baixo — defeito que a suíte não pega e o olho pega.
+    var linha3 = [];
+    if (o.posicao_fila) linha3.push('<span class="pf-os-meta">🎫 #' + o.posicao_fila + ' na fila</span>');
+    if (typeof o.dias_na_fila === 'number') {
+      var atrasada = false;
+      if (o.data_prevista) { var pv = new Date(o.data_prevista).getTime(); atrasada = !isNaN(pv) && Date.now() > pv; }
+      linha3.push('<span class="pf-os-meta"' + (atrasada ? ' style="color:#f87171"' : '') + '>⏳ há ' +
+                  o.dias_na_fila + ' dia' + (o.dias_na_fila === 1 ? '' : 's') + '</span>');
+    }
+    if (o.estagio && o.estagio !== '—') linha3.push('<span class="pf-os-meta">📍 ' + pfEscHtmlOS(o.estagio) + '</span>');
+
+    var progHtml = '';
+    if (o.progresso && o.progresso.total) {
+      var pct = Math.round((o.progresso.concluidas / o.progresso.total) * 100);
+      progHtml = '<div class="pf-os-prog-wrap">' +
+        '<div class="pf-os-prog"><div class="pf-os-prog-bar" style="width:' + pct + '%"></div></div>' +
+        '<span class="pf-os-prog-lbl">' + o.progresso.concluidas + ' de ' + o.progresso.total + '</span>' +
+        ((o.minha_tarefa || o.designada_para_mim) ? '<span class="pf-os-minha">👤 sua tarefa</span>' : '') +
+      '</div>';
+    } else if (o.minha_tarefa || o.designada_para_mim) {
+      progHtml = '<div class="pf-os-prog-wrap"><span class="pf-os-minha">👤 sua tarefa</span></div>';
+    }
+
+    // V80 (P3/§7) — prazo previsto, quando o motor já calculou. Entra na MESMA
+    // linha de meta: uma 4ª linha deixava o card alto demais no celular.
+    if (o.Prazo_Estimado_Total || o.prazo_estimado_total) {
+      var _dp = new Date(o.Prazo_Estimado_Total || o.prazo_estimado_total);
+      if (!isNaN(_dp.getTime())) {
+        linha3.push('<span class="pf-os-meta">⏱ prev. ' +
+          ('0' + _dp.getDate()).slice(-2) + '/' + ('0' + (_dp.getMonth() + 1)).slice(-2) + '</span>');
+      }
+    }
+    var linha3Html = linha3.length ? '<div class="pf-os-linha3">' + linha3.join('') + '</div>' : '';
+
+    // V81: o texto visível usa pfEscHtmlOS, mas o ATRIBUTO só escapava a aspa
+    // simples — cliente com aspa dupla no nome quebrava o card inteiro.
+    var _atr = function(s){ return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g, "\\'"); };
+    return '<div class="pf-os-card" onclick="pfSelecionarOS(\'' + _atr(idOperacional) + '\',\'' + _atr(cli + tipo) + '\')">' +
+      '<div style="flex:1;min-width:0">' +
+        '<div class="pf-os-topo">' + prioHtml + '<span class="pf-os-numero">OS #' + pfEscHtmlOS(numeroDisplay) + '</span></div>' +
+        '<div class="pf-os-cliente">' + (cli ? pfEscHtmlOS(cli) : '—') + pfEscHtmlOS(tipo) + '</div>' +
+        linha3Html + progHtml +
       '</div>' +
       '<span class="pf-os-status ' + stCls + '">' + stLbl + '</span>' +
     '</div>';
-  }).join('');
+  }
+
+  // ⚠ Densidade: com muitas OS, cabeçalho de seção por prioridade em vez de N
+  // cards iguais. Só no modo Fila — nos outros a seção brigaria com a ordem.
+  var html = '';
+  if (_pfOsSort === 'fila' && filtered.length > 8) {
+    var urgentes = filtered.filter(function (o) { return _pfRank(o) >= 2; });
+    var resto    = filtered.filter(function (o) { return _pfRank(o) < 2; });
+    if (urgentes.length) html += '<div class="pf-os-secao">Urgentes e prioritárias</div>' + urgentes.map(_pfCard).join('');
+    if (resto.length)    html += '<div class="pf-os-secao">Na fila</div>' + resto.map(_pfCard).join('');
+  } else {
+    html = filtered.map(_pfCard).join('');
+  }
+  listaEl.innerHTML = html;
+}
+
+// Escape mínimo para o que vem do Sheets (cliente/estágio são texto livre).
+function pfEscHtmlOS(v) {
+  return String(v == null ? '' : v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 // ── Selecionar OS e carregar pipeline ─────────────────────────────────────────
 async function pfSelecionarOS(osId, osNome) {
   _pfOsId   = osId;
-  _pfOsNome = osNome;
+  _pfOsNome = osNome;                       // RÓTULO de exibição, inalterado
   var osObj = _pfOsList.find(function(o) {
     return String(o.id_os || '') === String(osId);
   });
+  // ── V78 (P1/C1/F1) — RÓTULO ≠ NOME DO CLIENTE ──────────────────────────
+  // pfRenderOS monta o rótulo `cliente · TIPO_OS` e o passa aqui como osNome.
+  // Até a V77 esse rótulo era usado COMO SE FOSSE o nome do cliente em três
+  // caminhos de ESCRITA (13361 / 13502 / 13547), o que produzia cliente
+  // duplicado na Gestão de Documentos, pasta duplicada no Drive e — pior —
+  // fazia pgpOsIdSeguro nunca casar e SUPRIMIR o os_id.
+  // Nunca derivar o cliente do rótulo: ele carrega " · TIPO_OS".
+  _pfOsCliente = (osObj && osObj.cliente) ? String(osObj.cliente) : '';
   var osDisplay = (osObj && osObj.numero_os) || osId;
   document.getElementById('pfOsLabel').textContent = 'OS #' + osDisplay + (osNome ? ' · ' + osNome : '');
   document.getElementById('pfScreenOS').style.display = 'none';
@@ -12862,6 +13708,22 @@ function pfBuildCard(t) {
   var lockedByMe    = lockPor && lockPor === pfUser;
   var perfil        = t.Perfil_Responsavel || '';
   var perfilHtml    = perfil ? '<div class="pf-card-meta">👤 Perfil: ' + perfil + '</div>' : '';
+  // ── V78 (ADM/F1) — tarefa de ADMINISTRAÇÃO: visível, porém não executável ──
+  // Lê o Executor CARIMBADO na tarefa, nunca o NOME do perfil: o carimbo viaja
+  // com o pipeline (offline-safe) e renomear o perfil não reescreve o que já
+  // está rodando. Vazio = 'campo' ⇒ todo pipeline instanciado antes do GAS v83
+  // renderiza IDÊNTICO à V77.
+  var execTarefa = String(t.Executor || 'campo').trim().toLowerCase();
+  var ehAdm      = (execTarefa === 'adm');
+  var admBadge   = ehAdm ? '<span class="pf-badge-adm">🏢 Administração</span>' : '';
+  // V79 (P1/C2/F2) — selo de etapa encerrada, quando a camada foi fechada por
+  // uma tarefa com Acao_Terminal='fechar_pipeline'.
+  var camEncHtml = '';
+  if (t.Camada_Encerrada_Em) {
+    var _dEnc = new Date(t.Camada_Encerrada_Em);
+    camEncHtml = '<div class="pf-card-meta" style="color:#a78bfa">🏁 Etapa encerrada' +
+      (isNaN(_dEnc.getTime()) ? '' : ' em ' + _dEnc.toLocaleDateString('pt-BR')) + '</div>';
+  }
 
   var metaHtml = '';
   if (st === 'completo' && (conclBy || conclAt)) {
@@ -12954,13 +13816,25 @@ function pfBuildCard(t) {
     }
   }
 
+  // ── V78 (ADM/F1) — GATE ÚNICO, auditável ──────────────────────────────────
+  // Um ponto só, em vez de espalhar `if (ehAdm)` pelos ramos de tipo.
+  // ⚠ A tarefa NÃO É ESCONDIDA: some do PCF significa técnico vendo um pipeline
+  //   que não anda sem saber por quê — e "X de Y" divergindo entre PCF e PCM.
+  // ⚠ O denominador do progresso NÃO muda: a tarefa de adm continua contando.
+  if (ehAdm && st !== 'completo' && st !== 'dispensado') {
+    acaoHtml = '';
+    lockHtml = '<div class="pf-card-meta" style="color:#38bdf8">🏢 Aguardando administração</div>';
+  }
+
   return '<div class="pf-card status-' + st + '" id="pfCard-' + tid + '">' +
     '<div class="pf-card-header">' +
       '<span class="pf-status-icon">' + icon + '</span>' +
       '<span class="pf-card-nome">' + nome + '</span>' +
+      admBadge +
     '</div>' +
     (desc ? '<div class="pf-card-desc">' + desc + '</div>' : '') +
     perfilHtml +
+    camEncHtml +
     lockHtml +
     metaHtml +
     acaoHtml +
@@ -13109,6 +13983,75 @@ function _pfTs(v) {
 // que lê o índice TECH_ATTACHMENTS por Maquina_ID) e desenha miniaturas SÓ LEITURA na
 // seção "Fotos da última visita". Não bloqueia a UI; silencioso offline/erro. Guarda
 // de contexto: se a máquina ativa trocar enquanto a rede responde, descarta o retorno.
+// ══════════════════════════════════════════════════════════════════════════
+// V81 (04/08) — FOTOS DA VISITA ANTERIOR **POR ITEM**.
+// A chave de correlação existe e é o File_Name: o PCF nomeia toda foto de campo
+// como `<photoKey>_<timestampMs>.jpg` (queuePhotoDriveUpload) e o GAS grava isso
+// literalmente em TECH_ATTACHMENTS.File_Name. É a ÚNICA granularidade POR ITEM
+// disponível — Entity_ID é a máquina, OS_Numero é a visita, Caption é rótulo
+// humano (muda com o texto do botão). O GAS resolve em getFotosItensMaquina.
+// ⚠ Miniatura vem em base64, NÃO por link do Drive: os arquivos são PRIVATE por
+//   LGPD, e o /thumbnail do Drive usa a sessão Google do navegador — funciona no
+//   PCM (admin logado) e quebraria no celular do técnico.
+// ⚠ CACHE-FIRST em IndexedDB (30 dias): pinta na hora, funciona offline e não
+//   torra 4G a cada abertura de painel.
+// ══════════════════════════════════════════════════════════════════════════
+var _pfItensAnteriores = {};   // { midx: { photoKey: [foto, ...] } }
+
+function pfThumbsAnterioresHtml(midx, photoKey){
+  var arr = (_pfItensAnteriores[midx] && _pfItensAnteriores[midx][photoKey]) || [];
+  if (!arr.length) return '';
+  return arr.map(function(f){
+    var t = 'Visita anterior' + (f.data ? ' — ' + f.data : '') + (f.os_numero ? ' (OS ' + f.os_numero + ')' : '');
+    var open = f.file_url
+      ? ' onclick="event.stopPropagation();window.open(\'' + String(f.file_url).replace(/'/g,'%27') + '\',\'_blank\')" style="cursor:pointer"'
+      : '';
+    return '<div class="photo-thumb-mini photo-thumb-prev" title="' + pgpEscHtml(t) + '"' + open + '>' +
+             '<img src="' + f.thumb + '" alt="" loading="lazy">' +
+             '<div class="photo-thumb-prev-tag">&#8617;</div>' +
+           '</div>';
+  }).join('');
+}
+
+function pfAplicarFotosItens(idx, itens){
+  _pfItensAnteriores[idx] = itens || {};
+  Object.keys(itens || {}).forEach(function(pk){
+    try { renderPhotoThumbs(idx, pk); } catch(e){}
+  });
+}
+
+async function pfCarregarFotosItensMaquina(idx){
+  // Mesmo adiamento por painel da V76 (F4b): painel fora da tela espera o toque.
+  if (typeof currentMachine === 'number' && idx !== currentMachine) {
+    (window._pfItensPendentes = window._pfItensPendentes || {})[idx] = true;
+    return;
+  }
+  var eq = (typeof pgpGetLoadedMachineForIndex === 'function') ? pgpGetLoadedMachineForIndex(idx) : null;
+  var machineId = (eq && (eq.id || eq.machine_id)) || '';
+  var serial    = pgpFieldVal(idx, 'ns') || '';
+  if (!machineId && !serial) return;
+  var ck = 'pa::' + (machineId || serial);
+  try {
+    var rec = await pgpIdbGet(ck);
+    if (rec && rec.itens && (Date.now() - (rec.ts || 0)) < 30 * 24 * 3600 * 1000) pfAplicarFotosItens(idx, rec.itens);
+  } catch(e){}
+  try {
+    var r = await pfGet('getFotosItensMaquina', {
+      machine_id: machineId, serial: serial,
+      cliente: pgpDriveClientName(idx),
+      excluir_os_id: (typeof pgpOsIdSeguro === 'function' ? (pgpOsIdSeguro(pgpDriveClientName(idx)) || '') : ''),
+      por_item: 1, max_thumbs: 16
+    }, 0);   // decorativa — sem retry roubando banda
+    var eqNow  = (typeof pgpGetLoadedMachineForIndex === 'function') ? pgpGetLoadedMachineForIndex(idx) : null;
+    var midNow = (eqNow && (eqNow.id || eqNow.machine_id)) || '';
+    if (machineId && midNow && midNow !== machineId) return;   // trocou de máquina na espera
+    if (r && r.itens) {
+      pfAplicarFotosItens(idx, r.itens);
+      try { pgpIdbSet(ck, { ts: Date.now(), itens: r.itens }); } catch(e2){}
+    }
+  } catch(e){ /* offline: fica o que veio do cache */ }
+}
+
 async function pfCarregarFotosMaquina(idx) {
   var box   = document.getElementById('m' + idx + '_prev_fotos');
   var badge = document.getElementById('m' + idx + '_prevfotos_badge');
@@ -13358,7 +14301,10 @@ async function pfUploadFotoTarefa(os_id, tarefa_id, slotId, file){
     var base64 = (r.dataUrl||'').split(',')[1] || '';
     var fileName = 'tar_' + tarefa_id + '_' + slotId + '_' + Date.now() + '.jpg';
     var body = {
-      clientName: _pfOsNome || '', os_id: os_id,
+      // V78 (C1) — era _pfOsNome (rótulo "Cliente · TIPO_OS"). Fallback VAZIO
+      // é deliberado: com cliente vazio o GAS resolve pelo os_id e pela
+      // blindagem de identidade de máquina. Cair no rótulo é o bug.
+      clientName: _pfOsCliente || '', os_id: os_id,
       dataBase64: base64, mime: 'image/jpeg', fileName: fileName,
       attachmentType: 'foto_tarefa', caption: slotId,
       entityType: 'pipeline_tarefa', entityId: os_id + '|' + tarefa_id + '|' + slotId,
@@ -13384,7 +14330,14 @@ async function pfConfirmarTarefa(tarefaId) {
   var _tf = (_pfTarefas || []).find(function(x){ return String(x.Tarefa_ID) === String(tarefaId); });
   var _acao = _tf ? String(_tf.Acao_Terminal || '').trim() : '';
   if (_acao === 'fechar_os' && !window.confirm('⚠ Concluir esta tarefa vai ENCERRAR a OS. Confirmar?')) return;
-  if (_acao === 'fechar_pipeline' && !window.confirm('Concluir vai finalizar esta etapa. A OS continua aberta aguardando a execução. Confirmar?')) return;
+  // V78 (P1/C2/F2) — até a V77 este texto PROMETIA algo que o GAS documentava
+  // não fazer ('fechar_pipeline' era no-op declarado). Agora o v83 encerra a
+  // camada de verdade — e o texto passa a descrever o que de fato acontece,
+  // inclusive que as tarefas ainda abertas da etapa CONTINUAM na lista.
+  if (_acao === 'fechar_pipeline' && !window.confirm(
+      'Concluir vai ENCERRAR esta etapa do pipeline.\n\n' +
+      'As tarefas ainda abertas desta etapa continuam na sua lista. A execução é ' +
+      'liberada pelo escritório.\n\nConfirmar?')) return;
   // v72 Fases B/C: valida fotos mínimas + checklist obrigatório e coleta respostas
   var _req = pfReqDe(_tf || {});
   var _resp = _pfRespostas[tarefaId] || { fotos:{}, checklist:{} };
@@ -13435,8 +14388,9 @@ async function pfConfirmarTarefa(tarefaId) {
     return;
   }
 
+  var _rConf = null;   // V78 (F2) — envelope da resposta, para a tela contar a verdade
   try {
-    await pgpPostJson('updateTarefaStatus', {
+    _rConf = await pgpPostJson('updateTarefaStatus', {
       os_id:      _pfOsId,
       tarefa_id:  tarefaId,
       status:     'completo',
@@ -13446,7 +14400,29 @@ async function pfConfirmarTarefa(tarefaId) {
       hora_fim_estimada: horaFimEstimada,
       respostas_json: JSON.stringify(_pfRespostas[tarefaId] || {}) // v72 Fases B/C
     });
-    pfShowUnlockBanner('✅ Tarefa concluída!');
+    // V78 (P1/C2/F2) — o ✅ liso era metade da história. O GAS v83 devolve
+    // os_fechada/os_pendentes (quando a ação era fechar_os) e camada_encerrada
+    // (quando era fechar_pipeline). Dizer QUAIS tarefas seguram a OS não é erro
+    // — é informação, e é o que faltava para o técnico entender o que ficou.
+    var _msgOk = '✅ Tarefa concluída!';
+    try {
+      if (_rConf && _rConf.os_fechada === false && (_rConf.os_pendentes || []).length) {
+        var _nomes = _rConf.os_pendentes.slice(0, 3).map(function (x) {
+          return (x.tarefa_id || '') + (x.nome ? (' · ' + x.nome) : '');
+        }).join(', ');
+        var _resto = _rConf.os_pendentes.length - 3;
+        _msgOk = '✅ Tarefa concluída. A OS NÃO fechou: faltam ' +
+                 _rConf.os_pendentes.length + ' tarefa(s) — ' + _nomes +
+                 (_resto > 0 ? (' e mais ' + _resto) : '') + '.';
+      } else if (_rConf && _rConf.os_fechada === true) {
+        _msgOk = '✅ Tarefa concluída — OS ENCERRADA.';
+      } else if (_rConf && _rConf.camada_encerrada) {
+        var _pend = (_rConf.camada_encerrada.pendentes_restantes || []).length;
+        _msgOk = '🏁 Etapa encerrada. Aguardando liberação da execução pelo escritório.' +
+                 (_pend ? (' ' + _pend + ' tarefa(s) desta etapa continuam na sua lista.') : '');
+      }
+    } catch (eMsg) { /* mensagem é acessório — nunca derruba a conclusão */ }
+    pfShowUnlockBanner(_msgOk);
     pfLoadPipeline({ soft: true }); // V67: refresh sem apagar a tela
   } catch(e) {
     if (e.message && e.message.includes('AUTH_GOOGLE')) { pfHubLogout(); return; }
@@ -13499,7 +14475,7 @@ async function pfAbrirForm(tarefaId, formUrl, btn) {
   var urlComOs = formUrl + separador + 'os_id=' + encodeURIComponent(_pfOsId)
     + '&tarefa_id=' + encodeURIComponent(tarefaId)
     + '&inicio_preventiva_iso=' + encodeURIComponent(inicioPreventivaISO)
-    + '&cliente=' + encodeURIComponent(_pfOsNome||'')
+    + '&cliente=' + encodeURIComponent(_pfOsCliente||'')   // V78 (C1): canônico, não o rótulo
     + '&os_numero=' + encodeURIComponent((osObj && osObj.numero_os)||'');
 
   // O1.3 (V61): tarefas de campo (auto:preventiva/auto:inspecao) apontam para o
@@ -13535,7 +14511,17 @@ async function pfAbrirForm(tarefaId, formUrl, btn) {
       // definir só o default não bastava — era preciso aplicá-lo na tela.
       try{ for (var _i = 0; _i < (machines||[]).length; _i++) pgpAplicarPerfilDaOS(_i); }catch(_){}
     }
-    if ((formUrl.indexOf('modo=preventiva') >= 0 || formUrl.indexOf('modo=pistao') >= 0 || _tPrev) && typeof pgpIniciarPreventivaDeOS === 'function') {
+    // ═══════════════════════════════════════════════════════════════════
+    // V81 (04/08) — O TIPO DECLARADO DA TAREFA MANDA, NOS DOIS SENTIDOS.
+    // A V72 (P3) fechou só um lado (Tipo diz preventiva, URL não diz). O lado
+    // inverso ficou aberto: uma tarefa auto:inspecao cujo Form_URL cadastrado
+    // contenha "modo=preventiva" caía no ramo de preventiva. É plausível na
+    // prática porque os dois tipos apontam para o MESMO destino e a Prioridade 1
+    // é sempre o Form_URL cru da planilha. Caso real: OS #PGP-2026-0030
+    // (INSPECAO_E_COMERCIAL) abrindo com PREVENTIVA marcada.
+    // ═══════════════════════════════════════════════════════════════════
+    var _ehPreventiva = !_tInsp && (formUrl.indexOf('modo=preventiva') >= 0 || formUrl.indexOf('modo=pistao') >= 0 || _tPrev);
+    if (_ehPreventiva && typeof pgpIniciarPreventivaDeOS === 'function') {
       window._PGP_TIPO_ESPERADO = 'preventiva';   // V72 (P3)
       await pgpIniciarPreventivaDeOS(_pfOsId);
     } else {
@@ -13544,7 +14530,24 @@ async function pfAbrirForm(tarefaId, formUrl, btn) {
       // V72 (P2/P3): a inspeção de OS também é uma OS — o cliente fica travado
       // e o banco de máquinas vira "Selecionar máquina de <cliente>".
       window._PGP_TIPO_ESPERADO = _tInsp ? 'inspecao' : null;
-      window._PGP_OS_CLIENTE = _pfOsNome || window._PGP_OS_CLIENTE || '';
+      // ═════════════════════════════════════════════════════════════════
+      // V81 (04/08) — A ASSIMETRIA QUE CAUSAVA O DEFEITO DO FERNANDO.
+      // O ramo de cima DECLARA e APLICA (pgpIniciarPreventivaDeOS chama
+      // pgpSetTipoVisita('preventiva')). Este aqui só DECLARAVA. Como
+      // _pgpTipoVisita é GLOBAL do app e NADA o devolve a 'inspecao' dentro
+      // de uma OS, bastava a sessão ter passado por uma preventiva para toda
+      // tarefa de inspeção aberta depois herdar PREVENTIVA na tela, em
+      // silêncio — e o payload sair como preventiva (pgpBuildPreventivaPayload
+      // tem tipo:'preventiva' hardcoded), mexendo em MACHINE_PARTS/PECAS_LOG
+      // e fechando a tarefa errada no GAS.
+      // ═════════════════════════════════════════════════════════════════
+      if (_tInsp) { try { pgpSetTipoVisita('inspecao'); pgpAtualizarAcoesPorTipoVisita(); } catch(_) {} }
+      // V78 (C1) — O PIOR DOS TRÊS VAZAMENTOS. _PGP_OS_CLIENTE não é rótulo:
+      // é o guardião de coerência OS×cliente do v52. Com o rótulo composto
+      // aqui, pgpOsIdSeguro NUNCA casava e SUPRIMIA o os_id de todo payload,
+      // e pgpGarantirOSInspecaoAvulsa abria uma OS avulsa nova para uma OS de
+      // pipeline que já existia.
+      window._PGP_OS_CLIENTE = _pfOsCliente || window._PGP_OS_CLIENTE || '';
       try { pgpAtualizarModoOS(); } catch(_) {}
       showNotification('🔧 Inspeção da OS #' + ((osObj && osObj.numero_os) || _pfOsId) +
         ' — selecione a máquina e colete normalmente.');
@@ -13677,6 +14680,7 @@ async function pfOnNotifClick(notifId, osId) {
       return String(o.id_os || o.numero_os || '') === String(osId);
     });
     _pfOsNome = osObj ? (osObj.cliente || '') : '';
+    _pfOsCliente = _pfOsNome;   // V78 (C1) — este caminho já usava o valor limpo
     var osDisplay = (osObj && osObj.numero_os) || osId;
     document.getElementById('pfOsLabel').textContent = 'OS #' + osDisplay + (_pfOsNome ? ' · ' + _pfOsNome : '');
     document.getElementById('pfScreenOS').style.display = 'none';
@@ -14088,24 +15092,47 @@ if(window._PGP_OS_ID && (function(){ try { return localStorage.getItem('proper_p
 
   <!-- Tela A: seleção de OS -->
   <div id="pfScreenOS" style="flex:1;overflow-y:auto;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom, 24px))">
-    <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Selecionar Ordem de Serviço</div>
-    <div class="pf-os-filter" aria-label="Filtro de designação">
-      <button type="button" class="pf-os-filter-chip pf-os-design-filter-chip active" data-design-filter="todas" onclick="pfSetOSDesignFilter('todas')">Todas as OS</button>
-      <button type="button" class="pf-os-filter-chip pf-os-design-filter-chip" data-design-filter="minhas" onclick="pfSetOSDesignFilter('minhas')">Minhas</button>
+    <!-- ══ V79 (P2/K2) — BARRA COMPACTA ═══════════════════════════════════
+         Até a V78 esta tela empilhava TRÊS linhas de chips + o botão Preparar
+         o dia antes do primeiro card: no celular a lista começava fora da tela.
+         Agora: busca + ordenação sempre visíveis, o resto atrás de ⚙ Filtros.
+         ⚠ Nenhum id, data-* ou função foi renomeado — os três blocos de chips
+         são os MESMOS, só mudaram de lugar. É CSS + wrapper.              -->
+    <div class="pf-os-barra">
+      <input type="text" id="pfOsBusca" class="pf-os-busca"
+             placeholder="Buscar por nº, cliente ou máquina"
+             oninput="pfOsBuscaInput(this)"
+             readonly onfocus="this.removeAttribute('readonly')"
+             autocomplete="off" name="pf_os_busca_nofill"
+             data-lpignore="true" data-1p-ignore="true"
+             aria-label="Buscar ordem de serviço">
+      <button type="button" id="pfBtnFiltrosOS" class="pf-os-filtros-btn" onclick="pfToggleFiltrosOS()" aria-label="Mais filtros">⚙</button>
     </div>
-    <div class="pf-os-filter" aria-label="Filtro de local de atendimento" style="margin-top:8px">
-      <button type="button" class="pf-os-filter-chip active" data-filter="todas" onclick="pfSetOSFilter('todas')">Todas</button>
-      <button type="button" class="pf-os-filter-chip" data-filter="externas" onclick="pfSetOSFilter('externas')">Externas</button>
-      <button type="button" class="pf-os-filter-chip" data-filter="internas" onclick="pfSetOSFilter('internas')">Internas</button>
+    <div class="pf-os-filter pf-os-sort" aria-label="Ordenação da lista" style="margin-top:8px">
+      <button type="button" class="pf-os-filter-chip pf-os-sort-chip active" data-sort="fila"   onclick="pfSetOSSort('fila')">🎫 Fila</button>
+      <button type="button" class="pf-os-filter-chip pf-os-sort-chip"        data-sort="prazo"  onclick="pfSetOSSort('prazo')">📅 Prazo</button>
+      <button type="button" class="pf-os-filter-chip pf-os-sort-chip"        data-sort="minhas" onclick="pfSetOSSort('minhas')">👤 Minhas</button>
     </div>
-    <div class="pf-os-filter" aria-label="Filtro de status da OS" style="margin-top:8px">
-      <button type="button" class="pf-os-filter-chip pf-os-status-filter-chip active" data-status-filter="ativas" onclick="pfSetOSStatusFilter('ativas')">Ativas</button>
-      <button type="button" class="pf-os-filter-chip pf-os-status-filter-chip" data-status-filter="concluidas" onclick="pfSetOSStatusFilter('concluidas')">Concluídas</button>
-      <button type="button" class="pf-os-filter-chip pf-os-status-filter-chip" data-status-filter="todas" onclick="pfSetOSStatusFilter('todas')">Todas</button>
+
+    <div id="pfOsFiltrosExtra" style="display:none">
+      <div class="pf-os-filter" aria-label="Filtro de designação" style="margin-top:8px">
+        <button type="button" class="pf-os-filter-chip pf-os-design-filter-chip active" data-design-filter="todas" onclick="pfSetOSDesignFilter('todas')">Todas as OS</button>
+        <button type="button" class="pf-os-filter-chip pf-os-design-filter-chip" data-design-filter="minhas" onclick="pfSetOSDesignFilter('minhas')">Minhas</button>
+      </div>
+      <div class="pf-os-filter" aria-label="Filtro de local de atendimento" style="margin-top:8px">
+        <button type="button" class="pf-os-filter-chip active" data-filter="todas" onclick="pfSetOSFilter('todas')">Todas</button>
+        <button type="button" class="pf-os-filter-chip" data-filter="externas" onclick="pfSetOSFilter('externas')">Externas</button>
+        <button type="button" class="pf-os-filter-chip" data-filter="internas" onclick="pfSetOSFilter('internas')">Internas</button>
+      </div>
+      <div class="pf-os-filter" aria-label="Filtro de status da OS" style="margin-top:8px">
+        <button type="button" class="pf-os-filter-chip pf-os-status-filter-chip active" data-status-filter="ativas" onclick="pfSetOSStatusFilter('ativas')">Ativas</button>
+        <button type="button" class="pf-os-filter-chip pf-os-status-filter-chip" data-status-filter="concluidas" onclick="pfSetOSStatusFilter('concluidas')">Concluídas</button>
+        <button type="button" class="pf-os-filter-chip pf-os-status-filter-chip" data-status-filter="todas" onclick="pfSetOSStatusFilter('todas')">Todas</button>
+      </div>
+      <!-- V77 (G5): baixa pipeline + máquinas das OS ativas para uso offline -->
+      <button id="pfBtnPrepararDia" onclick="pfPrepararODia(this)" style="width:100%;margin-top:10px;background:#0f766e;border:0;color:#ecfeff;padding:11px;border-radius:10px;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;cursor:pointer;letter-spacing:.03em">📥 Preparar o dia</button>
+      <div style="font-size:11px;color:#64748b;text-align:center;margin-top:5px;line-height:1.4">Baixa as tarefas e as máquinas das OS ativas para funcionarem sem sinal.</div>
     </div>
-    <!-- V77 (G5): baixa pipeline + máquinas das OS ativas para uso offline -->
-    <button id="pfBtnPrepararDia" onclick="pfPrepararODia(this)" style="width:100%;margin-top:10px;background:#0f766e;border:0;color:#ecfeff;padding:11px;border-radius:10px;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;cursor:pointer;letter-spacing:.03em">📥 Preparar o dia</button>
-    <div style="font-size:11px;color:#64748b;text-align:center;margin-top:5px;line-height:1.4">Baixa as tarefas e as máquinas das OS ativas para funcionarem sem sinal.</div>
     <div id="pfOsStatus" style="font-size:13px;color:#94a3b8;text-align:center;padding:20px 0">Conectando ao Sheets…</div>
     <div id="pfOsLista"></div>
   </div>
