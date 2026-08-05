@@ -504,8 +504,45 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ProperCare Field · PGP Preventivas v34 · build PCF_V81</title>
-<meta name="app-build" content="PCF_V81" data-date="2026-08-04">
+<title>ProperCare Field · PGP Preventivas v34 · build PCF_V82</title>
+<meta name="app-build" content="PCF_V82" data-date="2026-08-05">
+
+<!-- V82 (item 8) — TRATADOR GLOBAL DE ERRO. Antes: ZERO window.onerror e ZERO
+     unhandledrejection. O incidente v39 (boot morto por ReferenceError, app
+     quebrado em silêncio) não deixava rastro. Vem antes de tudo de propósito:
+     erro no boot também precisa aparecer — e no celular não há console aberto. -->
+<script>
+(function(){
+  var _ult = 0, _vistos = {}, _log = [];
+  function _mostrar(tipo, msg, detalhe){
+    try {
+      var agora = Date.now();
+      var chave = tipo + '|' + String(msg).slice(0, 120);
+      _log.push({ t: new Date().toISOString(), tipo: tipo, msg: String(msg), det: String(detalhe || '') });
+      if (_log.length > 40) _log.shift();
+      if (_vistos[chave] && agora - _vistos[chave] < 15000) return;
+      _vistos[chave] = agora;
+      console.error('[PCF V82][' + tipo + ']', msg, detalhe || '');
+      if (agora - _ult < 5000) return;
+      _ult = agora;
+      var txt = String(msg || 'erro desconhecido');
+      if (/MODO_OFFLINE/i.test(txt)) return;            // modo offline deliberado não é erro
+      if (typeof showNotification === 'function') showNotification('⚠ Erro no app: ' + txt);
+    } catch(e) {}
+  }
+  window.addEventListener('error', function(ev){
+    if (ev && ev.target && ev.target !== window && ev.target.tagName) return;  // 404 de recurso
+    _mostrar('erro', (ev && ev.message) || 'falha no script',
+             ev && ev.filename ? (ev.filename + ':' + ev.lineno) : '');
+  });
+  window.addEventListener('unhandledrejection', function(ev){
+    var r = ev && ev.reason;
+    _mostrar('promessa', (r && r.message) || String(r || 'promessa rejeitada'), r && r.stack);
+  });
+  // Entra no "📋 Copiar diagnóstico da fila" do V81 — o técnico manda por WhatsApp.
+  window.pgpErrosRecentes = function(){ return _log.slice(); };
+})();
+</script>
 <meta name="theme-color" content="#0f172a">
 <!-- PWA (fix 19/07/2026): o repo já tinha manifest.webmanifest + sw.js + proper-pwa.js,
      mas o index.html não os referenciava — sem estas 3 linhas o SW nunca registra,
@@ -2045,7 +2082,7 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
       <div class="proper-logo-mark">H</div>
       <div class="proper-logo-text">
         <span class="brand">PROPER</span>
-        <span class="brand-sub">Field · V81</span>
+        <span class="brand-sub">Field · V82</span>
       </div>
     </div>
     <div class="header-right">
@@ -7739,13 +7776,17 @@ const QUEUE_WARN_AT  = 30;   // avisa o usuário a partir deste valor
 function savePendingQueue(list) {
   const count = list.length;
 
-  // PCF-3: > (não >=) para aceitar exatamente o item QUEUE_LIMIT; 41º é bloqueado
+  // V82 (item 2) — ANTES: o 41º item era RECUSADO (`saved:false, blocked:true`) e
+  // o trabalho do técnico se perdia ali. O briefing é explícito: "dado crítico
+  // (visita/preventiva) nunca deve ser recusado".
+  // Agora o teto de ITENS vira AVISO, não barreira. Quem barra de verdade é o
+  // teto de BYTES logo abaixo — que é o limite real do aparelho, e esse sim é
+  // físico. Enquanto couber na cota, o dado entra.
   if (count > QUEUE_LIMIT) {
     showNotification(
-      '🚫 Fila offline cheia (' + count + '/' + QUEUE_LIMIT + ' itens). ' +
-      'Conecte-se para enviar antes de registrar novas visitas.'
+      '⚠️ Fila offline com ' + count + ' itens (acima do usual de ' + QUEUE_LIMIT + '). ' +
+      'Nada foi perdido — está guardado no aparelho. Conecte-se assim que puder.'
     );
-    return { saved: false, blocked: true, count };
   }
 
   if (count >= QUEUE_WARN_AT) {
@@ -8265,7 +8306,7 @@ function pgpDescartarPending(idx){
 
 // V81 — diagnóstico copiável: o técnico manda no WhatsApp em vez de descrever.
 function pgpCopiarFilaDiag(){
-  var o = { versao:'PCF_V81', quando:new Date().toISOString(),
+  var o = { versao:'PCF_V82', quando:new Date().toISOString(),
     conectado:(typeof _pgpGsConnected!=='undefined')?_pgpGsConnected:'?',
     sync:pgpGetPending().map(pgpFilaItemResumo),
     conferir:pgpGetDead().map(pgpFilaItemResumo),
@@ -11685,12 +11726,9 @@ async function pgpEnviarPreventiva(midx=currentMachine, opts){
   const PAYLOAD_SIZE_LIMIT = 900000;
   const payloadSize = JSON.stringify(payload).length;
   if (payloadSize > PAYLOAD_SIZE_LIMIT) {
-    const listSize=pgpGetPending();
-    if(listSize.length >= QUEUE_LIMIT){
-      if(silent) return { status:'error', error:'fila cheia (payload grande)' };
-      showNotification('🚫 Muitas fotos/observações e fila cheia. Envie em partes ou libere espaço na fila.');
-      return;
-    }
+    // V82 (item 2) — guarda removida: ela DESCARTAVA o payload antes mesmo de
+    // tentar enfileirar. Agora sempre tenta; quem decide é o teto de BYTES do
+    // savePendingQueue, que é o limite físico do aparelho.
     // V68 — F-06: enfileira COM dedupe por visit_id (antes: list.push cru).
     const qResultSize = pgpQueuePreventiva(payload);
     // V68 — F-18b: savePendingQueue devolve {saved:false} também quando o
@@ -11717,14 +11755,8 @@ async function pgpEnviarPreventiva(midx=currentMachine, opts){
   if(!silent) _slow = setTimeout(function(){ if(btn) btn.textContent = 'Ainda enviando. Não feche a tela.'; }, 8000);
 
   if(!_pgpGsConnected){
-    const list=pgpGetPending();
-    if(list.length >= QUEUE_LIMIT){
-      if(_slow) clearTimeout(_slow);
-      if(btn){btn.disabled=false;btn.textContent='🔧 Registrar Preventiva';}
-      if(silent) return { status:'error', error:'fila offline cheia' };
-      showNotification('🚫 Fila offline cheia (' + list.length + '/' + QUEUE_LIMIT + ' itens). Conecte-se primeiro.');
-      return;
-    }
+    // V82 (item 2) — guarda removida (ver savePendingQueue): a preventiva do
+    // técnico não pode ser recusada por contagem de itens.
     // V68 — F-06: enfileira COM dedupe por visit_id (antes: list.push cru).
     const qResult = pgpQueuePreventiva(payload);
     if(_slow) clearTimeout(_slow);
@@ -11768,12 +11800,10 @@ async function pgpEnviarPreventiva(midx=currentMachine, opts){
       throw new Error(d.error||'Erro desconhecido');
     }
   }catch(e){
-    const list=pgpGetPending();
-    if(list.length >= QUEUE_LIMIT){
-      // V68 — F-18a: payload DESCARTADO; o espelho local não pode registrar nada.
-      if(silent) return { status:'error', error:'falha no envio e fila cheia' };
-      showNotification('🚫 Falha no envio e fila cheia. Conecte-se para liberar espaço.');
-    } else {
+    // V82 (item 2) — este era o pior dos três: "payload DESCARTADO". Falha de
+    // envio + fila com muitos itens e a preventiva ia embora. A contagem deixou
+    // de ser barreira; o teto de bytes do savePendingQueue continua sendo.
+    {
       // V68 — F-06: enfileira COM dedupe por visit_id (antes: list.push cru).
       const qResult = pgpQueuePreventiva(payload);
       // V68 — F-18b: cota estourada também é falha (antes só `.blocked` era visto).
@@ -12888,10 +12918,25 @@ async function _pgpFetchComRetry_(url, options, maxRetries, onRetry) {
   // rede morta: 3 tentativas x timeout de socket + 1000ms + 2500ms).
   if (pgpRedeBloqueada()) throw pgpErroModoOffline();
   if (maxRetries === undefined) maxRetries = 2;
+  // V82 (item 1) — ESTE fetch NÃO tinha timeout. `AbortSignal.timeout` aparece 8x
+  // neste arquivo e em NENHUMA delas aqui: as LEITURAS tinham teto, as ESCRITAS
+  // não. E este é o choke point de pgpPostJson — por onde sai coleta, preventiva,
+  // assinatura e anexo. Socket que abre e não responde (galpão, 4G de 1 barra)
+  // deixava o técnico esperando indefinidamente, sem cair na fila.
+  // 45s é deliberadamente generoso: o GAS tem cold start e uma coleta com peças
+  // é um POST grande. O objetivo é ter TETO, não ser agressivo.
+  var _tetoMs = (options && options.__timeoutMs) || 45000;
+  var _semAbort = (typeof AbortSignal === 'undefined' ||
+                   typeof AbortSignal.timeout !== 'function');
   var lastErr;
   for (var tentativa = 0; tentativa <= maxRetries; tentativa++) {
     try {
-      const r = await fetch(url, options);
+      var _opts = options;
+      if (!_semAbort && !(options && options.signal)) {
+        try { _opts = Object.assign({}, options, { signal: AbortSignal.timeout(_tetoMs) }); }
+        catch (eAb) { _opts = options; }   // WebView antiga: segue sem teto, como antes
+      }
+      const r = await fetch(url, _opts);
       const txt = await r.text();
       if (txt.trim().startsWith('<')) {
         throw new Error('GAS retornou HTML — verifique a publicação do Web App');
@@ -12914,7 +12959,12 @@ async function _pgpFetchComRetry_(url, options, maxRetries, onRetry) {
       // ainda sobe normalmente e revela uma config real quebrada.
       var infraTransitoria = /^HTTP \d+$/.test(e.message) ||
         /Failed to fetch|NetworkError|Load failed/i.test(e.message) ||
-        /GAS retornou HTML/.test(e.message);
+        /GAS retornou HTML/.test(e.message) ||
+        // V82 (item 1) — o estouro do teto novo é infra transitória: repete a
+        // tentativa e, se esgotar, DERRUBA o status (senão o chip mentiria verde
+        // com a escrita pendurada).
+        (e && (e.name === 'TimeoutError' || e.name === 'AbortError')) ||
+        /aborted|timed? ?out/i.test(e.message || '');
       // V77 (G2a) — DESISTIU: o status tem que CAIR. Até a V76 `_pgpGsConnected`
       // só virava false no evento 'offline' do navegador ou na falha do ping —
       // uma escrita que estourava por timeout deixava o pill em "Sheets ✓", o
