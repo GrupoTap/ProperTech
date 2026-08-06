@@ -504,8 +504,8 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ProperCare Field · PGP Preventivas v34 · build PCF_V82</title>
-<meta name="app-build" content="PCF_V82" data-date="2026-08-05">
+<title>ProperCare Field · PGP Preventivas v34 · build PCF_V83</title>
+<meta name="app-build" content="PCF_V83" data-date="2026-08-06">
 
 <!-- V82 (item 8) — TRATADOR GLOBAL DE ERRO. Antes: ZERO window.onerror e ZERO
      unhandledrejection. O incidente v39 (boot morto por ReferenceError, app
@@ -522,7 +522,7 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
       if (_log.length > 40) _log.shift();
       if (_vistos[chave] && agora - _vistos[chave] < 15000) return;
       _vistos[chave] = agora;
-      console.error('[PCF V82][' + tipo + ']', msg, detalhe || '');
+      console.error('[PCF V83][' + tipo + ']', msg, detalhe || '');
       if (agora - _ult < 5000) return;
       _ult = agora;
       var txt = String(msg || 'erro desconhecido');
@@ -3297,7 +3297,44 @@ function pgpOsIdSeguro(clientAtual) {
   function norm(s){ return String(s || '').trim().toLowerCase().replace(/\s+/g, ' '); }
   if (norm(cli) === norm(cliOS)) return osId;
   try { console.warn('[PCF] os_id suprimido: OS(' + cliOS + ') != máquina(' + cli + ')'); } catch(e){}
+  // ═══════════════════════════════════════════════════════════════════════════
+  // V83 (L-2) — A SUPRESSÃO DEIXA DE SER MUDA.
+  //
+  // A supressão em si está CERTA e continua: sem ela a coleta da máquina de um
+  // cliente cairia na OS de outro. O problema era o que vinha DEPOIS — e era
+  // invisível: com os_id vazio a preventiva/inspeção é gravada como AVULSA, o
+  // `autoCompletarTarefa` do GAS retorna cedo (`if (!os_id) return`) e a tarefa
+  // da OS FICA ABERTA PARA SEMPRE. O técnico vê o toast de sucesso e vai
+  // embora; o único rastro era o console.warn acima, que ninguém lê.
+  //
+  // Acontece na prática com variante de nome de cliente ("SORRAG" ×
+  // "SORRAG Filial"), máquina escolhida da lista errada ou razão social ainda
+  // em branco no painel.
+  //
+  // ⚠ Esta função é chamada MUITAS vezes (9 call sites, alguns em laço de
+  //   render), então avisar a cada chamada viraria spam. Dedup por par
+  //   OS×cliente: o técnico vê uma vez por combinação, que é exatamente quantas
+  //   decisões diferentes ele precisa tomar.
+  // ═══════════════════════════════════════════════════════════════════════════
+  try {
+    window._pgpAvisoOsSuprimida = window._pgpAvisoOsSuprimida || {};
+    var _chaveAv = norm(cliOS) + '||' + norm(cli);
+    if (!window._pgpAvisoOsSuprimida[_chaveAv]) {
+      window._pgpAvisoOsSuprimida[_chaveAv] = true;
+      if (typeof showNotification === 'function') {
+        showNotification('⚠ Esta máquina é de "' + cli + '" e a OS aberta é de "' + cliOS +
+          '". A coleta vai ser salva FORA da OS (como avulsa) e a tarefa do pipeline NÃO vai fechar. ' +
+          'Se a máquina é desta OS, volte e escolha-a pelo banco de máquinas da OS.');
+      }
+    }
+  } catch(e){}
   return '';
+}
+
+// V83 (L-2) — limpa o dedup do aviso acima. Chamado quando o contexto de OS
+// muda (entrar noutra OS, nova coleta): o mesmo par pode voltar a ser notícia.
+function pgpResetAvisoOsSuprimida(){
+  try { window._pgpAvisoOsSuprimida = {}; } catch(e){}
 }
 
 // v53 — Coleta avulsa (inspeção sem OS) ganha uma "casa": pede ao GAS para abrir
@@ -5574,6 +5611,7 @@ async function novaColeta() {
   // EXIGE _PGP_OS_ID preenchido, que a linha acima acabou de apagar.
   // ══════════════════════════════════════════════════════════════════════
   window._pgpOSInspecaoPromise = null;
+  try { pgpResetAvisoOsSuprimida(); } catch(e){}   // V83 (L-2): contexto novo, aviso volta a ser notícia
   try { const _rw = document.getElementById('pgpReturnToOSContainer'); if(_rw){ _rw.style.display='none'; _rw.innerHTML=''; } } catch(e){}
   _pgpTravaClienteOS = false;
   _pgpDestinoNovoPainel = false;
@@ -11042,6 +11080,7 @@ async function pgpIniciarPreventivaDeOS(osId){
     window._PGP_OS_CLIENTE = (r.os && r.os.cliente) ? String(r.os.cliente).trim() : '';
     // V71 (FIX 2): carimbo de "esta OS já está na tela" — base do guard de reentrada.
     window._PGP_OS_ID_CARREGADA = String(osId||'');
+    try { pgpResetAvisoOsSuprimida(); } catch(e){}   // V83 (L-2): outra OS, outro par OS×cliente
     try{ pgpAtualizarModoOS(); }catch(_){}  // V72 (P2): já sabemos o cliente da OS
 
     if(osMachines.length === 0){
@@ -11717,6 +11756,30 @@ async function pgpEnviarPreventiva(midx=currentMachine, opts){
     // achando que tinha registrado. Agora o espelho só é atualizado DEPOIS de um
     // desfecho positivo (enviado ao GAS, duplicado no GAS ou enfileirado COM
     // gravação confirmada) — ver as chamadas pgpUpdateAdminLocal abaixo.
+    // ═════════════════════════════════════════════════════════════════════
+    // V83 (L-2) — TRIPWIRE DE VÍNCULO COM A OS.
+    //
+    // Se o técnico ENTROU por uma tarefa de OS (_PGP_OS_ID setado) mas o
+    // payload saiu com os_id vazio, o guardião OS×cliente suprimiu o vínculo:
+    // esta preventiva vai gravar como AVULSA e a tarefa do pipeline NÃO vai
+    // fechar. Até a V82 isso passava batido, com toast de sucesso.
+    //
+    // Mesma filosofia dos tripwires de perfil e de regime (V70/V71): recusar
+    // (ou exigir confirmação consciente) é sempre melhor que perder o vínculo
+    // em silêncio e obrigar alguém a caçar isso depois na planilha.
+    // ═════════════════════════════════════════════════════════════════════
+    if (window._PGP_OS_ID && !payload.os_id) {
+      var _cliPainel = pgpDriveClientName(idx);
+      var _cliOS = window._PGP_OS_CLIENTE || '(desconhecido)';
+      if (silent) return { status:'skipped', reason:'máquina de outro cliente — vínculo com a OS suprimido' };
+      var _segueAssim = window.confirm(
+        '⚠ Esta coleta NÃO vai entrar na OS.\n\n' +
+        'A OS aberta é do cliente "' + _cliOS + '" e a máquina na tela é de "' + _cliPainel + '".\n' +
+        'Para não misturar as OS, o vínculo foi removido: a preventiva será salva como AVULSA ' +
+        'e a tarefa do pipeline continuará em aberto.\n\n' +
+        'OK = salvar mesmo assim (avulsa)\nCancelar = voltar e escolher a máquina pelo banco de máquinas da OS');
+      if (!_segueAssim) return;
+    }
   }catch(e){
     if(silent) return { status:'skipped', reason:'falha ao montar os dados' };
     showNotification('🚫 Falha ao montar os dados da preventiva. Nada foi enviado — tente novamente.');
@@ -12578,6 +12641,23 @@ async function pgpEnviarGS(srcBtn){
   if (_pgpGsConnected) { try { await pgpGarantirOSInspecaoAvulsa(i); } catch(e){} }
 
   const visitBody = pgpBuildVisitRequest(payload);
+
+  // V83 (L-2) — gêmeo do tripwire da preventiva, para a INSPEÇÃO. Dentro de uma
+  // OS de pipeline, coleta sem os_id significa vínculo suprimido: a tarefa
+  // auto:inspecao vai ficar aberta. Só vale quando a OS veio do PIPELINE — na
+  // inspeção AVULSA o os_id é criado depois (pgpGarantirOSInspecaoAvulsa) e
+  // vazio aqui é normal.
+  if (window._PGP_TAREFA_ID && window._PGP_OS_ID && !visitBody.os_id) {
+    var _cliP = pgpDriveClientName(i);
+    var _segueInsp = window.confirm(
+      '⚠ Esta coleta NÃO vai entrar na OS.\n\n' +
+      'A OS aberta é do cliente "' + (window._PGP_OS_CLIENTE || '(desconhecido)') +
+      '" e a máquina na tela é de "' + _cliP + '".\n' +
+      'O vínculo foi removido para não misturar as OS: a inspeção será salva como AVULSA ' +
+      'e a tarefa do pipeline continuará em aberto.\n\n' +
+      'OK = salvar mesmo assim\nCancelar = voltar e escolher a máquina pelo banco de máquinas da OS');
+    if (!_segueInsp) { if (btn) { btn.disabled = false; } return; }
+  }
 
   if(!_pgpGsConnected){
     const qVisit = pgpAddPending('visit', payload);
@@ -13650,24 +13730,61 @@ async function pfLoadPipeline(opts) {
       progLabel.textContent += ' · ↻ atualizando…'; // V76 (F2b): selo do passe morno
     }
 
-    // Agrupar por fase
+    // ══════════════════════════════════════════════════════════════════════
+    // Agrupar por fase — V83 (L-7): a CAMADA é a primeira chave.
+    //
+    // O GAS v89 passou a devolver as tarefas ordenadas por Camada_Ordem →
+    // Fase_Ordem → Ordem, mas este agrupamento REFAZIA a ordem por conta
+    // própria olhando só Fase_Ordem. Numa OS com template empilhado, a camada 2
+    // traz Fase_Ordem começando de novo em 1 — então "Montagem" (camada 2,
+    // fase_ordem 1) era desenhada ENTRE "Recebimento" (camada 1, fase_ordem 1)
+    // e "Diagnóstico" (camada 1, fase_ordem 2). O técnico lia o pipeline fora
+    // de ordem e "o que vem agora" deixava de ser óbvio.
+    //
+    // A chave do grupo passa a ser camada+fase (não só fase): duas camadas
+    // podem ter fases de MESMO NOME — antes elas se fundiam num grupo só,
+    // misturando trabalho de etapas diferentes.
+    //
+    // ⚠ OS de camada única (a esmagadora maioria) renderiza IDÊNTICO à V82:
+    //   todas as linhas têm Camada_Ordem=1, o primeiro critério empata sempre e
+    //   o rótulo não ganha sufixo.
+    // ══════════════════════════════════════════════════════════════════════
     var faseMap   = {};
     var faseOrder = [];
+    var _temCamada2 = _pfTarefas.some(function(t){ return (parseInt(t.Camada_Ordem) || 1) > 1; });
     _pfTarefas.forEach(function(t) {
-      var fase = t.Fase || 'Geral';
-      if (!faseMap[fase]) {
-        faseMap[fase] = { ordem: parseInt(t.Fase_Ordem) || 0, tarefas: [] };
-        faseOrder.push(fase);
+      var fase   = t.Fase || 'Geral';
+      var camada = parseInt(t.Camada_Ordem) || 1;
+      var chave  = camada + '||' + fase;
+      if (!faseMap[chave]) {
+        faseMap[chave] = {
+          camada: camada,
+          ordem:  parseInt(t.Fase_Ordem) || 0,
+          rotulo: fase,
+          camadaNome: String(t.Camada_Nome || ''),
+          tarefas: []
+        };
+        faseOrder.push(chave);
       }
-      faseMap[fase].tarefas.push(t);
+      faseMap[chave].tarefas.push(t);
     });
-    faseOrder.sort(function(a, b) { return faseMap[a].ordem - faseMap[b].ordem; });
+    faseOrder.sort(function(a, b) {
+      var ca = faseMap[a].camada - faseMap[b].camada;
+      if (ca !== 0) return ca;
+      return faseMap[a].ordem - faseMap[b].ordem;
+    });
 
     var html = '';
-    faseOrder.forEach(function(fase) {
+    faseOrder.forEach(function(chave) {
+      var g = faseMap[chave];
+      // Só desambigua quando existe camada empilhada — senão o título fica igual.
+      var _sufixo = (_temCamada2 && g.camada > 1)
+        ? ' <span style="font-size:11px;font-weight:600;color:#a78bfa">· ' +
+          pfEscHtmlOS(g.camadaNome || ('Camada ' + g.camada)) + '</span>'
+        : '';
       html += '<div style="margin-bottom:20px">' +
-        '<div class="pf-fase-titulo">' + fase + '</div>';
-      var tarefas = faseMap[fase].tarefas.slice().sort(function(a, b) {
+        '<div class="pf-fase-titulo">' + g.rotulo + _sufixo + '</div>';
+      var tarefas = g.tarefas.slice().sort(function(a, b) {
         return (parseInt(a.Ordem) || 0) - (parseInt(b.Ordem) || 0);
       });
       tarefas.forEach(function(t) { html += pfBuildCard(t); });
