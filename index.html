@@ -455,6 +455,43 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
     notificações, em vez de disparar as duas em paralelo.
 -->
 <!-- ══════════════════════════════════════════════════════════════════════════
+     PCF V86 — 07/08/2026 — A OS REABERTA VOLTA COM OS DADOS, NÃO EM BRANCO
+     Par: sw v86 (SOBE EM PAR — sw velho serve o V85 do cache) + GAS v93.
+     Base: V85 (Preparar o dia e o fim do "Sair do site?" seguem INTACTOS).
+
+     ⚠ EXIGE o GAS v93 no ar: a action `getPreventivaDaOS` nasceu lá. Contra um
+       GAS v92 a chamada falha e o app se comporta exatamente como a V85 (a
+       coleta abre em branco) — degradação silenciosa e deliberada, nunca erro
+       na cara do técnico.
+
+     ⚠ ESTA VERSÃO NÃO É O QUE DESBLOQUEIA O REGISTRO. Os dois primeiros
+       sintomas do chamado FERTEC (07/08) — "ℹ Esta preventiva já foi
+       registrada" e a OS que não encerra — são consertados NO SERVIDOR, pelo
+       GAS v93, e valem para o celular que já está em campo com a V82. A V86
+       resolve o TERCEIRO: a tela que abria zerada e obrigava o técnico a ir no
+       📂 "Coletas salvas" restaurar à mão.
+
+     ── O QUE MUDOU (1 concern, 1 função nova + 1 chamada) ──────────────────
+     • `pgpRestaurarColetaGravada(midx, eq)` (nova): depois que
+       `pgpCarregarMaquinaOS` põe a máquina na tela, pede ao GAS a coleta já
+       gravada desta máquina NESTA OS e repõe horímetro real, data da leitura,
+       observações (geral, operacional e das peças), auxiliar/horas e — o que
+       nunca existia — a AÇÃO de cada peça (trocada/conferida/na). Depois
+       recalcula as linhas, sincroniza os checks e atualiza o progresso: sem
+       isso a tela voltaria cheia marcando 0%.
+     • Quando a OS foi REABERTA, avisa na tela que registrar vai CORRIGIR os
+       dados desta máquina, não duplicá-los.
+     • Regra inegociável: NUNCA sobrescreve campo com valor. Mesma disciplina do
+       `svEl` do MODO MERGE (V71) — dado que está na tela é dado de campo e
+       pode ser a única cópia viva do que foi medido no cliente.
+     ── O QUE NÃO FAZ ──────────────────────────────────────────────────────
+     • Não traz as FOTOS de volta para o photoStore (elas continuam voltando só
+       como miniatura decorativa, via pfCarregarFotosMaquina — comportamento
+       V81 inalterado). Regerar o PDF no aparelho depois de reabrir ainda sai
+       sem as fotos originais; o PDF completo é o do PCM, que lê o Drive.
+     • Não mexe no envio, no visit_id, na fila offline nem no PDF.
+══════════════════════════════════════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════════════════════════════════════════
      PCF V85 — 07/08/2026 — PREPARAR O DIA COM ESCOLHA (A) · FIM DO "SAIR DO SITE?" (B)
      Par: sw v85 (SOBE EM PAR — sw velho serve o V84 do cache).
      Base: V84 (o semáforo de prazo e os chips ⏱/⏳/📅 seguem INTACTOS).
@@ -636,8 +673,8 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ProperCare Field · PGP Preventivas v34 · build PCF_V85</title>
-<meta name="app-build" content="PCF_V85" data-date="2026-08-07">
+<title>ProperCare Field · PGP Preventivas v34 · build PCF_V86</title>
+<meta name="app-build" content="PCF_V86" data-date="2026-08-07">
 
 <!-- V82 (item 8) — TRATADOR GLOBAL DE ERRO. Antes: ZERO window.onerror e ZERO
      unhandledrejection. O incidente v39 (boot morto por ReferenceError, app
@@ -654,7 +691,7 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
       if (_log.length > 40) _log.shift();
       if (_vistos[chave] && agora - _vistos[chave] < 15000) return;
       _vistos[chave] = agora;
-      console.error('[PCF V85][' + tipo + ']', msg, detalhe || '');
+      console.error('[PCF V86][' + tipo + ']', msg, detalhe || '');
       if (agora - _ult < 5000) return;
       _ult = agora;
       var txt = String(msg || 'erro desconhecido');
@@ -2221,7 +2258,7 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
       <div class="proper-logo-mark">H</div>
       <div class="proper-logo-text">
         <span class="brand">PROPER</span>
-        <span class="brand-sub">Field · V85</span>
+        <span class="brand-sub">Field · V86</span>
       </div>
     </div>
     <div class="header-right">
@@ -8483,7 +8520,7 @@ function pgpDescartarPending(idx){
 
 // V81 — diagnóstico copiável: o técnico manda no WhatsApp em vez de descrever.
 function pgpCopiarFilaDiag(){
-  var o = { versao:'PCF_V85', quando:new Date().toISOString(),
+  var o = { versao:'PCF_V86', quando:new Date().toISOString(),
     conectado:(typeof _pgpGsConnected!=='undefined')?_pgpGsConnected:'?',
     sync:pgpGetPending().map(pgpFilaItemResumo),
     conferir:pgpGetDead().map(pgpFilaItemResumo),
@@ -11326,6 +11363,143 @@ async function pgpCarregarMaquinaOS(eq, idx){
     pgpLoadMachine(machineToLoad, fullDb, idx, eq?.clientData || null);
   }catch(e){
     pgpLoadMachine(machineToLoad, null, idx, eq?.clientData || null);
+  }
+
+  // V86 — repõe a COLETA já gravada desta máquina nesta OS (ver a função).
+  // Não-bloqueante de propósito: a máquina já está na tela; a coleta chega
+  // por cima, sem segurar o técnico numa espera de rede.
+  try{ pgpRestaurarColetaGravada(idx, machineToLoad); }catch(e){ console.warn('pgpRestaurarColetaGravada:', e); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// V86 — A OS REABERTA VOLTA COM OS DADOS, NÃO EM BRANCO.
+//
+// O 3º sintoma do chamado de 07/08/2026: reabrir a OS no PCM e voltar no PCF
+// abria a coleta ZERADA — o técnico tinha de ir no 📂 "Coletas salvas" e
+// restaurar à mão. Num aparelho diferente do que coletou, nem isso existia.
+//
+// Por quê: `pgpLoadMachine` repõe o CADASTRO (getMaquinasByOS) e usa
+// MACHINE_PARTS como referência VISUAL, mas
+//   • a AÇÃO da peça (trocada/conferida/na) nunca vinha do servidor — e é
+//     exatamente ela que `pgpMaquinaPercent` conta, então a coleta reabria 0%;
+//   • `pfReprojetar(force=true)` LIMPA o horímetro real de propósito, para
+//     obrigar a leitura do display (V65) — correto na 1ª visita, errado aqui;
+//   • as fotos voltavam só como miniatura decorativa (`pfCarregarFotosMaquina`
+//     escreve em innerHTML e não toca no photoStore);
+//   • observação geral, obs. das peças, auxiliar e horas não voltavam nunca.
+// E nada disso era "restaurável": NÃO EXISTIA leitura de coleta gravada em
+// todo o GAS (`getVisita*`/`getPreventiva*` não existiam). O GAS v93 criou
+// `getPreventivaDaOS`; esta função é o consumidor dela.
+//
+// ⚠ NUNCA sobrescreve o que está na tela. A regra é a mesma do `svEl` do MODO
+//   MERGE (V71): campo com valor é dado de campo, e dado de campo é sagrado —
+//   pode ter vindo de rascunho, sem evento de input, e ser a única cópia viva
+//   do que foi medido no cliente. Numa carga limpa tudo está vazio ⇒ repõe
+//   tudo; numa reentrada com coleta na tela ⇒ não toca em nada.
+// ⚠ Silenciosa em qualquer falha: sem rede, GAS antigo (action desconhecida)
+//   ou visita inexistente, o comportamento é o da V85 (abre em branco).
+// ══════════════════════════════════════════════════════════════════════════
+async function pgpRestaurarColetaGravada(midx, eq){
+  try{
+    if(!window._PGP_OS_ID) return;                 // só dentro de OS
+    if(!_pgpGsConnected) return;                   // offline: nada a pedir
+    const idx = pgpGetMachineIndex(midx);
+    const p = `m${idx}_`;
+
+    let d = null;
+    try{
+      d = await pgpPostJson('getPreventivaDaOS', {
+        os_id: window._PGP_OS_ID,
+        machine_id: (eq && eq.id) || '',
+        serial: (eq && eq.serial) || '',
+        tipo: (typeof _pgpTipoVisita !== 'undefined') ? _pgpTipoVisita : 'preventiva'
+      }, 1);
+    }catch(e){ return; }                            // GAS v92 ou rede ruim
+    if(!d || d.status !== 'ok' || !d.encontrada || !d.visita) return;
+
+    const v = d.visita || {};
+    const parts = d.parts || {};
+
+    // Mesma disciplina do svEl: só escreve em campo VAZIO.
+    const setSeVazio = (key, val) => {
+      if(val === undefined || val === null || val === '') return;
+      const el = document.querySelector(`[data-key="${p}${key}"]`);
+      if(!el) return;
+      if(String(el.value||'').trim() !== '') return;
+      el.value = val;
+    };
+    const setElSeVazio = (el, val) => {
+      if(!el) return;
+      if(val === undefined || val === null || val === '') return;
+      if(String(el.value||'').trim() !== '') return;
+      el.value = val;
+    };
+
+    // ── cabeçalho da coleta ──────────────────────────────────────────────
+    setSeVazio('horimetro',    v.hourTotal);
+    setSeVazio('data_leitura', v.dataLeitura);
+    setSeVazio('obs_gerais',   v.generalObs);
+    setSeVazio('obs_op',       v.obsOp);
+    setSeVazio('auxiliar',     v.auxiliar);
+    setSeVazio('hora_inicio',  v.horaInicio);
+    setSeVazio('hora_fim',     v.horaFim);
+    setSeVazio('tecnico',      v.tech);
+    setElSeVazio(document.getElementById(p + 'parts_obs'), v.partsObs);
+
+    // ── peças: valores + AÇÃO ────────────────────────────────────────────
+    let reposta = 0;
+    const idMap = pgpPartIdMapDe(idx) || {};
+    pgpPartsDe(idx).forEach(pt => {
+      const aid = idMap[pt.k]; if(!aid) return;
+      const sp = parts[aid];   if(!sp) return;
+      const pk = `${p}${pt.k}`;
+
+      setElSeVazio(document.getElementById(`${pk}_ult`),            sp.lastChange);
+      setElSeVazio(document.getElementById(`${pk}_ref`),            sp.ref);
+      setElSeVazio(document.getElementById(`${pk}_int`),            sp.interval);
+      setElSeVazio(document.getElementById(`${pk}_valor_mostrado`), sp.valorMostrado);
+      setElSeVazio(document.getElementById(`${pk}_contador`),       sp.contador);
+      setElSeVazio(document.getElementById(`${pk}_estado`),         sp.estado);
+      setElSeVazio(document.getElementById(`${pk}_obs`),            sp.obs);
+
+      // A ação é o campo que faltava. Só repõe se ainda não houver ação nem
+      // N/A na tela — repor por cima transformaria "conferida" do técnico de
+      // agora na "trocada" do lançamento errado.
+      const acaoEl = document.getElementById(`${pk}_acao`);
+      const naBtn  = document.getElementById(`${pk}_na`);
+      const jaTemAcao = (acaoEl && String(acaoEl.value||'').trim() !== '') ||
+                        (naBtn && naBtn.classList.contains('active'));
+      if(!jaTemAcao){
+        if(sp.na || sp.acao === 'na'){
+          if(naBtn && !naBtn.classList.contains('active')){
+            naBtn.classList.add('active'); naBtn.textContent = '✕ N/A';
+            const tr = document.getElementById(`${pk}_tr`); if(tr) tr.classList.add('pt-na');
+            const quick = document.getElementById(`${pk}_quick_row`); if(quick) quick.style.display = 'none';
+          }
+          if(acaoEl) acaoEl.value = 'na';
+          try{ updatePartCompletionStatus(pk); }catch(_){}
+        }else if(sp.acao === 'trocada' || sp.acao === 'conferida'){
+          try{ pgpSetAcao(pk, sp.acao); }catch(_){}
+        }
+        reposta++;
+      }
+    });
+
+    // Recalcula linha a linha e sincroniza os checks com os valores repostos —
+    // sem isso o progresso continuaria mostrando 0% com a tela cheia.
+    try{ pgpPartsDe(idx).forEach(pt => { try{ calcPartRow(p + pt.k, pt.intDefault); }catch(_){} }); }catch(_){}
+    try{ pgpSyncCheckedComValores(idx); }catch(_){}
+    try{ document.querySelectorAll('[data-section]').forEach(s=>refreshSection(s)); }catch(_){}
+    try{ updateProgress(); }catch(_){}
+    try{ pgpSaveDraftAgora(); }catch(_){}   // o que voltou do servidor entra no rascunho
+
+    if(d.em_correcao){
+      showNotification('↩ Coleta anterior reposta (' + reposta + ' peça(s)). Esta OS foi REABERTA — ao registrar, os dados desta máquina serão CORRIGIDOS, não duplicados.');
+    }else if(reposta){
+      showNotification('↩ Coleta já registrada desta máquina foi reposta na tela (' + reposta + ' peça(s)).');
+    }
+  }catch(e){
+    console.warn('[PCF V86] pgpRestaurarColetaGravada:', e);
   }
 }
 
