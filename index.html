@@ -455,6 +455,52 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
     notificações, em vez de disparar as duas em paralelo.
 -->
 <!-- ══════════════════════════════════════════════════════════════════════════
+     PCF V84 — 07/08/2026 — O PRAZO PASSA A SER O MESMO DO ADMIN.
+     Par: GAS v91 · PCM V113 · sw v84 (SOBE EM PAR — sw velho serve o V83 do cache).
+     100% ADITIVO: nenhuma função, id, data-key, data-view ou rota renomeada.
+     Uma função tocada: `_pfCard` (mantém o nome).
+
+     🎯 O DEFEITO (achado na auditoria do prompt do quadro da oficina, 07/08):
+        o card do técnico calculava o atraso SOZINHO —
+          `if (o.data_prevista) { atrasada = Date.now() > pv }`
+        — ou seja, só a data digitada à mão pelo admin. O `Prazo_Estimado_Total`
+        que o motor de caminho crítico calcula (v85/P3) ficava de fora, e o
+        `⏳ há Nd` contava desde a ABERTURA DA OS, não desde a entrada na etapa.
+        É o MESMO D1/D3 que o PCM V113 está matando. Duas telas contando o
+        mesmo prazo por contas diferentes é como o técnico e o admin acabam
+        discutindo sobre qual OS está atrasada.
+
+     ⚠ E POR QUE ISSO NÃO SE RESOLVIA SÓ NO GAS: `getOS(com_fila)` NÃO passa
+       pelo `_filaItem_` — ele monta o objeto campo a campo desde o v84, apesar
+       de o comentário do helper afirmar o contrário. Os campos novos do
+       quadro NÃO chegavam aqui. O v91 corrige isso com `_prazoSituacao_`,
+       chamado dos dois lados; este arquivo só LÊ.
+
+     O que muda no card (`_pfCard`), tudo vindo do envelope — zero conta local:
+       • `⏱ Nd na etapa` (+ `/ meta Md` quando a tarefa tem Alerta_dias) — o
+         relógio que faltava. `~` marca pipeline anterior ao v85, sem marco de
+         liberação: número DERIVADO nunca se passa por número medido.
+       • `⏳ Nd na oficina` — o relógio antigo, agora rotulado (era só "há Nd",
+         sem dizer de quê).
+       • `📅 dd/mm · faltam Nd | Nd de atraso` — substitui o `⏱ prev. dd/mm` da
+         V80. A ORIGEM do prazo vai no `title` ("data definida pelo admin" /
+         "estimativa do caminho crítico" / "meta do tipo de OS"): número sem
+         procedência vira crença.
+       • Semáforo 🔴/🟡 no topo do card e borda esquerda colorida, no MESMO
+         vocabulário do PCM. Verde e "sem meta" NÃO ganham cor — se tudo ganhar
+         cor, o vermelho perde o contraste que o torna útil. OS concluída fica
+         fora do semáforo.
+
+     ⚠ DEGRADAÇÃO CONTROLADA (importa MAIS aqui do que no PCM): o PCF é
+       offline-first e guarda a lista inteira em `pf_os_cache_v1`. Cache frio,
+       gravado antes do v91, NÃO tem `situacao` — o card volta ao render da V83
+       (`⏳ há Nd`, vermelho por data_prevista) em vez de sumir com os chips.
+       Nenhum campo novo é obrigatório em lugar nenhum.
+
+     Bancada: asserts de UI em Chromium headless (360×740) sobre o HTML real,
+     com GAS falso COM ESTADO e cache frio simulado.
+     ══════════════════════════════════════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════════════════════════════════════════
      PCF V80 — 04/08/2026 — P1 CORREÇÕES + P2 VISUALIZAÇÃO + P3 PRAZOS + INSPEÇÃO AVULSA
      Par: GAS v85 · PCM V106 · sw v80 (SOBE EM PAR — sw velho serve o V77 do cache).
      100% ADITIVO: nenhuma função, id, data-key, data-view ou rota renomeada.
@@ -504,8 +550,8 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ProperCare Field · PGP Preventivas v34 · build PCF_V83</title>
-<meta name="app-build" content="PCF_V83" data-date="2026-08-06">
+<title>ProperCare Field · PGP Preventivas v34 · build PCF_V84</title>
+<meta name="app-build" content="PCF_V84" data-date="2026-08-07">
 
 <!-- V82 (item 8) — TRATADOR GLOBAL DE ERRO. Antes: ZERO window.onerror e ZERO
      unhandledrejection. O incidente v39 (boot morto por ReferenceError, app
@@ -522,7 +568,7 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
       if (_log.length > 40) _log.shift();
       if (_vistos[chave] && agora - _vistos[chave] < 15000) return;
       _vistos[chave] = agora;
-      console.error('[PCF V83][' + tipo + ']', msg, detalhe || '');
+      console.error('[PCF V84][' + tipo + ']', msg, detalhe || '');
       if (agora - _ult < 5000) return;
       _ult = agora;
       var txt = String(msg || 'erro desconhecido');
@@ -1376,6 +1422,13 @@ function pgpEnsureJsPDF() {
 .pf-os-meta { white-space: nowrap; }
 /* Nome de fase longo é o único que pode quebrar — mas por palavra, não no meio. */
 .pf-os-meta:last-child { white-space: normal; overflow-wrap: anywhere; }
+/* V84 (K-P1) — semáforo de prazo. Paleta ESCURA: o PCF é dark (#1e293b), então
+   #dc2626/#d97706 (que o PCM usa em fundo branco) ficam ilegíveis aqui. */
+.pf-os-card.sit-atrasada { border-left: 3px solid #f87171; }
+.pf-os-card.sit-risco    { border-left: 3px solid #fbbf24; }
+.pf-os-sit { font-size: 11px; line-height: 1; white-space: nowrap; }
+.pf-os-meta.sit-atrasada { color: #f87171; font-weight: 700; }
+.pf-os-meta.sit-risco    { color: #fbbf24; font-weight: 700; }
 .pf-os-prog-wrap { display: flex; align-items: center; gap: 8px; margin-top: 6px; min-width: 0; }
 .pf-os-prog { flex: 1; min-width: 0; height: 4px; background: #0f172a; border-radius: 2px; overflow: hidden; }
 .pf-os-prog-bar { height: 100%; background: #3b82f6; border-radius: 2px; }
@@ -2082,7 +2135,7 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
       <div class="proper-logo-mark">H</div>
       <div class="proper-logo-text">
         <span class="brand">PROPER</span>
-        <span class="brand-sub">Field · V82</span>
+        <span class="brand-sub">Field · V84</span>
       </div>
     </div>
     <div class="header-right">
@@ -8344,7 +8397,7 @@ function pgpDescartarPending(idx){
 
 // V81 — diagnóstico copiável: o técnico manda no WhatsApp em vez de descrever.
 function pgpCopiarFilaDiag(){
-  var o = { versao:'PCF_V82', quando:new Date().toISOString(),
+  var o = { versao:'PCF_V84', quando:new Date().toISOString(),
     conectado:(typeof _pgpGsConnected!=='undefined')?_pgpGsConnected:'?',
     sync:pgpGetPending().map(pgpFilaItemResumo),
     conferir:pgpGetDead().map(pgpFilaItemResumo),
@@ -13545,7 +13598,40 @@ function pfRenderOS() {
     // sozinho na linha de baixo — defeito que a suíte não pega e o olho pega.
     var linha3 = [];
     if (o.posicao_fila) linha3.push('<span class="pf-os-meta">🎫 #' + o.posicao_fila + ' na fila</span>');
-    if (typeof o.dias_na_fila === 'number') {
+
+    // ── V84 (K-P1) — PRAZO: LER, NUNCA RECALCULAR ───────────────────────────
+    // Até a V83 esta função decidia sozinha o que era "atrasada", olhando SÓ a
+    // `data_prevista` digitada. O motor de caminho crítico ficava de fora e o
+    // "há Nd" contava desde a abertura da OS. O admin via um número, o técnico
+    // via outro, para a MESMA OS.
+    // ⚠ `_v91` guarda o cache frio: `pf_os_cache_v1` gravado antes do GAS v91
+    //   não tem `situacao`, e aí o card volta ao render da V83 inteiro. Nenhum
+    //   campo novo é obrigatório — a lista NUNCA esconde uma OS por falta deles.
+    var _v91 = (typeof o.situacao === 'string');
+    var _sitCls = (_v91 && (o.situacao === 'atrasada' || o.situacao === 'risco')) ? ('sit-' + o.situacao) : '';
+
+    if (_v91) {
+      // ⏱ ETAPA — o relógio que faltava. `~` = pipeline anterior ao v85, sem
+      // marco de liberação: a conta parte da abertura da OS e isso PRECISA
+      // aparecer. Número derivado nunca se passa por número medido.
+      if (typeof o.dias_na_fase === 'number') {
+        var _est = o.dias_na_fase_estimado ? '~' : '';
+        var _mf  = (o.fase_alerta_dias > 0) ? (' / meta ' + o.fase_alerta_dias + 'd') : '';
+        var _cf  = (o.situacao_fase === 'atrasada') ? ' sit-atrasada'
+                 : (o.situacao_fase === 'risco')    ? ' sit-risco' : '';
+        linha3.push('<span class="pf-os-meta' + _cf + '" title="' +
+          (o.dias_na_fase_estimado
+            ? 'Estimado: este pipeline é anterior ao v85 e não tem marco de liberação, então a conta parte da abertura da OS.'
+            : 'Dias desde que esta etapa foi liberada.') +
+          '">⏱ ' + _est + o.dias_na_fase + 'd na etapa' + _mf + '</span>');
+      }
+      // ⏳ OFICINA — o relógio antigo, agora ROTULADO (era só "há Nd").
+      if (typeof o.dias_na_fila === 'number') {
+        linha3.push('<span class="pf-os-meta" title="Dias desde a abertura da OS.">⏳ ' +
+                    o.dias_na_fila + 'd na oficina</span>');
+      }
+    } else if (typeof o.dias_na_fila === 'number') {
+      // Caminho V83 (cache frio ou GAS v90): a conta antiga, preservada.
       var atrasada = false;
       if (o.data_prevista) { var pv = new Date(o.data_prevista).getTime(); atrasada = !isNaN(pv) && Date.now() > pv; }
       linha3.push('<span class="pf-os-meta"' + (atrasada ? ' style="color:#f87171"' : '') + '>⏳ há ' +
@@ -13565,9 +13651,28 @@ function pfRenderOS() {
       progHtml = '<div class="pf-os-prog-wrap"><span class="pf-os-minha">👤 sua tarefa</span></div>';
     }
 
-    // V80 (P3/§7) — prazo previsto, quando o motor já calculou. Entra na MESMA
-    // linha de meta: uma 4ª linha deixava o card alto demais no celular.
-    if (o.Prazo_Estimado_Total || o.prazo_estimado_total) {
+    // V84 (K-P1) — PRAZO DE SAÍDA. Substitui o "⏱ prev. dd/mm" da V80, que
+    // mostrava SEMPRE o número do motor mesmo quando o admin tinha digitado
+    // outra data — e sem dizer de onde o número vinha. A procedência vai no
+    // `title`: "05/08" digitado à mão e "05/08" calculado pesam diferente na
+    // hora de o técnico decidir o que fazer primeiro.
+    // Entra na MESMA linha de meta: uma 4ª linha deixa o card alto demais no celular.
+    if (_v91 && o.prazo_saida_iso) {
+      var _ds = new Date(o.prazo_saida_iso);
+      if (!isNaN(_ds.getTime())) {
+        var _dr = o.dias_restantes;
+        var _falta = (_dr === null || _dr === undefined) ? ''
+                   : (_dr >= 0 ? (' · faltam ' + _dr + 'd') : (' · ' + Math.abs(_dr) + 'd de atraso'));
+        var _cs = (_dr !== null && _dr !== undefined && _dr < 0) ? ' sit-atrasada'
+                : (_dr !== null && _dr !== undefined && _dr <= 2) ? ' sit-risco' : '';
+        var _ORIG = { data_prevista: 'data definida pelo admin',
+                      motor: 'estimativa do caminho crítico',
+                      meta_tipo: 'meta do tipo de OS (sem previsão calculada)' };
+        linha3.push('<span class="pf-os-meta' + _cs + '" title="Prazo de saída — ' +
+          pfEscHtmlOS(_ORIG[o.prazo_saida_origem] || 'origem não informada') + '">📅 ' +
+          ('0' + _ds.getDate()).slice(-2) + '/' + ('0' + (_ds.getMonth() + 1)).slice(-2) + _falta + '</span>');
+      }
+    } else if (!_v91 && (o.Prazo_Estimado_Total || o.prazo_estimado_total)) {
       var _dp = new Date(o.Prazo_Estimado_Total || o.prazo_estimado_total);
       if (!isNaN(_dp.getTime())) {
         linha3.push('<span class="pf-os-meta">⏱ prev. ' +
@@ -13579,9 +13684,16 @@ function pfRenderOS() {
     // V81: o texto visível usa pfEscHtmlOS, mas o ATRIBUTO só escapava a aspa
     // simples — cliente com aspa dupla no nome quebrava o card inteiro.
     var _atr = function(s){ return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g, "\\'"); };
-    return '<div class="pf-os-card" onclick="pfSelecionarOS(\'' + _atr(idOperacional) + '\',\'' + _atr(cli + tipo) + '\')">' +
+    // V84 — semáforo no topo. Só 🔴 e 🟡 ganham ícone: marcar TODA OS em dia
+    // com 🟢 encheria a lista de bolinhas e o vermelho deixaria de saltar. OS
+    // concluída e OS sem meta ficam sem marca nenhuma, de propósito.
+    var sitIco = '';
+    if (_v91 && o.situacao === 'atrasada') sitIco = '<span class="pf-os-sit" title="Atrasada">🔴</span>';
+    else if (_v91 && o.situacao === 'risco') sitIco = '<span class="pf-os-sit" title="Em risco">🟡</span>';
+
+    return '<div class="pf-os-card' + (_sitCls ? ' ' + _sitCls : '') + '" onclick="pfSelecionarOS(\'' + _atr(idOperacional) + '\',\'' + _atr(cli + tipo) + '\')">' +
       '<div style="flex:1;min-width:0">' +
-        '<div class="pf-os-topo">' + prioHtml + '<span class="pf-os-numero">OS #' + pfEscHtmlOS(numeroDisplay) + '</span></div>' +
+        '<div class="pf-os-topo">' + prioHtml + sitIco + '<span class="pf-os-numero">OS #' + pfEscHtmlOS(numeroDisplay) + '</span></div>' +
         '<div class="pf-os-cliente">' + (cli ? pfEscHtmlOS(cli) : '—') + pfEscHtmlOS(tipo) + '</div>' +
         linha3Html + progHtml +
       '</div>' +
