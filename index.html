@@ -455,6 +455,92 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
     notificações, em vez de disparar as duas em paralelo.
 -->
 <!-- ══════════════════════════════════════════════════════════════════════════
+     PCF V85 — 07/08/2026 — PREPARAR O DIA COM ESCOLHA (A) · FIM DO "SAIR DO SITE?" (B)
+     Par: sw v85 (SOBE EM PAR — sw velho serve o V84 do cache).
+     Base: V84 (o semáforo de prazo e os chips ⏱/⏳/📅 seguem INTACTOS).
+     Backend: ZERO mudança de GAS. Roda com o v91 ou o v92 no ar.
+
+     ⚠ NOTA DE AUDITORIA (07/08, antes de escrever a primeira linha): o prompt
+       desta sprint mandava partir do `NEWFILE_PCF_V83_index.html` e sair como
+       V84. Mas a V84 JÁ EXISTIA — é a sprint de prazo/semáforo entregue hoje
+       de manhã, par do GAS v91 — e já era o `index.html` local. Implementar
+       como escrito teria produzido uma "V84" SEM o semáforo e sobrescrito o
+       arquivo. Saiu V85 SOBRE a V84. Mesmo reflexo da rodada V112→V113.
+
+     São DOIS concerns, e a regra do projeto é um por versão. A exceção é
+     deliberada: o bloco B tem 3 linhas úteis, não toca nenhuma linha do bloco
+     A e não compartilha nenhum identificador com ele — changelog, diff e
+     verificação são SEPARADOS por bloco, para que reverter um não obrigue a
+     reverter o outro.
+
+     ── BLOCO A · "📥 PREPARAR O DIA" DEIXA DE BAIXAR O QUE NINGUÉM PEDIU ────
+     ERRADO ATÉ AQUI: o botão baixava TODAS as OS ativas, ordenava as
+     designadas primeiro e cortava no teto de 25 — sem o técnico escolher
+     nada. OS INTERNAS (oficina, onde há wifi) ocupavam cache e tempo de rede
+     de quem vai a campo; quem ia atender 3 clientes esperava 20 rodadas de
+     rede; e o teto cortava EM SILÊNCIO, podendo cortar justamente a OS do dia.
+     AGORA: passo 1 abre `#pfPrepararPainel` com as candidatas (OS externas
+     ATIVAS); passo 2 baixa só as marcadas.
+       A1 · `pfOsEhExterna` / `pfOsEhAtiva` / `pfOsSemLocal`: REGRA ÚNICA. A
+            comparação de local existia só dentro de `pfRenderOS` e o
+            "Preparar o dia" ignorava `local_atendimento` por completo. Duas
+            cópias divergem na primeira manutenção. As 4 grafias
+            (externa/externo/interna/interno) continuam aceitas — o GAS grava
+            'externo' e a planilha tem histórico com 'externa'.
+       A2 · Seleção persistida em `pf_preparar_sel_v1` (única chave nova). Ao
+            reabrir, pré-marca os ids que AINDA são candidatos; os que sumiram
+            (OS concluída, virou interna) são descartados sem erro. Sem nada
+            persistido, pré-marca as designadas — e se não houver nenhuma,
+            começa TUDO DESMARCADO. O pedido é seleção explícita.
+       A3 · "No silent caps": o rodapé conta as internas que não entram e as
+            OS ativas SEM local definido (decisão D-1, padrão A: elas não
+            somem, aparecem contadas com a instrução de corrigir no PCM). E o
+            teto de 25 virou BLOQUEIO com o número exato a desmarcar, em vez
+            do `slice()` mudo da V77.
+       A4 · Área de toque mínima de 44px por item: é celular, com luva e sol.
+       ⚠ ZERO GAS: o passo 2 é o laço da V84 palavra por palavra
+         (getPipelineByOS + getMaquinasByOS → pfCacheGravarPipeline /
+         pfCacheGravarMaqOS), iterando as selecionadas em vez de `alvo`.
+       ⚠ NADA foi renomeado: `pfPrepararODia(btn)` segue sendo a função do
+         onclick e segue com o nome — só muda de comportamento.
+
+     ── BLOCO B · A CAIXA "SAIR DO SITE?" AO ABRIR FORMULÁRIO DE OFICINA ─────
+     SINTOMA: no pipeline, tocar em "📋 Abrir formulário" numa tarefa de
+     oficina (Form 08/09/10 ou Rotores) abria o diálogo NATIVO do Chrome
+     avisando que o técnico ia sair da página. Ele não pediu para sair de
+     lugar nenhum — pediu para abrir o formulário. Pior: treina o dedo a
+     aceitar avisos sem ler, que é o que arruína um guard de verdade.
+     CAUSA: a caixa nunca foi do app (o botão "Sair" é do navegador). O
+     `beforeunload` de `setupBackGuard` consulta `temDadosPreenchidos()`, que
+     responde `true` se QUALQUER input/textarea/select do documento tiver
+     valor — e o PCF carrega o formulário PGP inteiro na mesma página, com
+     campos pré-preenchidos pelo próprio app. `_allowLeave` seguia `false`
+     porque só `guardarSair()` (o caminho do botão VOLTAR) a liga: ninguém
+     ligava na saída INTENCIONAL para o formulário.
+     CORREÇÃO (3 linhas antes da navegação externa): `autoSaveDraft()` e
+     `_allowLeave = true`. O guard continua íntegro para o botão voltar e para
+     o reload, que são saídas realmente não intencionais.
+     ⚠ `autoSaveDraft()` ANTES, e não só a flag: suprimir a caixa sozinho
+       tornaria silencioso um risco real (preventiva meio preenchida na tela
+       de trás morre na navegação). Com o rascunho gravado — mesma chave
+       `pgp_draft_v1` do banner "↩ Rascunho" — suprimir o aviso deixa de
+       esconder o problema e passa a RESOLVER o que o aviso sinalizava.
+     ⚠ NÃO foi removido o `addEventListener('beforeunload')`, NÃO foi tocada
+       `temDadosPreenchidos()` (ela é chamada também pelo back-guard e pelos
+       avisos de rascunho — mudá-la muda 3 comportamentos e vira outro
+       concern), e NÃO foi tocado o ramo `_ehProprioApp`: preventiva e
+       inspeção NUNCA exibiram essa caixa e devem continuar iguais.
+
+     ── ACHADO COLATERAL — REGISTRADO, NÃO CORRIGIDO ─────────────────────────
+     `temDadosPreenchidos()` varre `document.querySelectorAll('input, textarea,
+     select')` inteiro, o que inclui a busca de OS, os campos pré-preenchidos
+     pelo próprio app e todo `select` com opção default. Na prática ela
+     responde "sim, tem dados" quase sempre — inclusive quando o técnico não
+     digitou nada, o que deixa o back-guard do botão voltar barulhento pelo
+     mesmo motivo. Escopo de sprint própria: restringir a varredura ao
+     container da coleta. NÃO implementado nesta versão.
+     ══════════════════════════════════════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════════════════════════════════════════
      PCF V84 — 07/08/2026 — O PRAZO PASSA A SER O MESMO DO ADMIN.
      Par: GAS v91 · PCM V113 · sw v84 (SOBE EM PAR — sw velho serve o V83 do cache).
      100% ADITIVO: nenhuma função, id, data-key, data-view ou rota renomeada.
@@ -550,8 +636,8 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ProperCare Field · PGP Preventivas v34 · build PCF_V84</title>
-<meta name="app-build" content="PCF_V84" data-date="2026-08-07">
+<title>ProperCare Field · PGP Preventivas v34 · build PCF_V85</title>
+<meta name="app-build" content="PCF_V85" data-date="2026-08-07">
 
 <!-- V82 (item 8) — TRATADOR GLOBAL DE ERRO. Antes: ZERO window.onerror e ZERO
      unhandledrejection. O incidente v39 (boot morto por ReferenceError, app
@@ -568,7 +654,7 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
       if (_log.length > 40) _log.shift();
       if (_vistos[chave] && agora - _vistos[chave] < 15000) return;
       _vistos[chave] = agora;
-      console.error('[PCF V84][' + tipo + ']', msg, detalhe || '');
+      console.error('[PCF V85][' + tipo + ']', msg, detalhe || '');
       if (agora - _ult < 5000) return;
       _ult = agora;
       var txt = String(msg || 'erro desconhecido');
@@ -2135,7 +2221,7 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
       <div class="proper-logo-mark">H</div>
       <div class="proper-logo-text">
         <span class="brand">PROPER</span>
-        <span class="brand-sub">Field · V84</span>
+        <span class="brand-sub">Field · V85</span>
       </div>
     </div>
     <div class="header-right">
@@ -8397,7 +8483,7 @@ function pgpDescartarPending(idx){
 
 // V81 — diagnóstico copiável: o técnico manda no WhatsApp em vez de descrever.
 function pgpCopiarFilaDiag(){
-  var o = { versao:'PCF_V84', quando:new Date().toISOString(),
+  var o = { versao:'PCF_V85', quando:new Date().toISOString(),
     conectado:(typeof _pgpGsConnected!=='undefined')?_pgpGsConnected:'?',
     sync:pgpGetPending().map(pgpFilaItemResumo),
     conferir:pgpGetDead().map(pgpFilaItemResumo),
@@ -13196,8 +13282,97 @@ function pfOsTemCache(osId){
 // já faz ao abrir uma OS (getPipelineByOS + getMaquinasByOS), só que
 // antecipadas e gravadas nos mesmos caches. Zero GAS.
 // ══════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════
+// V85 (A) — REGRA ÚNICA DE "OS EXTERNA".
+// Até a V84 esta comparação existia só DENTRO de pfRenderOS, e o "Preparar o
+// dia" ignorava `local_atendimento` por completo. Duas cópias da mesma regra
+// divergem na primeira manutenção — então agora é uma só, usada nos dois
+// lugares.
+// ⚠ Aceita as QUATRO grafias porque o GAS grava 'externo' (v90, linha ~6380)
+//   mas a planilha tem registros históricos com 'externa'.
+// ⚠ String() obrigatório: `local_atendimento` volta NUMBER/vazio do Sheets, e
+//   campo do Sheets já congelou filtro duas vezes neste projeto.
+// ══════════════════════════════════════════════════════════════════════════
+function pfOsEhExterna(o){
+  var la = String((o && o.local_atendimento) || '').trim().toLowerCase();
+  return la === 'externa' || la === 'externo';
+}
+function pfOsEhAtiva(o){
+  var st = String((o && o.status) || '').trim().toLowerCase();
+  return st === 'aberta' || st === 'em_andamento';
+}
+// V85 (A) — "sem local definido" é um TERCEIRO estado, não sinônimo de interna.
+// É ele que o rodapé conta (decisão D-1, padrão A): a OS de campo com o campo
+// em branco não some — ela aparece contada, com a instrução de corrigir no PCM.
+function pfOsSemLocal(o){
+  return !String((o && o.local_atendimento) || '').trim();
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// V85 (A) — "PREPARAR O DIA" VIRA FLUXO DE DOIS PASSOS.
+//
+// O QUE ESTAVA ERRADO NA V77→V84: o botão baixava TODAS as OS ativas
+// (aberta + em_andamento), ordenava as designadas primeiro e cortava no teto
+// de 25 — sem o técnico escolher nada. Consequências reais:
+//   • OS INTERNAS (oficina) ocupavam cache e tempo de download de quem vai a
+//     campo. Internas não precisam de cache offline: o técnico está na
+//     oficina, com wifi.
+//   • Quem ia atender 3 clientes baixava 20 OS e esperava 20 rodadas de rede.
+//   • O teto de 25 cortava EM SILÊNCIO — e o que era cortado podia ser
+//     justamente a OS do dia.
+//
+// AGORA: passo 1 abre um painel de seleção (candidatas = OS externas ATIVAS);
+// passo 2 baixa só as marcadas. O teto virou BLOQUEIO com contagem, não corte
+// mudo — o princípio "no silent caps" já escrito na V77.
+// ⚠ ZERO GAS: o laço do passo 2 é o MESMO de sempre (getPipelineByOS +
+//   getMaquinasByOS, gravando em pfCacheGravarPipeline / pfCacheGravarMaqOS).
+//   Nenhuma action nova, nenhum parâmetro novo.
+// ⚠ `pfPrepararODia(btn)` continua sendo a função do onclick do botão e
+//   continua com o nome — ela só muda de comportamento.
+// ══════════════════════════════════════════════════════════════════════════
 var _pfPrepararBusy = false;
-async function pfPrepararODia(btn){
+var _pfPrepararSel = {};          // { [id_os]: true }
+var _pfPrepararAberto = false;
+var PF_PREPARAR_SEL_KEY = 'pf_preparar_sel_v1';
+
+function _pfPrepararCandidatas(){
+  return (_pfOsList || []).filter(function(o){ return pfOsEhAtiva(o) && pfOsEhExterna(o); });
+}
+function _pfPrepararIdsSel(cands){
+  return (cands || _pfPrepararCandidatas())
+    .map(function(o){ return String(o.id_os || ''); })
+    .filter(function(id){ return id && _pfPrepararSel[id]; });
+}
+function _pfPrepararSalvarSel(){
+  try {
+    localStorage.setItem(PF_PREPARAR_SEL_KEY,
+      JSON.stringify({ ts: Date.now(), ids: Object.keys(_pfPrepararSel).filter(function(k){ return _pfPrepararSel[k]; }) }));
+  } catch(e){ /* persistência é conforto, nunca requisito */ }
+}
+// Pré-marca a última seleção que AINDA existe entre as candidatas. Ids que
+// sumiram (OS concluída, virou interna) são descartados sem erro — é o caso
+// normal do dia seguinte, não uma anomalia.
+function _pfPrepararCarregarSel(cands){
+  _pfPrepararSel = {};
+  var vivos = {};
+  cands.forEach(function(o){ vivos[String(o.id_os || '')] = true; });
+  var salvos = null;
+  try { salvos = JSON.parse(localStorage.getItem(PF_PREPARAR_SEL_KEY) || 'null'); } catch(e){ salvos = null; }
+  var achou = false;
+  if (salvos && salvos.ids && salvos.ids.length){
+    salvos.ids.forEach(function(id){ if (vivos[id]){ _pfPrepararSel[id] = true; achou = true; } });
+  }
+  // Sem nada persistido que ainda valha: pré-marca as designadas ao técnico.
+  // Se nenhuma for designada, começa TUDO DESMARCADO — o pedido é seleção
+  // explícita, não "todas por omissão" (que é justamente o que estava errado).
+  if (!achou){
+    cands.forEach(function(o){
+      if (o.designada_para_mim || o.minha_tarefa) _pfPrepararSel[String(o.id_os || '')] = true;
+    });
+  }
+}
+
+function pfPrepararODia(btn){
   if (_pfPrepararBusy) return;
   var statusEl = document.getElementById('pfOsStatus');
   var setSt = function(t){ if (statusEl){ statusEl.innerHTML = t; statusEl.style.display='block'; } };
@@ -13206,19 +13381,147 @@ async function pfPrepararODia(btn){
     setSt('⚠ Carregue a lista de OS primeiro (toque em ↻).');
     return;
   }
+  if (_pfPrepararAberto){ pfPrepararCancelar(); return; }
 
-  var ativas = _pfOsList.filter(function(o){
-    var st = String(o.status || '').toLowerCase();
-    return st === 'aberta' || st === 'em_andamento';
-  });
-  if (!ativas.length){ setSt('Nenhuma OS ativa para preparar.'); return; }
+  var cands = _pfPrepararCandidatas();
+  if (!cands.length){ setSt('Nenhuma OS externa ativa para preparar.'); return; }
 
-  // Designadas ao técnico primeiro — são as que ele mais provavelmente vai abrir.
-  var alvo = ativas.slice().sort(function(a,b){
-    return (b.designada_para_mim ? 1 : 0) - (a.designada_para_mim ? 1 : 0);
-  });
-  var cortadas = 0;
-  if (alvo.length > PF_CACHE_MAX_OS){ cortadas = alvo.length - PF_CACHE_MAX_OS; alvo = alvo.slice(0, PF_CACHE_MAX_OS); }
+  _pfPrepararCarregarSel(cands);
+  _pfPrepararAberto = true;
+  pfPrepararRender();
+}
+
+function pfPrepararCancelar(){
+  _pfPrepararAberto = false;
+  var p = document.getElementById('pfPrepararPainel');
+  if (p){ p.style.display = 'none'; p.innerHTML = ''; }
+  var b = document.getElementById('pfBtnPrepararDia');
+  if (b) b.textContent = '📥 Preparar o dia';
+}
+
+function pfPrepararRender(){
+  var p = document.getElementById('pfPrepararPainel');
+  if (!p) return;                                   // painel só existe na tela de OS
+  var cands = _pfPrepararCandidatas();
+  if (!cands.length){ pfPrepararCancelar(); return; }
+
+  var ativas   = (_pfOsList || []).filter(pfOsEhAtiva);
+  var internas = ativas.filter(function(o){ return !pfOsEhExterna(o) && !pfOsSemLocal(o); }).length;
+  var semLocal = ativas.filter(pfOsSemLocal).length;
+
+  var itens = cands.map(function(o){
+    var id   = String(o.id_os || '');
+    var rot  = String(o.numero_os == null || o.numero_os === '' ? id : o.numero_os);
+    var mkd  = _pfPrepararSel[id] ? ' checked' : '';
+    var chips = '';
+    if (o.designada_para_mim || o.minha_tarefa)
+      chips += '<span style="background:#164e63;color:#a5f3fc;border-radius:6px;padding:1px 6px;font-size:10px;margin-left:6px;display:inline-block;white-space:nowrap">👤 minha</span>';
+    if (pfOsTemCache(id))
+      chips += '<span style="background:#14532d;color:#bbf7d0;border-radius:6px;padding:1px 6px;font-size:10px;margin-left:6px;display:inline-block;white-space:nowrap">📥 já no aparelho</span>';
+    var prev = o.data_prevista ? ('<div style="font-size:11px;color:#94a3b8">📅 ' + pfEscHtmlOS(String(o.data_prevista).slice(0,10)) + '</div>') : '';
+    // min-height 44px: é celular, com luva e sol. Toque menor que isso erra.
+    return '<label style="display:flex;align-items:center;gap:10px;min-height:44px;padding:6px 8px;' +
+             'border-bottom:1px solid #1e293b;cursor:pointer">' +
+             '<input type="checkbox" data-osid="' + pfEscHtmlOS(id) + '"' + mkd +
+               ' onchange="pfPrepararToggle(this)" style="width:20px;height:20px;flex:0 0 auto">' +
+             '<span style="flex:1;min-width:0">' +
+               '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:2px">' +
+                 '<span style="color:#e2e8f0;font-weight:700">OS ' + pfEscHtmlOS(rot) + '</span>' + chips +
+               '</div>' +
+               '<div style="font-size:11px;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' +
+                 pfEscHtmlOS(String(o.cliente || '—')) +
+                 (o.tipo_os ? (' · ' + pfEscHtmlOS(String(o.tipo_os))) : '') +
+               '</div>' + prev +
+             '</span>' +
+           '</label>';
+  }).join('');
+
+  // Rodapé — "no silent caps". O que NÃO entrou na lista é dito, com o motivo.
+  var rodape = '';
+  if (internas) rodape += '<div>' + internas + ' OS interna(s) não entram (a oficina tem wifi).</div>';
+  if (semLocal) rodape += '<div style="color:#f59e0b">' + semLocal + ' OS ativa(s) estão sem local de atendimento definido — corrija no PCM para poderem ser baixadas.</div>';
+
+  p.innerHTML =
+    '<div style="margin-top:8px;border:1px solid #334155;border-radius:10px;background:#0f172a;overflow:hidden">' +
+      '<div style="padding:10px 12px;background:#1e293b">' +
+        '<div style="color:#e2e8f0;font-weight:800;font-size:13px">Escolha as OS que você vai levar hoje</div>' +
+        '<div id="pfPrepararContador" style="font-size:11px;color:#94a3b8;margin-top:2px"></div>' +
+      '</div>' +
+      '<div style="display:flex;gap:6px;padding:8px 12px;border-bottom:1px solid #1e293b;flex-wrap:wrap">' +
+        '<button type="button" onclick="pfPrepararTodas()" style="background:#1e293b;border:1px solid #334155;color:#cbd5e1;border-radius:8px;padding:6px 10px;font-size:12px;min-height:32px">Marcar todas</button>' +
+        '<button type="button" onclick="pfPrepararLimpar()" style="background:#1e293b;border:1px solid #334155;color:#cbd5e1;border-radius:8px;padding:6px 10px;font-size:12px;min-height:32px">Limpar</button>' +
+        '<button type="button" onclick="pfPrepararCancelar()" style="background:transparent;border:1px solid #334155;color:#94a3b8;border-radius:8px;padding:6px 10px;font-size:12px;min-height:32px">Cancelar</button>' +
+      '</div>' +
+      '<div id="pfPrepararLista" style="max-height:46vh;overflow-y:auto">' + itens + '</div>' +
+      (rodape ? '<div style="padding:8px 12px;font-size:11px;color:#94a3b8;line-height:1.5;border-top:1px solid #1e293b">' + rodape + '</div>' : '') +
+      '<div style="padding:10px 12px;border-top:1px solid #1e293b">' +
+        '<div id="pfPrepararAviso" style="font-size:11px;color:#f59e0b;margin-bottom:6px;display:none"></div>' +
+        '<button type="button" id="pfBtnPrepararConfirmar" onclick="pfPrepararConfirmar(this)" ' +
+          'style="width:100%;background:#0f766e;border:0;color:#ecfeff;padding:12px;border-radius:10px;' +
+          'font-family:\'Barlow Condensed\',sans-serif;font-size:14px;font-weight:800;letter-spacing:.03em;min-height:44px"></button>' +
+      '</div>' +
+    '</div>';
+  p.style.display = 'block';
+  var b = document.getElementById('pfBtnPrepararDia');
+  if (b) b.textContent = '📥 Preparar o dia — fechar seleção';
+  _pfPrepararAtualizarContador();
+}
+
+// Contador vivo + regra do teto. O teto agora BLOQUEIA a confirmação em vez de
+// cortar em silêncio: o técnico decide o que sai, não o slice().
+function _pfPrepararAtualizarContador(){
+  var cands = _pfPrepararCandidatas();
+  var n = _pfPrepararIdsSel(cands).length;
+  var cont = document.getElementById('pfPrepararContador');
+  if (cont) cont.textContent = n + ' de ' + cands.length + ' selecionadas';
+  var btn = document.getElementById('pfBtnPrepararConfirmar');
+  var avi = document.getElementById('pfPrepararAviso');
+  var excedeu = n > PF_CACHE_MAX_OS;
+  if (avi){
+    if (excedeu){
+      avi.textContent = '⚠ Máximo de ' + PF_CACHE_MAX_OS + ' OS por vez — desmarque ' + (n - PF_CACHE_MAX_OS) + '.';
+      avi.style.display = 'block';
+    } else { avi.style.display = 'none'; avi.textContent = ''; }
+  }
+  if (btn){
+    btn.textContent = '📥 Baixar ' + n + ' OS';
+    btn.disabled = (n === 0 || excedeu);
+    btn.style.opacity = btn.disabled ? '.5' : '1';
+  }
+}
+
+function pfPrepararToggle(el){
+  var id = el && el.getAttribute('data-osid');
+  if (!id) return;
+  if (el.checked) _pfPrepararSel[id] = true; else delete _pfPrepararSel[id];
+  _pfPrepararSalvarSel();
+  _pfPrepararAtualizarContador();
+}
+function pfPrepararTodas(){
+  _pfPrepararCandidatas().forEach(function(o){ _pfPrepararSel[String(o.id_os || '')] = true; });
+  _pfPrepararSalvarSel();
+  pfPrepararRender();
+}
+function pfPrepararLimpar(){
+  _pfPrepararSel = {};
+  _pfPrepararSalvarSel();
+  pfPrepararRender();
+}
+
+// PASSO 2 — o laço de download. É o corpo da pfPrepararODia da V84, palavra por
+// palavra, iterando sobre as SELECIONADAS em vez de sobre `alvo`.
+async function pfPrepararConfirmar(btn){
+  if (_pfPrepararBusy) return;
+  var statusEl = document.getElementById('pfOsStatus');
+  var setSt = function(t){ if (statusEl){ statusEl.innerHTML = t; statusEl.style.display='block'; } };
+
+  var cands = _pfPrepararCandidatas();
+  var ids   = _pfPrepararIdsSel(cands);
+  if (!ids.length) return;                                  // botão já está desabilitado
+  if (ids.length > PF_CACHE_MAX_OS) return;                 // idem — bloqueio, não corte
+  var porId = {};
+  cands.forEach(function(o){ porId[String(o.id_os || '')] = o; });
+  var alvo = ids.map(function(id){ return porId[id]; }).filter(Boolean);
 
   _pfPrepararBusy = true;
   if (btn){ btn.disabled = true; btn.textContent = '📥 Preparando…'; }
@@ -13253,16 +13556,22 @@ async function pfPrepararODia(btn){
     }
   } finally {
     _pfPrepararBusy = false;
-    if (btn){ btn.disabled = false; btn.textContent = '📥 Preparar o dia'; }
+    if (btn){ btn.disabled = false; }
     if (eraOffline) _pgpForcarRedeAte = 0;   // fecha a janela na hora
     try { pgpRenderBarraOffline(); } catch(e){}
   }
 
+  // V85 (A) — a seleção fica GRAVADA (o técnico repete a mesma rota amanhã) e
+  // o painel fecha: o passo 2 terminou, deixar a lista aberta sugere que não.
+  _pfPrepararSalvarSel();
+  pfPrepararCancelar();
+
   // "No silent caps": o que ficou de fora é dito, não escondido.
+  // ⚠ O trecho de `cortadas` SUMIU de propósito — não existe mais corte: o
+  //   teto virou bloqueio no passo 2, com o número exato a desmarcar.
   var msg = '✅ <strong>' + ok + ' OS</strong> prontas para uso offline (' + pfCacheHora(Date.now()) + ').';
   if (semPipeline) msg += ' ' + semPipeline + ' sem pipeline instanciado.';
   if (falhou)      msg += ' <span style="color:#f59e0b">' + falhou + ' não baixaram — repita num ponto com sinal melhor.</span>';
-  if (cortadas)    msg += ' <span style="color:#f59e0b">' + cortadas + ' OS ativas ficaram de fora (teto de ' + PF_CACHE_MAX_OS + ').</span>';
   setSt(msg);
   try { showNotification(ok ? ('📥 ' + ok + ' OS prontas para o campo.') : '⚠ Nenhuma OS pôde ser preparada agora.'); } catch(e){}
 }
@@ -13538,7 +13847,7 @@ function pfRenderOS() {
     var st = String(o.status || 'aberta').toLowerCase();
     if (_pfOsDesignFilter === 'minhas' && !o.designada_para_mim) return false;
     var okLocal = true;
-    if (_pfOsFilter === 'externas') okLocal = local === 'externa' || local === 'externo';
+    if (_pfOsFilter === 'externas') okLocal = pfOsEhExterna(o);   // V85 — regra única
     if (_pfOsFilter === 'internas') okLocal = local === 'interna' || local === 'interno';
     if (!okLocal) return false;
     // V79 — busca por número, cliente ou máquina. String(x ?? '') sempre:
@@ -14833,6 +15142,29 @@ async function pfAbrirForm(tarefaId, formUrl, btn) {
     }
     return;
   }
+  // ═══════════════════════════════════════════════════════════════════════
+  // V85 (B) — SAÍDA INTENCIONAL NÃO É FUGA ACIDENTAL.
+  // Até a V84 esta linha disparava o beforeunload de setupBackGuard (~5706) e
+  // o Chrome abria "Sair do site?": o técnico tocava em "📋 Abrir formulário"
+  // e tinha de confirmar que queria deixar uma página que ele não pediu para
+  // deixar. A caixa nunca foi do app — o botão "Sair" é do navegador, e é por
+  // isso que ele não existe no HTML do PCF.
+  // A cadeia: `temDadosPreenchidos()` (~5648) responde `true` se QUALQUER
+  // input/textarea/select do documento tiver valor, e o PCF carrega o
+  // formulário PGP inteiro na mesma página, com campos pré-preenchidos pelo
+  // próprio app; `_allowLeave` continua `false` porque só `guardarSair()` — o
+  // caminho do botão VOLTAR — a liga.
+  // O guard segue íntegro para o botão voltar e para o reload, que são saídas
+  // realmente não intencionais. Aqui a navegação é a AÇÃO PEDIDA.
+  // ⚠ `autoSaveDraft()` ANTES, e não só `_allowLeave = true`: suprimir a caixa
+  //   sozinho tornaria silencioso um risco real — uma preventiva meio
+  //   preenchida na tela de trás morre na navegação externa. Com o rascunho
+  //   gravado (mesma chave `pgp_draft_v1` que alimenta o banner "↩ Rascunho"),
+  //   suprimir o aviso deixa de esconder o problema e passa a RESOLVER o
+  //   problema que o aviso sinalizava.
+  // ═══════════════════════════════════════════════════════════════════════
+  try { autoSaveDraft(); } catch (eD) { console.warn('[pfAbrirForm] autoSaveDraft:', eD && eD.message); }
+  _allowLeave = true;
   // Forms de oficina (ProperForms/Rotores): navegação externa, como antes.
   window.location.href = urlComOs;
 }
@@ -15410,7 +15742,9 @@ if(window._PGP_OS_ID && (function(){ try { return localStorage.getItem('proper_p
       </div>
       <!-- V77 (G5): baixa pipeline + máquinas das OS ativas para uso offline -->
       <button id="pfBtnPrepararDia" onclick="pfPrepararODia(this)" style="width:100%;margin-top:10px;background:#0f766e;border:0;color:#ecfeff;padding:11px;border-radius:10px;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;cursor:pointer;letter-spacing:.03em">📥 Preparar o dia</button>
-      <div style="font-size:11px;color:#64748b;text-align:center;margin-top:5px;line-height:1.4">Baixa as tarefas e as máquinas das OS ativas para funcionarem sem sinal.</div>
+      <div style="font-size:11px;color:#64748b;text-align:center;margin-top:5px;line-height:1.4">Escolha as OS externas que você vai atender hoje e baixe as tarefas e máquinas delas para funcionarem sem sinal.</div>
+      <!-- V85 (A): painel de seleção do "Preparar o dia" (renderizado por pfPrepararRender) -->
+      <div id="pfPrepararPainel" style="display:none"></div>
     </div>
     <div id="pfOsStatus" style="font-size:13px;color:#94a3b8;text-align:center;padding:20px 0">Conectando ao Sheets…</div>
     <div id="pfOsLista"></div>
