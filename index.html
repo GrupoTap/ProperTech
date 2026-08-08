@@ -455,6 +455,50 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
     notificações, em vez de disparar as duas em paralelo.
 -->
 <!-- ══════════════════════════════════════════════════════════════════════════
+     PCF V87 — 08/08/2026 — ADM MULTI-APARELHO + ASSUMIR TAREFA INSTANTÂNEO
+     Par: sw v87 (SOBE EM PAR) + GAS v94. Base: V86 intacta.
+     Chamado do Fernando (08/08, OS #PGP-2026-0035 FERTEC aberta no celular DELE,
+     coletada em campo por OUTRO aparelho): assumir tarefa demorava 10–30 s,
+     o rodapé mostrou assinaturas de OUTRO cliente (Fundição Realeza) na OS da
+     FERTEC, as fotos da preventiva não apareceram e "Faltam 17" (as peças não
+     voltavam porque o CENÁRIO nunca era selecionado no restore).
+
+     (P1) ASSUMIR OTIMISTA TAMBÉM ONLINE — pfAssumirTarefa aplica
+          pfLockLocalOffline + re-render local (pfLoadPipeline _warmData, ZERO
+          rede) NO CLIQUE, com selo "⏳ sincronizando…" no card; o POST
+          assumirTarefa roda em seguida: ok → patch local com r.tarefa (GAS v94)
+          e refresh soft em BACKGROUND (sem await); locked → ROLLBACK do lock
+          local + toast já existente; falha de rede → fila (V77 G1), como hoje.
+          O caminho offline era instantâneo desde a V61 — agora o online também.
+     (P2) FIM DO VAZAMENTO DE ASSINATURAS — pgpAtualizarStatusAssinaturas e
+          pgpAssinaturasCompletas passam a respeitar pgpAssinaturasContextoOk
+          (até a V86 SÓ o PDF e o upload consultavam o guard: o rodapé mostrava
+          ✅ de outra visita e o fluxo de PDF deixava de oferecer a coleta). O
+          fallback do guard vira NEGAR POR PADRÃO quando há OS ativa sem
+          carimbo/batida; permissivo APENAS no legado sem OS nenhuma (coleta
+          avulsa). ⚠ A chave 'pgp_assinaturas_v1' NÃO muda — só a LEITURA.
+     (P3) ASSINATURAS VOLTAM DO DRIVE — pgpRestaurarColetaGravada chama
+          getPreventivaDaOS com incluir_assinaturas:true (GAS v94) e, se o
+          aparelho ainda não tem assinaturas DESTE contexto, repovoa
+          _PGP_ASSINATURAS com carimbo da OS aberta + origem:'drive' (rodapé
+          diz "assinado em campo em <data>"). O PDF regenerado no aparelho do
+          adm sai com as assinaturas ORIGINAIS; recoletar (✍️) sobrescreve.
+          Marca pgp_assin_enviadas_v1 para NÃO reenviar ao Drive o que veio
+          DE LÁ (o GAS deduplicaria por File_Name, mas nem chega a subir).
+     (P4) FOTOS VOLTAM DO DRIVE — action nova getFotosDaVisita (GAS v94) em
+          DUAS MARCHAS: thumbs repovoam photoStore quando a máquina abre sem
+          fotos locais (driveStatus:'ok' ⇒ fila de upload QUIETA; nunca
+          sobrescreve foto local; marca .photo-checked como a captura faria);
+          na geração do PDF, pgpTrocarThumbsPorImagemCheia busca a imagem CHEIA
+          por foto, em lotes pequenos (lição v79 F-23). Sem rede, vai o thumb.
+     (P5) CENÁRIO AUTO-SELECIONADO NO RESTORE — v.scenario (VISITAS.Cenário,
+          devolvido pelo getPreventivaDaOS desde o v93) agora É USADO: sem
+          cenário na tela, selectScenario roda ANTES de repor as peças (sem a
+          tabela os setElSeVazio eram no-op SILENCIOSO — o "Faltam 17").
+     ⚠ EXIGE GAS v94 para P3/P4 (degradam silencioso: resposta sem `assinaturas`
+       e action inexistente caem no catch); P1/P2/P5 funcionam contra o v93.
+     ══════════════════════════════════════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════════════════════════════════════════
      PCF V86 — 07/08/2026 — A OS REABERTA VOLTA COM OS DADOS, NÃO EM BRANCO
      Par: sw v86 (SOBE EM PAR — sw velho serve o V85 do cache) + GAS v93.
      Base: V85 (Preparar o dia e o fim do "Sair do site?" seguem INTACTOS).
@@ -673,8 +717,8 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ProperCare Field · PGP Preventivas v34 · build PCF_V86</title>
-<meta name="app-build" content="PCF_V86" data-date="2026-08-07">
+<title>ProperCare Field · PGP Preventivas v34 · build PCF_V87</title>
+<meta name="app-build" content="PCF_V87" data-date="2026-08-08">
 
 <!-- V82 (item 8) — TRATADOR GLOBAL DE ERRO. Antes: ZERO window.onerror e ZERO
      unhandledrejection. O incidente v39 (boot morto por ReferenceError, app
@@ -7765,6 +7809,9 @@ async function _gerarPDF_(btnEl) {
     // v56: não gera PDF (nem sobe ao Drive) de máquina sem inspeção — evita
     // relatório em branco. Critério FROUXO (peça com ação/N/A ou foto).
     if (!pgpMaquinaTemConteudo(midx)) { _pdfPuladas.push(midx + 1); continue; }
+    // V87 (P4) — fotos reidratadas do Drive entram no PDF em resolução cheia
+    // quando há rede; sem rede vai o thumb (nunca em branco).
+    try { await pgpTrocarThumbsPorImagemCheia(midx); } catch(_e87) {}
     const b = pgpCreateReportBuilder();
     b.renderMachine(midx, true, null);
     const nomeArq = montarNomeArquivo(vg(midx, 'razao_social'), vg(midx, 'modelo'), vg(midx, 'ns'), dataStr);
@@ -11412,13 +11459,30 @@ async function pgpRestaurarColetaGravada(midx, eq){
         os_id: window._PGP_OS_ID,
         machine_id: (eq && eq.id) || '',
         serial: (eq && eq.serial) || '',
-        tipo: (typeof _pgpTipoVisita !== 'undefined') ? _pgpTipoVisita : 'preventiva'
+        tipo: (typeof _pgpTipoVisita !== 'undefined') ? _pgpTipoVisita : 'preventiva',
+        incluir_assinaturas: true               // V87 (P3) — GAS v93 ignora e não devolve; aditivo
       }, 1);
     }catch(e){ return; }                            // GAS v92 ou rede ruim
     if(!d || d.status !== 'ok' || !d.encontrada || !d.visita) return;
 
     const v = d.visita || {};
     const parts = d.parts || {};
+
+    // ── V87 (P5) — CENÁRIO PRIMEIRO. A tabela de peças NÃO EXISTE até
+    // selectScenario rodar (buildPartsTable só roda ali). No aparelho do
+    // técnico o cenário volta pelo rascunho; no aparelho do ADM não há rascunho
+    // e o v.scenario que o GAS devolve desde o v93 NUNCA era usado: os
+    // setElSeVazio das peças procuravam elementos inexistentes e a reposição
+    // inteira virava no-op SILENCIOSO — só o cabeçalho voltava ("Faltam 17").
+    // Se já houver cenário na tela, NÃO toca (disciplina svEl).
+    try{
+      const scEl = document.getElementById(p + 'scenario');
+      const scAtual = scEl ? String(scEl.value || '').trim() : '';
+      const scVindo = String(v.scenario || '').trim();
+      if(!scAtual && scVindo){
+        selectScenario(p, scVindo, idx, { stopPropagation: function(){} });
+      }
+    }catch(eSc){ console.warn('[PCF V87] restore cenário:', eSc); }
 
     // Mesma disciplina do svEl: só escreve em campo VAZIO.
     const setSeVazio = (key, val) => {
@@ -11493,6 +11557,113 @@ async function pgpRestaurarColetaGravada(midx, eq){
     try{ updateProgress(); }catch(_){}
     try{ pgpSaveDraftAgora(); }catch(_){}   // o que voltou do servidor entra no rascunho
 
+    // ── V87 (P3) — ASSINATURAS DA VISITA VOLTAM DO DRIVE ─────────────────────
+    // Só quando o aparelho ainda NÃO tem assinaturas válidas DESTE contexto —
+    // nunca sobrescreve uma coleta local (recoletar pelo ✍️ continua mandando).
+    // Carimbo = OS aberta ⇒ o guard de contexto passa e o PDF regenerado aqui
+    // sai com as assinaturas ORIGINAIS de campo.
+    try{
+      const A = d.assinaturas;
+      if(A && (A.tecnico || A.responsavel)){
+        const cur = window._PGP_ASSINATURAS || {};
+        let temCtx = false;
+        try{ temCtx = !!((cur.tecnico || cur.responsavel) && pgpAssinaturasContextoOk(idx)); }catch(_){ temCtx = false; }
+        if(!temCtx){
+          const mkSig = function(s, papel){
+            if(!s || !s.dataUrl) return null;
+            return { nome: s.nome || '', dataUrl: s.dataUrl, papel: papel, quando: s.quando || '' };
+          };
+          window._PGP_ASSINATURAS = {
+            tecnico:     mkSig(A.tecnico, 'Técnico responsável'),
+            responsavel: mkSig(A.responsavel, 'Responsável pelo cliente'),
+            osId:        window._PGP_OS_ID || null,
+            cliente:     String(v.client || ''),
+            origem:      'drive',
+            assinadoEm:  (A.responsavel && A.responsavel.quando) || (A.tecnico && A.tecnico.quando) || ''
+          };
+          pgpPersistAssinaturas();
+          pgpAtualizarStatusAssinaturas();
+          // O que veio DO Drive não volta PARA o Drive: marca como já enviada
+          // (pgpSubirAssinaturasDaVisita checa esta chave; o GAS deduplicaria
+          // por File_Name, mas nem gasta rede).
+          try{
+            const vid87 = String(v.visit_id || '');
+            if(vid87){
+              const env = JSON.parse(localStorage.getItem(_PGP_ASSIN_ENVIADAS_KEY) || '{}') || {};
+              if(A.tecnico)     env[vid87 + '|tecnico'] = 1;
+              if(A.responsavel) env[vid87 + '|responsavel'] = 1;
+              localStorage.setItem(_PGP_ASSIN_ENVIADAS_KEY, JSON.stringify(env));
+            }
+          }catch(_){}
+        }
+      }
+    }catch(eAs){ console.warn('[PCF V87] reidratação de assinaturas:', eAs); }
+
+    // ── V87 (P4) — FOTOS DA VISITA VOLTAM DO DRIVE (1ª marcha: thumbs) ──────
+    // Só quando o photoStore desta máquina está VAZIO (nunca sobrescreve foto
+    // local). Entram com driveStatus:'ok' e SEM passar por storePhotoBase64/
+    // queuePhotoDriveUpload — a foto JÁ ESTÁ no Drive; reenviar duplicaria.
+    // A imagem CHEIA é buscada por foto, sob demanda, na geração do PDF
+    // (pgpTrocarThumbsPorImagemCheia — lição v79 F-23).
+    try{
+      let temFotoLocal = false;
+      try{
+        const bk = photoStore[idx] || {};
+        temFotoLocal = Object.keys(bk).some(function(k){ return (bk[k] || []).length > 0; });
+      }catch(_){}
+      if(!temFotoLocal){
+        const rf = await pgpPostJson('getFotosDaVisita', {
+          os_id: window._PGP_OS_ID,
+          machine_id: (eq && eq.id) || '',
+          serial: (eq && eq.serial) || '',
+          thumb: true, max_fotos: 24
+        }, 1);
+        if(rf && rf.status === 'ok' && (rf.fotos || []).length){
+          if(!photoStore[idx]) photoStore[idx] = {};
+          const chavesRepostas = {};
+          rf.fotos.forEach(function(f){
+            if(!f || !f.photo_key || !f.dataUrl) return;
+            const arr = photoStore[idx][f.photo_key] = photoStore[idx][f.photo_key] || [];
+            if(arr.length >= MAX_FOTOS_POR_ITEM) return;
+            arr.push({ label: f.caption || '', dataUrl: f.dataUrl, w: 0, h: 0,
+                       driveStatus: 'ok', origemDrive: true, fileId: f.file_id || '',
+                       thumbOnly: !!f.thumb });
+            chavesRepostas[f.photo_key] = 1;
+          });
+          const chaves = Object.keys(chavesRepostas);
+          chaves.forEach(function(pk){
+            try{ renderPhotoThumbs(idx, pk); }catch(_){}
+            try{ syncDoneButtonsForKey(idx, pk); }catch(_){}
+          });
+          // Marca .photo-checked como a captura faria — o fotosStatus do PDF
+          // (seção 6) lê exatamente essas classes.
+          try{
+            const panel87 = document.getElementById('panel-' + idx);
+            if(panel87){
+              const fotosDe = pgpPhotosDe(idx) || [];
+              panel87.querySelectorAll('.photo-item').forEach(function(item){
+                const pidx = parseInt(item.dataset.pidx);
+                const ph = fotosDe[pidx];
+                if(ph && chavesRepostas[ph.photoKey]){
+                  const ndBtn = item.querySelector('.photo-nd-btn');
+                  if(ndBtn) ndBtn.classList.remove('active');
+                  item.classList.remove('photo-nd');
+                  item.classList.add('photo-checked');
+                  try{ refreshSection(item.closest('[data-section]')); }catch(_){}
+                }
+              });
+            }
+          }catch(_){}
+          try{ pgpPersistPhotosIDB('draft'); }catch(_){}
+          try{ updateProgress(); }catch(_){}
+          if(chaves.length){
+            showNotification('📷 ' + rf.retornadas + ' foto(s) da visita repostas do Drive' +
+              (rf.truncated ? ' (parcial)' : ''));
+          }
+        }
+      }
+    }catch(eFo){ console.warn('[PCF V87] reidratação de fotos:', eFo); }
+
     if(d.em_correcao){
       showNotification('↩ Coleta anterior reposta (' + reposta + ' peça(s)). Esta OS foi REABERTA — ao registrar, os dados desta máquina serão CORRIGIDOS, não duplicados.');
     }else if(reposta){
@@ -11501,6 +11672,45 @@ async function pgpRestaurarColetaGravada(midx, eq){
   }catch(e){
     console.warn('[PCF V86] pgpRestaurarColetaGravada:', e);
   }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// V87 (P4, 2ª marcha) — troca thumbs reidratados por IMAGEM CHEIA na hora do
+// PDF, POR FOTO, em lotes pequenos (a resposta do Apps Script estoura com
+// muitas imagens de uma vez — lição v79 F-23). Sem rede ou contra GAS v93,
+// falha silencioso e o PDF sai com o thumb que houver — nunca em branco.
+// Só toca fotos vindas do Drive (thumbOnly+fileId); foto capturada aqui no
+// aparelho nunca passa por esta função.
+// ══════════════════════════════════════════════════════════════════════════
+async function pgpTrocarThumbsPorImagemCheia(midx){
+  try{
+    if(!window._PGP_OS_ID) return;
+    if(!_pgpGsConnected) return;
+    const byKey = photoStore[midx] || {};
+    const alvo = [];
+    Object.keys(byKey).forEach(function(pk){
+      (byKey[pk] || []).forEach(function(f){
+        if(f && f.thumbOnly && f.fileId) alvo.push(f);
+      });
+    });
+    if(!alvo.length) return;
+    for(let i = 0; i < alvo.length; i += 3){
+      const lote = alvo.slice(i, i + 3);
+      try{
+        const r = await pgpPostJson('getFotosDaVisita', {
+          os_id: window._PGP_OS_ID,
+          file_ids: lote.map(function(f){ return f.fileId; }).join(','),
+          thumb: false,
+          max_fotos: lote.length
+        }, 1);
+        if(!r || r.status !== 'ok') break;
+        (r.fotos || []).forEach(function(fr){
+          const dest = lote.find(function(f){ return f.fileId === fr.file_id; });
+          if(dest && fr.dataUrl){ dest.dataUrl = fr.dataUrl; dest.thumbOnly = false; }
+        });
+      }catch(eLote){ break; } // rede caiu no meio: os lotes já trocados ficam
+    }
+  }catch(e){ console.warn('[PCF V87] pgpTrocarThumbsPorImagemCheia:', e); }
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -14570,7 +14780,11 @@ function pfBuildCard(t) {
         '<button class="pf-btn pf-btn-concluir" onclick="pfAssumirTarefa(\'' + tidSafe + '\',this)">🔒 Assumir tarefa</button>' +
       '</div>';
     } else if (lockedByMe) {
-      lockHtml = '<div class="pf-card-meta" style="color:#22c55e">🔒 Você está executando</div>';
+      // V87 (P1) — selo discreto enquanto o assumir otimista ainda não foi
+      // confirmado pelo servidor (some no ok; no locked o rollback refaz o card).
+      var _sync87 = (window._pfSincronizandoTarefas && window._pfSincronizandoTarefas[tid])
+        ? ' <span style="color:#64748b;font-weight:400">· ⏳ sincronizando…</span>' : '';
+      lockHtml = '<div class="pf-card-meta" style="color:#22c55e">🔒 Você está executando' + _sync87 + '</div>';
       acaoHtml = acaoHtml +
         '<div style="margin-top:6px">' +
         '<button class="pf-btn pf-btn-cancelar" onclick="pfLiberarTarefa(\'' + tidSafe + '\',this)">Liberar tarefa</button>' +
@@ -14630,17 +14844,58 @@ async function pfAssumirTarefa(tarefaId, btn) {
     await pfLoadPipeline({ soft: true }); // V67: refresh sem apagar a tela
     return;
   }
+  // ── V87 (P1) — LOCK OTIMISTA TAMBÉM ONLINE ────────────────────────────────
+  // O caminho online fazia DUAS viagens sequenciais ao GAS (assumirTarefa com
+  // LockService + varredura da PIPELINE_TAREFAS inteira, e depois um
+  // getPipelineByOS completo só para redesenhar o card): 10–30 s de
+  // "Assumindo…" em rede de galpão. O ramo offline (acima) é instantâneo desde
+  // a V61 — este bloco espelha o MESMO padrão no online: lock local + re-render
+  // SEM REDE já no clique, servidor confirma por trás. Abrir o formulário não
+  // depende do lock no servidor (o lock é anti-colisão entre técnicos; o
+  // conflito real é raríssimo e reversível — chega como `locked` e faz
+  // rollback aqui).
+  var _prevLock = '';
+  try {
+    var _t0 = (_pfTarefas || []).find(function(x){ return String(x.Tarefa_ID) === String(tarefaId); });
+    _prevLock = (_t0 && _t0.Lock_Por) || '';
+  } catch(e0) {}
+  pfLockLocalOffline(tarefaId, usuario);
+  window._pfSincronizandoTarefas = window._pfSincronizandoTarefas || {};
+  window._pfSincronizandoTarefas[tarefaId] = 1;
+  try { await pfLoadPipeline({ _warmData: { tarefas: _pfTarefas } }); } catch(eW) {}
   try {
     var r = await pgpPostJson('assumirTarefa', { os_id: _pfOsId, tarefa_id: tarefaId, usuario: usuario });
+    delete window._pfSincronizandoTarefas[tarefaId];
     if (r && r.status === 'locked') {
+      // ROLLBACK: outro técnico detém o lock — desfaz o otimista e mostra a
+      // verdade do servidor (locked_by) no card.
+      pfLockLocalOffline(tarefaId, r.locked_by || _prevLock || '');
+      try { await pfLoadPipeline({ _warmData: { tarefas: _pfTarefas } }); } catch(eW2) {}
       if (typeof pfToast === 'function') pfToast('🔒 Já está em execução por ' + (r.locked_by || 'outro técnico'));
       else alert('Tarefa já está em execução por ' + (r.locked_by || 'outro técnico'));
+    } else if (r && r.status === 'error') {
+      // ROLLBACK: o servidor recusou (tarefa de adm, status indisponível…).
+      pfLockLocalOffline(tarefaId, _prevLock || '');
+      try { await pfLoadPipeline({ _warmData: { tarefas: _pfTarefas } }); } catch(eW3) {}
+      if (typeof pfToast === 'function') pfToast('⚠ ' + (r.error || 'Não foi possível assumir a tarefa'));
     } else {
-      // V67: sucesso agora tem feedback explícito (antes só a tela "piscava")
+      // V67: sucesso tem feedback explícito. V87: patch local com a linha que o
+      // GAS v94 devolve (r.tarefa) — contra o v93 o campo não vem e o refresh
+      // soft em background resolve do mesmo jeito.
+      if (r && r.tarefa) {
+        try {
+          var _ti = (_pfTarefas || []).findIndex(function(x){ return String(x.Tarefa_ID) === String(tarefaId); });
+          if (_ti >= 0) _pfTarefas[_ti] = Object.assign({}, _pfTarefas[_ti], r.tarefa);
+          if (typeof pfCacheGravarPipeline === 'function') pfCacheGravarPipeline(_pfOsId, _pfTarefas);
+          await pfLoadPipeline({ _warmData: { tarefas: _pfTarefas } });
+        } catch(eP) {}
+      }
       if (typeof pfToast === 'function') pfToast('🔒 Tarefa assumida — pode abrir o formulário');
     }
-    await pfLoadPipeline({ soft: true }); // V67: refresh sem apagar a tela
+    // Refresh soft em BACKGROUND, sem await — o card já está certo na tela.
+    pfLoadPipeline({ soft: true }).catch(function(){});
   } catch(e) {
+    delete window._pfSincronizandoTarefas[tarefaId];
     if (e.message && e.message.includes('AUTH_GOOGLE')) { pfHubLogout(); return; }
     // V77 (G1) — REDE-FANTASMA. Até a V76 a fila só era usada quando
     // `navigator.onLine === false` (modo avião). Em galpão, portal cativo ou 3G
@@ -14648,11 +14903,13 @@ async function pfAssumirTarefa(tarefaId, btn) {
     // simplesmente SUMIA dentro de um alert. Agora QUALQUER falha de envio cai
     // na fila — o mesmo shape que pgpEnviarPreventiva e
     // pgpEnviarSolicitacaoCadastro já usavam em produção.
+    // V87: o lock local JÁ está aplicado (otimista); só enfileira e re-renderiza
+    // do estado local — o pfLoadPipeline({soft:true}) daqui iria à rede que
+    // acabou de falhar e pagaria mais um timeout inteiro à toa.
     pgpQueueRequest('assumirTarefa', { os_id: _pfOsId, tarefa_id: tarefaId, usuario: usuario });
-    pfLockLocalOffline(tarefaId, usuario);
     if (btn) { btn.disabled = false; btn.classList.remove('is-busy'); btn.textContent = '🔒 Assumir tarefa'; }
     if (typeof pfToast === 'function') pfToast('⏳ ' + pgpMsgErro(e) + ' Assumida na fila — sobe ao sincronizar.');
-    await pfLoadPipeline({ soft: true });
+    try { await pfLoadPipeline({ _warmData: { tarefas: _pfTarefas } }); } catch(eW4) {}
   }
 }
 
@@ -15503,23 +15760,40 @@ var _pgpSignHasInk = false, _pgpSignNome = '', _pgpSignBound = false;
 
 function pgpAssinaturasCompletas() {
   var a = window._PGP_ASSINATURAS || {};
-  return !!(a.tecnico && a.tecnico.dataUrl && a.responsavel && a.responsavel.dataUrl);
+  var completas = !!(a.tecnico && a.tecnico.dataUrl && a.responsavel && a.responsavel.dataUrl);
+  if (!completas) return false;
+  // V87 (P2) — completas SÓ SE forem DESTE contexto. Até a V86 esta função
+  // ignorava o guard: o fluxo "Gerar PDF" deixava de oferecer a coleta porque
+  // achava que já estavam coletadas — as do OUTRO cliente, que o guard do PDF
+  // ia descartar logo em seguida. Resultado: PDF de preventiva sem assinatura
+  // nenhuma e sem nem perguntar.
+  try {
+    var midx = (typeof currentMachine === 'number') ? currentMachine : 0;
+    return pgpAssinaturasContextoOk(midx);
+  } catch (e) { return false; }
 }
 
 // Só aplica as assinaturas ao PDF se o contexto (OS ou cliente) bater com a
 // máquina — mesma filosofia do pgpOsIdSeguro, evita vazar a assinatura de uma
 // visita anterior de OUTRO cliente para o relatório atual.
+// V87 (P2) — fallbacks deixam de ser permissivos QUANDO HÁ OS ATIVA: registro
+// sem carimbo nenhum (ou exceção na comparação) com _PGP_OS_ID presente agora
+// NEGA — era exatamente por esses furos que um registro antigo/anômalo vazava
+// para o PDF e o upload. O caso legado SEM OS nenhuma (coleta avulsa no mesmo
+// fluxo de sempre) continua permissivo para não quebrar campo.
 function pgpAssinaturasContextoOk(midx) {
   var a = window._PGP_ASSINATURAS || {};
   if (!(a.tecnico || a.responsavel)) return false;
   if (a.osId) return String(a.osId) === String(window._PGP_OS_ID || '');
+  var osAtiva = !!window._PGP_OS_ID; // carimbo ausente/divergente + OS ativa ⇒ negar
   if (a.cliente) {
     try {
       var norm = function (s) { return String(s || '').trim().toLowerCase(); };
-      return norm(a.cliente) === norm(vg(midx, 'razao_social'));
-    } catch (e) { return true; }
+      if (norm(a.cliente) === norm(vg(midx, 'razao_social'))) return true;
+      return false;
+    } catch (e) { return osAtiva ? false : true; }
   }
-  return true;
+  return osAtiva ? false : true;
 }
 
 function pgpPersistAssinaturas() {
@@ -15545,9 +15819,31 @@ function pgpAtualizarStatusAssinaturas() {
   var el = document.getElementById('pgpAssinStatus');
   if (!el) return;
   var a = window._PGP_ASSINATURAS || {};
+  // V87 (P2) — o rodapé passa a respeitar o MESMO guard de contexto do PDF e
+  // do upload. Era o furo que o Fernando viu na tela: "✅ Técnico: FERNANDO ·
+  // ✅ Responsável: Luiz Ricardo" (Fundição Realeza) em cima da OS da FERTEC —
+  // assinaturas de uma visita ANTERIOR guardadas na chave global do aparelho.
+  var temAlguma = !!((a.tecnico && a.tecnico.dataUrl) || (a.responsavel && a.responsavel.dataUrl));
+  if (temAlguma) {
+    var ctxOk = false;
+    try {
+      var midx = (typeof currentMachine === 'number') ? currentMachine : 0;
+      ctxOk = pgpAssinaturasContextoOk(midx);
+    } catch (e) { ctxOk = false; }
+    if (!ctxOk) {
+      el.textContent = '⬜ Técnico pendente · ⬜ Responsável pendente (assinaturas de outra visita ignoradas)';
+      return;
+    }
+  }
   var t = (a.tecnico && a.tecnico.dataUrl) ? ('✅ Técnico: ' + (a.tecnico.nome || '')) : '⬜ Técnico pendente';
   var r = (a.responsavel && a.responsavel.dataUrl) ? ('✅ Responsável: ' + (a.responsavel.nome || '')) : '⬜ Responsável pendente';
-  el.textContent = t + ' · ' + r;
+  // V87 (P3) — assinaturas reidratadas do Drive ficam auditáveis no rodapé:
+  // não foram recoletadas agora, vieram do registro de campo.
+  var origem = '';
+  if (a.origem === 'drive') {
+    origem = ' · assinado em campo' + (a.assinadoEm ? ' em ' + a.assinadoEm : '');
+  }
+  el.textContent = t + ' · ' + r + origem;
 }
 
 // Mapeia um ponto do ponteiro (clientX/clientY) para coordenadas locais do
