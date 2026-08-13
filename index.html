@@ -717,8 +717,77 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ProperCare Field · PGP Preventivas v34 · build PCF_V88</title>
-<meta name="app-build" content="PCF_V88" data-date="2026-08-13">
+<title>ProperCare Field · PGP Preventivas v34 · build PCF_V89</title>
+<meta name="app-build" content="PCF_V89" data-date="2026-08-13">
+<!-- ══════════════════════════════════════════════════════════════════════════
+     PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
+     QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
+
+     1  WebView SEM AbortSignal.timeout ficava SEM TETO NENHUM. O comentário da
+        V82 dizia "segue sem teto, como antes" e era literal: nesses aparelhos
+        (que existem no bolso do técnico) o fetch pendurava indefinidamente —
+        sem teto, sem retry, sem cair na fila. Agora Promise.race devolve o
+        controle ao app no prazo. Não cancela o socket (sem AbortController não
+        há como), mas destrava o botão, enfileira a ação e para de mentir.
+     1c `options.__timeoutMs` existia em _pgpFetchComRetry_ desde a V82 com ZERO
+        call sites — a válvula instalada e sem manopla. pgpPostJson ganhou 5º
+        parâmetro OPCIONAL `{timeoutMs}`. Sem ele, nada muda.
+     1d/3/4b/5 tetos por tipo de chamada, em vez dos 45 s (× 3 tentativas =
+        138,5 s) herdados do POST de coleta com peças: leitura de pipeline 15 s,
+        assumirTarefa 25 s, concluir 40 s, item de fila 30 s.
+
+     2  ANTI-CORRIDA NO CACHE DE PIPELINE. `_pfOsId` é global e mutável, e
+        pfLoadPipeline tem um `await` no meio: lia o id ANTES do POST e DE NOVO
+        depois (cache, memo de vazio). Entre as duas leituras cabe uma troca de
+        OS — pfSelecionarOS chama pfLoadPipeline() SEM await e pfVoltarOS zera
+        _pfOsId. Trocar de OS com requisição em voo gravava a resposta da OS A
+        sob a CHAVE da OS B em pf_pipeline_cache_v1; como o cache morno pinta
+        antes da rede, a OS B abria mostrando o pipeline da OS A. Agora o id é
+        CONGELADO na requisição e a resposta cruzada é descartada — inclusive
+        conferindo o `os_id` que o envelope do GAS sempre trouxe e ninguém lia.
+
+     3  WATCHDOG DO SELO. O card parado em "⏳ sincronizando…" não era o pipeline
+        carregando: era o POST de assumirTarefa. A flag só saía quando a resposta
+        chegasse. Agora, passados 20 s, o selo sai e o técnico lê o que está
+        acontecendo. Limpar o selo não cancela o POST — se ele voltar, o patch e
+        o refresh soft ainda corrigem a tela.
+
+     4  CONCLUIR PINTA NA HORA. Par do GAS v98 (P-4), que passou a devolver a
+        linha da tarefa — o mesmo que assumirTarefa faz desde a V87. O refresh
+        soft CONTINUA (concluir dispara desbloqueios e fechamento de camada, que
+        mexem em outros cards), mas o técnico deixa de esperar por ele.
+
+     6  O DEEP LINK DO FORMULÁRIO DE VOLTA CORRIA CONTRA O DOM. Ao terminar um
+        form, em vez do pipeline o técnico caía na LISTA DE OS. Os 9 forms
+        devolvem a URL certa; quem falhava era o bloco que abre o pipeline: ele
+        roda no 1º script e mexe em #pfOverlay / #pfScreenOS / #pfOsLabel, que
+        são marcação vinda DEPOIS de todos os scripts — num prazo CEGO de 500 ms.
+        Caindo na fresta, pfAbrir() estoura em getElementById e o catch engole:
+        o overlay nem abre, e _pfOsId fica preenchido (estado meio-feito).
+        🔑 Uma sonda dentro do próprio timeout provou que NÃO era falta das
+        funções (elas já eram `function` em todas as condições medidas) — a
+        primeira hipótese estava errada. Agora espera funções + elementos +
+        documento parseado, sondando a cada 60 ms com teto de 20 s. Vale para os
+        três modos (preventiva, pistao, pipeline).
+     7  VEREDICTO DO SERVIDOR ≠ FALHA DE REDE. "⌛ Decisão indisponível (status:
+        completo) · Decisão na fila — sobe ao sincronizar": as duas metades se
+        contradizem e a segunda é mentira. pgpPostJson marca a recusa de negócio
+        com `permanent`, mas os QUATRO call sites do pipeline tinham um catch só,
+        que enfileirava tudo — o item ia para a fila ser negado 5× e morrer no
+        dead-letter, e o técnico não corrigia o que causou a recusa.
+        🔑 De quebra: em pfAssumirTarefa os ramos `r.status==='locked'` e
+        `'error'` eram CÓDIGO MORTO desde sempre (pgpPostJson lança antes), então
+        o ROLLBACK do lock otimista NUNCA rodou — o aparelho ficava mostrando
+        "Você está executando" numa tarefa que o servidor havia negado.
+     8  "Tarefa assumida — pode abrir o formulário" era texto FIXO, inclusive em
+        tarefa sem Form_URL (ex.: "Posicionamento na oficina"), onde o card só
+        oferece Concluir. A decisão passa a sair da MESMA função que desenha o
+        botão.
+
+     ⚠ PAR DE PUBLICAÇÃO: os itens 4 e 4b só rendem com o GAS v98. Com o v97 no
+       ar o PCF V89 funciona igual à V88 nesses pontos (o campo não vem, o
+       caminho antigo assume). Ordem da casa: GAS → forms → fronts.
+     ══════════════════════════════════════════════════════════════════════════ -->
 
 <!-- V82 (item 8) — TRATADOR GLOBAL DE ERRO. Antes: ZERO window.onerror e ZERO
      unhandledrejection. O incidente v39 (boot morto por ReferenceError, app
@@ -2309,7 +2378,7 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
       <div class="proper-logo-mark">H</div>
       <div class="proper-logo-text">
         <span class="brand">PROPER</span>
-        <span class="brand-sub">Field · V88</span>
+        <span class="brand-sub">Field · V89</span>
       </div>
     </div>
     <div class="header-right">
@@ -3235,16 +3304,79 @@ function limparSessaoStorage() {
       window._PF_VEIO_DO_HUB = true;
     }
 
+    // ══════════════════════════════════════════════════════════════════════
+    // V89 (6) — O DEEP LINK CORRIA CONTRA O PRÓPRIO DOCUMENTO. E ÀS VEZES PERDIA.
+    //
+    // SINTOMA RELATADO (13/08): ao terminar o formulário de uma tarefa, em vez
+    // de voltar ao pipeline da OS o técnico ia parar na LISTA DE OS.
+    //
+    // O formulário devolve a URL certa — `ProperTech/index.html?modo=pipeline&
+    // os_id=…` (conferido nos 9 formulários). Quem falha é ESTE bloco.
+    //
+    // 🔑 A causa NÃO é o que parecia. A primeira suspeita foi que `pfAbrir` /
+    // `pfSelecionarOS` ainda não existissem quando o `setTimeout(…, 500)`
+    // dispara — elas são declaradas num <script> ~11 mil linhas abaixo. Uma
+    // sonda instalada dentro do próprio timeout mostrou que NÃO: nas quatro
+    // condições medidas (arquivo imediato, arquivo atrasado 1,5 s e 4 s, CPU
+    // estrangulada 12× e 20×) as duas já eram `function`. O timer não dispara
+    // antes dos scripts porque o navegador não serve o event loop enquanto o
+    // parser está travado num <script>.
+    //
+    // 🔑 A corrida real é contra o **DOM**. `#pfOverlay`, `#pfScreenOS`,
+    // `#pfScreenPipeline` e `#pfOsLabel` são marcação que vem DEPOIS do último
+    // bloco de script do arquivo. Quando o timer dispara nessa fresta:
+    //     pfAbrir()        → getElementById('pfOverlay') === null → estoura em
+    //                        `ov.style.display` → engolido pelo catch(ePA)
+    //     pfSelecionarOS() → grava _pfOsId (1ª linha!) e estoura logo depois em
+    //                        `#pfOsLabel` → engolido pelo catch(eS)
+    // Resultado: o overlay NEM ABRE, e `_pfOsId` fica preenchido — um estado
+    // meio-feito que ninguém percebe. O técnico toca em PIPELINE e cai na lista.
+    //
+    // MEDIDO (bancada, este arquivo): com o resto do documento chegando 1,5 s
+    // depois do último bloco de script, o overlay fica fechado 100% das vezes; com o
+    // arquivo inteiro de uma vez, abre o pipeline 100% das vezes. Sob CPU 12×
+    // o mesmo estado se reproduz de forma intermitente.
+    //
+    // A CORREÇÃO: parar de apostar num prazo e ESPERAR o que a gente precisa —
+    // as FUNÇÕES **e** os ELEMENTOS **e** o documento parseado. Sonda barata
+    // (60 ms) com teto de 20 s. Aparelho rápido fica igual ao de antes (a 1ª
+    // sonda já acha tudo pronto); aparelho lento deixa de perder em silêncio.
+    // ⚠ Vale para os TRÊS modos — `preventiva`, `pistao` e `pipeline` —, todos
+    //   guardados pelo mesmo `typeof` e todos mexendo no DOM.
+    // ⚠ Se estourar o teto, agora sobra um aviso no console em vez de nada.
+    // ══════════════════════════════════════════════════════════════════════
+    var _pfDeepLinkPronto = function (nomes, ids, aoPronto, tetoMs) {
+      var t0 = Date.now();
+      var teto = tetoMs || 20000;
+      var tenta = function () {
+        var faltando = (nomes || []).filter(function (n) { return typeof window[n] !== 'function'; })
+          .concat((ids || []).filter(function (i) { return !document.getElementById(i); }))
+          .concat(document.readyState === 'loading' ? ['(documento ainda carregando)'] : []);
+        if (!faltando.length) { try { aoPronto(); } catch (e) { console.warn('[V89 deep link]', e && e.message); } return; }
+        if (Date.now() - t0 > teto) {
+          console.warn('[V89 deep link] desisti após ' + Math.round((Date.now() - t0) / 1000) +
+            's — ainda faltavam: ' + faltando.join(', '));
+          return;
+        }
+        setTimeout(tenta, 60);
+      };
+      tenta();
+    };
+
     // Aplicar modo inicial se veio da URL
     setTimeout(function() {
       if (window._INITIAL_MODO === 'preventiva') {
-        if (window._PGP_OS_ID && typeof pgpIniciarPreventivaDeOS === 'function') {
-          pgpIniciarPreventivaDeOS(window._PGP_OS_ID);
-        } else if (typeof pgpSetTipoVisita === 'function') {
-          pgpSetTipoVisita('preventiva');
+        // V89 (6) — espera as funções existirem, em vez de torcer para que
+        // existam. Mesmo comportamento de antes num aparelho rápido.
+        if (window._PGP_OS_ID) {
+          _pfDeepLinkPronto(['pgpIniciarPreventivaDeOS'], [], function () {
+            pgpIniciarPreventivaDeOS(window._PGP_OS_ID);
+          });
+        } else {
+          _pfDeepLinkPronto(['pgpSetTipoVisita'], [], function () { pgpSetTipoVisita('preventiva'); });
         }
       }
-      try { if (typeof pgpAtualizarModoOS === 'function') pgpAtualizarModoOS(); } catch(e) {} // V72 (P2)
+      _pfDeepLinkPronto(['pgpAtualizarModoOS'], [], function () { pgpAtualizarModoOS(); }); // V72 (P2) · V89 (6)
       if (window._INITIAL_MODO === 'pipeline') {
         // ══════════════════════════════════════════════════════════════════
         // V88 (B9) — CORRIDA CONFIRMADA POR LEITURA, agora encadeada.
@@ -3262,19 +3394,25 @@ function limparSessaoStorage() {
         //   usuário, a concorrência anterior era em boa parte ilusória — e
         //   correção de identidade de cliente vale mais que o eventual ganho.
         // ══════════════════════════════════════════════════════════════════
-        var _pAbrir = null;
-        if (typeof pfAbrir === 'function') { try { _pAbrir = pfAbrir(); } catch(ePA) { _pAbrir = null; } }
-        // v28: se a URL já traz os_id, pula a lista de OS e abre o pipeline direto nela
-        if (window._PGP_OS_ID && typeof pfSelecionarOS === 'function') {
-          var _irPraOS = function(){ try { pfSelecionarOS(window._PGP_OS_ID, ''); } catch(eS) {} };
-          if (_pAbrir && typeof _pAbrir.then === 'function') {
-            // `.catch` com o MESMO destino: falha ao listar OS não pode deixar o
-            // técnico preso na lista quando a URL já disse qual OS abrir.
-            _pAbrir.then(_irPraOS, _irPraOS);
-          } else {
-            _irPraOS();
+        // V89 (6) — as DUAS funções são esperadas juntas: abrir o overlay sem
+        // conseguir selecionar a OS é exatamente o estado ruim (lista de OS).
+        _pfDeepLinkPronto(['pfAbrir', 'pfSelecionarOS'],
+                          ['pfOverlay', 'pfScreenOS', 'pfScreenPipeline', 'pfOsLabel', 'pfPipelineConteudo'],
+                          function () {
+          var _pAbrir = null;
+          try { _pAbrir = pfAbrir(); } catch(ePA) { _pAbrir = null; }
+          // v28: se a URL já traz os_id, pula a lista de OS e abre o pipeline direto nela
+          if (window._PGP_OS_ID) {
+            var _irPraOS = function(){ try { pfSelecionarOS(window._PGP_OS_ID, ''); } catch(eS) {} };
+            if (_pAbrir && typeof _pAbrir.then === 'function') {
+              // `.catch` com o MESMO destino: falha ao listar OS não pode deixar o
+              // técnico preso na lista quando a URL já disse qual OS abrir.
+              _pAbrir.then(_irPraOS, _irPraOS);
+            } else {
+              _irPraOS();
+            }
           }
-        }
+        });
       }
     }, 500);
   } catch(e) {
@@ -8794,7 +8932,7 @@ function pgpDescartarPending(idx){
 
 // V81 — diagnóstico copiável: o técnico manda no WhatsApp em vez de descrever.
 function pgpCopiarFilaDiag(){
-  var o = { versao:'PCF_V88', quando:new Date().toISOString(),
+  var o = { versao:'PCF_V89', quando:new Date().toISOString(),
     conectado:(typeof _pgpGsConnected!=='undefined')?_pgpGsConnected:'?',
     sync:pgpGetPending().map(pgpFilaItemResumo),
     conferir:pgpGetDead().map(pgpFilaItemResumo),
@@ -9075,11 +9213,19 @@ function pgpUpdatePendingBadge(){
   }
 }
 
-async function pgpPostJson(action, body, retries, onRetry){ // V76 (F3b): idem pfGet — opcionais, aditivo
-  const d = await _pgpFetchComRetry_(_pgpGsUrl, {
+// V89 (1c) — 5º parâmetro OPCIONAL `opts`, hoje só com `timeoutMs`.
+// `options.__timeoutMs` existia em _pgpFetchComRetry_ desde a V82 com ZERO call
+// sites: a válvula estava instalada e sem manopla. Toda chamada, LEITURA ou
+// ESCRITA, herdava os 45 s pensados para o POST grande de uma coleta com peças
+// — e com o retry padrão (2) isso são 3×45s + 1s + 2,5s = 138,5 s de tela
+// travada por uma leitura. Sem parâmetro, nada muda.
+async function pgpPostJson(action, body, retries, onRetry, opts){ // V76 (F3b): idem pfGet — opcionais, aditivo
+  const _o = {
     method:'POST',
     body:gcBody({action, key:_AUTH_HASH, ...body})
-  }, retries, onRetry);
+  };
+  if (opts && opts.timeoutMs) _o.__timeoutMs = opts.timeoutMs;
+  const d = await _pgpFetchComRetry_(_pgpGsUrl, _o, retries, onRetry);
   if(!d || d.status!=='ok'){
     // V64 — resposta do servidor com veredito de negócio (locked/duplicate/erro de
     // validação) = falha PERMANENTE: reenviar em loop não resolve. Marca o erro para
@@ -9112,7 +9258,13 @@ async function pgpFlushPending(){
   for(let _i = 0; _i < list.length; _i++){
     const item = list[_i];
     try{
-      await pgpPostJson(item.action, item.body || {});
+      // V89 (5) — teto por item na fila. Sem `retries`, cada item herdava o
+      // padrão (2 retries × 45 s + 1 s + 2,5 s = 138,5 s) e o laço é SÉRIE: uma
+      // fila de 4 itens numa rede morta segurava o app — e o Apps Script, que
+      // serializa execuções do mesmo usuário — por ~9 minutos. A passada já
+      // ABORTA quando a rede cai (V77/G2c); o teto é o que garante que ela
+      // chegue nesse teste em segundos, não em minutos.
+      await pgpPostJson(item.action, item.body || {}, 1, null, { timeoutMs: 30000 });
       sent++;
     }catch(e){
       // V64 — separa falha PERMANENTE (veredito do servidor: locked/duplicate/erro)
@@ -14103,7 +14255,27 @@ async function _pgpFetchComRetry_(url, options, maxRetries, onRetry) {
         try { _opts = Object.assign({}, options, { signal: AbortSignal.timeout(_tetoMs) }); }
         catch (eAb) { _opts = options; }   // WebView antiga: segue sem teto, como antes
       }
-      const r = await fetch(url, _opts);
+      // ══════════════════════════════════════════════════════════════════════
+      // V89 (1b) — WebView SEM AbortSignal.timeout NÃO PODE FICAR SEM TETO.
+      // O comentário da V82 dizia "segue sem teto, como antes" e era literal:
+      // em WebView Android antiga (que existe no bolso do técnico) `_semAbort`
+      // é true e o fetch ficava pendurado INDEFINIDAMENTE — sem teto, sem
+      // retry, sem cair na fila. É a versão pior do bug que a V82 veio corrigir,
+      // sobrando exatamente para o aparelho mais frágil.
+      // Promise.race não CANCELA o fetch (sem AbortController não há como), mas
+      // devolve o controle ao app no prazo: o botão destrava, a ação vai para a
+      // fila e a tela para de mentir "sincronizando".
+      // ══════════════════════════════════════════════════════════════════════
+      var _fetchPromise = fetch(url, _opts);
+      const r = _semAbort
+        ? await Promise.race([_fetchPromise, new Promise(function (_, rej) {
+            setTimeout(function () {
+              var _e = new Error('Tempo esgotado (' + Math.round(_tetoMs / 1000) + 's)');
+              _e.name = 'TimeoutError';
+              rej(_e);
+            }, _tetoMs);
+          })])
+        : await _fetchPromise;
       const txt = await r.text();
       if (txt.trim().startsWith('<')) {
         throw new Error('GAS retornou HTML — verifique a publicação do Web App');
@@ -15045,6 +15217,25 @@ async function pfLoadPipeline(opts) {
   // recarrega" pós assumir/liberar/decidir que dava impressão de falha); o
   // conteúdo antigo fica visível até o novo estar pronto.
   opts = opts || {};
+  // ══════════════════════════════════════════════════════════════════════════
+  // V89 (2) — `_pfOsId` É GLOBAL E MUTÁVEL, E ESTA FUNÇÃO TEM UM `await` NO MEIO.
+  //
+  // Até a V88 a função lia `_pfOsId` ANTES do POST (para montar o corpo) e DE
+  // NOVO depois (para gravar o cache e o memo de vazio). Entre as duas leituras
+  // cabe uma troca de OS: `pfSelecionarOS` chama `pfLoadPipeline()` SEM await e
+  // `pfVoltarOS` zera `_pfOsId`. Trocar de OS com requisição em voo gravava a
+  // resposta da OS A sob a CHAVE da OS B em `pf_pipeline_cache_v1` — e, como o
+  // cache morno pinta antes da rede, a OS B passava a abrir mostrando o
+  // pipeline da OS A até o refresh soft corrigir (se corrigisse).
+  //
+  // Agora a requisição CONGELA o id no início e:
+  //   · toda gravação de estado usa o id congelado, nunca o global;
+  //   · se `_pfOsId` mudou quando a resposta chega, o resultado é DESCARTADO;
+  //   · e o envelope do GAS traz `os_id` (getPipelineByOS o devolve desde
+  //     sempre) — se vier de outra OS, também descarta. Esse campo estava na
+  //     resposta e ninguém olhava.
+  // ══════════════════════════════════════════════════════════════════════════
+  var _osReq = _pfOsId;
   var conteudo  = document.getElementById('pfPipelineConteudo');
   var progLabel = document.getElementById('pfProgressLabel');
   var progBar   = document.getElementById('pfProgressBar');
@@ -15054,7 +15245,7 @@ async function pfLoadPipeline(opts) {
   // cache VAZIO nunca é servido.
   if (!opts.soft && !opts._warmData && !opts._retentou) {
     try {
-      var _wp = JSON.parse(localStorage.getItem('pf_pipeline_cache_v1') || '{}')[_pfOsId] || null;
+      var _wp = JSON.parse(localStorage.getItem('pf_pipeline_cache_v1') || '{}')[_osReq] || null;
       if (_wp && (_wp.tarefas || []).length) {
         await pfLoadPipeline({ _warmData: _wp });
         return pfLoadPipeline({ soft: true });
@@ -15077,19 +15268,32 @@ async function pfLoadPipeline(opts) {
       // O1.2 (V61): sem conexão E sem rede do navegador, nem tenta (fila de
       // retries demoraria); vai direto pro cache. Com sinal fraco, tenta normal.
       if (!_pgpGsConnected && navigator.onLine === false) throw new Error('offline');
-      r = await pgpPostJson('getPipelineByOS', { os_id: _pfOsId }, 1, function(){
+      // V89 (1d) — LEITURA tem teto próprio: 15 s e UMA tentativa extra. Os 45 s
+      // do padrão foram calibrados para o POST de uma coleta com peças; para
+      // redesenhar uma tela, esperar 45 s (×2 tentativas) é a mesma coisa que
+      // travar. Estourando, o caminho de cache logo abaixo assume.
+      r = await pgpPostJson('getPipelineByOS', { os_id: _osReq }, 1, function(){
         // V76 (F3b): aviso visível durante o retry (a tela tem placeholder ou conteúdo soft)
         try { if (progLabel) progLabel.textContent = '📶 Sinal fraco — tentando de novo…'; } catch(eR) {}
-      });
+      }, { timeoutMs: 15000 });
+      // V89 (2) — descarte cruzado: trocou de OS no meio? esta resposta não vale.
+      if (String(_pfOsId || '') !== String(_osReq || '')) {
+        console.info('[V89] resposta de getPipelineByOS descartada — OS mudou de', _osReq, 'para', _pfOsId);
+        return;
+      }
+      if (r && r.os_id && String(r.os_id).trim() !== String(_osReq || '').trim()) {
+        console.warn('[V89] envelope de OUTRA OS descartado —', r.os_id, '≠', _osReq);
+        return;
+      }
       // Sucesso → guarda para leitura offline (mantém as 12 OS mais recentes)
       // V67: lista VAZIA não entra no cache — um cache de "0 tarefas" gravado
       // antes do pipeline ser instanciado fazia o modo offline mostrar
       // "Nenhuma tarefa" para uma OS que JÁ tinha tarefas.
-      pfCacheGravarPipeline(_pfOsId, r.tarefas || []); // V77 (G5): regra única de cache
+      pfCacheGravarPipeline(_osReq, r.tarefas || []); // V77 (G5): regra única de cache · V89 (2): id congelado
     } catch(eNet) {
       if (eNet.message && eNet.message.includes('AUTH_GOOGLE')) throw eNet;
       var _pc = null;
-      try { _pc = JSON.parse(localStorage.getItem('pf_pipeline_cache_v1') || '{}')[_pfOsId] || null; } catch(eC2) {}
+      try { _pc = JSON.parse(localStorage.getItem('pf_pipeline_cache_v1') || '{}')[_osReq] || null; } catch(eC2) {}
       if (!_pc) throw eNet;
       r = { tarefas: _pc.tarefas || [] };
       window._pfPipelineOfflineTs = _pc.ts;
@@ -15106,7 +15310,7 @@ async function pfLoadPipeline(opts) {
       // recém-criada; depois que o vazio foi CONFIRMADO pelo retry, a OS entra
       // num memo de 5 min e as próximas aberturas mostram o estado direto.
       window._pfPipelineVazioConfirmado = window._pfPipelineVazioConfirmado || {};
-      var _vzTs = window._pfPipelineVazioConfirmado[_pfOsId] || 0;
+      var _vzTs = window._pfPipelineVazioConfirmado[_osReq] || 0;
       if (!opts._retentou && (Date.now() - _vzTs) > 300000) {
         conteudo.innerHTML = '<div style="text-align:center;padding:32px 16px;color:#64748b">' +
           '<div style="font-size:32px;margin-bottom:12px">⏳</div>' +
@@ -15115,7 +15319,7 @@ async function pfLoadPipeline(opts) {
         await new Promise(function(res){ setTimeout(res, 2500); });
         return pfLoadPipeline({ _retentou: true });
       }
-      if (opts._retentou) { window._pfPipelineVazioConfirmado[_pfOsId] = Date.now(); }
+      if (opts._retentou) { window._pfPipelineVazioConfirmado[_osReq] = Date.now(); }
       conteudo.innerHTML = '<div style="text-align:center;padding:32px 16px;color:#64748b">' +
         '<div style="font-size:32px;margin-bottom:12px">🔧</div>' +
         '<div style="font-size:14px;font-weight:600;color:#94a3b8;margin-bottom:6px">Nenhuma tarefa no pipeline</div>' +
@@ -15467,8 +15671,39 @@ async function pfAssumirTarefa(tarefaId, btn) {
   window._pfSincronizandoTarefas = window._pfSincronizandoTarefas || {};
   window._pfSincronizandoTarefas[tarefaId] = 1;
   try { await pfLoadPipeline({ _warmData: { tarefas: _pfTarefas } }); } catch(eW) {}
+  // ══════════════════════════════════════════════════════════════════════════
+  // V89 (3) — WATCHDOG. NENHUM SELO DE ESPERA FICA ACESO PARA SEMPRE.
+  //
+  // O card travado em "⏳ sincronizando…" (+ "↻ atualizando…") não era o
+  // pipeline carregando: era ESTE POST. `_pfSincronizandoTarefas[tarefaId]` só
+  // era apagado quando a resposta chegava, e com o teto de 45 s × 3 tentativas
+  // + 1 s + 2,5 s a espera máxima era 138,5 s — e INFINITA em WebView sem
+  // AbortSignal.timeout (ver V89/1b).
+  //
+  // Duas correções, independentes:
+  //   · teto próprio para ESTA escrita (25 s, 1 tentativa extra): 51 s no pior
+  //     caso, não 138,5 s;
+  //   · e o watchdog abaixo, que é a garantia de última instância — passados
+  //     20 s, o selo sai da tela e o técnico lê o que está acontecendo, em vez
+  //     de olhar para uma ampulheta parada.
+  // ⚠ Limpar o selo NÃO cancela o POST: se ele voltar depois, o `else` de
+  //   sucesso ainda aplica o patch e o refresh soft corrige a tela.
+  // ══════════════════════════════════════════════════════════════════════════
+  var _wd = setTimeout(function () {
+    try {
+      if (!window._pfSincronizandoTarefas || !window._pfSincronizandoTarefas[tarefaId]) return;
+      delete window._pfSincronizandoTarefas[tarefaId];
+      pfLoadPipeline({ _warmData: { tarefas: _pfTarefas } });
+      if (typeof pfToast === 'function') {
+        pfToast('📶 O servidor está demorando. A tarefa já está sua neste aparelho — ' +
+                'se não confirmar, ela sobe pela fila.');
+      }
+    } catch (eWd) {}
+  }, 20000);
   try {
-    var r = await pgpPostJson('assumirTarefa', { os_id: _pfOsId, tarefa_id: tarefaId, usuario: usuario });
+    var r = await pgpPostJson('assumirTarefa', { os_id: _pfOsId, tarefa_id: tarefaId, usuario: usuario },
+                              1, null, { timeoutMs: 25000 });
+    clearTimeout(_wd);
     delete window._pfSincronizandoTarefas[tarefaId];
     if (r && r.status === 'locked') {
       // ROLLBACK: outro técnico detém o lock — desfaz o otimista e mostra a
@@ -15494,13 +15729,48 @@ async function pfAssumirTarefa(tarefaId, btn) {
           await pfLoadPipeline({ _warmData: { tarefas: _pfTarefas } });
         } catch(eP) {}
       }
-      if (typeof pfToast === 'function') pfToast('🔒 Tarefa assumida — pode abrir o formulário');
+      // ══════════════════════════════════════════════════════════════════
+      // V89 (8) — A MENSAGEM PROMETIA UM FORMULÁRIO QUE PODE NÃO EXISTIR.
+      // Confirmado no código e no relato de 13/08: o texto era fixo, mas
+      // pfBuildCard só desenha "📋 Abrir formulário" quando `pfGetFormUrl`
+      // devolve alguma coisa. Numa tarefa sem Form_URL (ex.: "Posicionamento na
+      // oficina (fila)") o card mostra apenas "Concluir tarefa" — e o toast
+      // mandava o técnico procurar um botão que não está lá.
+      // ⚠ A decisão sai da MESMA função que desenha o botão: uma fonte só.
+      // ══════════════════════════════════════════════════════════════════
+      if (typeof pfToast === 'function') {
+        var _tAssum = (_pfTarefas || []).find(function (x) { return String(x.Tarefa_ID) === String(tarefaId); });
+        var _temForm = false;
+        try {
+          _temForm = !!(_tAssum && typeof pfGetFormUrl === 'function' &&
+                        pfGetFormUrl(String(_tAssum.Tipo || 'manual'), _tAssum));
+        } catch (eF) { _temForm = false; }
+        pfToast(_temForm
+          ? '🔒 Tarefa assumida — pode abrir o formulário'
+          : '🔒 Tarefa assumida — conclua quando terminar o serviço');
+      }
     }
     // Refresh soft em BACKGROUND, sem await — o card já está certo na tela.
     pfLoadPipeline({ soft: true }).catch(function(){});
   } catch(e) {
+    clearTimeout(_wd);   // V89 (3)
     delete window._pfSincronizandoTarefas[tarefaId];
     if (e.message && e.message.includes('AUTH_GOOGLE')) { pfHubLogout(); return; }
+    // ══════════════════════════════════════════════════════════════════════
+    // V89 (7) — O SERVIDOR RECUSOU: rollback do lock otimista e a verdade na
+    // tela. Este é o caminho que os ramos `r.status==='locked'`/`'error'` logo
+    // acima PROMETIAM e nunca executaram (pgpPostJson lança). Sem isto, uma
+    // tarefa negada ("já está com outro técnico", "é do escritório") ficava
+    // marcada como sua no aparelho e ia para a fila para ser negada de novo.
+    // ══════════════════════════════════════════════════════════════════════
+    if (pfEhVeredicto_(e)) {
+      var _lockServidor = (e && e.serverStatus === 'locked') ? '' : _prevLock;
+      pfLockLocalOffline(tarefaId, _lockServidor || _prevLock || '');
+      if (btn) { btn.disabled = false; btn.classList.remove('is-busy'); btn.textContent = '🔒 Assumir tarefa'; }
+      pfMostrarVeredicto_(e, 'Não foi possível assumir a tarefa.');
+      try { await pfLoadPipeline({ soft: true }); } catch(eV) {}
+      return;
+    }
     // V77 (G1) — REDE-FANTASMA. Até a V76 a fila só era usada quando
     // `navigator.onLine === false` (modo avião). Em galpão, portal cativo ou 3G
     // morto o navegador diz que está ONLINE, o POST estourava, e a ação
@@ -15534,6 +15804,12 @@ async function pfLiberarTarefa(tarefaId, btn) {
     await pfLoadPipeline({ soft: true }); // V67: refresh sem apagar a tela
   } catch(e) {
     if (e.message && e.message.includes('AUTH_GOOGLE')) { pfHubLogout(); return; }
+    if (pfEhVeredicto_(e)) {   // V89 (7)
+      if (btn) { btn.disabled = false; btn.classList.remove('is-busy'); btn.textContent = 'Liberar tarefa'; }
+      pfMostrarVeredicto_(e, 'Não foi possível liberar a tarefa.');
+      try { await pfLoadPipeline({ soft: true }); } catch(eV) {}
+      return;
+    }
     pgpQueueRequest('liberarTarefa', { os_id: _pfOsId, tarefa_id: tarefaId, usuario: usuario }); // V77 (G1)
     pfLockLocalOffline(tarefaId, '');
     if (btn) { btn.disabled = false; btn.classList.remove('is-busy'); btn.textContent = 'Liberar tarefa'; }
@@ -15562,6 +15838,17 @@ async function pfResolverDecisao(tarefaId, valor, btn) {
     await pfLoadPipeline({ soft: true }); // V67: refresh sem apagar a tela
   } catch(e) {
     if (e.message && e.message.includes('AUTH_GOOGLE')) { pfHubLogout(); return; }
+    // V89 (7) — era ESTA a linha que produzia a mensagem contraditória
+    // "Decisão indisponível (status: completo) · Decisão na fila — sobe ao
+    // sincronizar": uma decisão JÁ RESPONDIDA (o Form 02 resolve o gateway
+    // sozinho ao ser salvo) não tem nada a subir. Agora a recusa é dita como
+    // recusa, e o refresh recarrega o card com o estado real do servidor.
+    if (pfEhVeredicto_(e)) {
+      if (btn) { btn.disabled = false; btn.classList.remove('is-busy'); }
+      pfMostrarVeredicto_(e, 'Não foi possível registrar a decisão.');
+      await pfLoadPipeline({ soft: true });
+      return;
+    }
     pgpQueueRequest('resolverDecisao', _decBody);
     if (btn) { btn.disabled = false; btn.classList.remove('is-busy'); }
     if (typeof pfToast === 'function') pfToast('⏳ ' + pgpMsgErro(e) + ' Decisão na fila — sobe ao sincronizar.');
@@ -16035,7 +16322,29 @@ async function pfConfirmarTarefa(tarefaId) {
       hora_inicio_estimada: horaInicioEstimada,
       hora_fim_estimada: horaFimEstimada,
       respostas_json: JSON.stringify(_pfRespostas[tarefaId] || {}) // v72 Fases B/C
-    });
+    }, undefined, undefined, { timeoutMs: 40000 });   // V89 (4b)
+    // ════════════════════════════════════════════════════════════════════════
+    // V89 (4) — PATCH LOCAL NA CONCLUSÃO (par do GAS v98 P-4).
+    // `assumirTarefa` faz isso desde a V87; concluir não fazia, porque o GAS
+    // não devolvia a linha — então o card só mudava quando o
+    // `pfLoadPipeline({soft:true})` voltasse do servidor, ou seja, mais um POST
+    // inteiro de espera para repintar UM cartão que o servidor já tinha na mão.
+    // ⚠ O refresh soft CONTINUA, sem await: concluir dispara desbloqueios,
+    //   fechamento de OS e encerramento de camada, que mexem em OUTROS cards.
+    //   O patch é para o card que o técnico está olhando responder na hora; a
+    //   verdade completa chega logo atrás. GAS antigo (sem `tarefa`) não entra
+    //   aqui e o comportamento é o da V88.
+    // ════════════════════════════════════════════════════════════════════════
+    if (_rConf && _rConf.tarefa) {
+      try {
+        var _ci = (_pfTarefas || []).findIndex(function (x) { return String(x.Tarefa_ID) === String(tarefaId); });
+        if (_ci >= 0) {
+          _pfTarefas[_ci] = Object.assign({}, _pfTarefas[_ci], _rConf.tarefa);
+          if (typeof pfCacheGravarPipeline === 'function') pfCacheGravarPipeline(_pfOsId, _pfTarefas);
+          await pfLoadPipeline({ _warmData: { tarefas: _pfTarefas } });
+        }
+      } catch (ePc) { console.warn('[V89] patch local da conclusão:', ePc && ePc.message); }
+    }
     // V78 (P1/C2/F2) — o ✅ liso era metade da história. O GAS v83 devolve
     // os_fechada/os_pendentes (quando a ação era fechar_os) e camada_encerrada
     // (quando era fechar_pipeline). Dizer QUAIS tarefas seguram a OS não é erro
@@ -16062,6 +16371,18 @@ async function pfConfirmarTarefa(tarefaId) {
     pfLoadPipeline({ soft: true }); // V67: refresh sem apagar a tela
   } catch(e) {
     if (e.message && e.message.includes('AUTH_GOOGLE')) { pfHubLogout(); return; }
+    // V89 (7) — recusa de NEGÓCIO não vai para a fila: "esta é uma tarefa de
+    // administração", "a tarefa está bloqueada", "já está concluída". Reenviar
+    // isso 5× só queima cota do Apps Script e termina no dead-letter, e o
+    // técnico fica achando que o trabalho está a caminho.
+    // ⚠ Falha de REDE continua indo para a fila, exatamente como na V77 (G1):
+    //   é a garantia de que o trabalho feito na oficina não se perde.
+    if (pfEhVeredicto_(e)) {
+      if (btnEl) { btnEl.disabled = false; btnEl.classList.remove('is-busy'); btnEl.textContent = '✅ Concluir tarefa'; }
+      pfMostrarVeredicto_(e, 'O servidor não aceitou concluir esta tarefa.');
+      await pfLoadPipeline({ soft: true });
+      return;
+    }
     // V77 (G1) — o trabalho feito na oficina não pode morrer num banner de erro.
     pgpQueueRequest('updateTarefaStatus', {
       os_id:      _pfOsId,
@@ -16364,6 +16685,50 @@ async function pfOnNotifClick(notifId, osId) {
     document.getElementById('pfScreenPipeline').style.display = 'block';
     pfLoadPipeline();
   }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// V89 (7) — VEREDICTO DO SERVIDOR NÃO É FALHA DE REDE.
+//
+// SINTOMA RELATADO (13/08): tocar num botão do pipeline e receber
+//     "⌛ Decisão indisponível (status: completo) · Decisão na fila — sobe ao
+//      sincronizar."
+// As duas metades da frase se contradizem, e a segunda é MENTIRA.
+//
+// `pgpPostJson` LANÇA sempre que o envelope não vem `status:'ok'` — e marca o
+// erro com `permanent = true` justamente para distinguir "o servidor recusou"
+// de "a rede falhou" (V64). Mas os quatro call sites do pipeline
+// (pfAssumirTarefa, pfLiberarTarefa, pfResolverDecisao, pfConfirmarTarefa)
+// tinham UM catch só, que enfileirava TUDO. Consequências:
+//   · a recusa de negócio ("já está concluída", "é tarefa de administração",
+//     "tarefa em execução por fulano", "valor inválido") é anunciada como
+//     "guardado na fila, sobe ao sincronizar";
+//   · e o item entra mesmo na fila, onde será reenviado até bater
+//     PGP_MAX_TRIES e cair no dead-letter — trabalho e cota do Apps Script
+//     gastos para repetir uma resposta que já era definitiva;
+//   · o técnico não corrige o que causou a recusa, porque ninguém contou a ele.
+//
+// 🔑 E há um agravante que só apareceu ao ler o código lado a lado: em
+// `pfAssumirTarefa` os ramos `r.status === 'locked'` e `r.status === 'error'`
+// são CÓDIGO MORTO desde sempre. Como `pgpPostJson` lança nesses casos, `r`
+// nunca chega ali com outra coisa que não `status:'ok'`. Ou seja: o ROLLBACK do
+// lock otimista — o que desfaz "🔒 Você está executando" quando outro técnico
+// já tinha a tarefa — NUNCA rodou. O aparelho ficava mostrando um lock que o
+// servidor havia negado. É esse rollback que volta a existir aqui.
+// ════════════════════════════════════════════════════════════════════════════
+function pfEhVeredicto_(e) {
+  return !!(e && (e.permanent === true || e.serverStatus));
+}
+
+// Mensagem honesta para uma recusa do servidor. Sem "na fila", sem "⏳".
+function pfMostrarVeredicto_(e, prefixoPadrao) {
+  var msg = String((e && e.message) || prefixoPadrao || 'O servidor recusou a operação.');
+  var st  = String((e && e.serverStatus) || '');
+  var icone = (st === 'locked') ? '🔒' : '⚠';
+  try {
+    if (typeof pfShowUnlockBanner === 'function') pfShowUnlockBanner(icone + ' ' + msg, true);
+    else if (typeof pfToast === 'function') pfToast(icone + ' ' + msg);
+  } catch (eB) {}
 }
 
 // ── Banner de desbloqueio (toast interno ao overlay) ─────────────────────────
