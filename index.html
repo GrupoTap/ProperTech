@@ -717,8 +717,8 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ProperCare Field · PGP Preventivas v34 · build PCF_V87</title>
-<meta name="app-build" content="PCF_V87" data-date="2026-08-08">
+<title>ProperCare Field · PGP Preventivas v34 · build PCF_V88</title>
+<meta name="app-build" content="PCF_V88" data-date="2026-08-13">
 
 <!-- V82 (item 8) — TRATADOR GLOBAL DE ERRO. Antes: ZERO window.onerror e ZERO
      unhandledrejection. O incidente v39 (boot morto por ReferenceError, app
@@ -2029,6 +2029,13 @@ function pgpEnsureJsPDF() {
      visual além do disabled, para o usuário perceber que o clique "pegou". ── */
   @keyframes spin { to { transform: rotate(360deg); } }
   .btn.is-busy,.pf-btn.is-busy,.btn-preventiva.is-busy{ position:relative; color:transparent !important; pointer-events:none }
+  /* V88 (D5) — sinal de "processando" no PRÓPRIO gatilho de foto. NÃO reusa
+     .is-busy de propósito: aquele zera a cor do texto e depende de o elemento
+     ser .btn/.pf-btn/.btn-preventiva — e os ~9 gatilhos de foto têm markup
+     diferente entre si (alguns com <span> dentro). Este só pulsa e bloqueia o
+     toque, sem mexer no conteúdo do botão. */
+  @keyframes pcfFotoPulse{0%,100%{opacity:1}50%{opacity:.42}}
+  .pcf-foto-busy{animation:pcfFotoPulse .9s ease-in-out infinite;pointer-events:none}
   .btn.is-busy::after,.pf-btn.is-busy::after,.btn-preventiva.is-busy::after{ content:''; position:absolute; width:16px; height:16px; top:calc(50% - 8px); left:calc(50% - 8px);
     border:2px solid currentColor; border-right-color:transparent; border-radius:50%; animation:spin .6s linear infinite; color:#fff }
 
@@ -2302,7 +2309,7 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
       <div class="proper-logo-mark">H</div>
       <div class="proper-logo-text">
         <span class="brand">PROPER</span>
-        <span class="brand-sub">Field · V86</span>
+        <span class="brand-sub">Field · V88</span>
       </div>
     </div>
     <div class="header-right">
@@ -2310,7 +2317,7 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
       <div class="pcf-chiprow">
         <div class="machine-counter" id="machineCounter">Máquina 1 de 1</div>
         <div class="gs-pill-pgp" id="gsPill" onclick="abrirConfig()">
-          <div style="display:flex;align-items:center;gap:4px;cursor:pointer" onclick="event.stopPropagation();pgpTestGs()" title="Toque para reconectar">
+          <div style="display:flex;align-items:center;gap:4px;cursor:pointer" onclick="event.stopPropagation();pgpTestGs(true)" title="Toque para reconectar">
             <div class="gs-dot-pgp off" id="gsDotPgp"></div>
             <span id="gsTextPgp">Sheets</span>
           </div>
@@ -2321,7 +2328,7 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
         <!-- V77 (F1): modo offline deliberado -->
         <button class="btn-sessions-header" id="btnModoOffline" onclick="pgpToggleModoOffline(this)" title="Ligar modo offline (o app para de procurar rede)">📴</button>
         <button class="btn-sessions-header" id="btnCatalogLookup" onclick="pgpToggleCatalogPanel()" title="Consulta de peças">🔍</button>
-        <button class="btn-sessions-header" onclick="salvarColeta()" title="Salvar coleta">💾</button>
+        <button class="btn-sessions-header" onclick="salvarColeta(this)" title="Salvar coleta">💾</button>
         <button class="btn-sessions-header" onclick="novaColeta()" title="Iniciar nova coleta">➕</button>
         <button class="btn-sessions-header" onclick="abrirSessoes()" title="Coletas salvas">📂</button>
         <!-- Sprint 4E-D: botão pipeline -->
@@ -2359,7 +2366,7 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
 
 <div class="restore-banner" id="restoreBanner">
   <div class="restore-banner-text">↩ Rascunho encontrado — <span id="restoreBannerInfo">coleta anterior</span></div>
-  <button class="btn-restore" onclick="restoreDraft()">Continuar</button>
+  <button class="btn-restore" onclick="restoreDraft(this)">Continuar</button>
   <button class="btn-discard-draft" onclick="discardDraft()" title="Descartar">✕</button>
 </div>
 
@@ -2416,12 +2423,15 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
       <!-- V75 (P3): guard anti-autofill completo (idem pgpClientInput). -->
       <input type="text" id="pgpSearchInput" class="pgp-search-input"
              placeholder="N° série, TAG ou cliente..."
-             oninput="pgpOnInput()" onkeydown="pgpOnKey(event)"
+             oninput="pgpOnInputDebounced()" onkeydown="pgpOnKey(event)"
              onfocus="this.removeAttribute('readonly')"
              readonly name="pcf_serie_busca_nofill" data-lpignore="true" data-1p-ignore
              autocomplete="off">
       <div class="pgp-autocomplete-list" id="pgpAcList"></div>
     </div>
+    <!-- V88 (D3): o aviso existe para os DOIS caminhos que não têm botão
+         (escolher no autocomplete e Enter no campo) — eram até 12 s mudos. -->
+    <div id="pgpSerialSearching" style="display:none;font-size:12px;color:var(--blue-mid);padding:6px 2px 0;font-weight:600"></div>
     <div style="display:flex;gap:8px;margin-top:8px">
       <button class="pgp-search-btn" onclick="pgpDoSerialSearch(this)">Buscar</button>
       <button class="pgp-link-btn pgp-so-avulso" onclick="pgpBackToStep1()">← Voltar</button>
@@ -2481,7 +2491,7 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
       <option>Vaso de Pressão</option><option>Outro</option>
     </select>
   </div>
-  <button class="pgp-new-btn" onclick="pgpRegisterNew()">✚ Cadastrar e carregar</button>
+  <button class="pgp-new-btn" onclick="pgpRegisterNew(this)">✚ Cadastrar e carregar</button>
 </div>
 
 <!-- Config overlay -->
@@ -2530,12 +2540,12 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
   <button class="btn btn-done" id="btnDone" onclick="gerarResumo()">Gerar Resumo 📲</button>
 </div>
 <div class="actions" style="padding-top:6px">
-  <button class="btn btn-reset" onclick="salvarColeta()" style="background:var(--blue);color:white;border-color:var(--blue)">💾 Salvar Coleta</button>
+  <button class="btn btn-reset" onclick="salvarColeta(this)" style="background:var(--blue);color:white;border-color:var(--blue)">💾 Salvar Coleta</button>
   <button class="btn btn-reset" onclick="gerarPDF(this)" style="background:#c0392b;color:white;border-color:#c0392b;flex:none;padding:12px 18px;font-size:14px">📄 Gerar PDF</button><!-- V75 (P2): passa o botão p/ trava de duplo-toque -->
   <!-- v27 item 8: gerarPDF agora emite 1 PDF por máquina; este botão gera
        adicionalmente um PDF único consolidado com índice. Só aparece com
        2+ máquinas na coleta. -->
-  <button id="btnConsolidarPdf" class="btn btn-reset" onclick="gerarPDFConsolidado()" style="display:none;background:#7b4000;color:white;border-color:#7b4000;flex:none;padding:12px 18px;font-size:14px">📚 Consolidar PDFs</button>
+  <button id="btnConsolidarPdf" class="btn btn-reset" onclick="gerarPDFConsolidado(this)" style="display:none;background:#7b4000;color:white;border-color:#7b4000;flex:none;padding:12px 18px;font-size:14px">📚 Consolidar PDFs</button>
 </div>
 <!-- v31 item 7: acesso direto ao envio ao Sheets na tela principal, sem
      precisar abrir o modal "Gerar Resumo" e trocar de aba (antes eram 3
@@ -2625,7 +2635,10 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
       <span onclick="pgpFecharFilaPanel()" style="cursor:pointer;font-size:22px;color:#64748b;line-height:1">✕</span>
     </div>
     <div id="pgpFilaBody"></div>
-    <button onclick="pgpFlushPending();setTimeout(pgpRenderFilaPanel,700)" style="width:100%;background:#3b82f6;color:#fff;border:0;border-radius:10px;padding:13px;font-weight:700;font-size:15px;margin-top:12px;cursor:pointer">🔄 Reenviar agora</button>
+    <!-- V88 (D2): progresso do reenvio. Fica FORA do #pgpFilaBody de propósito —
+         pgpRenderFilaPanel reescreve aquele nó e apagaria o texto no meio do envio. -->
+    <div id="pgpFilaProgresso" style="display:none;text-align:center;font-size:13px;font-weight:700;color:#1d4ed8;padding:8px 4px 0"></div>
+    <button id="pgpBtnReenviarFila" onclick="pgpReenviarAgora(this)" style="width:100%;background:#3b82f6;color:#fff;border:0;border-radius:10px;padding:13px;font-weight:700;font-size:15px;margin-top:12px;cursor:pointer">🔄 Reenviar agora</button>
     <!-- V81: diagnóstico copiável — o técnico manda no WhatsApp em vez de descrever -->
     <button onclick="pgpCopiarFilaDiag()" style="width:100%;background:#e2e8f0;color:#334155;border:0;border-radius:10px;padding:10px;font-size:13px;margin-top:8px;cursor:pointer">📋 Copiar diagnóstico da fila</button>
   </div>
@@ -2794,6 +2807,7 @@ function pgpGetPerdidos(){
 }
 function pgpLimparPerdidos(){
   try { localStorage.removeItem(_PGP_PERDIDOS_KEY); } catch(e){}
+  pgpInvalidarFilaContagens();   // V88 (B1)
   try { pgpUpdatePendingBadge(); } catch(e){}
   try { pgpRenderFilaPanel(); } catch(e){}
 }
@@ -2812,6 +2826,7 @@ function _pgpDriveMarcarPerdido(item, motivo){
     while (l.length > 50) l.shift();
     localStorage.setItem(_PGP_PERDIDOS_KEY, JSON.stringify(l));
   } catch(e){}
+  pgpInvalidarFilaContagens();   // V88 (B1)
   try { showNotification('⚠ Um anexo NÃO pôde ser guardado (' + motivo + '). Toque no ⏳ para ver qual.'); } catch(e){}
   try { pgpUpdatePendingBadge(); } catch(e){}
 }
@@ -3231,10 +3246,34 @@ function limparSessaoStorage() {
       }
       try { if (typeof pgpAtualizarModoOS === 'function') pgpAtualizarModoOS(); } catch(e) {} // V72 (P2)
       if (window._INITIAL_MODO === 'pipeline') {
-        if (typeof pfAbrir === 'function') pfAbrir();
+        // ══════════════════════════════════════════════════════════════════
+        // V88 (B9) — CORRIDA CONFIRMADA POR LEITURA, agora encadeada.
+        //
+        // `pfAbrir` é async e suspende no `await pfLoadOS()`. O
+        // `pfSelecionarOS` logo abaixo rodava NESSE INTERVALO e fazia
+        // `_pfOsList.find(...)` numa lista que, sem `pf_os_cache_v1` quente
+        // (aparelho novo, storage limpo, 1º uso), ainda é `[]`. Resultado:
+        // `osObj` indefinido ⇒ `_pfOsCliente` VAZIO e rótulo degradado —
+        // e `_pfOsCliente` é justamente o nome canônico que a V78 (P1/C1)
+        // criou porque usar o rótulo errado duplicava cliente e pasta no Drive.
+        //
+        // ⚠ Custo aceito: o getPipelineByOS passa a sair DEPOIS do getOS, em
+        //   vez de concorrente. Como o Apps Script serializa execuções do mesmo
+        //   usuário, a concorrência anterior era em boa parte ilusória — e
+        //   correção de identidade de cliente vale mais que o eventual ganho.
+        // ══════════════════════════════════════════════════════════════════
+        var _pAbrir = null;
+        if (typeof pfAbrir === 'function') { try { _pAbrir = pfAbrir(); } catch(ePA) { _pAbrir = null; } }
         // v28: se a URL já traz os_id, pula a lista de OS e abre o pipeline direto nela
         if (window._PGP_OS_ID && typeof pfSelecionarOS === 'function') {
-          pfSelecionarOS(window._PGP_OS_ID, '');
+          var _irPraOS = function(){ try { pfSelecionarOS(window._PGP_OS_ID, ''); } catch(eS) {} };
+          if (_pAbrir && typeof _pAbrir.then === 'function') {
+            // `.catch` com o MESMO destino: falha ao listar OS não pode deixar o
+            // técnico preso na lista quando a URL já disse qual OS abrir.
+            _pAbrir.then(_irPraOS, _irPraOS);
+          } else {
+            _irPraOS();
+          }
         }
       }
     }, 500);
@@ -3288,27 +3327,64 @@ function showFotoToast(msg) {
   _fotoToastTimer = setTimeout(() => el.classList.remove('show'), 2600);
 }
 
-// Converte um File em dataURL comprimido (máx 800px de largura, jpeg 0.82)
-function compressPhotoFile(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      const img = new Image();
-      img.onload = function() {
-        const canvas = document.createElement('canvas');
-        const maxW = 800;
-        const scale = img.width > maxW ? maxW / img.width : 1;
-        canvas.width  = Math.round(img.width  * scale);
-        canvas.height = Math.round(img.height * scale);
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve({ dataUrl: canvas.toDataURL('image/jpeg', 0.82), w: canvas.width, h: canvas.height });
-      };
+// ══════════════════════════════════════════════════════════════════════════
+// V88 (A4) — UMA FOTO, UM DECODE (era DOIS).
+//
+// Toda foto capturada passava por `compressPhotoFile` (800px/0.82, para o PDF)
+// E por `compressPhotoForDrive` (1600px/0.88, para o backup) — e CADA uma fazia
+// o ciclo COMPLETO: FileReader.readAsDataURL do arquivo inteiro + decode da
+// imagem de 12 MP + canvas. Ou seja, o trabalho mais caro da captura era feito
+// duas vezes sobre o MESMO arquivo.
+//
+// Agora o decode é feito uma vez e memoizado por `File` (WeakMap: quando o
+// input solta o arquivo, a entrada morre sozinha). O redimensionamento continua
+// sendo dois canvases distintos — é ele que produz os dois tamanhos.
+//
+// ⚠ QUALIDADE E FORMATO DE SAÍDA INALTERADOS: mesmos `maxW`, mesmos parâmetros
+//   de `toDataURL('image/jpeg', q)`, mesmo `drawImage(img,0,0,w,h)`, mesmo shape
+//   de retorno `{dataUrl,w,h}`. Desenhar o MESMO HTMLImageElement em dois
+//   canvases é operação padrão e não degrada pixel nenhum.
+// ⚠ ORIENTAÇÃO EXIF: as duas funções já decodificavam via `img.src = dataURL`
+//   (o navegador auto-orienta). Compartilhar o mesmo `img` não muda isso.
+// ⚠ WeakMap ausente (WebView pré-histórica) ⇒ sem memo, decode por chamada,
+//   exatamente o comportamento da V87.
+// ══════════════════════════════════════════════════════════════════════════
+var _pgpImgMemo = (typeof WeakMap === 'function') ? new WeakMap() : null;
+function _pgpDecodificarFoto(file) {
+  if (_pgpImgMemo) {
+    var _m = null;
+    try { _m = _pgpImgMemo.get(file); } catch (e) { _m = null; }
+    if (_m) return _m;
+  }
+  var pr = new Promise(function (resolve, reject) {
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      var img = new Image();
+      img.onload  = function () { resolve(img); };
       img.onerror = reject;
       img.src = e.target.result;
     };
     reader.onerror = reject;
     reader.readAsDataURL(file);
+  });
+  if (_pgpImgMemo) { try { _pgpImgMemo.set(file, pr); } catch (e) {} }
+  return pr;
+}
+// Corpo comum das duas compressões — instrução por instrução o que cada uma fazia.
+function _pgpRedimensionarFoto(img, maxW, quality) {
+  var canvas = document.createElement('canvas');
+  var scale = img.width > maxW ? maxW / img.width : 1;
+  canvas.width  = Math.round(img.width  * scale);
+  canvas.height = Math.round(img.height * scale);
+  var ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  return { dataUrl: canvas.toDataURL('image/jpeg', quality), w: canvas.width, h: canvas.height };
+}
+
+// Converte um File em dataURL comprimido (máx 800px de largura, jpeg 0.82)
+function compressPhotoFile(file) {
+  return _pgpDecodificarFoto(file).then(function (img) {
+    return _pgpRedimensionarFoto(img, 800, 0.82);
   });
 }
 
@@ -3320,24 +3396,9 @@ const DRIVE_PHOTO_MAX_W = 1600;
 const DRIVE_PHOTO_QUALITY = 0.88;
 
 function compressPhotoForDrive(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      const img = new Image();
-      img.onload = function() {
-        const canvas = document.createElement('canvas');
-        const scale = img.width > DRIVE_PHOTO_MAX_W ? DRIVE_PHOTO_MAX_W / img.width : 1;
-        canvas.width  = Math.round(img.width  * scale);
-        canvas.height = Math.round(img.height * scale);
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve({ dataUrl: canvas.toDataURL('image/jpeg', DRIVE_PHOTO_QUALITY), w: canvas.width, h: canvas.height });
-      };
-      img.onerror = reject;
-      img.src = e.target.result;
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
+  // V88 (A4): reusa o decode já feito por compressPhotoFile para o MESMO File.
+  return _pgpDecodificarFoto(file).then(function (img) {
+    return _pgpRedimensionarFoto(img, DRIVE_PHOTO_MAX_W, DRIVE_PHOTO_QUALITY);
   });
 }
 
@@ -3358,8 +3419,8 @@ function pgpGetDriveQueue(){
   catch(e){ return []; }
 }
 function pgpSaveDriveQueue(list){
-  try { localStorage.setItem(DRIVE_PENDING_KEY, JSON.stringify(list)); return true; }
-  catch(e){ console.warn('pgp_pending_drive: falha ao persistir:', e && e.message); return false; }
+  try { localStorage.setItem(DRIVE_PENDING_KEY, JSON.stringify(list)); pgpInvalidarFilaContagens(); return true; }
+  catch(e){ pgpInvalidarFilaContagens(); console.warn('pgp_pending_drive: falha ao persistir:', e && e.message); return false; }
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -3837,7 +3898,7 @@ function renderPhotoThumbs(midx, photoKey) {
   containers.forEach(container => {
     container.innerHTML = fotos.map((foto, i) => `
       <div class="photo-thumb-mini">
-        <img src="${foto.dataUrl}" alt="Foto">
+        <img src="${foto.dataUrl}" alt="Foto" width="50" height="50">
         ${foto.driveStatus ? `<div class="photo-thumb-drive photo-thumb-drive-${foto.driveStatus}" title="${pgpDriveStatusLabel(foto.driveStatus)}">☁</div>` : ''}
         <div class="photo-thumb-del" onclick="event.stopPropagation();removePhotoDoStore(${midx},'${photoKey}',${i})">✕</div>
       </div>`).join('') + (fotos.length ? `<span class="photo-thumb-count">${fotos.length}/${MAX_FOTOS_POR_ITEM}</span>` : '')
@@ -5738,11 +5799,21 @@ async function resetCurrent() {
   updateProgress();
 }
 
-async function salvarColeta() {
+// V88 (D7) — `btnEl` OPCIONAL no FIM. `saveCurrentSession` faz captureState +
+// persistSessionsSafely (JSON.stringify de até 10 coletas COM fotos): bloqueio
+// síncrono sem nenhum sinal.
+// ⚠ NÃO usamos _comLoadingBtn_ aqui: `saveCurrentSession` pode abrir o confirm
+//   de SOBRESCRITA no meio, e o botão ficaria "Processando…" esperando o dedo
+//   do técnico. Feedback só no trecho que realmente bloqueia.
+async function salvarColeta(btnEl) {
   if (!temDadosPreenchidos()) {
     AppDialog.alert('Nenhum dado preenchido para salvar.', {variant:'warn', title:'Salvar coleta'});
     return;
   }
+  var _txtSC = null;
+  if (btnEl) { try { _txtSC = btnEl.textContent; btnEl.disabled = true; btnEl.textContent = '⏳ Salvando…'; } catch(eB) {} }
+  try { await new Promise(function(r){ setTimeout(r, 0); }); } catch(eY) {}
+  try {
   // V75 (P1) — era `saveCurrentSession()` SEM await seguido do alerta de sucesso:
   // no caminho de sobrescrita o "sucesso" aparecia por cima do confirm e o técnico
   // saía achando que tinha salvado depois de cancelar. Agora a mensagem segue o
@@ -5753,6 +5824,9 @@ async function salvarColeta() {
     return;
   }
   AppDialog.alert('Coleta salva com sucesso.', {variant:'success', title:'Salvo'});
+  } finally {   // V88 (D7)
+    if (btnEl) { try { btnEl.disabled = false; if (_txtSC != null) btnEl.textContent = _txtSC; } catch(eB2) {} }
+  }
 }
 
 async function novaColeta() {
@@ -6494,6 +6568,7 @@ function getDraft() {
 let _currentSessionId = null;
 
 async function saveCurrentSession() {
+  try{ pgpFlushDraftPendente(); }catch(e){}   // V88 (A1)
   const state = captureState();
   state.clientName = vg(0, 'razao_social');
   state.label = state.clientName !== '—' ? state.clientName : 'Sem nome';
@@ -6554,13 +6629,22 @@ function checkRestoreDraft() {
   try{
     pgpIdbGet(_pgpPhotoKeyFor('draft')).then(function(rec){
       var n = 0;
-      try{
-        var ps = (rec && rec.photoStore) || {};
-        Object.keys(ps).forEach(function(midx){
-          var byKey = ps[midx] || {};
-          Object.keys(byKey).forEach(function(pk){ if(byKey[pk] && byKey[pk].length) n += byKey[pk].length; });
-        });
-      }catch(e){}
+      // V88 (B6) — a contagem passa a vir gravada no próprio registro
+      // (pgpPersistPhotosIDB). ⚠ FALLBACK OBRIGATÓRIO: rascunho gravado por
+      // versão anterior a esta NÃO tem `count`, e nesse caso contamos do jeito
+      // antigo — senão o técnico que atualiza o app com um rascunho na mão
+      // deixaria de ver o aviso das fotos, que é o defeito que a V68/F-30 fechou.
+      if (rec && typeof rec.count === 'number') {
+        n = rec.count;
+      } else {
+        try{
+          var ps = (rec && rec.photoStore) || {};
+          Object.keys(ps).forEach(function(midx){
+            var byKey = ps[midx] || {};
+            Object.keys(byKey).forEach(function(pk){ if(byKey[pk] && byKey[pk].length) n += byKey[pk].length; });
+          });
+        }catch(e){}
+      }
       if(!n) return;
       _pgpDraftFotosPendentes = n;
       info.textContent = name + ' · ' + date + ' · 📷 ' + n + ' foto(s) do relatório';
@@ -6572,7 +6656,9 @@ function checkRestoreDraft() {
 // V68 — F-30: quantidade de fotos que o backup local tem esperando (0 = nenhuma).
 let _pgpDraftFotosPendentes = 0;
 
-async function restoreDraft() {
+// V88 (D7) — `btnEl` OPCIONAL no FIM. Mesmo raciocínio de restaurarSessao, e
+// aqui ainda soma a reidratação das fotos vindas do IndexedDB (multi-MB).
+async function restoreDraft(btnEl) {
   const draft = getDraft();
   if (!draft) return;
 
@@ -6598,6 +6684,8 @@ async function restoreDraft() {
     if (!okOutra) { try { document.getElementById('restoreBanner').style.display = 'none'; } catch(e2){} return; }
   }
 
+  if (btnEl) { try { btnEl.disabled = true; btnEl.textContent = '⏳ Restaurando…'; } catch(eB) {} }   // V88 (D7)
+  try { await new Promise(function(r){ setTimeout(r, 0); }); } catch(eY) {}   // deixa o texto PINTAR antes do bloqueio síncrono
   document.querySelectorAll('.machine-panel').forEach(p => p.remove());
   machines = [{}];
   createPanel(0);
@@ -6702,22 +6790,31 @@ function renderSessoesList() {
         <div class="session-card-meta">${s.date || ''}${s.machineCount > 1 ? ' · ' + s.machineCount + ' máquinas' : ' · 1 máquina'}${(s.fields && (s.fields['m0_marca'] || s.fields['m0_modelo'] || s.fields['m0_ns'])) ? ' · ' + [s.fields['m0_marca'], s.fields['m0_modelo'], s.fields['m0_ns']].filter(Boolean).join(' / ') : ''}</div>
       </div>
       <div class="session-card-actions">
-        <button class="btn-session-restore" onclick="restaurarSessao(${i})">↩ Restaurar</button>
+        <button class="btn-session-restore" onclick="restaurarSessao(${i},this)">↩ Restaurar</button>
         <button class="btn-session-delete"  onclick="deletarSessao(${i})" title="Excluir">🗑</button>
       </div>
     </div>`).join('') + '</div>';
 }
 
-async function restaurarSessao(idx) {
+// V88 (D7) — `btnEl` OPCIONAL no FIM: restaurar remonta painéis + restoreState
+// (photoStore inteiro) de forma SÍNCRONA, 0,5–3 s de tela congelada sem sinal.
+// ⚠ O `setTimeout(0)` não é enfeite: sem ceder o thread, o spinner que acabamos
+//   de pedir só apareceria DEPOIS do bloqueio — ou seja, nunca.
+// ⚠ O busy entra DEPOIS do confirm de sobrescrita, senão o botão diria
+//   "Processando…" enquanto o técnico ainda decide.
+async function restaurarSessao(idx, btnEl) {
   const sessions = getSessions();
   if (!sessions[idx]) return;
   if (temDadosPreenchidos() && !(await AppDialog.confirm('Substituir dados atuais pela coleta salva?', {title:'Restaurar coleta', okLabel:'Substituir'}))) return;
-  document.querySelectorAll('.machine-panel').forEach(p => p.remove());
-  machines = [{}];
-  createPanel(0);
-  restoreState(sessions[idx]);
-  _editingSessionIndex = idx; // Rastreia que estamos editando a sessão no índice idx
-  _currentSessionId = sessions[idx].sessionId || null;
+  await _comLoadingBtn_(btnEl, async () => {
+    await new Promise(function(r){ setTimeout(r, 0); });
+    document.querySelectorAll('.machine-panel').forEach(p => p.remove());
+    machines = [{}];
+    createPanel(0);
+    restoreState(sessions[idx]);
+    _editingSessionIndex = idx; // Rastreia que estamos editando a sessão no índice idx
+    _currentSessionId = sessions[idx].sessionId || null;
+  });
   fecharSessoes();
 }
 
@@ -6763,7 +6860,7 @@ document.addEventListener('input', function(e) {
 });
 document.addEventListener('change', function(e) {
   try { if (e.target && e.target.dataset && e.target.dataset.key) e.target.dataset.pgpTocado = 'true'; } catch(_) {}
-  pgpSaveDraftAgora();   // gateway: campo concluído salva na hora
+  pgpSaveDraftBreve();   // V88 (A1): gateway com debounce de 350 ms (era pgpSaveDraftAgora síncrono a cada change)
   autoSaveSession();
   if (e.target.dataset && e.target.dataset.key) {
     const pk = e.target.dataset.key.match(/^(m\d+_[a-z]+\d+)_(contador|historico|ref)$/);
@@ -6822,6 +6919,19 @@ function fotoPickerEscolher(origem) {
 
   newInput.onchange = async function() {
     if (!newInput.files || !newInput.files.length) return;
+    // ══════════════════════════════════════════════════════════════════════
+    // V88 (D5) — A COMPRESSÃO DEIXA DE SER TEMPO MORTO.
+    //
+    // Entre a câmera devolver o arquivo e a miniatura aparecer há decode de
+    // 12 MP + canvas + gravação no IndexedDB: 1,5 a 4 s em Android médio, sem
+    // NENHUM sinal. O técnico tocava de novo. Agora: toast do padrão de fotos
+    // da casa (showFotoToast) + pulso no gatilho, que também bloqueia o 2º toque.
+    // ══════════════════════════════════════════════════════════════════════
+    var _nFotos = newInput.files.length;
+    var _btnFoto = triggerBtn;
+    if (_btnFoto) { try { _btnFoto.classList.add('pcf-foto-busy'); } catch(eB) {} }
+    try { showFotoToast(_nFotos > 1 ? ('⏳ Preparando ' + _nFotos + ' fotos…') : '⏳ Preparando a foto…'); } catch(eT) {}
+    try {
     if (type === 'photo-item') {
       // Botão câmera da seção 5 — encontrar o photo-item pai do botão
       const item = triggerBtn.closest('.photo-item');
@@ -6845,7 +6955,16 @@ function fotoPickerEscolher(origem) {
       // type === 'linked' — botões fora da seção 5
       await capturePhotoLinked(newInput, midx, photoKey, triggerBtn, isCam);
     }
-    newInput.value = '';
+    } finally {   // V88 (D5)
+      if (_btnFoto) { try { _btnFoto.classList.remove('pcf-foto-busy'); } catch(eB2) {} }
+      // ⚠ SEM toast de conclusão aqui, de propósito: `storePhotosFromFileList`
+      //   pode ter acabado de escrever no MESMO #fotoToast o aviso de limite
+      //   ("N foto(s) adicionada(s) — algumas ignoradas (limite de 3)"), e um
+      //   "✅ pronto" por cima apagaria justamente a mensagem que importa.
+      //   O fim do trabalho já é sinalizado pela miniatura que aparece e pelo
+      //   pulso do gatilho que para.
+      newInput.value = '';
+    }
   };
 
   newInput.click();
@@ -7765,6 +7884,7 @@ function montarNomeArquivo(razao, modelo, serial, dataStr) {
 // Drive (a OS em si já estava protegida por _pgpOSInspecaoPromise; o PDF não).
 var _pgpGerarPdfBusy = false;
 async function gerarPDF(btnEl) {
+  try{ pgpFlushDraftPendente(); }catch(e){}   // V88 (A1)
   if (_pgpGerarPdfBusy) return;
   _pgpGerarPdfBusy = true;
   if (btnEl) { btnEl.disabled = true; btnEl.classList.add('is-busy'); }
@@ -7871,7 +7991,26 @@ async function _gerarPDF_(btnEl) {
 // página (lista de máquinas com número de página). Gera também os PDFs
 // individuais (mesmo comportamento de gerarPDF) — consolidação é uma ação
 // adicional, não substitui a geração individual.
-async function gerarPDFConsolidado() {
+// ══════════════════════════════════════════════════════════════════════════
+// V88 (D6) — "📚 CONSOLIDAR PDFs" GANHA A TRAVA QUE O IRMÃO JÁ TINHA.
+//
+// `gerarPDF` foi blindado na V75 (P2) com `_pgpGerarPdfBusy` + botão travado,
+// porque o duplo-toque gerava DOIS PDFs e DOIS uploads ao Drive. Este aqui
+// ficou de fora: sem guarda própria e com `onclick="gerarPDFConsolidado()"`
+// SEM `this`. Pior — no 2º toque o `await gerarPDF()` interno retornava na hora
+// (a trava dele estava ativa) e o consolidado seguia até o fim, gerando
+// exatamente o par de PDFs que a V75 tinha eliminado no botão ao lado.
+//
+// `btnEl` é OPCIONAL e vai no FIM da assinatura: quem chamar sem argumento
+// (código antigo, console) continua funcionando igual.
+// ══════════════════════════════════════════════════════════════════════════
+var _pgpGerarPdfConsolidadoBusy = false;
+async function gerarPDFConsolidado(btnEl) {
+  if (_pgpGerarPdfConsolidadoBusy) return;
+  _pgpGerarPdfConsolidadoBusy = true;
+  if (btnEl) { btnEl.disabled = true; btnEl.classList.add('is-busy'); }
+  try { showNotification('⏳ Preparando o PDF consolidado...'); } catch(eN) {}
+  try {
   if (machines.length < 2) return;
   if (!(await pgpEnsureJsPDF())) { AppDialog.alert('Biblioteca PDF não carregou (sem conexão?). Tente de novo com sinal.', {variant:'danger', title:'PDF'}); return; } // V76 (F1b)
 
@@ -7943,6 +8082,10 @@ async function gerarPDFConsolidado() {
   });
 
   showNotification('✅ PDF consolidado gerado: ' + nomeConsolidado);
+  } finally {
+    _pgpGerarPdfConsolidadoBusy = false;
+    if (btnEl) { btnEl.disabled = false; btnEl.classList.remove('is-busy'); }
+  }
 }
 
 // ══════════════════════════════════════════════════════════
@@ -8081,9 +8224,11 @@ function savePendingQueue(list) {
     localStorage.setItem(PENDING_KEY, _json);
   } catch (e) {
     showNotification('❌ Erro ao salvar fila offline: ' + (e.message || 'falha no armazenamento'));
+    pgpInvalidarFilaContagens();   // V88 (B1): gravação parcial também mexe na contagem
     return { saved: false, blocked: false, count };
   }
 
+  pgpInvalidarFilaContagens();   // V88 (B1)
   return { saved: true, blocked: false, count };
 }
 
@@ -8158,7 +8303,46 @@ function pgpGetPending(){
 const DEADLETTER_KEY = 'pgp_pending_dead_v1';
 const PGP_MAX_TRIES  = 5;
 function pgpGetDead(){ try{ return JSON.parse(localStorage.getItem(DEADLETTER_KEY)||'[]'); }catch(e){ return []; } }
-function pgpSaveDead(list){ try{ localStorage.setItem(DEADLETTER_KEY, JSON.stringify(list||[])); }catch(e){} }
+function pgpSaveDead(list){ try{ localStorage.setItem(DEADLETTER_KEY, JSON.stringify(list||[])); }catch(e){} pgpInvalidarFilaContagens(); }
+
+// ══════════════════════════════════════════════════════════════════════════
+// V88 (B1) — O BADGE DA FILA PARA DE CUSTAR ~8 JSON.parse POR CHAMADA.
+//
+// `pgpUpdatePendingBadge` lia as 4 coleções (sync, revisão, anexos do Drive,
+// perdidos) E chamava `pgpUpdateGsStatusDisplay`, que lia AS MESMAS 4 de novo.
+// Como o badge é repintado em toda mutação de fila — inclusive DENTRO do laço
+// de `pgpFlushPending` (L~8845) e por foto capturada — isso virava dezenas de
+// parses de listas grandes na main thread.
+//
+// Aqui só as CONTAGENS são memoizadas. A chave vem do texto CRU dos 4 itens do
+// localStorage (getItem é barato; JSON.parse é que não é): tamanho + as duas
+// pontas de cada um. Qualquer mudança de contagem implica mudança de tamanho do
+// array serializado, então a chave não pode "não perceber" um item a mais ou a
+// menos. As funções de gravação ainda invalidam explicitamente — a chave é o
+// cinto de segurança para escritas que não passam pelos helpers.
+//
+// ⚠ NADA aqui muda o conteúdo das filas nem a ordem de gravação: `pgpGetPending`,
+//   `pgpGetDead`, `pgpGetDriveQueue` e `pgpGetPerdidos` seguem intactos e são
+//   quem os PAINÉIS continuam usando (lá o dado é preciso, não só o número).
+// ══════════════════════════════════════════════════════════════════════════
+var _pgpFilaCount = null;
+function pgpInvalidarFilaContagens(){ _pgpFilaCount = null; }
+function pgpFilaContagens(){
+  var brutos = ['','','',''];
+  try { brutos[0] = localStorage.getItem(PENDING_KEY)       || ''; } catch(e){}
+  try { brutos[1] = localStorage.getItem(DEADLETTER_KEY)    || ''; } catch(e){}
+  try { brutos[2] = localStorage.getItem(DRIVE_PENDING_KEY) || ''; } catch(e){}
+  try { brutos[3] = localStorage.getItem(_PGP_PERDIDOS_KEY) || ''; } catch(e){}
+  var chave = brutos.map(function(r){ return r.length + '~' + r.slice(0,24) + '~' + r.slice(-24); }).join('|');
+  if (_pgpFilaCount && _pgpFilaCount.chave === chave) return _pgpFilaCount.n;
+  var n = { sync:0, dead:0, drive:0, perdidos:0 };
+  try { n.sync     = pgpGetPending().length;    } catch(e){}
+  try { n.dead     = pgpGetDead().length;       } catch(e){}
+  try { n.drive    = pgpGetDriveQueue().length; } catch(e){}
+  try { n.perdidos = pgpGetPerdidos().length;   } catch(e){}
+  _pgpFilaCount = { chave: chave, n: n };
+  return n;
+}
 function pgpDescartarDead(idx){
   const list = pgpGetDead();
   if(idx==null){ pgpSaveDead([]); } else { list.splice(idx,1); pgpSaveDead(list); }
@@ -8170,7 +8354,7 @@ function pgpReviverDead(idx){
   dead.splice(idx,1); pgpSaveDead(dead);
   item.tries = 0; delete item.permanent;
   const list = pgpGetPending(); list.push(item);
-  try{ localStorage.setItem(PENDING_KEY, JSON.stringify(list)); }catch(e){}
+  try{ localStorage.setItem(PENDING_KEY, JSON.stringify(list)); }catch(e){} pgpInvalidarFilaContagens();   // V88 (B1)
   pgpUpdatePendingBadge(); pgpRenderFilaPanel();
   if(_pgpGsConnected) pgpFlushPending();
 }
@@ -8290,13 +8474,33 @@ function pgpEscHtml(v) {
     .replace(/'/g, '&#39;');
 }
 
+// ══════════════════════════════════════════════════════════════════════════
+// V88 (B7) — O CATÁLOGO PARA DE SER REPARSEADO A CADA PING.
+//
+// `pgpEnsureCatalogCache()` é chamado de `pgpSetGsStatus('ok')`, ou seja: em
+// TODO ping bem-sucedido (evento 'online', volta do 2º plano, heartbeat de 90 s).
+// O TTL de 24 h do V77 (G9) evitou a REDE, mas não o `JSON.parse` — e o catálogo
+// tem centenas de KB. Memo com a mesma disciplina do `_pgpMaqIdx`: chave barata
+// derivada do texto cru (tamanho + as duas pontas), invalidada explicitamente na
+// gravação. A função continua devolvendo o mesmo objeto de antes; nenhum call
+// site a muta (todos só leem models/parts/similarities/ts).
+// ══════════════════════════════════════════════════════════════════════════
 function pgpLoadCatalogCache() {
-  try { return JSON.parse(localStorage.getItem(CATALOG_CACHE_KEY) || 'null'); }
+  try {
+    var raw = localStorage.getItem(CATALOG_CACHE_KEY) || '';
+    if (!raw) return null;
+    var chave = raw.length + ':' + raw.slice(0, 48) + ':' + raw.slice(-48);
+    if (window._pgpCatMemo && window._pgpCatMemo.chave === chave) return window._pgpCatMemo.cat;
+    var cat = JSON.parse(raw);
+    try { window._pgpCatMemo = { chave: chave, cat: cat }; } catch (eS) {}
+    return cat;
+  }
   catch (e) { return null; }
 }
 
 function pgpSaveCatalogCache(data) {
   try { window._pgpSimIdx = null; } catch(eI) {} // V76 (F5b): catálogo novo invalida o índice memoizado
+  try { window._pgpCatMemo = null; } catch(eC) {} // V88 (B7): idem para o memo do JSON.parse
   try { localStorage.setItem(CATALOG_CACHE_KEY, JSON.stringify({ ts: new Date().toISOString(), ...data })); }
   catch (e) { console.warn('Erro ao salvar cache de catálogo:', e); }
 }
@@ -8355,20 +8559,35 @@ async function pgpRenderCatalogLookup() {
   }
 
   const nq = pgpNormalizeRef(q);
-  const normName = q.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const normName = q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   const results = [];
 
   const allModels  = cat.models  || [];
   const allParts   = cat.parts   || [];
   const allSims    = cat.similarities || [];
 
-  // Índice de similares por Part_ID+Model_ID
-  // V76 (F5b): memoizado — era reconstruído sobre TODAS as similarities a cada
-  // tecla. Chave = ts do cache + tamanho; pgpSaveCatalogCache invalida.
-  const _simKey = String(cat.ts || '') + ':' + allSims.length;
-  let simByPart;
-  if (window._pgpSimIdx && window._pgpSimIdx.key === _simKey) {
-    simByPart = window._pgpSimIdx.idx;
+  // ══════════════════════════════════════════════════════════════════════════
+  // V88 (A3) — O MEMO DO CATÁLOGO PASSA A COBRIR O ÍNDICE INTEIRO.
+  //
+  // A V76 (F5b) memoizou só `simByPart`. Sobrava, A CADA TECLA (mesmo com o
+  // debounce de 250 ms): reconstruir `modelById` sobre TODOS os modelos e rodar
+  // 4 normalize('NFD')+regex POR PEÇA — o trecho realmente caro num catálogo de
+  // milhares de peças.
+  //
+  // Agora o índice guarda também `modelById` e as LINHAS já normalizadas
+  // (oemNorm / pName / modelStr / simNorms). A busca vira comparação pura.
+  //
+  // ⚠ Mesma chave do V76 (ts do cache), só que mais estrita — passa a incluir os
+  //   3 tamanhos, porque agora há 3 coleções derivadas no memo. `pgpSaveCatalogCache`
+  //   continua invalidando com `window._pgpSimIdx = null`, e `simByPart` continua
+  //   existindo em `.idx` com o MESMO formato de antes.
+  // ══════════════════════════════════════════════════════════════════════════
+  const _simKey = String(cat.ts || '') + ':' + allSims.length + ':' + allParts.length + ':' + allModels.length;
+  let simByPart, modelById, _catLinhas;
+  if (window._pgpSimIdx && window._pgpSimIdx.key === _simKey && window._pgpSimIdx.linhas) {
+    simByPart  = window._pgpSimIdx.idx;
+    modelById  = window._pgpSimIdx.modelById;
+    _catLinhas = window._pgpSimIdx.linhas;
   } else {
     simByPart = {};
     allSims.forEach(s => {
@@ -8376,28 +8595,36 @@ async function pgpRenderCatalogLookup() {
       if (!simByPart[key]) simByPart[key] = [];
       simByPart[key].push(s.Ref_Similar || s.refSimilar || '');
     });
-    window._pgpSimIdx = { key: _simKey, idx: simByPart };
+
+    modelById = {};
+    allModels.forEach(m => { modelById[m.ID || m.id || ''] = m; });
+
+    const _normTxt = v => String(v || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    _catLinhas = allParts.map(p => {
+      const mId = p.Model_ID || p.modelId || '';
+      const m = modelById[mId] || {};
+      const sims = simByPart[mId + '::' + (p.Part_ID || p.partId || '')] || [];
+      return {
+        m: m,
+        p: p,
+        sims: sims,
+        oemNorm:  pgpNormalizeRef(p.OEM_Ref || p.oemRef || p.ref || ''),
+        pName:    _normTxt(p.Name || p.name || ''),
+        modelStr: _normTxt((m.Marca || m.brand || '') + ' ' + (m.Modelo || m.model || '')),
+        simNorms: sims.map(s => pgpNormalizeRef(s))
+      };
+    });
+
+    window._pgpSimIdx = { key: _simKey, idx: simByPart, modelById: modelById, linhas: _catLinhas };
   }
 
-  const modelById = {};
-  allModels.forEach(m => { modelById[m.ID || m.id || ''] = m; });
+  _catLinhas.forEach(L => {
+    const hit = L.oemNorm === nq
+      || L.simNorms.includes(nq)
+      || L.pName.includes(normName)
+      || L.modelStr.includes(normName);
 
-  allParts.forEach(p => {
-    const mId = p.Model_ID || p.modelId || '';
-    const m = modelById[mId] || {};
-    const oemNorm  = pgpNormalizeRef(p.OEM_Ref || p.oemRef || p.ref || '');
-    const pName    = (p.Name || p.name || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-    const modelStr = ((m.Marca || m.brand || '') + ' ' + (m.Modelo || m.model || '')).toLowerCase()
-      .normalize('NFD').replace(/[̀-ͯ]/g, '');
-    const sims     = simByPart[mId + '::' + (p.Part_ID || p.partId || '')] || [];
-    const simNorms = sims.map(s => pgpNormalizeRef(s));
-
-    const hit = oemNorm === nq
-      || simNorms.includes(nq)
-      || pName.includes(normName)
-      || modelStr.includes(normName);
-
-    if (hit) results.push({ m, p, sims });
+    if (hit) results.push({ m: L.m, p: L.p, sims: L.sims });
   });
 
   if (!results.length) {
@@ -8524,7 +8751,7 @@ function pgpPodarFilas(opts){
     });
     while (vivos.length > PGP_DEAD_LIMIT) { vivos.shift(); rel.expurgados++; }
     if (rel.movidos || rel.expurgados) {
-      try { localStorage.setItem(PENDING_KEY, JSON.stringify(ativos)); } catch(e){}
+      try { localStorage.setItem(PENDING_KEY, JSON.stringify(ativos)); } catch(e){} pgpInvalidarFilaContagens();   // V88 (B1)
       pgpSaveDead(vivos);
     }
   } catch(e){}
@@ -8561,13 +8788,13 @@ function pgpDescartarPending(idx){
   if(!confirm('Descartar este envio?\n\n' + pgpFilaAcaoLabel(r.action) + ' · ' + r.maq + ' · ' + r.idade +
               '\n\nEle NÃO será enviado ao Sheets. O PDF/relatório no aparelho continua intacto.')) return;
   list.splice(idx,1);
-  try{ localStorage.setItem(PENDING_KEY, JSON.stringify(list)); }catch(e){}
+  try{ localStorage.setItem(PENDING_KEY, JSON.stringify(list)); }catch(e){} pgpInvalidarFilaContagens();   // V88 (B1)
   pgpUpdatePendingBadge(); pgpRenderFilaPanel();
 }
 
 // V81 — diagnóstico copiável: o técnico manda no WhatsApp em vez de descrever.
 function pgpCopiarFilaDiag(){
-  var o = { versao:'PCF_V86', quando:new Date().toISOString(),
+  var o = { versao:'PCF_V88', quando:new Date().toISOString(),
     conectado:(typeof _pgpGsConnected!=='undefined')?_pgpGsConnected:'?',
     sync:pgpGetPending().map(pgpFilaItemResumo),
     conferir:pgpGetDead().map(pgpFilaItemResumo),
@@ -8605,6 +8832,75 @@ function pgpFilaItemResumo(item){
   } else { idade = 'sem data (item de versão antiga)'; }
   return { action:(item&&item.action)||'?', maq:maq, os:(os||'(sem OS)'), when:when, idade:idade, tries:(item&&item.tries)||0, err:(item&&(item.lastError||item.deadReason))||'' };
 }
+// ══════════════════════════════════════════════════════════════════════════
+// V88 (D2) — "🔄 REENVIAR AGORA" DEIXA DE SER MUDO.
+//
+// Era `onclick="pgpFlushPending();setTimeout(pgpRenderFilaPanel,700)"`: o flush
+// pode levar de 30 s a VÁRIOS MINUTOS (até 40 POSTs sequenciais + a fila de
+// anexos com base64), e o painel se repintava aos 700 ms mostrando um estado
+// que ainda estava mudando. Zero indicação de que algo estava acontecendo — o
+// pior [FALTA] do app.
+//
+// Este é, palavra por palavra, o padrão de acompanhamento que
+// `pgpDesligarModoOffline` já usa (o melhor do arquivo): dispara o flush e
+// ACOMPANHA a fila encolher, com teto de 3 min.
+//
+// ⚠ `pgpModoOffProgresso` sozinho não bastaria aqui: ele escreve dentro da
+//   #pgpBarraOffline, que só existe na tela com o MODO OFFLINE ligado — e este
+//   botão é usado justamente quando se está online. Por isso o progresso vai
+//   para #pgpFilaProgresso (dentro do painel, sempre visível) E também para a
+//   barra, que o mostra quando estiver na tela.
+// ⚠ Não paralelizamos nada: quem envia continua sendo `pgpFlushPending`, com as
+//   travas `_pgpSyncFlushBusy`/`_pgpDriveFlushBusy` de sempre.
+// ══════════════════════════════════════════════════════════════════════════
+var _pgpReenviarBusy = false;
+function pgpFilaProgresso(txt){
+  var el = document.getElementById('pgpFilaProgresso');
+  if (!el) return;
+  el.textContent = txt || '';
+  el.style.display = txt ? 'block' : 'none';
+}
+async function pgpReenviarAgora(btn){
+  if (_pgpReenviarBusy) return;
+  _pgpReenviarBusy = true;
+  var _txt0 = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '📤 Enviando…'; }
+  var _restante = function(){
+    try { pgpInvalidarFilaContagens(); var c = pgpFilaContagens(); return c.sync + c.drive; }
+    catch(e){ return 0; }
+  };
+  var n0 = _restante();
+  try {
+    if (!n0) {
+      try { showNotification('✅ Nada aguardando envio — a fila já está vazia.'); } catch(e){}
+      return;
+    }
+    pgpFilaProgresso('📤 Enviando… faltam ' + n0 + ' de ' + n0);
+    try { pgpModoOffProgresso('📤 Enviando… faltam ' + n0 + ' de ' + n0); } catch(e){}
+    try { pgpFlushPending(); } catch(e){}
+    var t0 = Date.now();
+    while (Date.now() - t0 < 180000) {
+      var resta = _restante();
+      if (!resta) break;
+      pgpFilaProgresso('📤 Enviando… faltam ' + resta + ' de ' + n0);
+      try { pgpModoOffProgresso('📤 Enviando… faltam ' + resta + ' de ' + n0); } catch(e){}
+      if (btn) btn.textContent = '📤 Enviando… ' + resta + ' de ' + n0;
+      await new Promise(function(r){ setTimeout(r, 700); });
+      try { if (!_pgpSyncFlushBusy && !_pgpDriveFlushBusy) pgpFlushPending(); } catch(e){}
+    }
+    var sobrou = _restante();
+    if (!sobrou) { try { showNotification('✅ Fila enviada — os ' + n0 + ' item(ns) subiram.'); } catch(e){} }
+    else         { try { showNotification('⚠ ' + sobrou + ' de ' + n0 + ' ainda não subiram — repita num ponto com sinal melhor.'); } catch(e){} }
+  } finally {
+    pgpFilaProgresso('');
+    try { pgpModoOffProgresso(''); } catch(e){}
+    _pgpReenviarBusy = false;
+    if (btn) { btn.disabled = false; btn.textContent = _txt0 || '🔄 Reenviar agora'; }
+    try { pgpUpdatePendingBadge(); } catch(e){}
+    try { pgpRenderFilaPanel(); } catch(e){}
+  }
+}
+
 function pgpAbrirFilaPanel(){ var o=document.getElementById('pgpFilaOverlay'); if(!o) return; o.style.display='flex'; pgpRenderFilaPanel(); }
 function pgpFecharFilaPanel(){ var o=document.getElementById('pgpFilaOverlay'); if(o) o.style.display='none'; }
 
@@ -8691,7 +8987,7 @@ function pgpRenderFilaPanel(){
         +(isDead
           ? ('<button onclick="pgpReviverDead('+i+')" style="flex:1;background:#3b82f6;color:#fff;border:0;border-radius:8px;padding:7px;font-size:12px;cursor:pointer">Reenviar</button>'
             +'<button onclick="pgpDescartarDead('+i+')" style="flex:1;background:#e2e8f0;color:#334155;border:0;border-radius:8px;padding:7px;font-size:12px;cursor:pointer">Descartar</button>')
-          : ('<button onclick="pgpFlushPending();setTimeout(pgpRenderFilaPanel,900)" style="flex:1;background:#3b82f6;color:#fff;border:0;border-radius:8px;padding:7px;font-size:12px;cursor:pointer">Tentar agora</button>'
+          : ('<button onclick="pgpReenviarAgora(this)" style="flex:1;background:#3b82f6;color:#fff;border:0;border-radius:8px;padding:7px;font-size:12px;cursor:pointer">Tentar agora</button>'
             +'<button onclick="pgpDescartarPending('+i+')" style="flex:1;background:#e2e8f0;color:#334155;border:0;border-radius:8px;padding:7px;font-size:12px;cursor:pointer">Descartar</button>'))
        +'</div>')
       +'</div>';
@@ -8744,13 +9040,14 @@ function pgpRenderFilaPanel(){
 }
 
 function pgpUpdatePendingBadge(){
-  const n = pgpGetPending().length;
-  const dn = pgpGetDead().length;   // V64 — inclui itens em revisão para não sumirem
+  // V88 (B1): as 4 contagens saem de um memo único (eram 4 JSON.parse aqui + 4
+  // no pgpUpdateGsStatusDisplay logo abaixo). Os nomes/significados não mudaram.
+  const _c = pgpFilaContagens();
+  const n = _c.sync;
+  const dn = _c.dead;   // V64 — inclui itens em revisão para não sumirem
   // V77 (G3): anexos aguardando e anexos que NÃO couberam entram no contador —
   // o badge era o único lugar onde a fila de Drive nunca aparecia.
-  let an = 0, pn = 0;
-  try { an = pgpGetDriveQueue().length; } catch(e) {}
-  try { pn = pgpGetPerdidos().length; }   catch(e) {}
+  let an = _c.drive, pn = _c.perdidos;
   const el = document.getElementById('pgpPendingBadge');
   try { pgpRenderBarraOffline(); } catch(e) {}
   // V81 — o badge era repintado a cada mutação de fila e o rodapé não. Como é o
@@ -8840,17 +9137,17 @@ async function pgpFlushPending(){
       // mandaria a fila inteira para "revisar" em poucos minutos. Os itens
       // restantes ficam intactos, com a contagem de tentativas preservada.
       if (!(e && e.permanent) && !_pgpGsConnected) {
-        localStorage.setItem(PENDING_KEY, JSON.stringify(failed.concat(list.slice(_i + 1))));
+        localStorage.setItem(PENDING_KEY, JSON.stringify(failed.concat(list.slice(_i + 1)))); pgpInvalidarFilaContagens();   // V88 (B1)
         pgpSaveDead(dead);
         pgpUpdatePendingBadge();
         return;
       }
     }
     // V62/V64 — persistência incremental (fila ativa = retentáveis + restantes; revisão à parte)
-    localStorage.setItem(PENDING_KEY, JSON.stringify(failed.concat(list.slice(_i + 1))));
+    localStorage.setItem(PENDING_KEY, JSON.stringify(failed.concat(list.slice(_i + 1)))); pgpInvalidarFilaContagens();   // V88 (B1)
     pgpSaveDead(dead);
   }
-  localStorage.setItem(PENDING_KEY, JSON.stringify(failed));
+  localStorage.setItem(PENDING_KEY, JSON.stringify(failed)); pgpInvalidarFilaContagens();   // V88 (B1)
   pgpSaveDead(dead);
   pgpUpdatePendingBadge();
   if(sent>0){
@@ -9409,7 +9706,10 @@ function pgpSetGsStatus(state){
   try { pgpUpdateGsStatusDisplay(); } catch(e){}
 }
 
-async function pgpTestGs(){
+// V88 (D9) — `manual` é OPCIONAL e vai no FIM: os 4 call sites automáticos
+// (pgpAutoPing, boot, heartbeat, pgpDesligarModoOffline) chamam sem argumento e
+// se comportam EXATAMENTE como na V87.
+async function pgpTestGs(manual){
   if(!_pgpGsUrl){pgpSetGsStatus('off');return false;}
   // V77 (F1): no modo offline o ping nem sai — é justamente ele o que mais
   // acordava o rádio à toa.
@@ -9418,6 +9718,27 @@ async function pgpTestGs(){
   // isto que transformava toda reconferência (heartbeat de 90s, volta do 2º
   // plano, evento 'online') num piscar visível de "CONECTANDO..." para o técnico.
   if (!_pgpGsConnected) pgpSetGsStatus('sync');
+  // ══════════════════════════════════════════════════════════════════════════
+  // V88 (D9) — RAMO NOVO, EXCLUSIVO DO TOQUE NO CHIP "Sheets".
+  //
+  // A regra da V81 (já verde NÃO vira amarelo) está CERTA e fica intacta: era
+  // ela que impedia o heartbeat de 90 s, a volta do 2º plano e o evento
+  // 'online' de piscarem "CONECTANDO..." na cara do técnico. Mas ela também
+  // silenciava o TOQUE MANUAL: com o chip verde, "Toque para reconectar" ficava
+  // até 12 s (AbortSignal.timeout) sem absolutamente nenhuma reação.
+  //
+  // Este ramo só roda quando `manual === true`, e não mexe na classe do ponto —
+  // logo, nada de amarelo piscando no caminho automático.
+  // O chip é repintado por `pgpSetGsStatus` em TODAS as saídas desta função
+  // (ok, HTML de login, status inesperado e catch), então não há estado preso.
+  // ══════════════════════════════════════════════════════════════════════════
+  else if (manual) {
+    try {
+      var _txtM = document.getElementById('gsTextPgp');
+      if (_txtM) _txtM.textContent = 'Conferindo…';
+      showNotification('🔄 Conferindo a conexão com o Sheets…');
+    } catch (eM) {}
+  }
   try{
     // V75 (P2) — TESTE SOFT 31/07: este fetch não tinha timeout. Num portal cativo
     // de galpão (socket abre, resposta nunca vem) a promise nunca resolvia:
@@ -9451,11 +9772,11 @@ function pgpUpdateGsStatusDisplay(){
   // E cada coleta de 1 máquina com peças enfileira DOIS itens (visita + peças),
   // então "2" quase sempre era UMA visita, não duas.
   // ══════════════════════════════════════════════════════════════════════
-  const pending=pgpGetPending().length;
-  let _dq=0,_dl=0,_pd=0;
-  try { _dq = pgpGetDriveQueue().length; } catch(e){}
-  try { _dl = pgpGetDead().length; }       catch(e){}
-  try { _pd = pgpGetPerdidos().length; }   catch(e){}
+  // V88 (B1): mesma fonte memoizada do badge — o V81 já exigia que os dois
+  // lessem "a MESMA fonte no MESMO instante"; agora leem literalmente o mesmo objeto.
+  const _cGs = pgpFilaContagens();
+  const pending=_cGs.sync;
+  let _dq=_cGs.drive,_dl=_cGs.dead,_pd=_cGs.perdidos;
   const _partes=[];
   if(pending) _partes.push(pending+' envio'+(pending>1?'s':'')+' aguardando');
   if(_dq)     _partes.push(_dq+' anexo'+(_dq>1?'s':'')+' aguardando');
@@ -9536,16 +9857,76 @@ function pgpQuickSearch(name){
 function pgpGetLocalMachines(){
   try{return JSON.parse(localStorage.getItem('proper_admin_v2')||'null')?.machines||[];}catch(e){return [];}
 }
+// ══════════════════════════════════════════════════════════════════════════
+// V88 (A2) — O AUTOCOMPLETE DE SÉRIE/TAG PARA DE REPARSEAR O PARQUE A CADA TECLA.
+//
+// `oninput` chamava `pgpOnInput()` sem debounce, e ele fazia
+// `pgpGetLocalMachines()` = JSON.parse do 'proper_admin_v2' INTEIRO + 6
+// normalize('NFD')+regex POR MÁQUINA, a cada tecla. É a origem clássica do
+// "teclado travando" relatado em campo.
+//
+// Aqui o índice normalizado é memoizado no mesmo padrão do `_pgpSimIdx` do
+// catálogo (V76/F5b): chave barata derivada do PRÓPRIO texto cru do
+// localStorage (tamanho + as duas pontas), então qualquer escrita — inclusive
+// as que não passam por `pgpUpdateAdminLocal` — invalida sozinha. A invalidação
+// explícita nos dois `setItem('proper_admin_v2')` é o caminho rápido; esta
+// chave é o cinto de segurança.
+//
+// ⚠ A SEMÂNTICA DA BUSCA NÃO MUDOU: `q` continua só `.toLowerCase()` (SEM
+//   normalize) e os campos continuam normalizados, exatamente como antes — mudar
+//   isso alteraria o conjunto de resultados, o que não é o objetivo deste sprint.
+// ══════════════════════════════════════════════════════════════════════════
+function _pgpMaqIdxChave(raw){
+  var r = raw || '';
+  return r.length + ':' + r.slice(0, 48) + ':' + r.slice(-48);
+}
+function pgpInvalidarMaqIdx(){ try{ window._pgpMaqIdx = null; }catch(e){} }
+function pgpMaqIdxLinhas(){
+  var raw = '';
+  try{ raw = localStorage.getItem('proper_admin_v2') || ''; }catch(e){ raw = ''; }
+  var chave = _pgpMaqIdxChave(raw);
+  try{
+    if(window._pgpMaqIdx && window._pgpMaqIdx.chave === chave) return window._pgpMaqIdx.linhas;
+  }catch(eM){}
+  var norm = function(v){ return String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); };
+  var linhas = [];
+  try{
+    var ms = ((JSON.parse(raw || 'null') || {}).machines) || [];
+    for(var i=0;i<ms.length;i++){
+      var m = ms[i];
+      linhas.push({
+        m: m,
+        f: [m.serial,m.tag,m.client,m.model,m.brand,m.id].map(norm),
+        k: (pgpMachineIdentityKey(m)||m.id||m.serial||m.tag)
+      });
+    }
+  }catch(e){ linhas = []; }
+  try{ window._pgpMaqIdx = { chave: chave, linhas: linhas }; }catch(eS){}
+  return linhas;
+}
+// V88 (A2): debounce no padrão de pgpCatalogLookupDebounced (V76/F5b).
+// `pgpOnInput` segue existindo e chamável — nada foi renomeado.
+var _pgpSerialAcTimer = null;
+function pgpOnInputDebounced(){
+  clearTimeout(_pgpSerialAcTimer);
+  _pgpSerialAcTimer = setTimeout(function(){ try{ pgpOnInput(); }catch(e){} }, 250);
+}
 function pgpOnInput(){
   const q=document.getElementById('pgpSearchInput').value.trim().toLowerCase();
   if(q.length<2){pgpHideAc();return;}
   const seen=new Set();
-  const normInput = v => String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  const matches=pgpGetLocalMachines().filter(m=>{
-    const fields=[m.serial,m.tag,m.client,m.model,m.brand,m.id].map(normInput);
-    const key=pgpMachineIdentityKey(m)||m.id||m.serial||m.tag;
-    return fields.some(f=>f.includes(q))&&!seen.has(key)&&seen.add(key);
-  }).slice(0,8);
+  // V88 (A2) — mesma lógica do filter+slice(0,8) de antes (a ordem é preservada
+  // e `seen` só recebe chave de item QUE CASOU), agora sobre o índice memoizado
+  // e com corte antecipado nos 8 primeiros.
+  const _linhas=pgpMaqIdxLinhas();
+  const matches=[];
+  for(let _i=0;_i<_linhas.length && matches.length<8;_i++){
+    const _L=_linhas[_i];
+    if(!_L.f.some(f=>f.includes(q))) continue;
+    if(seen.has(_L.k)) continue;
+    seen.add(_L.k);
+    matches.push(_L.m);
+  }
   if(!matches.length){pgpHideAc();return;}
   const list=document.getElementById('pgpAcList');
   list.style.display='block';
@@ -9618,6 +9999,20 @@ async function pgpDoSearch(){
 async function pgpDoSerialSearch(btnEl){
   const q=document.getElementById('pgpSearchInput').value.trim();
   if(!q) return;
+  // ══════════════════════════════════════════════════════════════════════════
+  // V88 (D3) — OS CAMINHOS SEM BOTÃO DEIXAM DE FICAR MUDOS.
+  //
+  // `pgpSelectAc` (tocar num item do autocomplete) e `pgpOnKey` (Enter no campo)
+  // chamam esta função SEM `btnEl` — e `_comLoadingBtn_` degrada em silêncio
+  // (`if (!btnEl) return asyncFn();`). Como o searchMachine tem
+  // AbortSignal.timeout(12000), eram até 12 SEGUNDOS de tela idêntica.
+  // Agora: sem botão, mira o "Buscar" da própria tela; e o aviso de texto
+  // aparece nos três caminhos.
+  // ══════════════════════════════════════════════════════════════════════════
+  if(!btnEl){ try{ btnEl = document.querySelector('#pgpStepFallback .pgp-search-btn'); }catch(eB){} }
+  var _sBusca = document.getElementById('pgpSerialSearching');
+  if(_sBusca){ _sBusca.textContent = '⏳ Procurando "' + q + '"…'; _sBusca.style.display = 'block'; }
+  try {
   // v55: busca por série/TAG é rede (fetch a searchMachine) — spinner via
   // _comLoadingBtn_ enquanto não tinha nenhum feedback de carregamento.
   await _comLoadingBtn_(btnEl, async () => {
@@ -9674,6 +10069,9 @@ async function pgpDoSerialSearch(btnEl){
     document.getElementById('pgpNewMachine').classList.add('show');
   }
   });
+  } finally {
+    if(_sBusca) _sBusca.style.display = 'none';   // V88 (D3)
+  }
 }
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -10656,6 +11054,7 @@ function pgpReconcileLocalMachines(serverMachines){
     });
     if(changed){
       localStorage.setItem('proper_admin_v2', JSON.stringify(db));
+      try{ pgpInvalidarMaqIdx(); }catch(eI){}   // V88 (A2)
       console.log(`[PCF] pgpReconcileLocalMachines: removidas ${before - db.machines.length} máquina(s) órfã(s) do cache local`);
     }
   }catch(e){ console.warn('pgpReconcileLocalMachines:', e); }
@@ -11316,14 +11715,18 @@ async function pgpIniciarPreventivaDeOS(osId){
       return;
     }
 
+    // V88 (B3): UMA leitura do espelho local para a OS inteira (eram 2 por máquina).
+    var _dbParque = null;
+    try{ _dbParque = JSON.parse(localStorage.getItem('proper_admin_v2') || 'null'); }catch(eDb){ _dbParque = null; }
+
     // Primeira máquina usa o painel 0, que já existe por padrão ao abrir o app.
-    await pgpCarregarMaquinaOS(osMachines[0], 0);
+    await pgpCarregarMaquinaOS(osMachines[0], 0, _dbParque);
 
     // Máquinas adicionais: cria um painel por máquina, reaproveitando addMachine()
     // — mesmo padrão já usado no fluxo avulso multi-máquina.
     for(let i = 1; i < osMachines.length; i++){
       addMachine(); // cria o painel no próximo índice e já muda currentMachine para ele
-      await pgpCarregarMaquinaOS(osMachines[i], currentMachine);
+      await pgpCarregarMaquinaOS(osMachines[i], currentMachine, _dbParque);   // V88 (B3)
     }
 
     switchMachine(0);
@@ -11357,8 +11760,16 @@ async function pgpIniciarPreventivaDeOS(osId){
 // no painel de índice idx, reaproveitando o mesmo merge com dados locais que
 // pgpSelectClientMachine já usa no fluxo avulso — para manter consistência de comportamento
 // (ex: priorizar registro local mais completo quando existir).
-async function pgpCarregarMaquinaOS(eq, idx){
-  const localDb = pgpGetLocalMachines();
+// V88 (B3) — 3º parâmetro OPCIONAL `dbPre`: o 'proper_admin_v2' já parseado.
+// Sem ele, a função lê e parseia como sempre (comportamento idêntico ao da V87).
+// Abrir uma OS de N máquinas fazia 2N JSON.parse do parque INTEIRO (um em
+// pgpGetLocalMachines, outro no bloco do fullDb, por máquina); com o laço
+// passando `dbPre` vira 1 parse para a OS toda.
+async function pgpCarregarMaquinaOS(eq, idx, dbPre){
+  const _dbOS = (dbPre !== undefined && dbPre !== null)
+    ? dbPre
+    : (function(){ try{ return JSON.parse(localStorage.getItem('proper_admin_v2') || 'null'); }catch(e){ return null; } })();
+  const localDb = (_dbOS && Array.isArray(_dbOS.machines)) ? _dbOS.machines : [];
 
   // v47 — Fix C (P0 contaminação cruzada): a OS é autoritativa; o cache local
   // (proper_admin_v2) só complementa quando a identidade bate com folga. Match por
@@ -11406,7 +11817,7 @@ async function pgpCarregarMaquinaOS(eq, idx){
   if(eq.parts) machineToLoad.parts = eq.parts;
 
   try{
-    const fullDb = JSON.parse(localStorage.getItem('proper_admin_v2') || 'null');
+    const fullDb = _dbOS;   // V88 (B3): já parseado uma vez só
     pgpLoadMachine(machineToLoad, fullDb, idx, eq?.clientData || null);
   }catch(e){
     pgpLoadMachine(machineToLoad, null, idx, eq?.clientData || null);
@@ -12126,7 +12537,7 @@ async function pgpEnviarTodasPreventivas(){
   const puladas = [];
   try{
     for(const i of _prontasIdx){                 // v56: só as prontas (já filtradas)
-      const res = await pgpEnviarPreventiva(i, { silent:true });
+      const res = await pgpEnviarPreventiva(i, { silent:true, deferAdmin:true });   // V88 (A5)
       if(!res || res.status === 'skipped'){
         puladas.push('Máq. ' + (i+1) + (res && res.reason ? ' — ' + res.reason : ''));
       } else if(res.status === 'queued'){ filas++; }
@@ -12140,6 +12551,9 @@ async function pgpEnviarTodasPreventivas(){
     }
   } finally {
     if(_slow) clearTimeout(_slow);
+    // V88 (A5): UMA leitura + UMA gravação do 'proper_admin_v2' para o lote inteiro
+    // (eram N, uma por máquina). No finally para não deixar payload pendurado nem em erro.
+    try{ pgpFlushAdminLocal(); }catch(eFA){ console.warn('pgpFlushAdminLocal:', eFA); }
     if(btn){ btn.disabled = false; btn.classList.remove('is-busy'); btn.textContent = '🔧 Registrar Preventiva'; }
   }
 
@@ -12172,8 +12586,31 @@ async function pgpEnviarTodasPreventivas(){
 }
 
 async function pgpEnviarPreventiva(midx=currentMachine, opts){
+  try{ pgpFlushDraftPendente(); }catch(e){}   // V88 (A1)
   opts = opts || {};
   const silent = !!opts.silent;
+  // V88 (A5) — em lote (pgpEnviarTodasPreventivas) o espelho local só é GRAVADO
+  // no fim do laço; chamada avulsa segue gravando na hora, como sempre.
+  const _deferAdm = !!opts.deferAdmin;
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // V88 (D8) — A TRAVA DO BOTÃO SOBE PARA O CLIQUE.
+  //
+  // Até a V87 `btn` só era pego ~70 linhas abaixo, DEPOIS do tripwire de perfil
+  // e do tripwire de regime — e este último abre um `AppDialog.confirm`. Ou
+  // seja: entre o toque e qualquer sinal havia leitura de DOM + uma pergunta na
+  // tela com o botão ainda ativo atrás dela.
+  //
+  // ⚠ AQUI SÓ `disabled`, SEM texto de "Enviando…" e SEM `.is-busy`: enquanto o
+  //   tripwire pergunta algo ao técnico NADA está sendo enviado, e dizer o
+  //   contrário seria a família do "✓ mentiroso" que este projeto já caçou 3×.
+  //   O spinner de verdade entra mais abaixo, quando o envio começa de fato.
+  // ⚠ O `finally` externo (fim da função) devolve o botão em TODOS os caminhos,
+  //   inclusive nos `return` antecipados dos tripwires.
+  // ══════════════════════════════════════════════════════════════════════════
+  const btn = silent ? null : document.querySelector('.btn-preventiva');
+  if(btn){ btn.disabled = true; }
+  try {
   const idx=pgpGetMachineIndex(midx);
   const p=`m${idx}_`;
   const gv=key=>{
@@ -12267,7 +12704,7 @@ async function pgpEnviarPreventiva(midx=currentMachine, opts){
   }
 
   let payload, nTrocadas;
-  const btn = silent ? null : document.querySelector('.btn-preventiva');
+  // V88 (D8): `btn` agora é obtido no TOPO da função (trava já no clique).
   try{
     payload=pgpBuildPreventivaPayload(idx);
     nTrocadas=Object.values(payload.parts).filter(p=>p.acao==='trocada').length;
@@ -12329,7 +12766,7 @@ async function pgpEnviarPreventiva(midx=currentMachine, opts){
       return;
     }
     // V68 — F-18a: desfecho positivo ⇒ agora sim o espelho local pode registrar.
-    pgpUpdateAdminLocal(payload);
+    pgpUpdateAdminLocal(payload, { deferSave: _deferAdm });   // V88 (A5)
     pgpSubirAssinaturasDaVisita(payload, idx); // V72 (P7.4)
     if(silent) return { status:'queued' };
     showNotification('⚠ Muitas fotos/observações — dados salvos na fila (' + qResultSize.count + '/' + QUEUE_LIMIT + '). Envie em partes ou reduza fotos.');
@@ -12337,7 +12774,7 @@ async function pgpEnviarPreventiva(midx=currentMachine, opts){
   }
 
   let _slow = null;
-  if(btn){btn.disabled=true;btn.textContent='Enviando preventiva…';}
+  if(btn){btn.disabled=true;btn.classList.add('is-busy');btn.textContent='Enviando preventiva…';}   // V88 (D8): faltava o .is-busy (era só troca de texto, sem spinner)
   if(!silent) _slow = setTimeout(function(){ if(btn) btn.textContent = 'Ainda enviando. Não feche a tela.'; }, 8000);
 
   if(!_pgpGsConnected){
@@ -12346,7 +12783,7 @@ async function pgpEnviarPreventiva(midx=currentMachine, opts){
     // V68 — F-06: enfileira COM dedupe por visit_id (antes: list.push cru).
     const qResult = pgpQueuePreventiva(payload);
     if(_slow) clearTimeout(_slow);
-    if(btn){btn.disabled=false;btn.textContent='🔧 Registrar Preventiva';}
+    if(btn){btn.disabled=false;btn.classList.remove('is-busy');btn.textContent='🔧 Registrar Preventiva';}   // V88 (D8)
     // V68 — F-18b: `!saved` (cota do localStorage estourada) agora é FALHA, igual
     // a `.blocked`. Antes o app mostrava "📋 Preventiva salva na fila" sem ter
     // persistido nada.
@@ -12359,7 +12796,7 @@ async function pgpEnviarPreventiva(midx=currentMachine, opts){
       return;
     }
     // V68 — F-18a: só espelha localmente depois de a fila confirmar a gravação.
-    pgpUpdateAdminLocal(payload);
+    pgpUpdateAdminLocal(payload, { deferSave: _deferAdm });   // V88 (A5)
     pgpSubirAssinaturasDaVisita(payload, idx); // V72 (P7.4)
     if(silent) return { status:'queued' };
     showNotification('📋 Preventiva salva na fila (' + qResult.count + '/' + QUEUE_LIMIT + ') — enviada ao conectar');
@@ -12370,13 +12807,13 @@ async function pgpEnviarPreventiva(midx=currentMachine, opts){
     const d = await pgpPostJson('savePreventiva', payload);
     if(d.duplicate){
       // V68 — F-18a: o servidor JÁ tem esta preventiva ⇒ espelhar é correto.
-      pgpUpdateAdminLocal(payload);
+      pgpUpdateAdminLocal(payload, { deferSave: _deferAdm });   // V88 (A5)
       pgpSubirAssinaturasDaVisita(payload, idx); // V72 (P7.4)
       if(silent) return { status:'duplicate' };
       showNotification('ℹ Esta preventiva já foi registrada');
     } else if(d.status==='ok'){
       // V68 — F-18a: gravado no servidor ⇒ espelho local pode acompanhar.
-      pgpUpdateAdminLocal(payload);
+      pgpUpdateAdminLocal(payload, { deferSave: _deferAdm });   // V88 (A5)
       pgpSubirAssinaturasDaVisita(payload, idx); // V72 (P7.4)
       if(silent) return { status:'ok' };
       showNotification('✅ Preventiva registrada — '+nTrocadas+' peça(s) atualizada(s)');
@@ -12401,7 +12838,7 @@ async function pgpEnviarPreventiva(midx=currentMachine, opts){
         showNotification('🚫 Falha no envio e ' + _erroNet + '. Conecte-se para liberar espaço.');
       } else {
         // V68 — F-18a: fila confirmou a gravação ⇒ espelho local pode acompanhar.
-        pgpUpdateAdminLocal(payload);
+        pgpUpdateAdminLocal(payload, { deferSave: _deferAdm });   // V88 (A5)
         pgpSubirAssinaturasDaVisita(payload, idx); // V72 (P7.4)
         if(silent) return { status:'queued' };
         showNotification('⏳ Falha — preventiva salva na fila (' + qResult.count + '/' + QUEUE_LIMIT + ')');
@@ -12409,7 +12846,15 @@ async function pgpEnviarPreventiva(midx=currentMachine, opts){
     }
   }finally{
     if(_slow) clearTimeout(_slow);
-    if(btn){btn.disabled=false;btn.textContent='🔧 Registrar Preventiva';}
+    if(btn){btn.disabled=false;btn.classList.remove('is-busy');btn.textContent='🔧 Registrar Preventiva';}   // V88 (D8)
+  }
+  } finally {
+    // V88 (D8) — devolve o botão em TODOS os caminhos, inclusive nos `return`
+    // antecipados dos tripwires (perfil / regime / horímetro), que antes saíam
+    // sem passar por nenhuma restauração porque `btn` nem existia ainda.
+    // Não mexe no texto: quem o alterou (o bloco de envio) já o restaura no
+    // finally interno; os caminhos antecipados nunca chegaram a alterá-lo.
+    if(btn){ btn.disabled = false; btn.classList.remove('is-busy'); }
   }
 }
 
@@ -12449,7 +12894,12 @@ function pgpVoltarParaOS(){
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function pgpRegisterNew(){
+// V88 (D7) — `btnEl` OPCIONAL no FIM. A máquina já aparece na tela antes do
+// POST (bom), mas o `saveMachine` que vem depois levava 2–10 s sem indicação
+// nenhuma e o desfecho só chegava por toast.
+// ⚠ O busy cobre SÓ o trecho de rede: antes dele há `pgpConfirmarClienteNovo`,
+//   um diálogo — spinner enquanto o técnico decide seria mentira.
+async function pgpRegisterNew(btnEl){
   let client=document.getElementById('nm_client').value.trim();
   const brand =document.getElementById('nm_brand').value.trim();
   const model =document.getElementById('nm_model').value.trim();
@@ -12520,6 +12970,7 @@ async function pgpRegisterNew(){
   pgpLoadMachine(eq,null,idx);
   pgpFinalizarInclusaoOS();
 
+  await _comLoadingBtn_(btnEl, async () => {   // V88 (D7)
   if(_pgpGsConnected&&_pgpGsUrl){
     try {
       const resp = await pgpPostJson('saveMachine', { machine: eq });
@@ -12535,6 +12986,7 @@ async function pgpRegisterNew(){
     if(qResult?.blocked) showNotification('🚫 Fila cheia. Máquina não foi enfileirada.');
     else showNotification('📋 Máquina salva localmente — será enviada ao Sheets quando conectar');
   }
+  });
 }
 
 function pgpBuildPayload(midx=currentMachine){
@@ -12891,7 +13343,19 @@ function _pgpPhotoSnapshot(){
   return out;
 }
 function pgpPersistPhotosIDB(scope){
-  try{ return pgpIdbSet(_pgpPhotoKeyFor(scope), { ts: Date.now(), photoStore: _pgpPhotoSnapshot() }); }
+  // V88 (B6): grava também a CONTAGEM. O `checkRestoreDraft` do boot lia o
+  // registro inteiro (todos os base64, vários MB) só para contar fotos.
+  try{
+    var _snap = _pgpPhotoSnapshot();
+    var _n = 0;
+    try{
+      Object.keys(_snap).forEach(function(midx){
+        var byKey = _snap[midx] || {};
+        Object.keys(byKey).forEach(function(pk){ _n += ((byKey[pk] || []).length); });
+      });
+    }catch(eN){}
+    return pgpIdbSet(_pgpPhotoKeyFor(scope), { ts: Date.now(), count: _n, photoStore: _snap });
+  }
   catch(e){ return Promise.resolve(false); }
 }
 // Reinjeta thumbs ausentes a partir do IDB (só complementa; nunca sobrescreve o
@@ -13024,8 +13488,50 @@ function pgpAutoPurgeAntigas(){ try{ pgpLimparAntigas(_PGP_RETENCAO_DIAS, {silen
 // Save IMEDIATO (sem debounce) do rascunho leve — usado nos "gateways" (campo
 // concluído = evento change) e ao mandar o app pro segundo plano. Barato porque
 // não serializa fotos (elas já estão no IndexedDB).
+// ══════════════════════════════════════════════════════════════════════════
+// V88 (A1) — O `change` GLOBAL DEIXA DE SERIALIZAR A COLETA INTEIRA POR TOQUE.
+//
+// A delegação de `change` (mais abaixo, no mesmo bloco) chamava
+// `pgpSaveDraftAgora()` SEM debounce. Todo select de turno, todo input[type=time],
+// toda troca de data da leitura — e o `change` do PRÓPRIO input de foto — disparava
+// captureState() (4 querySelectorAll globais + varredura por painel) +
+// pgpPersistPhotosIDB('draft') (que faz _pgpPhotoSnapshot: cópia profunda de TODOS
+// os dataURLs) + JSON.stringify + setItem. Numa OS de 4 máquinas com fotos são
+// megabytes serializados na main thread A CADA TOQUE.
+//
+// ⚠ O QUE NÃO MUDA (é dado do técnico, não pode perder):
+//   · `pgpSaveDraftAgora()` continua existindo, síncrona e IMEDIATA — nada foi
+//     renomeado nem removido;
+//   · os dois ganchos de saída (visibilitychange / pagehide) seguem chamando a
+//     versão IMEDIATA — são eles que protegem contra "fechei sem querer";
+//   · `pgpFlushDraftPendente()` é chamado no topo de saveCurrentSession, gerarPDF,
+//     pgpEnviarGS e pgpEnviarPreventiva, então nenhum envio sai com rascunho
+//     atrasado na janela dos 350 ms.
+// A janela de exposição real é: trocar um campo e o app MORRER (crash, não
+// fechamento) dentro de 350 ms — e mesmo aí o payload de envio lê o DOM, não o
+// rascunho.
+// ══════════════════════════════════════════════════════════════════════════
+var _pgpDraftBreveTimer = null;
+function pgpSaveDraftBreve(){
+  try{ clearTimeout(_pgpDraftBreveTimer); }catch(e){}
+  _pgpDraftBreveTimer = setTimeout(function(){
+    _pgpDraftBreveTimer = null;
+    try{ pgpSaveDraftAgora(); }catch(e){}
+  }, 350);
+}
+// Grava JÁ o que estiver pendente no debounce. Idempotente: sem nada pendente,
+// não faz nada (não é um "salvar de novo" caro).
+function pgpFlushDraftPendente(){
+  if(!_pgpDraftBreveTimer) return;
+  try{ clearTimeout(_pgpDraftBreveTimer); }catch(e){}
+  _pgpDraftBreveTimer = null;
+  try{ pgpSaveDraftAgora(); }catch(e){}
+}
 function pgpSaveDraftAgora(){
   try{
+    // V88 (A1): a versão imediata cancela o debounce pendente — senão o timer
+    // dispararia logo depois refazendo o MESMO snapshot de graça.
+    try{ clearTimeout(_pgpDraftBreveTimer); _pgpDraftBreveTimer = null; }catch(eD){}
     clearTimeout(_draftTimer);
     var state = captureState();
     state.clientName = vg(0, 'razao_social');
@@ -13074,6 +13580,7 @@ async function _comLoadingBtn_(btnEl, asyncFn) {
 let _pgpEnviarGSBusy = false;
 
 async function pgpEnviarGS(srcBtn){
+  try{ pgpFlushDraftPendente(); }catch(e){}   // V88 (A1)
   if(_pgpEnviarGSBusy) return;
   let indices = machines.map((_, i) => i).filter(pgpHasMachineData);
   if(!indices.length){ showNotification('⚠ Preencha ao menos uma máquina antes de enviar'); return; }
@@ -13141,7 +13648,7 @@ async function pgpEnviarGS(srcBtn){
   };
 
   // Sempre salvar localmente primeiro
-  pgpUpdateAdminLocal(payload);
+  pgpUpdateAdminLocal(payload, { deferSave: true });   // V88 (A5): o laço de pgpEnviarGS grava uma vez só, no finally
 
   // ══════════════════════════════════════════════════════════════════════
   // V78 (A2) — a coleta enviada SEM foto e SEM PDF nunca passava por
@@ -13307,6 +13814,8 @@ pgpUpdateGsStatusDisplay();
     // reentrante, mesmo se algo lançar inesperadamente dentro do loop — evita o
     // botão travado para sempre e evita duplo-clique enquanto processa.
     _pgpEnviarGSBusy = false;
+    // V88 (A5): grava o espelho local do lote inteiro de uma vez.
+    try{ pgpFlushAdminLocal(); }catch(eFA){ console.warn('pgpFlushAdminLocal:', eFA); }
     _pgpAllSendBtns.forEach(b => { b.disabled = false; b.classList.remove('is-busy'); });
     // V64 — o botão grande "Enviar ao Sheets" também DRENA a fila pendente/presa
     // (antes só o toque no badge ⏳ ou a reconexão faziam isso → os itens presos
@@ -13315,10 +13824,35 @@ pgpUpdateGsStatusDisplay();
   }
 }
 
-function pgpUpdateAdminLocal(payload){
-  try{
-    const db=JSON.parse(localStorage.getItem('proper_admin_v2'));
-    if(!db?.machines) return;
+// ══════════════════════════════════════════════════════════════════════════
+// V88 (A5) — O ESPELHO LOCAL DEIXA DE SER REPARSEADO 6× POR LOTE DE ENVIO.
+//
+// `pgpUpdateAdminLocal` faz JSON.parse + JSON.stringify do 'proper_admin_v2'
+// INTEIRO (o parque do aparelho). Ele é chamado em 6 ramos distintos de
+// `pgpEnviarPreventiva` / `pgpEnviarGS` — ou seja, um envio de 4 máquinas
+// pagava 4 a 8 ciclos completos de parse+stringify do parque.
+//
+// Modo de lote OPCIONAL, 3º passo do contrato: `pgpUpdateAdminLocal(payload,
+// { deferSave:true })` ENFILEIRA o payload; `pgpFlushAdminLocal()` aplica todos
+// numa ÚNICA leitura + ÚNICA gravação, ao fim do laço.
+//
+// ⚠ POR QUE A FILA GUARDA PAYLOADS E NÃO UM `db` EM MEMÓRIA: entre duas
+//   máquinas do laço há `await` de rede. Segurar um snapshot do `db` por esse
+//   intervalo abriria a janela de outro caminho (pgpReconcileLocalMachines,
+//   pgpRegisterNew) gravar e o flush ATROPELAR aquela gravação. Guardando os
+//   payloads, a leitura acontece no flush, sempre fresca.
+// ⚠ SEM `opts` o comportamento é o de hoje, instrução por instrução: parse →
+//   aplica 1 payload → stringify. Nada de lote entra pela porta dos fundos.
+// ⚠ Falta de flush não perde dado: o espelho local é DERIVADO (a verdade é o
+//   Sheets + a fila de envio). Ainda assim os dois laços chamam o flush no
+//   `finally`, então nem exceção deixa payload pendurado.
+// ══════════════════════════════════════════════════════════════════════════
+var _pgpAdminLoteFila = [];
+
+// Miolo puro: aplica UM payload sobre um `db` já em memória. Devolve false
+// quando não há o que fazer (mesma condição do guard original).
+function _pgpAplicarAdminLocal(db, payload){
+    if(!db?.machines) return false;
     let eq=null;
     const payloadId = String(payload.machine_id||'').trim();
     const payloadSerial = pgpNormalizeValue(payload.serial);
@@ -13396,8 +13930,38 @@ function pgpUpdateAdminLocal(payload){
           status:         pgpHasValue(ps.status)          ? ps.status          : (pgpHasValue(ex.status)          ? ex.status          : '')};
       });
     }
+    return true;
+}
+
+function pgpUpdateAdminLocal(payload, opts){
+  opts = opts || {};
+  if(opts.deferSave){ _pgpAdminLoteFila.push(payload); return; }   // V88 (A5)
+  try{
+    const db=JSON.parse(localStorage.getItem('proper_admin_v2'));
+    if(!_pgpAplicarAdminLocal(db, payload)) return;
     localStorage.setItem('proper_admin_v2',JSON.stringify(db));
+    pgpInvalidarMaqIdx();   // V88 (A2)
   }catch(e){console.warn('pgpUpdateAdminLocal:',e);}
+}
+
+// V88 (A5) — grava de uma vez tudo o que foi acumulado com deferSave.
+// Idempotente: sem nada na fila não lê nem grava. Devolve quantos aplicou.
+function pgpFlushAdminLocal(){
+  if(!_pgpAdminLoteFila.length) return 0;
+  var fila = _pgpAdminLoteFila;
+  _pgpAdminLoteFila = [];   // esvazia ANTES de gravar: erro aqui não pode fazer o lote ser reaplicado em dobro
+  var n = 0;
+  try{
+    var db = JSON.parse(localStorage.getItem('proper_admin_v2'));
+    for(var i=0;i<fila.length;i++){
+      try{ if(_pgpAplicarAdminLocal(db, fila[i])) n++; }catch(eA){ console.warn('pgpFlushAdminLocal (item):', eA); }
+    }
+    if(n){
+      localStorage.setItem('proper_admin_v2',JSON.stringify(db));
+      pgpInvalidarMaqIdx();   // V88 (A2)
+    }
+  }catch(e){ console.warn('pgpFlushAdminLocal:',e); }
+  return n;
 }
 
 (async()=>{
@@ -14157,6 +14721,16 @@ function pfOsBuscaInput(el) {
   _pfOsBusca = String((el && el.value) || '').trim().toLowerCase();
   pfRenderOS();
 }
+// V88 (B4): debounce de 200 ms — cada tecla refazia filter+sort+map+innerHTML da
+// lista inteira. `pfOsBuscaInput` segue existindo e chamável; nada foi renomeado.
+var _pfOsBuscaTimer = null;
+function pfOsBuscaInputDebounced(el) {
+  var _v = String((el && el.value) || '');
+  clearTimeout(_pfOsBuscaTimer);
+  _pfOsBuscaTimer = setTimeout(function(){
+    try { pfOsBuscaInput({ value: _v }); } catch(e) {}
+  }, 200);
+}
 function pfToggleFiltrosOS() {
   var box = document.getElementById('pfOsFiltrosExtra');
   if (!box) return;
@@ -14249,6 +14823,21 @@ function pfRenderOS() {
     return true;
   });
   filtered = _pfOrdenarOS(filtered);
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // V88 (B4) — TETO DE CARDS, no padrão do dropdown de clientes (V76/F5b).
+  // `pfRenderOS` reescrevia o innerHTML da lista INTEIRA a cada tecla da busca
+  // e a cada toque de chip, sem limite de itens. O corte vem DEPOIS de
+  // `_pfOrdenarOS`: no modo 'fila' a ordem já é por prioridade, então o que fica
+  // de fora é sempre o fim da fila — nunca uma urgente. E o que sobrou é DITO,
+  // não escondido (mesma regra "no silent caps" do Preparar o dia).
+  // ══════════════════════════════════════════════════════════════════════════
+  var _PF_OS_TETO = 60;
+  var _pfOsCortadas = 0;
+  if (filtered.length > _PF_OS_TETO) {
+    _pfOsCortadas = filtered.length - _PF_OS_TETO;
+    filtered = filtered.slice(0, _PF_OS_TETO);
+  }
 
   if (_pfOsList.length === 0) {
     statusEl.textContent = 'Nenhuma OS aberta no momento.';
@@ -14405,6 +14994,10 @@ function pfRenderOS() {
   } else {
     html = filtered.map(_pfCard).join('');
   }
+  if (_pfOsCortadas) {   // V88 (B4)
+    html += '<div class="pf-os-secao" style="opacity:.65">… e mais ' + _pfOsCortadas +
+            ' — continue digitando</div>';
+  }
   listaEl.innerHTML = html;
 }
 
@@ -14434,6 +15027,17 @@ async function pfSelecionarOS(osId, osNome) {
   document.getElementById('pfScreenOS').style.display = 'none';
   document.getElementById('pfScreenPipeline').style.display = 'block';
   pfLoadPipeline();
+}
+
+// V88 (D7) — os dois botões de recarregar o pipeline ("↻ Recarregar" do estado
+// vazio e "Tentar novamente" do erro) chamavam `pfLoadPipeline()` cru. O
+// placeholder "Carregando pipeline…" que a função pinta já é feedback — mas
+// existe a janela ANTES do primeiro repaint, e no caminho de retry há um sono
+// de 2,5 s. Este wrapper trava o botão e nomeia a espera nessa janela.
+// (`pfLoadPipeline` segue chamável direto, sem mudança de assinatura.)
+function pfRecarregarPipeline(btn){
+  if (btn) { try { btn.disabled = true; btn.textContent = '↻ Recarregando…'; } catch(e) {} }
+  try { return pfLoadPipeline(); } catch(e) { return null; }
 }
 
 async function pfLoadPipeline(opts) {
@@ -14516,7 +15120,7 @@ async function pfLoadPipeline(opts) {
         '<div style="font-size:32px;margin-bottom:12px">🔧</div>' +
         '<div style="font-size:14px;font-weight:600;color:#94a3b8;margin-bottom:6px">Nenhuma tarefa no pipeline</div>' +
         '<div style="font-size:12px">Esta OS ainda não tem um pipeline instanciado.<br>O admin pode configurá-lo no ProperAdmin.<br>Se você acabou de criar a OS, toque em recarregar.</div>' +
-        '<br><button onclick="pfLoadPipeline()" style="background:#1e293b;border:1px solid #334155;color:#94a3b8;padding:8px 16px;border-radius:8px;cursor:pointer;font-family:\'Barlow Condensed\',sans-serif;font-size:13px;font-weight:700">↻ Recarregar</button>' +
+        '<br><button onclick="pfRecarregarPipeline(this)" style="background:#1e293b;border:1px solid #334155;color:#94a3b8;padding:8px 16px;border-radius:8px;cursor:pointer;font-family:\'Barlow Condensed\',sans-serif;font-size:13px;font-weight:700">↻ Recarregar</button>' +
       '</div>';
       return;
     }
@@ -14606,7 +15210,7 @@ async function pfLoadPipeline(opts) {
     var _escape = pgpModoOfflineAtivo()
       ? '<br><br><div style="color:#94a3b8;font-size:12px">Esta OS não foi baixada para uso offline.</div>' +
         '<br><button onclick="pgpBuscarMesmoAssim(function(){ return pfLoadPipeline(); })" style="background:#f59e0b;border:0;color:#111827;padding:9px 16px;border-radius:8px;cursor:pointer;font-family:\'Barlow Condensed\',sans-serif;font-size:13px;font-weight:800">🔓 Buscar mesmo assim (1 min de rede)</button>'
-      : '<br><br><button onclick="pfLoadPipeline()" style="background:#1e293b;border:1px solid #334155;color:#94a3b8;padding:8px 16px;border-radius:8px;cursor:pointer;font-family:\'Barlow Condensed\',sans-serif;font-size:13px;font-weight:700">Tentar novamente</button>';
+      : '<br><br><button onclick="pfRecarregarPipeline(this)" style="background:#1e293b;border:1px solid #334155;color:#94a3b8;padding:8px 16px;border-radius:8px;cursor:pointer;font-family:\'Barlow Condensed\',sans-serif;font-size:13px;font-weight:700">Tentar novamente</button>';
     conteudo.innerHTML = '<div style="text-align:center;padding:24px;color:#ef4444;font-size:13px">' +
       '⚠ ' + pgpMsgErro(e) + _escape +
     '</div>';
@@ -15026,7 +15630,7 @@ function pfThumbsAnterioresHtml(midx, photoKey){
       ? ' onclick="event.stopPropagation();window.open(\'' + String(f.file_url).replace(/'/g,'%27') + '\',\'_blank\')" style="cursor:pointer"'
       : '';
     return '<div class="photo-thumb-mini photo-thumb-prev" title="' + pgpEscHtml(t) + '"' + open + '>' +
-             '<img src="' + f.thumb + '" alt="" loading="lazy">' +
+             '<img src="' + f.thumb + '" alt="" loading="lazy" width="120" height="120">' +
              '<div class="photo-thumb-prev-tag">&#8617;</div>' +
            '</div>';
   }).join('');
@@ -15111,7 +15715,7 @@ async function pfCarregarFotosMaquina(idx) {
       var legenda = pgpEscHtml(f.caption || f.fileName || '');
       var sub = [f.data, (f.os_numero ? 'OS ' + f.os_numero : '')].filter(Boolean).join(' · ');
       var img = f.thumb
-        ? '<img src="' + f.thumb + '" alt="" loading="lazy">'
+        ? '<img src="' + f.thumb + '" alt="" loading="lazy" width="120" height="120">'
         : '<div class="pf-prevfoto-noimg">sem prévia</div>';
       var open = f.file_url ? ' onclick="window.open(\'' + pgpEscHtml(f.file_url) + '\',\'_blank\')" style="cursor:pointer" title="Abrir no Drive"' : '';
       html += '<figure class="pf-prevfoto"' + open + '>' + img +
@@ -15336,12 +15940,25 @@ async function pfUploadFotoTarefa(os_id, tarefa_id, slotId, file){
 async function pfOnFotoTarefa(input, tid, slotId){
   _pfRespostas[tid] = _pfRespostas[tid] || { fotos:{}, checklist:{} };
   _pfRespostas[tid].fotos[slotId] = _pfRespostas[tid].fotos[slotId] || [];
-  for (var i=0;i<input.files.length;i++){
+  // ══════════════════════════════════════════════════════════════════════════
+  // V88 (D4) — CONTADOR DURANTE O LAÇO, NÃO SÓ NO FIM.
+  //
+  // Cada volta faz compressão a 1600px + POST com base64 ao Drive. Com 2–3 fotos
+  // em wifi de oficina são 8–40 s, e o rótulo `pfFotoCount-…` só era escrito
+  // DEPOIS do laço inteiro: nada acontecia na tela o tempo todo.
+  // ⚠ `input.files` é uma FileList viva — o total é fixado ANTES do laço.
+  // ══════════════════════════════════════════════════════════════════════════
+  var el = document.getElementById('pfFotoCount-'+tid+'-'+slotId);
+  var _total = input.files.length;
+  var _falhas = 0;
+  for (var i=0;i<_total;i++){
+    if (el) el.textContent = '⏳ Enviando foto ' + (i+1) + ' de ' + _total + '…';
     var fid = await pfUploadFotoTarefa(_pfOsId, tid, slotId, input.files[i]);
     if (fid) _pfRespostas[tid].fotos[slotId].push(fid);
+    else _falhas++;
   }
-  var el = document.getElementById('pfFotoCount-'+tid+'-'+slotId);
-  if (el) el.textContent = _pfRespostas[tid].fotos[slotId].length + ' foto(s) enviada(s)';
+  if (el) el.textContent = _pfRespostas[tid].fotos[slotId].length + ' foto(s) enviada(s)' +
+    (_falhas ? (' · ⚠ ' + _falhas + ' não subiu(ram)') : '');
 }
 
 async function pfConfirmarTarefa(tarefaId) {
@@ -15656,9 +16273,25 @@ function pfRenderNotifBadge(notifs) {
   });
 }
 
+// ══════════════════════════════════════════════════════════════════════════
+// V88 (B5) — VAZAMENTO DE LISTENER DO PAINEL DE NOTIFICAÇÕES.
+//
+// O `outside` só se removia quando o clique caía FORA do painel. Fechar pelo
+// PRÓPRIO botão (o caminho normal) caía no `return` de cima antes de qualquer
+// limpeza — e o listener global de click ficava para sempre. Abrir/fechar N
+// vezes deixava N handlers rodando `contains()` em TODO clique do app.
+// Agora a referência vive em `_pfNotifOutside` e é solta em todos os caminhos.
+// ══════════════════════════════════════════════════════════════════════════
+var _pfNotifOutside = null;
+function _pfNotifSoltarOutside() {
+  if (!_pfNotifOutside) return;
+  try { document.removeEventListener('click', _pfNotifOutside); } catch (e) {}
+  _pfNotifOutside = null;
+}
 function pfToggleNotif() {
   var panel = document.getElementById('pfNotifPanel');
   if (!panel) return;
+  _pfNotifSoltarOutside();   // V88 (B5): solta o handler da abertura anterior, sempre
   if (panel.style.display !== 'none') {
     panel.style.display = 'none';
     return;
@@ -15667,14 +16300,15 @@ function pfToggleNotif() {
   pfRenderNotifPanel();
 
   setTimeout(function() {
-    function outside(e) {
+    _pfNotifSoltarOutside();
+    _pfNotifOutside = function (e) {
       var btn = document.getElementById('pfNotifBtn');
       if (!panel.contains(e.target) && (!btn || !btn.contains(e.target))) {
         panel.style.display = 'none';
-        document.removeEventListener('click', outside);
+        _pfNotifSoltarOutside();
       }
-    }
-    document.addEventListener('click', outside);
+    };
+    document.addEventListener('click', _pfNotifOutside);
   }, 0);
 }
 
@@ -15700,6 +16334,7 @@ function pfRenderNotifPanel() {
 async function pfOnNotifClick(notifId, osId) {
   var panel = document.getElementById('pfNotifPanel');
   if (panel) panel.style.display = 'none';
+  try { _pfNotifSoltarOutside(); } catch (e) {}   // V88 (B5)
 
   if (notifId) {
     // V76 (F3a) — a navegação NÃO depende do ack do servidor, mas ficava atrás
@@ -15732,6 +16367,48 @@ async function pfOnNotifClick(notifId, osId) {
 }
 
 // ── Banner de desbloqueio (toast interno ao overlay) ─────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+// V88 (D1) — `pfToast` PASSA A EXISTIR.
+//
+// ACHADO DA AUDITORIA: o arquivo tem OITO chamadas a `pfToast(...)` no pipeline
+// (pfAssumirTarefa, pfLiberarTarefa, pfResolverDecisao), todas escritas como
+// `if (typeof pfToast === 'function') pfToast(...)` — e a função NUNCA FOI
+// DEFINIDA em lugar nenhum do projeto. Ou seja: desde que o padrão foi
+// introduzido, TODAS estas mensagens de desfecho nunca chegaram ao técnico:
+//   · '🔒 Tarefa assumida — pode abrir o formulário'
+//   · '🔒 Já está em execução por <fulano>'   (esta tinha `else alert(...)`)
+//   · '⚠ Não foi possível assumir a tarefa'
+//   · '📴 Assumida/Liberada offline — sincroniza quando houver sinal'
+//   · '⏳ … Decisão na fila — sobe ao sincronizar.'
+// O técnico via o spinner do botão sumir e mais nada — inclusive nos casos de
+// ERRO e de ROLLBACK do lock otimista (V87/P1), que são exatamente os que ele
+// precisa saber.
+//
+// Definir a função faz as 8 chamadas passarem a funcionar SEM TOCAR EM NENHUMA
+// delas (o guard `typeof` já as protege) — aditivo puro.
+//
+// Canal: dentro do #pfOverlay o idioma da casa é o banner do pipeline
+// (#pfUnlockBanner, z-index 700, com variante de erro em vermelho); fora dele,
+// o `showNotification` de sempre.
+// ══════════════════════════════════════════════════════════════════════════
+function pfToast(msg, tipo) {
+  var txt = String(msg == null ? '' : msg);
+  if (!txt) return;
+  var t = String(tipo || '').toLowerCase();
+  // Sem `tipo` explícito, o próprio prefixo da mensagem diz se é problema —
+  // é assim que as 8 chamadas existentes estão escritas.
+  var erro = (t === 'erro' || t === 'error' || t === 'danger' || t === 'warn')
+             || /^\s*(⚠|🚫|❌|🔒|📴|⏳)/.test(txt);
+  try {
+    var ov = document.getElementById('pfOverlay');
+    if (ov && ov.style.display !== 'none' && typeof pfShowUnlockBanner === 'function') {
+      pfShowUnlockBanner(txt, erro);
+      return;
+    }
+  } catch (e) {}
+  try { showNotification(txt); } catch (e) {}
+}
+
 function pfShowUnlockBanner(msg, isError) {
   var b = document.getElementById('pfUnlockBanner');
   if (!b) return;
@@ -16182,7 +16859,7 @@ if(window._PGP_OS_ID && (function(){ try { return localStorage.getItem('proper_p
     <div class="pf-os-barra">
       <input type="text" id="pfOsBusca" class="pf-os-busca"
              placeholder="Buscar por nº, cliente ou máquina"
-             oninput="pfOsBuscaInput(this)"
+             oninput="pfOsBuscaInputDebounced(this)"
              readonly onfocus="this.removeAttribute('readonly')"
              autocomplete="off" name="pf_os_busca_nofill"
              data-lpignore="true" data-1p-ignore="true"
