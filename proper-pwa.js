@@ -11,7 +11,71 @@
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function () {
       navigator.serviceWorker.register('sw.js', { scope: '/ProperTech/' })
+        .then(function (reg) { ligarAtualizacao(reg); })
         .catch(function (e) { console.warn('[PWA] registro do SW falhou:', e && e.message); });
+    });
+  }
+
+  /* ══ V90 (S3) — CANAL DE ATUALIZACAO ═════════════════════════════════════
+     O listener `SKIP_WAITING` existe no sw.js desde sempre e era CODIGO MORTO:
+     nenhum `postMessage`, `updatefound`, `controllerchange` ou
+     `registration.update()` existia no app.
+
+     Consequencia em campo, medida na auditoria de 16/08: o index.html tem ~1 MB
+     e a navegacao e network-first com corrida de 3 s. Em 3G de galpao a rede
+     raramente ganha, entao serve-se o cache antigo e a versao nova entra na
+     abertura SEGUINTE. Se o tecnico abre o app uma vez por dia, a correcao
+     urgente chega no dia seguinte, e nao havia como forcar.
+
+     A faixa e dispensavel de proposito: ninguem interrompe uma coleta porque o
+     app quer atualizar. Quem decide o momento e o tecnico. */
+  function ligarAtualizacao(reg) {
+    if (!reg) return;
+    var recarregando = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (recarregando) return;
+      recarregando = true;
+      location.reload();
+    });
+    reg.addEventListener('updatefound', function () {
+      var novo = reg.installing;
+      if (!novo) return;
+      novo.addEventListener('statechange', function () {
+        // `controller` presente = ja havia uma versao servindo. Sem ele e a
+        // primeira instalacao, e ai nao ha nada a avisar.
+        if (novo.state === 'installed' && navigator.serviceWorker.controller) faixa(novo);
+      });
+    });
+    var procurar = function () { try { reg.update(); } catch (e) {} };
+    setInterval(procurar, 3600000);
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible') procurar();
+    });
+  }
+
+  function faixa(sw) {
+    if (document.getElementById('pcfAtualiza')) return;
+    var d = document.createElement('div');
+    d.id = 'pcfAtualiza';
+    d.setAttribute('style',
+      'position:fixed;left:12px;right:12px;z-index:2147483000;' +
+      'bottom:calc(12px + env(safe-area-inset-bottom, 0px));' +
+      'background:#fff;color:#0f172a;border:1px solid #cbd5e1;border-radius:14px;' +
+      'padding:12px 14px;box-shadow:0 8px 28px rgba(15,23,42,.25);display:flex;' +
+      'align-items:center;gap:10px;font:14px/1.35 Inter,system-ui,sans-serif');
+    d.innerHTML =
+      '<span style="flex:1">Versão nova disponível.<br>' +
+        '<small style="color:#64748b">Atualiza em 2 segundos, sem perder o que está preenchido.</small></span>' +
+      '<button type="button" id="pcfAtualizaNao" style="min-height:44px;padding:0 10px;background:none;' +
+        'border:0;color:#64748b;font:13px Inter,system-ui,sans-serif;cursor:pointer">Agora não</button>' +
+      '<button type="button" id="pcfAtualizaSim" style="min-height:44px;padding:0 14px;border:0;' +
+        'border-radius:10px;background:var(--accent,#C0392B);color:#fff;' +
+        'font:700 14px Inter,system-ui,sans-serif;cursor:pointer">Atualizar</button>';
+    document.body.appendChild(d);
+    document.getElementById('pcfAtualizaNao').addEventListener('click', function () { d.remove(); });
+    document.getElementById('pcfAtualizaSim').addEventListener('click', function () {
+      d.remove();
+      try { sw.postMessage('SKIP_WAITING'); } catch (e) { location.reload(); }
     });
   }
 
