@@ -1055,8 +1055,8 @@ function pgpEnsureJsPDF() {
      para nunca ser confundida com foto da coleta atual (borda sólida). */
   .photo-thumb-prev{border-style:dashed!important;border-color:var(--text-light)!important;opacity:.85}
   .photo-thumb-prev-tag{position:absolute;bottom:-1px;right:-1px;width:15px;height:15px;border-radius:50%;background:rgba(20,20,20,.75);color:#cbd5e1;font-size:9px;line-height:15px;text-align:center}
-  .foto-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.35);z-index:900;max-width:88vw;text-align:center;opacity:0;transition:opacity .2s}
-  .foto-toast.show{opacity:1}
+  .{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.35);z-index:900;max-width:88vw;text-align:center;opacity:0;transition:opacity .2s}
+  ..show{opacity:1}
 
   .actions{padding:12px 12px 0;display:flex;gap:10px}
   .btn{flex:1;padding:13px;border:none;border-radius:10px;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;transition:transform .1s}
@@ -1302,7 +1302,7 @@ function pgpEnsureJsPDF() {
     header,.machine-tabs-wrap,.tip-box,.restore-banner,.actions,.modal-overlay,.back-guard,
     .btn-add-machine,.chevron,.photo-nd-btn,.na-btn,.obs-btn,.btn-add-turno,.turno-del,.btn-photo-capture,.photo-input-file,
     .foto-inicial-banner,.btn-foto-inline,.inp-foto-inline,.foto-ini-inp,.btn-foto-peca,
-    .photo-thumbs-mini,.foto-toast{display:none!important}
+    .photo-thumbs-mini,.{display:none!important}
     body{background:white;padding:0}
     .section-body.hidden{display:block!important}
     .machine-panel{display:block!important}
@@ -1917,7 +1917,7 @@ function pgpEnsureJsPDF() {
   .btn-add-turno:hover{background:rgba(245,130,32,.08)!important;border-style:solid}
 
   /* Toast */
-  .foto-toast{background:linear-gradient(135deg,var(--brand-start),var(--brand-end))!important;color:#fff!important;border:1px solid rgba(255,255,255,.15);box-shadow:0 8px 32px rgba(0,0,0,.5),0 0 20px var(--brand-glow)!important}
+  .{background:linear-gradient(135deg,var(--brand-start),var(--brand-end))!important;color:#fff!important;border:1px solid rgba(255,255,255,.15);box-shadow:0 8px 32px rgba(0,0,0,.5),0 0 20px var(--brand-glow)!important}
 
   /* Foto picker */
   .foto-picker-box{background:var(--bg-card)!important;border-top:1px solid rgba(255,255,255,.1)!important}
@@ -2068,7 +2068,7 @@ function pgpEnsureJsPDF() {
   .thumb-status.failed{ background:#ef4444 }
   @keyframes tsPulse{ 0%,100%{ transform:scale(1); opacity:.85 } 50%{ transform:scale(1.35); opacity:1 } }
   /* Toast: fila vertical + tipos */
-  .foto-toast{ z-index:9500 }
+  .foto-toast{ z-index:9500; pointer-events:none }
   .foto-toast.type-success{ background:#065f46 }
   .foto-toast.type-error{ background:#7f1d1d }
   .foto-toast.type-info{ background:#1e293b }
