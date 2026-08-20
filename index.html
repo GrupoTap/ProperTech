@@ -717,8 +717,8 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ProperCare Field · PGP Preventivas v34 · build PCF_V89</title>
-<meta name="app-build" content="PCF_V89" data-date="2026-08-13">
+<title>ProperCare Field · PGP Preventivas v34 · build PCF_V90</title>
+<meta name="app-build" content="PCF_V90" data-date="2026-08-19">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -3983,6 +3983,32 @@ async function queuePhotoDriveUpload(midx, photoKey, label, fotoObj, file) {
 // Agora usa a mesma fila persistente das fotos (pgp_pending_drive): em falha/
 // offline o PDF é reenviado no boot/reconexão. Assinatura preservada.
 function queuePdfDriveUpload(item) {
+  // ── V90 · O pdf_uid QUE NUNCA FOI MANDADO ───────────────────────────────
+  // O GAS tem dedupe de PDF por `pdf_uid` desde o v79 (F-01): linha ATIVA com
+  // o mesmo uid ⇒ devolve a existente, sem criar nada. Os ProperForms mandam;
+  // o PCF NUNCA mandou. Sem o uid, `salvarPdfDrive` cai no fluxo sem dedupe e
+  // **cada retry cria um arquivo novo no Drive E uma linha nova no índice**.
+  // As fotos escapavam por acaso: o `fileName` delas é congelado na captura.
+  //
+  // 🔑 POR QUE AQUI, E NÃO NOS DOIS CALL SITES
+  //    Um ponto só cobre os dois de hoje e qualquer chamador futuro. E não
+  //    sobrescreve `pdf_uid` que já venha preenchido.
+  //
+  // 🔑 POR QUE NÃO UM UID DETERMINÍSTICO (derivado de os_id+nome do arquivo)
+  //    Porque regerar um relatório com correções é LEGÍTIMO — é a decisão do
+  //    v79 F-01, no próprio GAS. Uid determinístico faria o servidor devolver
+  //    o PDF VELHO e a correção se perderia. Pior que a duplicata.
+  //
+  // 🔑 POR QUE ISTO É ESTÁVEL ENTRE RETRIES, que é o ponto todo
+  //    O uid é gravado DENTRO do `item`, e o `pgpEnqueueDriveUpload` guarda o
+  //    `body` na fila. O `flushPendingDriveUploads` reenvia esse mesmo body ⇒
+  //    o retry manda o MESMO uid ⇒ o GAS reconhece e não duplica.
+  //    Já uma nova geração do PDF cria um item novo, com uid novo — e aí quem
+  //    resolve é o supersede do GAS v106, que inativa a versão anterior.
+  //    Os dois consertos são complementares: este mata o retry, o v106 mata a
+  //    regeração e a dupla-conclusão.
+  item = item || {};
+  if (!item.pdf_uid) item.pdf_uid = 'pdf_' + pgpUid();
   pgpSendOrQueueDrive('pdf', 'salvarPdfDrive', item, null);
 }
 
@@ -8939,7 +8965,7 @@ function pgpDescartarPending(idx){
 
 // V81 — diagnóstico copiável: o técnico manda no WhatsApp em vez de descrever.
 function pgpCopiarFilaDiag(){
-  var o = { versao:'PCF_V89', quando:new Date().toISOString(),
+  var o = { versao:'PCF_V90', quando:new Date().toISOString(),
     conectado:(typeof _pgpGsConnected!=='undefined')?_pgpGsConnected:'?',
     sync:pgpGetPending().map(pgpFilaItemResumo),
     conferir:pgpGetDead().map(pgpFilaItemResumo),

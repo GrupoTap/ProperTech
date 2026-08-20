@@ -9,7 +9,14 @@
  * O activate abaixo apaga qualquer cache antigo com prefixo 'propertech-'.
  */
 const CACHE_BASE = 'propertech-';
-const CACHE = CACHE_BASE + 'v90';  // V90 (16/08/2026) — S1/S2/S3 da auditoria de paridade.
+const CACHE = CACHE_BASE + 'v91';  // V91 (19/08/2026) — PCF_V90: pdf_uid no queuePdfDriveUpload.
+// ⚠ O BUMP AQUI NÃO É OPCIONAL. Sem ele o service worker continua servindo o
+//    index.html em cache e a correção do pdf_uid não chega ao aparelho do
+//    técnico — o PWA seguiria duplicando PDF por dias, com o arquivo novo já
+//    publicado no GitHub. É a mesma razão pela qual a chave legada da API só
+//    pode ser aposentada DEPOIS que o Logger parar de acusá-la.
+// 🔑 De quebra, fecha o desencontro registrado em 16/08: o index dizia PCF_V89
+//    e o sw dizia v90. Agora index = PCF_V90 e sw = propertech-v91.
 
 // ⚠ V90 (S2) — O FILTRO ANTIGO APAGAVA O CACHE DO BETA.
 // Era `k.startsWith('propertech-')`, e 'propertech-beta-v90b2' casa com isso.
