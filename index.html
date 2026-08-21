@@ -1,3 +1,43 @@
+<!-- V91 (21/08/2026) — QUEM JÁ ESTÁ NESSA TAREFA, E A PEÇA QUE NÃO TEM
+     HORÍMETRO. Par obrigatório: sw.js com CACHE='propertech-v92' + GAS v107.
+     🔴 O BUMP DO sw.js NÃO É OPCIONAL: sem ele o service worker segue servindo
+        a V90 do cache e nada disto aparece no celular do técnico.
+     🔴 É 'propertech-v92', NÃO v91: a chave v91 JÁ FOI USADA no deploy do
+        PCF_V90 (19/08). Desde o conserto do desencontro de 16/08 o sw anda um
+        à frente do arquivo. Repetir a chave anterior faz o activate não apagar
+        nada — o técnico seguiria na V90 do cache, sem erro visível.
+     100% ADITIVO: nenhum id, data-key, data-view, rota ou função renomeada.
+     Roda com o GAS v106 no ar — as chaves novas não vêm e a tela fica idêntica
+     à V90 (velho, não errado).
+
+     1  A LISTA DE OS NÃO DIZIA QUEM ESTAVA EXECUTANDO O QUÊ.
+        O risco de dois técnicos assumirem a mesma tarefa NUNCA existiu no
+        servidor: `assumirTarefa` é atômica sob LockService, devolve
+        status:'locked' e o V90 já faz rollback do lock otimista nesse caso.
+        Mas a informação de quem detém o lock só aparecia DENTRO do pipeline de
+        uma OS já aberta — e a LISTA, que é a tela onde o técnico escolhe o que
+        pegar, não dizia nada. Ele descobria no erro, depois de andar até a
+        bancada. Agora cada card traz "🔒 João — Desmontagem" (ou "🔧 você"),
+        lendo `em_execucao` do GAS v107.
+        ⚠ Nome próprio, não "ocupada": ele precisa saber A QUEM perguntar.
+        ⚠ Zero requisição nova — a chave viaja dentro do objeto da OS, que o
+          pf_os_cache_v1 já guarda inteiro ⇒ vale offline sem mudar o cache.
+        ⚠ Azul, não vermelho: é informação, não alarme.
+
+     2  SUBSISTEMA AVULSO NÃO TEM HORÍMETRO.
+        O exemplar de subsistema (GAS v107) chega por getMaquinasByOS como
+        qualquer máquina. Abrir a coleta de PREVENTIVA para ele produziria
+        leitura de horímetro inventada — e pior, ela alimentaria a calibração
+        do fator de projeção, corrompendo o cálculo da máquina de verdade.
+        pgpCarregarMaquinaOS agora recusa e explica, em vez de abrir a tela.
+        ⚠ O fluxo AVULSO já está protegido na origem: getMachinesByClient do
+          v107 só devolve subsistema com o opt-in `incluir_subsistemas`, que
+          este arquivo NÃO envia. A trava aqui é a de dentro da OS.
+        ⚠ NÃO bloqueia a OS: pipeline, tarefas e formulários seguem normais.
+
+     Nada no caminho de pfLoadPipeline / pgpPostJson / _pgpFetchComRetry_ foi
+     tocado — as correções de teto de rede continuam sendo assunto separado.
+-->
 <!-- V73 (31/07/2026) — NADA COLETADO SE PERDE; TUDO PERTINENTE VAI AO PDF.
      Par obrigatório: sw.js com CACHE='propertech-v73' + GAS v81 (as colunas
      novas ficam vazias se o v81 ainda não estiver publicado — nada quebra).
@@ -1660,6 +1700,8 @@ function pgpEnsureJsPDF() {
 .pf-os-meta:last-child { white-space: normal; overflow-wrap: anywhere; }
 /* V84 (K-P1) — semáforo de prazo. Paleta ESCURA: o PCF é dark (#1e293b), então
    #dc2626/#d97706 (que o PCM usa em fundo branco) ficam ilegíveis aqui. */
+/* V91 — quem está executando. Azul, não vermelho: é informação, não alarme. */
+.pf-os-exec { color: #60a5fa; font-weight: 700; }
 .pf-os-card.sit-atrasada { border-left: 3px solid #f87171; }
 .pf-os-card.sit-risco    { border-left: 3px solid #fbbf24; }
 .pf-os-sit { font-size: 11px; line-height: 1; white-space: nowrap; }
@@ -11950,7 +11992,29 @@ async function pgpIniciarPreventivaDeOS(osId){
 // Abrir uma OS de N máquinas fazia 2N JSON.parse do parque INTEIRO (um em
 // pgpGetLocalMachines, outro no bloco do fullDb, por máquina); com o laço
 // passando `dbPre` vira 1 parse para a OS toda.
+// ── V91 (par do GAS v107) — SUBSISTEMA AVULSO NA OS ─────────────────────────
+// O exemplar de subsistema é linha em MAQUINAS e chega por `getMaquinasByOS`
+// como qualquer máquina — com `itemTipo: 'SUBSISTEMA'`. O que ele NÃO tem é
+// horímetro, regime e h/semana: é uma peça na bancada, não um equipamento em
+// operação. Deixar a tela de PREVENTIVA abrir para ele produziria coleta
+// inválida (leitura de horímetro inventada) e ainda calibraria o fator de
+// projeção com esse número — corrompendo o cálculo da máquina de verdade.
+// ⚠ A trava vale para o caminho DENTRO da OS. O fluxo AVULSO já está protegido
+//   na origem: `getMachinesByClient` do v107 só devolve subsistema com o opt-in
+//   `incluir_subsistemas`, que este arquivo não envia.
+// ⚠ Não bloqueia a OS: o técnico continua vendo o item, o pipeline e os
+//   formulários da tarefa. O que não abre é a COLETA de preventiva.
+function _v91EhSubsistema(eq) {
+  return String((eq && (eq.itemTipo || eq.item_tipo)) || '').toUpperCase() === 'SUBSISTEMA';
+}
+
 async function pgpCarregarMaquinaOS(eq, idx, dbPre){
+  if (_v91EhSubsistema(eq)) {
+    var _nomeSub = [eq.brand, eq.model].filter(Boolean).join(' ') || 'Subsistema';
+    showNotification('⚙ ' + _nomeSub + ' é um SUBSISTEMA — sem horímetro e sem regime. ' +
+                     'Use os formulários da tarefa no pipeline; a coleta de preventiva não se aplica.');
+    return;
+  }
   const _dbOS = (dbPre !== undefined && dbPre !== null)
     ? dbPre
     : (function(){ try{ return JSON.parse(localStorage.getItem('proper_admin_v2') || 'null'); }catch(e){ return null; } })();
@@ -15125,6 +15189,30 @@ function pfRenderOS() {
                   o.dias_na_fila + ' dia' + (o.dias_na_fila === 1 ? '' : 's') + '</span>');
     }
     if (o.estagio && o.estagio !== '—') linha3.push('<span class="pf-os-meta">📍 ' + pfEscHtmlOS(o.estagio) + '</span>');
+
+    // ── V91 (par do GAS v107) — QUEM ESTÁ EXECUTANDO O QUÊ, AGORA ───────────
+    // O risco de dois técnicos assumirem a mesma tarefa NUNCA existiu no
+    // servidor: `assumirTarefa` é atômica sob LockService e devolve
+    // status:'locked' (e o V90 já faz rollback do lock otimista nesse caso).
+    // O que faltava era o técnico SABER ANTES de tentar: a informação de quem
+    // detém o lock só aparecia DENTRO do pipeline de uma OS já aberta, e a
+    // lista — a tela onde ele escolhe o que pegar — não dizia nada.
+    // ⚠ `em_execucao` viaja dentro do objeto da OS, que o pf_os_cache_v1 já
+    //   guarda inteiro ⇒ vale offline sem mudança de schema de cache.
+    // ⚠ GAS v106 no ar → chave ausente → card idêntico ao da V90.
+    // ⚠ NOME PRÓPRIO em vez de "você/outro": o técnico precisa saber A QUEM
+    //   perguntar, não só que a tarefa está ocupada.
+    if (Array.isArray(o.em_execucao) && o.em_execucao.length) {
+      var _meu = (window.PROPER_SESSION && window.PROPER_SESSION.tecnico &&
+                  window.PROPER_SESSION.tecnico.nome) || '';
+      var _ex = o.em_execucao.slice(0, 2).map(function (x) {
+        var _eu = _meu && String(x.por) === String(_meu);
+        return (_eu ? '🔧 você' : '🔒 ' + pfEscHtmlOS(String(x.por))) +
+               ' — ' + pfEscHtmlOS(String(x.nome || 'tarefa'));
+      }).join(' · ');
+      var _mais = o.em_execucao.length > 2 ? ' +' + (o.em_execucao.length - 2) : '';
+      linha3.push('<span class="pf-os-meta pf-os-exec">' + _ex + _mais + '</span>');
+    }
 
     var progHtml = '';
     if (o.progresso && o.progresso.total) {

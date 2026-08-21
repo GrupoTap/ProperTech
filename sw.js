@@ -9,7 +9,17 @@
  * O activate abaixo apaga qualquer cache antigo com prefixo 'propertech-'.
  */
 const CACHE_BASE = 'propertech-';
-const CACHE = CACHE_BASE + 'v91';  // V91 (19/08/2026) — PCF_V90: pdf_uid no queuePdfDriveUpload.
+const CACHE = CACHE_BASE + 'v92';  // v92 (21/08/2026) — PCF_V91: em_execucao + trava de subsistema.
+// 🔴 ATENÇÃO À NUMERAÇÃO — ELA NÃO BATE COM A DO PCF, E ISSO É PROPOSITAL.
+//    Desde o conserto do desencontro de 16/08 o sw anda UM À FRENTE do arquivo:
+//        PCF_V90  ↔  propertech-v91   (deploy de 19/08)
+//        PCF_V91  ↔  propertech-v92   (este)
+//    Quem "corrigir" isto para propertech-v91 achando que alinha as versões
+//    reintroduz o pior modo de falha deste arquivo: a chave ficaria IGUAL à do
+//    deploy anterior, o activate não apagaria nada, e o técnico continuaria
+//    abrindo a V90 do cache com a V91 já publicada no GitHub — sem erro nenhum
+//    na tela. A regra real é "chave NOVA a cada deploy", não "chave igual à do
+//    arquivo".
 // ⚠ O BUMP AQUI NÃO É OPCIONAL. Sem ele o service worker continua servindo o
 //    index.html em cache e a correção do pdf_uid não chega ao aparelho do
 //    técnico — o PWA seguiria duplicando PDF por dias, com o arquivo novo já
