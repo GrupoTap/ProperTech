@@ -1,3 +1,74 @@
+<!-- V91.1 (21/08/2026) — SUB-REVISÃO DO PACOTE V91 (NADA PUBLICADO AINDA).
+     Entra DENTRO do pacote v107/V127/V91: a ordem de publicação não muda e o
+     bump do sw.js continua sendo `propertech-v92` (nada foi servido com ele).
+     `<title>` e carimbos NÃO mudam — é sub-revisão, não versão nova.
+     100% ADITIVO E FRONT-ONLY: nenhuma função, id, data-key, chave de payload
+     ou action renomeada ou removida. GAS v107 INTOCADO — as três correções
+     usam dados que o envelope JÁ entrega.
+
+     P1  ASSINATURA DE UMA OS VAZAVA PARA A SEGUINTE.
+         CAUSA (três furos que se somavam): (a) `pgpColetarAssinaturasPreventiva`
+         RE-CARIMBAVA o contêiner global (`a.osId = _PGP_OS_ID`) ANTES de
+         coletar qualquer assinatura nova — abrir a coleta na OS nova e
+         cancelar deixava a assinatura VELHA legitimada para a OS NOVA, e a
+         partir daí o guard `pgpAssinaturasContextoOk` (que está correto)
+         aprovava; (b) o prefill do nome vinha de `a.responsavel.nome`, de outra
+         OS — era essa a origem do "Cleverson" numa OS que ele nunca assinou;
+         (c) `pgpLimparAssinaturas()` só existia em `novaColeta()`: o caminho do
+         pipeline (pfAbrirForm → pgpIniciarPreventivaDeOS) NUNCA limpava.
+         CORREÇÃO: helper único `pgpDescartarAssinaturasForaDeContexto(osId,
+         midx)`, chamado em DOIS pontos — no topo de
+         `pgpIniciarPreventivaDeOS` (troca de OS) e no topo da coleta, ANTES
+         de carimbar. Assinatura cujo carimbo não pertence ao contexto morre
+         ali; o prefill some junto com ela.
+         ⚠ Reabrir a MESMA OS PRESERVA: o carimbo bate e o helper não faz nada.
+         ⚠ `pgpAssinaturasContextoOk`, o upload e a chave 'pgp_assinaturas_v1'
+           NÃO foram tocados (compat com a restauração do Drive, V88 P3).
+
+     P2  "AÇÃO = TROCADA" E "STATUS = VENCIDO" NA MESMA LINHA DO MESMO PDF.
+         CAUSA: o status da peça é calculado SÓ pelo contador encontrado
+         (`pct>=100 || restantes<=0 → VENCIDO`); a `acao` nunca entrava na
+         conta. O número registrado é o estado NO RECEBIMENTO — exatamente o
+         que JUSTIFICA a troca —, mas a coluna se chama "Status" e o leitor
+         entende estado ATUAL da máquina saindo da visita.
+         CORREÇÃO (camada de APRESENTAÇÃO): `acao === 'trocada'` imprime
+         **TROCADA** em verde na coluna Status; prazo vencido/em atenção
+         acrescenta `**` + UMA legenda ao pé da tabela, no mesmo padrão do `*`
+         do V73. A caixa de prazo NA TELA passa a dizer o mesmo — tela e PDF
+         não podem discordar.
+         ⚠ O DADO NÃO MUDA: `partStatus` no payload continua sendo o estado
+           ENCONTRADO. Ele alimenta histórico e PCM; mudar a semântica
+           quebraria comparação com visitas passadas.
+         ⚠ H.Rodadas / H.Restam seguem imprimindo os números encontrados.
+         ⚠ Espelhado no PCM V127.3 — vale retroativamente para visitas antigas
+           reimpressas de lá, sem migração de dado.
+
+     P3  CNPJ / CIDADE / TELEFONE / E-MAIL DO CLIENTE (E O REGIME) EM BRANCO.
+         CAUSA: dentro de uma OS o cabeçalho NUNCA era preenchido —
+         `getMaquinasByOS` monta as máquinas por `rowToMachine`, que não tem
+         esses campos, e (ao contrário de `getMachinesByClient`) não anexa
+         `clientData`: o `pgpMergeClientDataForLoad(..., eq?.clientData||null)`
+         rodava sempre com null. Com a trava do V74 por cima (o técnico não
+         pode digitar), só a Razão Social saía e o resto ficava "-" para sempre.
+         O dado JÁ VIAJA: o GAS anexa os.cliente_nome/cnpj/cidade/telefone/
+         email ao objeto `os` do MESMO envelope — e no ecossistema inteiro só o
+         form05 lia essas chaves.
+         CORREÇÃO: `pgpClientDataDaOS(os)` converte o envelope para o formato
+         que os helpers já consomem; `pgpCarregarMaquinaOS` passa isso ao
+         `pgpMergeClientDataForLoad` e ao 4º argumento de `pgpLoadMachine`.
+         O que o envelope não traz (contato, endereço, UF, filial) é
+         complementado pelo espelho local do parque, que já estava parseado na
+         mão — zero requisição nova.
+         REGIME: `coletarDados` ganhou rede de segurança — com a tela vazia,
+         deriva descrição e h/semana do `regimeData` (ou do `hpw`) da máquina
+         carregada, refazendo a MESMA conta do `calcRegime`. Quando o cadastro
+         também não tem regime, o console diz isso com todas as letras: aí o
+         defeito é DE DADO (cadastrar no PCM), não de código.
+         ⚠ Campo travado pelo V74 PODE ser preenchido programaticamente: a
+           trava é contra DIGITAÇÃO do técnico, não contra o cadastro. E todos
+           os helpers só escrevem em campo VAZIO — coleta do técnico intacta.
+         ⚠ Coleta AVULSA (sem OS) não muda: seção 1 segue editável.
+-->
 <!-- V91 (21/08/2026) — QUEM JÁ ESTÁ NESSA TAREFA, E A PEÇA QUE NÃO TEM
      HORÍMETRO. Par obrigatório: sw.js com CACHE='propertech-v92' + GAS v107.
      🔴 O BUMP DO sw.js NÃO É OPCIONAL: sem ele o service worker segue servindo
@@ -3332,6 +3403,10 @@ function limparSessaoStorage() {
     // a partir de uma tarefa do pipeline de uma OS (não é uma preventiva avulsa).
     window._PGP_OS_ID = urlParams.get('os_id') || null;
     window._PGP_OS_CLIENTE = null; // v52 — preenchido por pgpIniciarPreventivaDeOS; guarda o cliente dono da OS
+    // V91.1 (P3) — o objeto `os` do envelope de getMaquinasByOS, guardado
+    // inteiro. É dele que saem cliente_cnpj/cidade/telefone/email/nome, que o
+    // GAS v69 já anexa e que, no ecossistema todo, só o form05 lia.
+    window._PGP_OS_OBJ = null;
     window._PGP_TAREFA_ID = urlParams.get('tarefa_id') || null;
     window._PGP_OS_NUMERO = urlParams.get('os_numero') || '';   // V73 (P2)
     window._PGP_PREVENTIVA_INICIO_ISO = urlParams.get('inicio_preventiva_iso') || null;
@@ -3820,7 +3895,7 @@ async function pgpGarantirOSInspecaoAvulsa(midx){
   // Troca de cliente na mesma sessão de inspeção: descarta a OS anterior para não
   // pendurar a coleta do novo cliente na OS do cliente antigo.
   if (window._PGP_OS_ID && window._PGP_OS_CLIENTE && _n(window._PGP_OS_CLIENTE) !== _n(cliente)) {
-    window._PGP_OS_ID = null; window._PGP_OS_CLIENTE = null; window._pgpOSInspecaoPromise = null;
+    window._PGP_OS_ID = null; window._PGP_OS_CLIENTE = null; window._PGP_OS_OBJ = null; window._pgpOSInspecaoPromise = null;
   }
   if (window._PGP_OS_ID) return window._PGP_OS_ID;
   if (window._pgpOSInspecaoPromise) return window._pgpOSInspecaoPromise;
@@ -4924,8 +4999,18 @@ function calcPartRow(pk, intDefault) {
   let cls = 'pt-calc-ok';
   if (pct >= 80) cls = 'pt-calc-warn';
   if (pct >= 100 || restantes <= 0) cls = 'pt-calc-err';
+  // V91.1 (P2) — a TELA não pode discordar do PDF. Se a peça foi TROCADA
+  // nesta visita, o prazo estourado é a condição ENCONTRADA (o motivo da
+  // troca), não uma pendência que fica. Mesma leitura do PDF: verde +
+  // "TROCADA nesta visita", com os números encontrados preservados.
+  let _trocadaTela = false;
+  try { _trocadaTela = String((document.getElementById(`${pk}_acao`)||{}).value || '') === 'trocada'; } catch (_e) {}
+  const _trocaSuf = _trocadaTela
+    ? ' &nbsp;|&nbsp; 🔧 <b>TROCADA nesta visita</b>'
+    : '';
+  if (_trocadaTela) cls = 'pt-calc-ok';
   calcBox.innerHTML = `<div class="pt-calc-line ${cls}">
-    🔄 Rodadas: <b>${rodadas.toFixed(0)} h</b> &nbsp;|&nbsp; ⏳ Restam: <b>${restantes.toFixed(0)} h</b> &nbsp;|&nbsp; ${pct}% do intervalo (${intervalo} h)
+    🔄 Rodadas: <b>${rodadas.toFixed(0)} h</b> &nbsp;|&nbsp; ⏳ Restam: <b>${restantes.toFixed(0)} h</b> &nbsp;|&nbsp; ${pct}% do intervalo (${intervalo} h)${_trocaSuf}
   </div>`;
   updatePartCompletionStatus(pk);
 }
@@ -6097,6 +6182,7 @@ async function novaColeta() {
   // ═════════════════════════════════════════════════════════════════════
   window._PGP_OS_ID = null;
   window._PGP_OS_CLIENTE = null;
+  window._PGP_OS_OBJ = null;          // V91.1 (P3)
   window._PGP_TAREFA_ID = null;
   window._PGP_OS_NUMERO = '';
   window._PGP_OS_ID_CARREGADA = '';
@@ -6388,6 +6474,52 @@ const DIAS_MAP = {
   'seg-qui':4,'seg-sex':5,'seg-sab':6,'seg-dom':7,
   'sex':1,'sab':1,'dom':1
 };
+
+// ── V91.1 (P3) — REGIME NO PDF, FALLBACK PELO CADASTRO ──────────────────────
+// O PDF imprime o que estiver em m<i>_h_dia / m<i>_h_sem_total, preenchidos por
+// calcRegime a partir das FAIXAS na tela. Se o restore dos turnos não pintou
+// (Regime_JSON vazio na planilha, ou a linha carregada não é a que tem o
+// regime), o relatório saía com "-" mesmo quando o cadastro sabia o regime.
+// Este espelho refaz a MESMA conta do calcRegime direto do `regimeData` da
+// máquina carregada — e, na falta dele, aceita `hpw` (h/Semana do cadastro).
+// ⚠ Só entra quando a TELA está vazia: coleta do técnico nunca é sobrescrita.
+// ⚠ Não escreve no DOM nem no payload — é leitura para a APRESENTAÇÃO.
+var PGP_DIAS_LABEL = { 'seg-qui':'Seg–Qui', 'seg-sex':'Seg–Sex', 'seg-sab':'Seg–Sáb',
+                       'seg-dom':'Seg–Dom', 'sex':'Sex', 'sab':'Sáb', 'dom':'Dom' };
+var PGP_DIAS_CURTO = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+function pgpRegimeDoCadastro(midx){
+  try{
+    var eq = (typeof pgpGetLoadedMachineForIndex === 'function') ? pgpGetLoadedMachineForIndex(midx) : null;
+    if(!eq) return null;
+    var reg = Array.isArray(eq.regimeData) ? eq.regimeData : null;
+    var total = 0, desc = [];
+    if(reg && reg.length){
+      reg.forEach(function(t){
+        var nd = (String(t.dias) === 'custom')
+          ? ((t.customDays && t.customDays.length) ? t.customDays.length : 0)
+          : (DIAS_MAP[String(t.dias)] || 0);
+        var ini = String(t.inicio || '').split(':'), fim = String(t.fim || '').split(':');
+        if(ini.length < 2 || fim.length < 2) return;
+        var h1 = Number(ini[0]) + Number(ini[1]) / 60;
+        var h2 = Number(fim[0]) + Number(fim[1]) / 60;
+        var dur = h2 - h1; if(dur <= 0) dur += 24;   // turno virando a meia-noite
+        if(nd > 0 && dur > 0){
+          total += dur * nd;
+          var lbl = (String(t.dias) === 'custom')
+            ? ((t.customDays || []).map(function(i){ return PGP_DIAS_CURTO[i] || ''; }).filter(Boolean).join(','))
+            : (PGP_DIAS_LABEL[String(t.dias)] || String(t.dias || ''));
+          desc.push(lbl + ' ' + (t.inicio || '') + '–' + (t.fim || ''));
+        }
+      });
+    }
+    if(total > 0){
+      return { regime: desc.join('; '), hSemTotal: (Math.round(total * 10) / 10).toFixed(1), fonte: 'Regime_JSON do cadastro' };
+    }
+    var hpw = parseFloat(eq.hpw || 0);
+    if(hpw > 0) return { regime: '', hSemTotal: String(hpw), fonte: 'h/Semana do cadastro' };
+    return null;
+  }catch(e){ return null; }
+}
 
 function getDiasNum(sel, customWrap) {
   if (sel.value === 'custom') {
@@ -7573,6 +7705,7 @@ function pgpCreateReportBuilder() {
     // por peça (${pk}_obs, ex: "etiqueta ilegível, horímetro zerado...").
     const partsObsList = d.pecasObs || [];
     let _temConflitoEstado = false;   // V73 (L3)
+    let _temTrocaVencida  = false;   // V91.1 (P2)
 
     (d.pecas || []).forEach((pt, pi) => {
       y = checkY(y, rowHP);
@@ -7635,15 +7768,40 @@ function pgpCreateReportBuilder() {
           doc.text(limparTextoPDF(String(v)), xc + 1, y + 5);
           xc += colsP[ci + 3];
         });
-        if (status) {
+        // ═══════════════════════════════════════════════════════════════
+        // V91.1 (P2) — "Trocada" na coluna Ação e "VENCIDO" na coluna Status,
+        // na MESMA linha, no MESMO PDF. Os dois estavam certos e o relatório
+        // parecia errado: o número que o técnico registra é o estado NO
+        // RECEBIMENTO (últ. troca × horímetro × intervalo), que é justamente o
+        // que JUSTIFICA a troca — mas a coluna se chama "Status" e o leitor
+        // entende estado ATUAL da máquina saindo da visita.
+        // A correção é de APRESENTAÇÃO: quando a ação foi 'trocada', a coluna
+        // Status imprime TROCADA em verde; se o prazo encontrado estava
+        // vencido/em atenção, entra o marcador ** e UMA legenda ao pé da
+        // tabela (mesmo padrão do * do V73). Os dois fatos ficam no papel.
+        // ⚠ O DADO NÃO MUDA: `partStatus` no payload continua sendo o estado
+        //   ENCONTRADO — é ele que alimenta histórico e PCM, e mudar a
+        //   semântica quebraria comparação com visitas passadas.
+        // ⚠ H.Rodadas / H.Restam seguem imprimindo os números encontrados:
+        //   são o registro da condição que motivou a troca.
+        // ═══════════════════════════════════════════════════════════════
+        const _trocadaAqui = (_acao === 'trocada') && !ehInspecao;
+        const _prazoRuim   = (status === 'VENCIDO' || status === 'ATENÇÃO');
+        if (status || _trocadaAqui) {
           doc.setFont('helvetica','bold');
-          doc.setTextColor(...statusColor);
           // V73 (L3) — quando o técnico marcou CONFORME mas o PRAZO está
           // vencido/em atenção, os dois fatos eram fundidos numa palavra só e o
           // "conforme" sumia. O asterisco preserva ambos (nota abaixo da tabela).
-          const _conflito = (String(pt.estado||'') === 'ok') && (status === 'VENCIDO' || status === 'ATENÇÃO');
+          const _conflito = (String(pt.estado||'') === 'ok') && _prazoRuim && !_trocadaAqui;
           if (_conflito) _temConflitoEstado = true;
-          doc.text(limparTextoPDF(status + (_conflito ? '*' : '')), xc + 1, y + 5);
+          if (_trocadaAqui) {
+            if (_prazoRuim) _temTrocaVencida = true;
+            doc.setTextColor(...GREEN);
+            doc.text(limparTextoPDF('TROCADA' + (_prazoRuim ? '**' : '')), xc + 1, y + 5);
+          } else {
+            doc.setTextColor(...statusColor);
+            doc.text(limparTextoPDF(status + (_conflito ? '*' : '')), xc + 1, y + 5);
+          }
         }
       }
       y += rowHP;
@@ -7656,6 +7814,17 @@ function pgpCreateReportBuilder() {
       doc.setFontSize(6.5);
       doc.setTextColor(120, 120, 120);
       doc.text(limparTextoPDF('* peca encontrada em bom estado (conforme); o PRAZO de troca e que esta vencido/em atencao.'), ML + 1, y + 3.5);
+      y += 5;
+    }
+
+    // V91.1 (P2) — legenda do duplo asterisco, só quando houve troca de peça
+    // encontrada fora do prazo.
+    if (_temTrocaVencida) {
+      y = checkY(y, 5);
+      doc.setFont('helvetica','italic');
+      doc.setFontSize(6.5);
+      doc.setTextColor(120, 120, 120);
+      doc.text(limparTextoPDF('** peca encontrada com prazo vencido/em atencao e SUBSTITUIDA nesta visita.'), ML + 1, y + 3.5);
       y += 5;
     }
 
@@ -8049,6 +8218,27 @@ function pgpColetarDadosPdf(midx) {
     responsavel: (ctxOk && _ass.responsavel) ? _ass.responsavel : null
   };
 
+  // V91.1 (P3) — regime: a TELA manda; o cadastro é rede de segurança.
+  let _pgpRegimeTxt = g('h_dia');
+  let _pgpHSemTxt   = g('h_sem_total');
+  if (!String(_pgpRegimeTxt || '').trim() || !String(_pgpHSemTxt || '').trim()) {
+    const _rc = pgpRegimeDoCadastro(midx);
+    if (_rc) {
+      if (!String(_pgpRegimeTxt || '').trim()) _pgpRegimeTxt = _rc.regime || _pgpRegimeTxt;
+      if (!String(_pgpHSemTxt   || '').trim()) _pgpHSemTxt   = _rc.hSemTotal || _pgpHSemTxt;
+      try { console.warn('[PCF V91.1] regime ausente na tela — impresso a partir do cadastro (' + _rc.fonte + ').'); } catch (e) {}
+    } else {
+      // Diagnóstico honesto: aqui o defeito é DE DADO, não de código.
+      try {
+        const _eqR = pgpGetLoadedMachineForIndex(midx);
+        if (_eqR && !(Array.isArray(_eqR.regimeData) && _eqR.regimeData.length) && !parseFloat(_eqR.hpw || 0)) {
+          console.warn('[PCF V91.1] máquina sem Regime_JSON e sem h/Semana no cadastro ('
+            + (_eqR.serial || _eqR.tag || 'sem série') + ') — o PDF sai com "-". Cadastre o regime no PCM.');
+        }
+      } catch (e) {}
+    }
+  }
+
   return {
     perfilId: ehPistao ? 'pistao' : 'parafuso',
     // V73 — o relatório precisa dizer O QUE ELE É e A QUE OS PERTENCE.
@@ -8066,7 +8256,7 @@ function pgpColetarDadosPdf(midx) {
     },
     horimetro: {
       total: g('horimetro'), data_leitura: g('data_leitura'),
-      regime: g('h_dia'), h_sem_total: g('h_sem_total'), tecnico: g('tecnico')
+      regime: _pgpRegimeTxt, h_sem_total: _pgpHSemTxt, tecnico: g('tecnico')   // V91.1 (P3)
     },
     preventiva: { auxiliar: g('auxiliar'), hora_inicio: g('hora_inicio'), hora_fim: g('hora_fim') },
     cenario: scenObj ? { id: scenObj.id, title: scenObj.title } : null,
@@ -9581,10 +9771,16 @@ function pgpCalcPartRowCalendario(pk, intDefault){
       var prazo = (info.restantes >= 0)
         ? '⏳ Faltam <b>'+info.restantes+' dia(s)</b>'
         : '⚠️ Vencido há <b>'+Math.abs(info.restantes)+' dia(s)</b>';
+      // V91.1 (P2) — mesmo espelho do parafuso: item trocado nesta visita
+      // mostra o prazo encontrado E a troca, sem alarme falso.
+      var _trocadaCal = false;
+      try { _trocadaCal = String((document.getElementById(pk+'_acao')||{}).value || '') === 'trocada'; } catch (_e) {}
+      if (_trocadaCal && estado !== 'nao_conforme') cls = 'pt-calc-ok';
       calcBox.innerHTML = '<div class="pt-calc-line '+cls+'">'
         + '📅 Próxima: <b>'+pgpFmtDataBR(info.proxima)+'</b> &nbsp;|&nbsp; '+prazo
         + ' &nbsp;|&nbsp; ciclo de '+dias+' dia(s)'
         + (estado==='nao_conforme' ? ' &nbsp;|&nbsp; <b>NÃO CONFORME</b>' : '')
+        + (_trocadaCal ? ' &nbsp;|&nbsp; 🔧 <b>TROCADA nesta visita</b>' : '')
         + '</div>';
     }
   }
@@ -11848,6 +12044,13 @@ function pgpFinalizarInclusaoOS(){
 // Usada quando o formulário é aberto a partir de uma tarefa auto:preventiva do pipeline
 // (?modo=preventiva&os_id=...).
 async function pgpIniciarPreventivaDeOS(osId){
+  // V91.1 (P1) — TROCAR DE OS DESCARTA ASSINATURA DE OUTRA OS. Este e o
+  // caminho do pipeline (pfAbrirForm), que NUNCA passava por
+  // pgpLimparAssinaturas() — so novaColeta() limpava, e o tecnico de campo
+  // nao usa novaColeta() quando vem de uma tarefa. Roda ANTES do guard de
+  // reentrada de proposito: reabrir a MESMA OS tem carimbo que BATE e o
+  // helper nao mexe em nada (a coleta assinada e preservada).
+  try { pgpDescartarAssinaturasForaDeContexto(osId || null); } catch (_a1) {}
   // ═══════════════════════════════════════════════════════════════════════
   // V71 (FIX 2) — REENTRADA NA TAREFA ERA O GATILHO Nº 1 DA PERDA DE DADO.
   // pfAbrirForm reabre a tarefa por CHAMADA INTERNA (não recarrega a página,
@@ -11927,6 +12130,7 @@ async function pgpIniciarPreventivaDeOS(osId){
     // v52 — registra o cliente dono desta OS, para pgpOsIdSeguro() poder suprimir
     // o os_id caso, na mesma sessão, seja carregada uma máquina de outro cliente.
     window._PGP_OS_CLIENTE = (r.os && r.os.cliente) ? String(r.os.cliente).trim() : '';
+    window._PGP_OS_OBJ = r.os || null;   // V91.1 (P3) — cadastro do cliente da OS
     // V71 (FIX 2): carimbo de "esta OS já está na tela" — base do guard de reentrada.
     window._PGP_OS_ID_CARREGADA = String(osId||'');
     try { pgpResetAvisoOsSuprimida(); } catch(e){}   // V83 (L-2): outra OS, outro par OS×cliente
@@ -11947,13 +12151,13 @@ async function pgpIniciarPreventivaDeOS(osId){
     try{ _dbParque = JSON.parse(localStorage.getItem('proper_admin_v2') || 'null'); }catch(eDb){ _dbParque = null; }
 
     // Primeira máquina usa o painel 0, que já existe por padrão ao abrir o app.
-    await pgpCarregarMaquinaOS(osMachines[0], 0, _dbParque);
+    await pgpCarregarMaquinaOS(osMachines[0], 0, _dbParque, r.os || null);   // V91.1 (P3)
 
     // Máquinas adicionais: cria um painel por máquina, reaproveitando addMachine()
     // — mesmo padrão já usado no fluxo avulso multi-máquina.
     for(let i = 1; i < osMachines.length; i++){
       addMachine(); // cria o painel no próximo índice e já muda currentMachine para ele
-      await pgpCarregarMaquinaOS(osMachines[i], currentMachine, _dbParque);   // V88 (B3)
+      await pgpCarregarMaquinaOS(osMachines[i], currentMachine, _dbParque, r.os || null);   // V88 (B3) · V91.1 (P3)
     }
 
     switchMachine(0);
@@ -12008,7 +12212,44 @@ function _v91EhSubsistema(eq) {
   return String((eq && (eq.itemTipo || eq.item_tipo)) || '').toUpperCase() === 'SUBSISTEMA';
 }
 
-async function pgpCarregarMaquinaOS(eq, idx, dbPre){
+// ── V91.1 (P3) — O CADASTRO DO CLIENTE DENTRO DA OS ─────────────────────────
+// O cabeçalho do PDF lê o DOM da seção 1 (cnpj/contato/telefone/email/cidade).
+// Dentro de uma OS esses campos NUNCA eram preenchidos: `getMaquinasByOS` monta
+// as máquinas por `rowToMachine`, que não tem esses campos (a aba MAQUINAS não
+// os guarda) e, ao contrário de `getMachinesByClient`, não anexa `clientData` —
+// então `pgpMergeClientDataForLoad(_pgpBase, eq?.clientData || null)` rodava
+// SEMPRE com null. Somado à trava do V74 (o técnico não pode digitar), só a
+// Razão Social saía e o resto ficava "-" para sempre.
+// O dado JÁ VIAJA: o GAS anexa os.cliente_nome/cnpj/cidade/telefone/email ao
+// objeto `os` do mesmo envelope. Isto aqui só o converte para o formato que
+// `pgpMergeClientDataForLoad`/`pgpLoadClientDataFromObj` já consomem.
+// ⚠ Front-only: nenhuma requisição nova, nenhuma chave nova de payload.
+// ⚠ Preencher campo travado pelo V74 é legítimo — a trava é contra DIGITAÇÃO
+//   do técnico, não contra o cadastro; e os helpers só escrevem em campo VAZIO.
+// ⚠ `contato` não vem no envelope (o GAS não anexa a coluna Contato de
+//   CLIENTES). Ele é complementado pelo espelho local quando existir; se não,
+//   segue vazio — corrigir isso exigiria mudar o GAS, o que esta rodada não faz.
+function pgpClientDataDaOS(osObj){
+  try{
+    var o = osObj || window._PGP_OS_OBJ || null;
+    if(!o) return null;
+    var cd = {
+      nome:     o.cliente_nome     || o.cliente || '',
+      cnpj:     o.cliente_cnpj     || '',
+      cidade:   o.cliente_cidade   || '',
+      telefone: o.cliente_telefone || '',
+      email:    o.cliente_email    || ''
+    };
+    var tem = ['nome','cnpj','cidade','telefone','email'].some(function(k){
+      return String(cd[k] || '').trim() !== '';
+    });
+    return tem ? cd : null;
+  }catch(e){ return null; }
+}
+
+// V91.1 (P3) — 4º parâmetro OPCIONAL `osObj`: o `os` do envelope desta chamada.
+// Sem ele cai em window._PGP_OS_OBJ (mesmo valor, gravado logo acima).
+async function pgpCarregarMaquinaOS(eq, idx, dbPre, osObj){
   if (_v91EhSubsistema(eq)) {
     var _nomeSub = [eq.brand, eq.model].filter(Boolean).join(' ') || 'Subsistema';
     showNotification('⚙ ' + _nomeSub + ' é um SUBSISTEMA — sem horímetro e sem regime. ' +
@@ -12059,7 +12300,10 @@ async function pgpCarregarMaquinaOS(eq, idx, dbPre){
       if(_pgpVazio(_pgpBase[k]) && !_pgpVazio(found[k])) _pgpBase[k] = found[k];
     });
   }
-  const machineToLoad = pgpMergeClientDataForLoad(_pgpBase, eq?.clientData || null);
+  // V91.1 (P3) — clientData: o do envelope da máquina, se houver (não há, hoje,
+  // nesta rota), senão o montado a partir do objeto `os`.
+  const _cdOS = (eq && eq.clientData) ? eq.clientData : pgpClientDataDaOS(osObj);
+  const machineToLoad = pgpMergeClientDataForLoad(_pgpBase, _cdOS);
   if(eq.client) machineToLoad.client = eq.client;
   // Peças vindas da OS têm prioridade absoluta — mesmo quando found foi aceito, nunca
   // deixar peças do cache local sobrescreverem as peças reais da OS.
@@ -12067,10 +12311,25 @@ async function pgpCarregarMaquinaOS(eq, idx, dbPre){
 
   try{
     const fullDb = _dbOS;   // V88 (B3): já parseado uma vez só
-    pgpLoadMachine(machineToLoad, fullDb, idx, eq?.clientData || null);
+    pgpLoadMachine(machineToLoad, fullDb, idx, _cdOS);
   }catch(e){
-    pgpLoadMachine(machineToLoad, null, idx, eq?.clientData || null);
+    pgpLoadMachine(machineToLoad, null, idx, _cdOS);
   }
+
+  // V91.1 (P3) — COMPLEMENTO do que o envelope não traz (contato, endereço, UF,
+  // filial): o espelho local do parque ('proper_admin_v2', JÁ parseado acima)
+  // guarda o cadastro completo do cliente quando o aparelho sincronizou.
+  // Zero rede; `pgpLoadClientDataFromObj` só escreve em campo VAZIO, então nunca
+  // sobrescreve nem o envelope nem o que o técnico digitou.
+  try{
+    const _cliArr = (_dbOS && Array.isArray(_dbOS.clients)) ? _dbOS.clients : [];
+    const _cliNome = machineToLoad.client || (_cdOS && _cdOS.nome) || '';
+    if(_cliNome && _cliArr.length){
+      const _kCli = clientKey(_cliNome);
+      const _cRec = _cliArr.find(function(c){ return clientKey(c.nome || c.name || '') === _kCli; });
+      if(_cRec) pgpLoadClientDataFromObj(_cRec, idx);
+    }
+  }catch(eCli){ console.warn('[PCF V91.1] complemento de cadastro do cliente:', eCli && eCli.message); }
 
   // V86 — repõe a COLETA já gravada desta máquina nesta OS (ver a função).
   // Não-bloqueante de propósito: a máquina já está na tela; a coleta chega
@@ -12455,6 +12714,9 @@ function pgpSetAcao(pk, acao){
     const btn=document.getElementById(pk+'_acao_'+a);
     if(btn) btn.classList.toggle('active', a===acao);
   });
+  // V91.1 (P2) — a caixa de prazo passou a depender da AÇÃO, então precisa
+  // ser repintada quando ela muda (mesma chamada que pgpSetEstado já faz).
+  try { calcPartRow(pk, pgpCicloPadrao(pk) || 0); } catch (_e) {}
   updatePartCompletionStatus(pk);
 }
 
@@ -16978,6 +17240,66 @@ function pgpLimparAssinaturas() {
   pgpAtualizarStatusAssinaturas();
 }
 
+// ── V91.1 (P1) — DESCARTE DE ASSINATURAS FORA DE CONTEXTO ────────────────────
+// window._PGP_ASSINATURAS e a chave 'pgp_assinaturas_v1' sao um conteiner
+// GLOBAL DO APARELHO com UM carimbo ({osId, cliente}) para o conjunto. Ate a
+// V91 o carimbo era REESCRITO por pgpColetarAssinaturasPreventiva ANTES de
+// coletar qualquer assinatura nova — abrir a coleta numa OS nova e cancelar
+// deixava a assinatura VELHA carimbada com a OS NOVA, e a partir dai o guard
+// pgpAssinaturasContextoOk (correto) passava a aprovar dado de outra visita.
+// Somava-se a isso o fato de pgpLimparAssinaturas so existir em novaColeta():
+// o caminho do pipeline (pfAbrirForm -> pgpIniciarPreventivaDeOS) nunca
+// limpava. Este helper e o unico ponto de descarte; ele ZERA as assinaturas
+// quando o carimbo gravado nao pertence ao contexto alvo, e NAO FAZ NADA
+// quando bate (reabrir a MESMA OS preserva a coleta).
+// ⚠ Mesma semantica de pgpAssinaturasContextoOk, que NAO foi tocado: o carimbo
+//   de osId manda; sem osId vale o cliente; sem nenhum dos dois so e "deste
+//   contexto" quando nao ha OS ativa. Quando nao da para comparar (a razao
+//   social ainda nao foi pintada na tela), NAO descarta — quem decide e a
+//   chamada feita no momento da coleta, com a tela ja carregada.
+// ⚠ A chave 'pgp_assinaturas_v1' e o formato do objeto NAO mudam (compat com a
+//   restauracao do Drive, V88 P3).
+function pgpDescartarAssinaturasForaDeContexto(osIdAlvo, midx) {
+  try {
+    var a = window._PGP_ASSINATURAS;
+    if (!a) return false;
+    if (!(a.tecnico || a.responsavel)) return false;
+
+    var osAlvo = String((osIdAlvo === undefined || osIdAlvo === null)
+      ? (window._PGP_OS_ID || '')
+      : (osIdAlvo || ''));
+
+    var bate;
+    if (a.osId) {
+      bate = (String(a.osId) === osAlvo);
+    } else if (a.cliente) {
+      var _i = (typeof midx === 'number')
+        ? midx
+        : ((typeof currentMachine === 'number') ? currentMachine : 0);
+      var cliAtual = '';
+      try { var _c = vg(_i, 'razao_social'); cliAtual = (_c && _c !== '\u2014') ? String(_c) : ''; } catch (e) { cliAtual = ''; }
+      if (!cliAtual) return false; // sem base de comparacao: nao descarta agora
+      var norm = function (x) { return String(x || '').trim().toLowerCase(); };
+      bate = (norm(a.cliente) === norm(cliAtual));
+    } else {
+      bate = !osAlvo;
+    }
+    if (bate) return false;
+
+    // mutacao no MESMO objeto (ha referencias vivas para ele nos chamadores)
+    a.tecnico = null;
+    a.responsavel = null;
+    a.osId = null;
+    a.cliente = '';
+    a.origem = null;
+    a.assinadoEm = null;
+    pgpPersistAssinaturas();
+    try { pgpAtualizarStatusAssinaturas(); } catch (e) {}
+    try { console.warn('[PCF V91.1] assinaturas de outro contexto descartadas (alvo: ' + (osAlvo || 'sem OS') + ')'); } catch (e) {}
+    return true;
+  } catch (e) { return false; }
+}
+
 function pgpAtualizarStatusAssinaturas() {
   var el = document.getElementById('pgpAssinStatus');
   if (!el) return;
@@ -17229,6 +17551,12 @@ async function pgpColetarAssinaturasPreventiva() {
   window._PGP_ASSINATURAS = window._PGP_ASSINATURAS || { tecnico: null, responsavel: null, osId: null, cliente: '' };
   var a = window._PGP_ASSINATURAS;
   var midx = (typeof currentMachine === 'number') ? currentMachine : 0;
+  // V91.1 (P1) — DESCARTAR ANTES DE CARIMBAR. Esta ordem e o coracao da
+  // correcao: ate a V91 o carimbo novo era colado por cima das assinaturas
+  // VELHAS, e cancelar a coleta deixava a assinatura da OS anterior
+  // legitimada para a OS atual. Agora o que nao e deste contexto morre aqui,
+  // e so entao o contexto novo e carimbado.
+  try { pgpDescartarAssinaturasForaDeContexto(window._PGP_OS_ID || null, midx); } catch (e) {}
   // contexto atual (OS/cliente) — carimba a coleta p/ o guard de contexto
   a.osId = window._PGP_OS_ID || null;
   try { var _cli = vg(midx, 'razao_social'); a.cliente = (_cli && _cli !== '—') ? _cli : ''; } catch (e) {}
