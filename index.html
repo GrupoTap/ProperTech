@@ -69,6 +69,16 @@
            os helpers só escrevem em campo VAZIO — coleta do técnico intacta.
          ⚠ Coleta AVULSA (sem OS) não muda: seção 1 segue editável.
 -->
+<!-- V92 (22/08/2026) — CIDADE E UF EM CAMPOS PRÓPRIOS.
+     Par: sw.js com CACHE='propertech-v93' (o v92 é o que está no ar).
+     100% ADITIVO: nenhum id, data-key, rota ou função renomeada; `${p}uf` é
+     data-key NOVO — e o loader (pgpLoadClientDataFromObj) já chamava sv('uf')
+     para um campo que nunca existiu na tela: agora existe.
+     🔑 O CONSUMO NÃO MUDA: pgpVal/vg('cidade') devolvem o combinado
+        "Cidade / UF", então payload, PDF, VISITAS.Cidade e o rótulo
+        "Cidade / Estado" dos relatórios ficam byte a byte como antes.
+        Cadastro antigo com "BH / MG" numa string só é repartido no load.
+-->
 <!-- V91 (21/08/2026) — QUEM JÁ ESTÁ NESSA TAREFA, E A PEÇA QUE NÃO TEM
      HORÍMETRO. Par obrigatório: sw.js com CACHE='propertech-v92' + GAS v107.
      🔴 O BUMP DO sw.js NÃO É OPCIONAL: sem ele o service worker segue servindo
@@ -828,8 +838,8 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ProperCare Field · PGP Preventivas v34 · build PCF_V90</title>
-<meta name="app-build" content="PCF_V90" data-date="2026-08-19">
+<title>ProperCare Field · PGP Preventivas v35 · build PCF_V92</title>
+<meta name="app-build" content="PCF_V92" data-date="2026-08-22">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -5143,10 +5153,14 @@ function buildPanelHTML(idx) {
         <div class="field-label"><div class="checkbox">✓</div>
           <div class="label-text"><div class="label-main">Cidade, CNPJ e datas de visita</div></div></div>
         <div class="field-input">
+          <!-- V92 — Cidade e UF em campos próprios (pedido 22/08). O consumo
+               continua combinado: pgpVal/vg('cidade') devolvem "Cidade / UF",
+               então payload, PDF e VISITAS.Cidade ficam byte a byte iguais. -->
           <div class="row2">
-            <div class="sub-group"><label>Cidade / Estado</label><input type="text" placeholder="Ex: BH / MG" data-key="${p}cidade" onclick="event.stopPropagation()"></div>
-            <div class="sub-group"><label>CNPJ / CPF</label><input type="text" placeholder="CNPJ" data-key="${p}cnpj" onclick="event.stopPropagation()"></div>
+            <div class="sub-group"><label>Cidade</label><input type="text" placeholder="Ex: Belo Horizonte" data-key="${p}cidade" onclick="event.stopPropagation()"></div>
+            <div class="sub-group"><label>UF</label><input type="text" placeholder="MG" maxlength="2" style="text-transform:uppercase" data-key="${p}uf" onclick="event.stopPropagation()"></div>
           </div>
+          <div class="sub-group"><label>CNPJ / CPF</label><input type="text" placeholder="CNPJ" data-key="${p}cnpj" onclick="event.stopPropagation()"></div>
           <div class="row2">
             <div class="sub-group"><label>Última visita</label><input type="date" data-key="${p}ult_visita" onclick="event.stopPropagation()"></div>
             <div class="sub-group"><label>Próxima visita</label><input type="date" data-key="${p}prox_visita" onclick="event.stopPropagation()"></div>
@@ -5695,7 +5709,13 @@ function checkDone() { /* sem obrigatórios — botão sempre ativo */ }
 // ── VALUE HELPERS ─────────────────────────────────────
 function vg(midx, key) {
   const el = document.querySelector('[data-key="m'+midx+'_'+key+'"]');
-  return el ? (el.value.trim() || '—') : '—';
+  let v = el ? el.value.trim() : '';
+  if (key === 'cidade') {                       // V92 — mesmo combinado do pgpVal
+    const ufEl = document.querySelector('[data-key="m'+midx+'_uf"]');
+    const u = ufEl ? ufEl.value.trim().toUpperCase() : '';
+    if (u) v = v ? v + ' / ' + u : u;
+  }
+  return v || '—';
 }
 
 function naVal(midx, pk) {
@@ -6312,7 +6332,15 @@ const PARTS_LABELS = [
 
 function pgpVal(midx, key) {
   const el = document.querySelector('[data-key="m'+midx+'_'+key+'"]');
-  return el ? el.value.trim() : '';
+  let v = el ? el.value.trim() : '';
+  // V92 — cidade e UF são campos separados NA TELA; todo consumidor (payload,
+  // PDF, VISITAS.Cidade) continua recebendo o combinado "Cidade / UF".
+  if (key === 'cidade') {
+    const ufEl = document.querySelector('[data-key="m'+midx+'_uf"]');
+    const u = ufEl ? ufEl.value.trim().toUpperCase() : '';
+    if (u) v = v ? v + ' / ' + u : u;
+  }
+  return v;
 }
 
 function pgpPartVal(midx, pk) {
@@ -10529,9 +10557,16 @@ function pgpLoadClientDataFromObj(clientObj, midx){
   sv('contato',   clientObj.contato   || clientObj.contact    || '');
   sv('telefone',  clientObj.telefone  || clientObj.phone      || '');
   sv('email',     clientObj.email     || '');
-  sv('cidade',    clientObj.cidade    || clientObj.city       || '');
+  // V92 — cadastro antigo pode trazer "BH / MG" numa string só: reparte.
+  (function(){
+    let cid = String(clientObj.cidade || clientObj.city || '');
+    let uf  = String(clientObj.uf || '');
+    const m2 = cid.match(/^(.*?)[\s]*[\/\-][\s]*([A-Za-z]{2})$/);
+    if (!uf && m2) { cid = m2[1].trim(); uf = m2[2]; }
+    sv('cidade', cid);
+    sv('uf', uf.toUpperCase());
+  })();
   sv('endereco',  clientObj.endereco  || '');
-  sv('uf',        clientObj.uf        || '');
   sv('filial',    clientObj.filial    || clientObj.branch     || '');
   sv('ult_visita',clientObj.lastVisit || clientObj.ultVisita  || '');
   sv('prox_visita',clientObj.nextVisit|| clientObj.proxVisita || '');
@@ -10551,7 +10586,7 @@ function pgpHighlightMissingClientFields(midx){
     {key:'contato',  label:'Contato'},
     {key:'telefone', label:'Telefone'},
     {key:'email',    label:'E-mail'},
-    {key:'cidade',   label:'Cidade/Estado'},
+    {key:'cidade',   label:'Cidade'},
     {key:'prox_visita', label:'Próxima visita'},
   ];
 
