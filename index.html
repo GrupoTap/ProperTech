@@ -1,4 +1,41 @@
-<!-- V91.1 (21/08/2026) — SUB-REVISÃO DO PACOTE V91 (NADA PUBLICADO AINDA).
+<!-- PCF V93 (24/08/2026) — "MINHAS OS" PASSA A QUERER DIZER UMA COISA SÓ.
+     Chamado do Fernando: "a tela do Pipeline está bem confusa para o técnico;
+     quando filtra por minhas OS parece que não está filtrando exatamente."
+     100% ADITIVO E FRONT-ONLY: nenhuma função, id, data-key, action ou classe
+     foi renomeada ou removida. GAS INTOCADO (segue v114).
+     ⚠ ORDEM DE PUBLICAÇÃO: bumpar o `sw.js` para `propertech-v94` JUNTO — o sw
+       anda uma versão à frente por design; sem isso o aparelho em campo serve
+       o V92 do cache e a correção não chega em ninguém.
+
+     P1  ORDENAR ≠ FILTRAR. Havia um chip "👤 Minhas" ao lado de "🎫 Fila" e
+         "📅 Prazo", com o mesmo desenho — mas ele ORDENA (põe as suas em cima
+         SEM esconder as outras, que é o projeto da V79 e continua certo). Quem
+         lê "Minhas" espera FILTRO. E o filtro DE VERDADE existia desde a v58…
+         escondido atrás do ⚙, onde ninguém abre em campo.
+         AGORA: o chip de ordem diz "👤 Minhas primeiro"; o filtro tem chips
+         próprios na barra principal ("Ver todas" / "👤 Só as minhas") e SAIU
+         do ⚙ — dois controles com o mesmo `data-design-filter` em telas
+         diferentes seria pior que o defeito original. Ao lado deles, a conta
+         que faz o técnico confiar no que vê: "3 de 5 são suas".
+
+     P2  🔑 E O FILTRO ESTAVA MESMO ERRADO. A pergunta "esta OS é minha?" tinha
+         TRÊS respostas no arquivo:
+           · selo "👤 sua tarefa" do card → (minha_tarefa || designada_para_mim)
+           · ordenação "Minhas primeiro"  → (minha_tarefa || designada_para_mim)
+           · FILTRO "Minhas" (v58)        → SÓ designada_para_mim
+         Ou seja: uma OS com `minha_tarefa` e sem `designada_para_mim` exibia o
+         selo "sua tarefa", subia para o topo — e SUMIA ao filtrar por minhas.
+         Agora as três chamam `_pfEhMinha(o)`. Tolerante a cache frio: campo
+         ausente = falso, nunca esconde OS.
+         Reproduzido e travado na bancada `_testes/NEWFILE_T_PCF_V93_pipeline.mjs`
+         (24 casos; com `--negativo` o filtro volta a ler só `designada_para_mim`
+         e 3 casos reprovam, entre eles o do chamado).
+
+     P3  O VAZIO PASSA A ENSINAR. Com o filtro ligado e nenhuma OS designada, a
+         tela dizia "Nenhuma OS para este filtro" — com um chip aceso lá em
+         cima, isso lê como lista quebrada. Agora diz o motivo e como sair.
+     ─────────────────────────────────────────────────────────────────────────
+     V91.1 (21/08/2026) — SUB-REVISÃO DO PACOTE V91 (NADA PUBLICADO AINDA).
      Entra DENTRO do pacote v107/V127/V91: a ordem de publicação não muda e o
      bump do sw.js continua sendo `propertech-v92` (nada foi servido com ele).
      `<title>` e carimbos NÃO mudam — é sub-revisão, não versão nova.
@@ -838,8 +875,8 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ProperCare Field · PGP Preventivas v35 · build PCF_V92</title>
-<meta name="app-build" content="PCF_V92" data-date="2026-08-22">
+<title>ProperCare Field · PGP Preventivas v35 · build PCF_V93</title>
+<meta name="app-build" content="PCF_V93" data-date="2026-08-24">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -1114,6 +1151,8 @@ function pgpEnsureJsPDF() {
   /* v65 — Fotos da última visita (só leitura) */
   .pf-prevfotos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
   .pf-prevfotos-empty{grid-column:1/-1;color:var(--text-light);font-size:12px;padding:6px 2px;font-style:italic}
+  /* 24/08 (P1) — contagem ao lado do filtro "Só as minhas". */
+  .pf-os-minhas-hint{font-size:11px;color:var(--text-light);opacity:.85;align-self:center;margin-left:2px}
   .pf-prevfoto{margin:0;background:var(--blue-light);border-radius:8px;overflow:hidden;display:flex;flex-direction:column}
   .pf-prevfoto img{width:100%;aspect-ratio:1/1;object-fit:cover;display:block;background:#0b1220}
   .pf-prevfoto-noimg{width:100%;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;color:var(--text-light);font-size:10px;background:#0b1220}
@@ -15305,6 +15344,20 @@ function pfToggleFiltrosOS() {
   var b = document.getElementById('pfBtnFiltrosOS');
   if (b) b.classList.toggle('active', !aberto);
 }
+// ══════════════════════════════════════════════════════════════════════════
+// 24/08 (P2) — "É MINHA?" PASSA A TER UMA RESPOSTA SÓ
+// Chamado do Fernando: "quando filtra por minhas OS parece que não está
+// filtrando exatamente". Estava mesmo: havia TRÊS leituras da mesma pergunta.
+//   · o selo "👤 sua tarefa" do card    → (minha_tarefa || designada_para_mim)
+//   · a ordenação "Minhas primeiro"     → (minha_tarefa || designada_para_mim)
+//   · o FILTRO "Minhas" (v58)           → SÓ designada_para_mim
+// Ou seja: uma OS com `minha_tarefa` e sem `designada_para_mim` mostrava o selo
+// "sua tarefa", subia para o topo — e SUMIA quando o técnico filtrava por
+// "Minhas". Agora as três perguntam a MESMA função.
+// ⚠ Aditivo e tolerante a cache frio: campo ausente = falso, nunca esconde OS.
+// ══════════════════════════════════════════════════════════════════════════
+function _pfEhMinha(o) { return !!(o && (o.minha_tarefa || o.designada_para_mim)); }
+
 // Ordenadores. ⚠ Cache frio (lista antiga, sem os campos novos) NÃO pode fazer
 // OS sumir nem quebrar a ordenação: sem prioridade_rank tudo vira rank 1 e a
 // ordem cai em data_abertura ASC, que é o comportamento honesto.
@@ -15333,8 +15386,8 @@ function _pfOrdenarOS(lista) {
     });
   } else if (_pfOsSort === 'minhas') {
     arr.sort(function (a, b) {
-      var ma = (a.minha_tarefa || a.designada_para_mim) ? 0 : 1;
-      var mb = (b.minha_tarefa || b.designada_para_mim) ? 0 : 1;
+      var ma = _pfEhMinha(a) ? 0 : 1;   // 24/08 (P2) — mesma resposta do selo e do filtro
+      var mb = _pfEhMinha(b) ? 0 : 1;
       if (ma !== mb) return ma - mb;        // as minhas primeiro, SEM esconder as outras
       return porFila(a, b);
     });
@@ -15366,10 +15419,19 @@ function pfRenderOS() {
     chip.classList.toggle('active', chip.getAttribute('data-sort') === _pfOsSort);
   });
 
+  // 24/08 (P1) — a conta que o técnico precisa para confiar no que vê.
+  var _nMinhas = _pfOsList.filter(_pfEhMinha).length;
+  var _hint = document.getElementById('pfOsMinhasHint');
+  if (_hint) {
+    _hint.textContent = (_pfOsDesignFilter === 'minhas')
+      ? ('mostrando só as suas (' + _nMinhas + ')')
+      : (_nMinhas ? (_nMinhas + ' de ' + _pfOsList.length + ' são suas') : '');
+  }
+
   var filtered = _pfOsList.filter(function(o) {
     var local = String(o.local_atendimento || '').toLowerCase();
     var st = String(o.status || 'aberta').toLowerCase();
-    if (_pfOsDesignFilter === 'minhas' && !o.designada_para_mim) return false;
+    if (_pfOsDesignFilter === 'minhas' && !_pfEhMinha(o)) return false;   // 24/08 (P2): era só designada_para_mim
     var okLocal = true;
     if (_pfOsFilter === 'externas') okLocal = pfOsEhExterna(o);   // V85 — regra única
     if (_pfOsFilter === 'internas') okLocal = local === 'interna' || local === 'interno';
@@ -15412,7 +15474,11 @@ function pfRenderOS() {
     return;
   }
   if (filtered.length === 0) {
-    statusEl.textContent = 'Nenhuma OS para este filtro.';
+    // 24/08 (P1) — vazio que DIZ o motivo. "Nenhuma OS para este filtro" com um
+    // chip ligado lá em cima parecia lista quebrada.
+    statusEl.textContent = (_pfOsDesignFilter === 'minhas')
+      ? 'Nenhuma OS designada a você neste momento — toque em "Ver todas" para ver as demais.'
+      : 'Nenhuma OS para este filtro.';
     statusEl.style.display = 'block';
     listaEl.innerHTML = '';
     return;
@@ -15517,9 +15583,9 @@ function pfRenderOS() {
       progHtml = '<div class="pf-os-prog-wrap">' +
         '<div class="pf-os-prog"><div class="pf-os-prog-bar" style="width:' + pct + '%"></div></div>' +
         '<span class="pf-os-prog-lbl">' + o.progresso.concluidas + ' de ' + o.progresso.total + '</span>' +
-        ((o.minha_tarefa || o.designada_para_mim) ? '<span class="pf-os-minha">👤 sua tarefa</span>' : '') +
+        (_pfEhMinha(o) ? '<span class="pf-os-minha">👤 sua tarefa</span>' : '') +
       '</div>';
-    } else if (o.minha_tarefa || o.designada_para_mim) {
+    } else if (_pfEhMinha(o)) {
       progHtml = '<div class="pf-os-prog-wrap"><span class="pf-os-minha">👤 sua tarefa</span></div>';
     }
 
@@ -17715,17 +17781,33 @@ if(window._PGP_OS_ID && (function(){ try { return localStorage.getItem('proper_p
              aria-label="Buscar ordem de serviço">
       <button type="button" id="pfBtnFiltrosOS" class="pf-os-filtros-btn" onclick="pfToggleFiltrosOS()" aria-label="Mais filtros">⚙</button>
     </div>
+    <!-- ══ 24/08 (P1) — ORDENAR ≠ FILTRAR ═══════════════════════════════════
+         O chip dizia "👤 Minhas" ao lado de Fila e Prazo, com o mesmo desenho,
+         mas era ORDENAÇÃO: punha as suas em cima SEM esconder as outras (era o
+         projeto da V79, e continua certo). Quem lê "Minhas" espera FILTRO — e o
+         filtro de verdade existia, escondido atrás do ⚙. Agora o chip de ordem
+         diz "Minhas primeiro" e o filtro tem chip próprio, à vista, com rótulo
+         que não deixa dúvida. Nenhuma função foi renomeada: os dois chips
+         chamam pfSetOSSort/pfSetOSDesignFilter, que já existiam. -->
     <div class="pf-os-filter pf-os-sort" aria-label="Ordenação da lista" style="margin-top:8px">
       <button type="button" class="pf-os-filter-chip pf-os-sort-chip active" data-sort="fila"   onclick="pfSetOSSort('fila')">🎫 Fila</button>
       <button type="button" class="pf-os-filter-chip pf-os-sort-chip"        data-sort="prazo"  onclick="pfSetOSSort('prazo')">📅 Prazo</button>
-      <button type="button" class="pf-os-filter-chip pf-os-sort-chip"        data-sort="minhas" onclick="pfSetOSSort('minhas')">👤 Minhas</button>
+      <button type="button" class="pf-os-filter-chip pf-os-sort-chip"        data-sort="minhas" onclick="pfSetOSSort('minhas')">👤 Minhas primeiro</button>
+    </div>
+    <div class="pf-os-filter" aria-label="Mostrar apenas as minhas" style="margin-top:8px">
+      <button type="button" class="pf-os-filter-chip pf-os-design-filter-chip" data-design-filter="todas"  onclick="pfSetOSDesignFilter('todas')">Ver todas</button>
+      <button type="button" class="pf-os-filter-chip pf-os-design-filter-chip" data-design-filter="minhas" onclick="pfSetOSDesignFilter('minhas')">👤 Só as minhas</button>
+      <span class="pf-os-minhas-hint" id="pfOsMinhasHint"></span>
     </div>
 
     <div id="pfOsFiltrosExtra" style="display:none">
-      <div class="pf-os-filter" aria-label="Filtro de designação" style="margin-top:8px">
-        <button type="button" class="pf-os-filter-chip pf-os-design-filter-chip active" data-design-filter="todas" onclick="pfSetOSDesignFilter('todas')">Todas as OS</button>
-        <button type="button" class="pf-os-filter-chip pf-os-design-filter-chip" data-design-filter="minhas" onclick="pfSetOSDesignFilter('minhas')">Minhas</button>
-      </div>
+      <!-- 24/08 (P1) — este par SAIU daqui e subiu para a barra principal
+           ("Ver todas" / "👤 Só as minhas"). Dois controles com o mesmo
+           data-design-filter em telas diferentes era pior que o defeito
+           original: o de cima filtrava e o de baixo continuava dizendo outra
+           coisa. A função `pfSetOSDesignFilter` e a classe
+           `.pf-os-design-filter-chip` seguem existindo, intactas — o que mudou
+           foi ONDE os chips moram. -->
       <div class="pf-os-filter" aria-label="Filtro de local de atendimento" style="margin-top:8px">
         <button type="button" class="pf-os-filter-chip active" data-filter="todas" onclick="pfSetOSFilter('todas')">Todas</button>
         <button type="button" class="pf-os-filter-chip" data-filter="externas" onclick="pfSetOSFilter('externas')">Externas</button>
