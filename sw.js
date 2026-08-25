@@ -9,13 +9,14 @@
  * O activate abaixo apaga qualquer cache antigo com prefixo 'propertech-'.
  */
 const CACHE_BASE = 'propertech-';
-const CACHE = CACHE_BASE + 'v94';  // v94 (24/08/2026) — PCF_V93: "Minhas OS" filtra de verdade.
+const CACHE = CACHE_BASE + 'v95';  // v95 (25/08/2026) — PCF_V94: a tela que aponta a proxima tarefa.
 // 🔴 ATENÇÃO À NUMERAÇÃO — ELA NÃO BATE COM A DO PCF, E ISSO É PROPOSITAL.
 //    Desde o conserto do desencontro de 16/08 o sw anda UM À FRENTE do arquivo:
 //        PCF_V90  ↔  propertech-v91   (deploy de 19/08)
 //        PCF_V91  ↔  propertech-v92   (deploy de 21/08)
 //        PCF_V92  ↔  propertech-v93   (deploy de 22/08)
-//        PCF_V93  ↔  propertech-v94   (este)
+//        PCF_V93  ↔  propertech-v94   (deploy de 24/08)
+//        PCF_V94  ↔  propertech-v95   (este)
 //    Quem "corrigir" isto para propertech-v91 achando que alinha as versões
 //    reintroduz o pior modo de falha deste arquivo: a chave ficaria IGUAL à do
 //    deploy anterior, o activate não apagaria nada, e o técnico continuaria
