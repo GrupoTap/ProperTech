@@ -1,3 +1,76 @@
+<!-- PCF V95 (25/08/2026) — A PREVENTIVA REABERTA VOLTA INTEIRA.
+     100% ADITIVO E FRONT-ONLY sobre a V94: nenhum id, funcao, action ou chip
+     existente foi renomeado ou removido.
+     ⚠ ORDEM DE PUBLICACAO: bumpar o `sw.js` para `propertech-v96` JUNTO.
+
+     🔑 CHAMADO DO FERNANDO (25/08): "reabri a OS no PCF e ela nao recupera
+        diversos dados sozinha; tive que ir no 📂 e restaurar a mao. E as fotos
+        das pecas na secao de horimetro por peca nao aparecem as thumbs —
+        quando escolho a foto de novo, aparecem DUAS."
+
+     A1  🔴 A THUMB NUNCA TINHA SUMIDO: O CONTAINER DELA E QUE ERA JOGADO FORA.
+         `selectScenario` faz `parts_table_content.innerHTML = buildPartsTable()`
+         e `pgpAplicarPerfil` faz `sec4_body.innerHTML = buildPartsSection()`.
+         Os dois recriam TODOS os `.photo-thumbs-mini` das chaves `hori_p*` e
+         das do `PART_PHOTO_MAP` — vazios. Nada repintava. A foto continuava no
+         `photoStore` o tempo inteiro; so nao tinha onde aparecer. Por isso a
+         "segunda" foto: ao capturar de novo, `renderPhotoThumbs` roda para
+         aquela chave e pinta as DUAS — a velha (que sempre esteve la) e a nova.
+         ⇒ Helper UNICO `pgpRepintarFotosDoPainel(midx)`: percorre TODAS as
+           chaves de `photoStore[midx]`, repinta thumb + botao "✅ Foto ok (n/3)"
+           e reaplica as pilulas de acao. Chamado ao fim de `selectScenario`,
+           de `pgpAplicarPerfil` e depois de cada reidratacao.
+         🔑 Regra que nasce daqui: **todo `innerHTML =` que recria container de
+            foto termina com a repintura do painel.** Havia 6 call sites de
+            `renderPhotoThumbs` escritos a mao, cada um cobrindo um subconjunto
+            diferente de chaves — por isso cada secao nova reintroduzia o bug.
+
+     A2  🔴 A ORDEM INVERTIDA DO RESTORE (o "restaurei a mao e voltou pela
+         metade"). `restoreState` montava os cenarios PRIMEIRO e so depois
+         aplicava o perfil — e `pgpAplicarPerfil` reconstroi a secao 4 INTEIRA,
+         apagando a tabela recem-montada, o hidden `m<i>_scenario` e todos os
+         containers de foto. Os `state.fields` seguintes procuravam elementos
+         que ja nao existiam e viravam no-op SILENCIOSO.
+         ⇒ Perfil primeiro, cenario depois, campos por ultimo. (A propria
+           V69.1 ja tinha escrito essa ordem no comentario; o codigo fazia o
+           contrario.)
+
+     A3  🔴 A ACAO DA PECA NAO ENTRAVA NO RASCUNHO. O hidden `<pk>_acao` era o
+         unico campo da tabela sem `data-key` — e `captureState` coleta
+         exclusivamente `[data-key]`. Conferida/Trocada morriam em todo
+         salvar-e-reabrir, e `pgpMaquinaPercent` (que conta `_acao`) devolvia
+         0% com a tela cheia.
+         ⇒ `data-key` nos DOIS builders (parafuso e pistao) + repintura das
+           pilulas no restore.
+
+     A4  🔴 AS FOTOS DO DRIVE SO VOLTAVAM SE EXISTISSE VISITA GRAVADA. A
+         reidratacao (`getFotosDaVisita`) morava DENTRO de
+         `pgpRestaurarColetaGravada`, depois do `if(!d.encontrada) return`. Foi
+         exatamente o caso do Fernando: o tecnico subiu as fotos e NAO registrou
+         a preventiva ⇒ nao havia linha em VISITAS ⇒ as fotos, que estavam no
+         Drive desde a captura, nunca voltavam.
+         ⇒ `pgpRestaurarFotosDaVisita(midx, eq)` vira funcao PROPRIA, chamada
+           pela carga da maquina da OS INDEPENDENTE de haver visita.
+         + O guard "ja tem foto local" era POR MAQUINA: uma unica foto em
+           qualquer chave cancelava a reidratacao das outras 20. Agora e POR
+           CHAVE.
+         + Dedupe por `fileName` (deterministico: `<photoKey>_<ms>.jpg`, gravado
+           na captura) e por `file_id` — reidratar duas vezes nao duplica nada.
+
+     A5  🔴 "RESPONSAVEL: —" NO HISTORICO DO PCM. O campo "Nome do tecnico"
+         nunca foi pre-preenchido: e um input livre, e `VISITAS.Tecnico` recebe
+         `body.tech` cru. Quem nao digitasse o proprio nome gravava vazio — e o
+         PDF regerado sai com "Responsavel: —" para o cliente.
+         ⇒ `pgpNomeSessao()` pre-preenche o campo (so quando VAZIO — disciplina
+           svEl) e serve de ultimo recurso no payload e no `createdBy` dos
+           anexos. O conserto de servidor vai no GAS v122.
+
+     A6  O SILENCIO VIRA AVISO. `pgpRestaurarColetaGravada` desistia sem uma
+         palavra em tres caminhos (sem conexao no instante da carga, `tipo`
+         divergente, maquina sem id). Agora: o `tipo` deixa de ser filtro (a OS
+         + a maquina ja identificam a visita), e quando a conexao so fica verde
+         DEPOIS da carga a reposicao e reexecutada uma vez.
+-->
 <!-- PCF V94 (25/08/2026) — A TELA QUE APONTA + O BOTAO QUE FALTAVA.
      100% ADITIVO E FRONT-ONLY: nenhum id, funcao, action ou chip existente foi
      renomeado ou removido. GAS INTOCADO.
@@ -920,8 +993,8 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ProperCare Field · PGP Preventivas v35 · build PCF_V94</title>
-<meta name="app-build" content="PCF_V94" data-date="2026-08-25">
+<title>ProperCare Field · PGP Preventivas v35 · build PCF_V95</title>
+<meta name="app-build" content="PCF_V95" data-date="2026-08-25">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -4042,7 +4115,7 @@ async function pgpGarantirOSInspecaoAvulsa(midx){
         machine_id: (eq && eq.id) || '',
         serial: pgpFieldVal(idx, 'ns') || '',
         tag: pgpFieldVal(idx, 'tag') || '',
-        usuario: pgpFieldVal(idx, 'tecnico') || ''
+        usuario: pgpFieldVal(idx, 'tecnico') || pgpNomeSessao() || ''
       });
       if (r && r.status === 'ok' && r.id_os) {
         window._PGP_OS_ID = r.id_os;
@@ -4212,12 +4285,14 @@ async function queuePhotoDriveUpload(midx, photoKey, label, fotoObj, file) {
       maquina_label: pgpDriveMaquinaLabel(midx),
       dataBase64: base64,
       mime: 'image/jpeg',
-      fileName: photoKey + '_' + Date.now() + '.jpg',
+      fileName: (function(){ var _fn = photoKey + '_' + Date.now() + '.jpg';
+                             try{ if(fotoObj) fotoObj.fileName = _fn; }catch(_){}
+                             return _fn; })(),
       attachmentType: 'foto_pcf',
       caption: label || '',
       entityType: 'foto_pcf',
       entityId: pgpDriveEntityId(midx),
-      createdBy: pgpFieldVal(midx, 'tecnico')
+      createdBy: (pgpFieldVal(midx, 'tecnico') || pgpNomeSessao())
     };
   } catch (err) {
     // Falha ao comprimir a imagem para o Drive: não há payload para enfileirar.
@@ -4275,7 +4350,12 @@ async function storePhotoBase64(midx, photoKey, label, file, saveToDevice) {
   }
   try {
     const { dataUrl, w, h } = await compressPhotoFile(file);
-    const fotoObj = { label, dataUrl, w, h, driveStatus: 'pending' };
+    // V95 (A4) — `fileName` fica gravado NO objeto da foto. E o mesmo nome
+    // deterministico que sobe para o Drive (`<photoKey>_<ms>.jpg`, montado em
+    // queuePhotoDriveUpload) e o unico jeito de a reidratacao saber que a foto
+    // que o servidor mandou de volta e ESTA MESMA — sem isso, reabrir a OS
+    // depois de sincronizar traria a copia do Drive ao lado da local.
+    const fotoObj = { label, dataUrl, w, h, driveStatus: 'pending', fileName: '' };
     photoStore[midx][photoKey].push(fotoObj);
     renderPhotoThumbs(midx, photoKey);
     if (saveToDevice) savePhotoToDevice(dataUrl, photoKey, label);
@@ -4333,6 +4413,109 @@ function renderPhotoThumbs(midx, photoKey) {
       // Guard de typeof: se o bloco novo não carregar, o render antigo é idêntico.
       + (typeof pfThumbsAnterioresHtml === 'function' ? pfThumbsAnterioresHtml(midx, photoKey) : '');
   });
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// V95 (A1) — REPINTURA DO PAINEL INTEIRO. O helper que faltava.
+//
+// O defeito: `selectScenario` (parts_table_content.innerHTML) e
+// `pgpAplicarPerfil` (sec4_body.innerHTML) recriam TODOS os
+// `.photo-thumbs-mini` das chaves `hori_p*` e do PART_PHOTO_MAP — vazios.
+// A foto nunca saiu do `photoStore`; so ficou sem onde aparecer. Ao capturar
+// de novo, `renderPhotoThumbs` roda para aquela chave e pinta as DUAS: a que
+// sempre esteve la e a nova. Era isso a "foto duplicada".
+//
+// Ate a V94 a repintura era escrita A MAO em 6 call sites, cada um cobrindo um
+// subconjunto de chaves — e nenhum cobria `hori_*`. Este helper percorre TODAS
+// as chaves que o `photoStore` daquele painel tem, sem lista fixa: chave nova
+// no futuro ja nasce coberta.
+//
+// ⚠ NAO cria estado. So repinta o que ja existe em memoria — chamar duas vezes
+//   e inofensivo, e chamar num painel sem foto nenhuma e no-op.
+// ══════════════════════════════════════════════════════════════════════════
+// V95 (A6) — retentativa unica da reposicao, disparada quando o Sheets fica
+// verde depois da carga da OS. Nao repete indefinidamente: `_PGP_REPOR_FEITO`
+// marca o painel ja atendido. Idempotente por construcao — as duas funcoes
+// chamadas so ESCREVEM em campo vazio / foto ausente.
+function pgpReporColetaAoConectar(){
+  try{
+    if(!window._PGP_OS_ID) return;
+    window._PGP_REPOR_FEITO = window._PGP_REPOR_FEITO || {};
+    var chave = String(window._PGP_OS_ID);
+    if(window._PGP_REPOR_FEITO[chave]) return;
+    window._PGP_REPOR_FEITO[chave] = 1;
+    (machines || []).forEach(function(_, i){
+      var eq = null;
+      try{ eq = pgpGetLoadedMachineForIndex(i) || null; }catch(_){}
+      if(!eq) return;
+      try{ pgpRestaurarColetaGravada(i, eq); }catch(_){}
+      try{ pgpRestaurarFotosDaVisita(i, eq); }catch(_){}
+      try{ pgpPreencherTecnicoDaSessao(i); }catch(_){}
+    });
+  }catch(e){ console.warn('[PCF V95] pgpReporColetaAoConectar:', e && e.message); }
+}
+
+function pgpRepintarFotosDoPainel(midx) {
+  try {
+    var byKey = photoStore[midx] || {};
+    Object.keys(byKey).forEach(function (pk) {
+      try { renderPhotoThumbs(midx, pk); } catch (e) {}
+      try { syncDoneButtonsForKey(midx, pk); } catch (e) {}
+    });
+  } catch (e) { console.warn('[PCF V95] pgpRepintarFotosDoPainel:', e && e.message); }
+  try { pgpRepintarPilulasDoPainel(midx); } catch (e) {}
+}
+
+// V95 (A3) — as pilulas "Conferida / Trocada / N/A" sao VISUAL puro: o dado
+// mora no hidden `<pk>_acao`. Toda reconstrucao da tabela recria as pilulas
+// apagadas com o hidden ainda preenchido (ou, depois do restore, o contrario).
+// Esta funcao alinha o visual ao dado, sem nunca inventar acao.
+function pgpRepintarPilulasDoPainel(midx) {
+  var p = 'm' + midx + '_';
+  var lista = [];
+  try { lista = pgpPartsDe(midx) || []; } catch (e) { lista = []; }
+  lista.forEach(function (pt) {
+    var pk = p + pt.k;
+    var hid = document.getElementById(pk + '_acao');
+    var val = hid ? String(hid.value || '').trim() : '';
+    ['conferida', 'trocada', 'na'].forEach(function (a) {
+      var btn = document.getElementById(pk + '_acao_' + a);
+      if (btn) btn.classList.toggle('active', !!val && a === val);
+    });
+    if (val === 'na') {
+      var naBtn = document.getElementById(pk + '_na');
+      if (naBtn && !naBtn.classList.contains('active')) {
+        naBtn.classList.add('active'); naBtn.textContent = '\u2715 N/A';
+        var tr = document.getElementById(pk + '_tr'); if (tr) tr.classList.add('pt-na');
+        var quick = document.getElementById(pk + '_quick_row'); if (quick) quick.style.display = 'none';
+      }
+    }
+    try { updatePartCompletionStatus(pk); } catch (e) {}
+  });
+}
+
+// V95 (A5) — o nome de quem esta logado. O campo "Nome do tecnico" sempre foi
+// input livre e ninguem digitava; `VISITAS.Tecnico` recebia vazio e o PDF do
+// cliente saia com "Responsavel: —". Aqui so LEMOS a sessao — quem escreve e
+// `pgpPreencherTecnicoDaSessao`, e so em campo VAZIO (disciplina svEl).
+function pgpNomeSessao() {
+  try {
+    var S = window.PROPER_SESSION || {};
+    var t = S.tecnico || {};
+    return String(t.nome || S.nome_tecnico || S.nome || '').trim();
+  } catch (e) { return ''; }
+}
+
+function pgpPreencherTecnicoDaSessao(midx) {
+  try {
+    var nome = pgpNomeSessao();
+    if (!nome) return false;
+    var el = document.querySelector('[data-key="m' + midx + '_tecnico"]');
+    if (!el) return false;
+    if (String(el.value || '').trim() !== '') return false;   // campo com valor e sagrado
+    el.value = nome;
+    return true;
+  } catch (e) { return false; }
 }
 
 // Escapa aspas simples em chaves usadas dentro de seletores CSS (defensivo)
@@ -4810,7 +4993,10 @@ function buildPartsTable(p, midx, scenario) {
               <div class="photo-thumbs-mini" data-midx="${midx}" data-pkey="${PART_PHOTO_MAP[pt.k]}"></div>
             </div>` : ''}
           </div>
-          <input type="hidden" id="${pk}_acao" value="">
+          <!-- V95 (A3): data-key OBRIGATORIO — captureState coleta so [data-key],
+               entao sem ele a acao da peca (conferida/trocada) morria em todo
+               salvar-e-reabrir e o percentual voltava 0% com a tela cheia. -->
+          <input type="hidden" id="${pk}_acao" data-key="${pk}_acao" value="">
           <div class="pgp-acao-wrap" style="display:${_pgpTipoVisita==='preventiva'?'':'none'}">
             <label class="pgp-acao-label">Ação desta peça</label>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -5027,6 +5213,11 @@ function selectScenario(p, scId, midx, e) {
   if (fi) { fi.classList.add('checked','expanded'); }
   refreshSection(section);
   updateProgress();
+  // V95 (A1) — a tabela ACABOU de ser recriada: todos os `.photo-thumbs-mini`
+  // de `hori_p*` e do PART_PHOTO_MAP nasceram vazios e as pilulas de acao,
+  // apagadas. Sem esta linha a foto some da tela continuando no photoStore —
+  // e reaparece EM DOBRO na proxima captura.
+  try { pgpRepintarFotosDoPainel(midx); } catch (e) {}
 }
 
 function togglePtNA(pk, e) {
@@ -6826,7 +7017,24 @@ function captureState() {
   state.sessionSignature = (state.machineSignatures || []).join('||');
 
   // v23: inclui as fotos (dataURL) para que as miniaturas sobrevivam ao fechar/reabrir o app
-  state.photoStore = photoStore;
+  // V95 — 🔴 ERA UMA REFERENCIA VIVA, e isso e uma armadilha armada.
+  // `restorePhotoStore` comeca APAGANDO todas as chaves de `photoStore`; se o
+  // estado guardado for o PROPRIO objeto, ele se apaga junto e o restore repoe
+  // ZERO foto. Hoje escapa por acidente — todo caminho de producao passa por
+  // JSON (localStorage/IndexedDB), que ja e uma copia. Qualquer
+  // `restoreState(captureState())` em memoria (o padrao mais obvio para quem
+  // for reusar isto) perderia as fotos em silencio. Copia rasa de dois niveis:
+  // os objetos de foto seguem compartilhados de proposito (dataURL grande).
+  state.photoStore = (function(){
+    var _c = {};
+    try {
+      Object.keys(photoStore).forEach(function(mi){
+        var byKey = photoStore[mi] || {}; _c[mi] = {};
+        Object.keys(byKey).forEach(function(pk){ _c[mi][pk] = (byKey[pk] || []).slice(); });
+      });
+    } catch (e) { return photoStore; }
+    return _c;
+  })();
 
   // FIX retomada (aditivo): guarda o ponto de trabalho para reabrir onde parou.
   try {
@@ -6848,7 +7056,30 @@ function restoreState(state) {
   }
   renderTabs();
 
-  // Primeiro restaurar cenários (gera a tabela com os IDs corretos)
+  // ══════════════════════════════════════════════════════════════════════
+  // V95 (A2) — 🔴 A ORDEM ESTAVA INVERTIDA, E ERA ELA QUE FAZIA O RESTORE
+  //            VOLTAR PELA METADE.
+  // Ate a V94 o cenario era montado AQUI e o perfil era aplicado 40 linhas
+  // abaixo. `pgpAplicarPerfil` faz `sec4_body.innerHTML = buildPartsSection()`
+  // com `force:true` — ou seja, apagava a tabela recem-montada, o hidden
+  // `m<i>_scenario` criado por `selectScenario` e TODOS os containers de foto.
+  // Dai em diante o repovoamento de `state.fields` procurava elementos que ja
+  // nao existiam e virava no-op SILENCIOSO: cenario em branco, pecas em branco,
+  // zero miniaturas — exatamente o "restaurei a mao e voltou so uma parte".
+  // O comentario da V69.1 (logo abaixo) sempre disse a ordem certa; o codigo
+  // fazia o contrario.
+  // ⇒ PERFIL primeiro (recria as secoes 4 e 5), CENARIO depois (monta a tabela
+  //   dentro da secao 4 ja definitiva), CAMPOS por ultimo.
+  // ══════════════════════════════════════════════════════════════════════
+  // V69.1 — o perfil de cada máquina precisa ser aplicado ANTES de repovoar os
+  // campos: trocar de perfil re-renderiza as seções 4 e 5, o que apagaria os
+  // valores restaurados. O hidden m<i>_perfil viaja dentro de state.fields.
+  machines.forEach((_, i) => {
+    const _pf = (state.fields || {})['m' + i + '_perfil'];
+    if (_pf && PERFIS_EQUIP[_pf]) { try { pgpAplicarPerfil(i, _pf, {force:true}); } catch (_) {} }
+  });
+
+  // Restaurar cenários (gera a tabela com os IDs corretos) — DEPOIS do perfil.
   Object.entries(state.scenarios || {}).forEach(([midx, scId]) => {
     const p = 'm'+midx+'_';
     const fakeEvt = {stopPropagation:()=>{}};
@@ -6880,14 +7111,6 @@ function restoreState(state) {
       }
     });
   })();
-
-  // V69.1 — o perfil de cada máquina precisa ser aplicado ANTES de repovoar os
-  // campos: trocar de perfil re-renderiza as seções 4 e 5, o que apagaria os
-  // valores restaurados. O hidden m<i>_perfil viaja dentro de state.fields.
-  machines.forEach((_, i) => {
-    const _pf = (state.fields || {})['m' + i + '_perfil'];
-    if (_pf && PERFIS_EQUIP[_pf]) { try { pgpAplicarPerfil(i, _pf, {force:true}); } catch (_) {} }
-  });
 
   // Depois restaurar valores dos campos
   Object.entries(state.fields || {}).forEach(([key, val]) => {
@@ -6935,6 +7158,9 @@ function restoreState(state) {
   // V71 (FIX 3): depois de repovoar tudo, o check passa a refletir o VALOR real
   // (um rascunho salvo com item marcado mas campo vazio não volta verde).
   machines.forEach((_, i) => pgpSyncCheckedComValores(i));
+  // V95 (A1/A3) — repintura final: as pilulas de acao (que agora viajam no
+  // rascunho, A3) e qualquer miniatura cuja chave nao estivesse na lista fixa.
+  machines.forEach((_, i) => { try { pgpRepintarFotosDoPainel(i); } catch (e) {} });
   document.querySelectorAll('[data-section]').forEach(s => refreshSection(s));
   updateProgress();
   updateAllTabNames();
@@ -8507,7 +8733,7 @@ async function _gerarPDF_(btnEl) {
       // V78 (A3) — era 'pdf_preventiva' LITERAL, mesmo numa inspeção: o PDF
       // da coleta avulsa entrava na Gestão de Documentos na categoria errada.
       categoria: ((typeof _pgpTipoVisita !== 'undefined' && _pgpTipoVisita === 'inspecao') ? 'pdf_inspecao' : 'pdf_preventiva'),
-      createdBy: pgpFieldVal(midx, 'tecnico')
+      createdBy: (pgpFieldVal(midx, 'tecnico') || pgpNomeSessao())
     });
 
     count++;
@@ -8634,7 +8860,7 @@ async function gerarPDFConsolidado(btnEl) {
     base64: consolidadoBase64,
     fileName: nomeConsolidado,
     categoria: 'pdf_relatorio',
-    createdBy: pgpFieldVal(0, 'tecnico')
+    createdBy: (pgpFieldVal(0, 'tecnico') || pgpNomeSessao())
   });
 
   showNotification('✅ PDF consolidado gerado: ' + nomeConsolidado);
@@ -10008,7 +10234,7 @@ function buildPartsTablePistao(p, midx){
     +       'data-photokey="'+fotoKey+'" onclick="event.stopPropagation();fotoDireto(this,\'linked\','+midx+',\''+fotoKey+'\',\'galeria\')">🖼 Galeria</button>'
     +   '</div>'
     +   '<div class="photo-thumbs-mini" data-midx="'+midx+'" data-pkey="'+fotoKey+'"></div>') : '')
-    +   '<input type="hidden" id="'+pk+'_acao" value="">'
+    +   '<input type="hidden" id="'+pk+'_acao" data-key="'+pk+'_acao" value="">'
     +   '<div class="pgp-acao-wrap" style="display:'+(_pgpTipoVisita==='preventiva'?'':'none')+'">'
     +     '<label class="pgp-acao-label">Ação executada</label>'
     +     '<div style="display:flex;gap:8px;flex-wrap:wrap">'
@@ -10115,13 +10341,14 @@ function pgpAplicarPerfil(midx, perfilId, opts){
 
   try{ pgpReporEstadoFixoDoPerfil(midx); }catch(_){}
   try{ pgpRestoreLoadedParts(p, midx); }catch(_){}
+  // V95 (A1) — era uma lista FIXA de chaves: `perfil.photos` e `perfil.photoMap`.
+  // As chaves `hori_<pt.k>` (a secao "horimetro por peca", onde o Fernando viu o
+  // defeito) nunca estiveram nessa lista, e o rotulo "✅ Foto ok (n/3)" nunca era
+  // ressincronizado. O helper percorre o que o photoStore REALMENTE tem.
   try{
-    (perfil.photos||[]).forEach(function(ph,i){ renderPhotoThumbs(midx, ph.photoKey || ('foto_idx_'+i)); });
-    (perfil.parts||[]).forEach(function(pt){
-      var fk = (perfil.photoMap||{})[pt.k]; if(fk) renderPhotoThumbs(midx, fk);
-      updatePartCompletionStatus(p+pt.k);
-    });
+    (perfil.parts||[]).forEach(function(pt){ updatePartCompletionStatus(p+pt.k); });
   }catch(_){}
+  try{ pgpRepintarFotosDoPainel(midx); }catch(_){}
   try{ pgpAtualizarAcoesPorTipoVisita(); }catch(_){}
   try{
     var painel = document.getElementById('panel-'+midx);
@@ -10265,6 +10492,14 @@ function pgpSetGsStatus(state){
     pgpEnsureCatalogCache().catch(e => console.warn('Cache catálogo:', e));
     // Ao conectar, reenviar pendências automaticamente
     pgpFlushPending();
+    // V95 (A6) — 🔴 A REPOSICAO PERDIDA POR MEIO SEGUNDO. `pgpRestaurarColetaGravada`
+    // e `pgpRestaurarFotosDaVisita` comecam com `if(!_pgpGsConnected) return;`, e
+    // essa flag so vira true AQUI, quando o ping do Sheets responde. A carga da
+    // OS usa outra rota (pfGet/pgpPostJson) e frequentemente termina ANTES do
+    // ping — resultado: a OS abria em branco, sem erro nenhum, e reabrir nao
+    // adiantava (o guard de reentrada suprime a recarga). Uma unica retentativa
+    // ao ficar verde fecha a janela.
+    try{ pgpReporColetaAoConectar(); }catch(e){}
   } else if(state==='sync'){
     dot.className='gs-dot-pgp';
     dot.style.background='#fbbf24';
@@ -12495,6 +12730,16 @@ async function pgpCarregarMaquinaOS(eq, idx, dbPre, osObj){
   // Não-bloqueante de propósito: a máquina já está na tela; a coleta chega
   // por cima, sem segurar o técnico numa espera de rede.
   try{ pgpRestaurarColetaGravada(idx, machineToLoad); }catch(e){ console.warn('pgpRestaurarColetaGravada:', e); }
+
+  // V95 (A5) — quem esta logado assina a visita. So preenche campo VAZIO.
+  try{ pgpPreencherTecnicoDaSessao(idx); }catch(e){}
+
+  // V95 (A4) — as fotos do Drive voltam INDEPENDENTE de haver visita gravada.
+  // Nao esta dentro do `pgpRestaurarColetaGravada` de proposito: aquela funcao
+  // desiste quando `getPreventivaDaOS` responde `encontrada:false`, e foi
+  // exatamente esse o caso do chamado de 25/08 (fotos no Drive, preventiva
+  // nunca registrada). Idempotente — chamar duas vezes nao duplica nada.
+  try{ pgpRestaurarFotosDaVisita(idx, machineToLoad); }catch(e){ console.warn('pgpRestaurarFotosDaVisita:', e); }
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -12538,11 +12783,26 @@ async function pgpRestaurarColetaGravada(midx, eq){
         os_id: window._PGP_OS_ID,
         machine_id: (eq && eq.id) || '',
         serial: (eq && eq.serial) || '',
-        tipo: (typeof _pgpTipoVisita !== 'undefined') ? _pgpTipoVisita : 'preventiva',
+        // V95 (A6) — 🔴 O TIPO DEIXA DE SER FILTRO. O GAS descarta a linha de
+        // VISITAS cujo `Tipo` nao bate EXATAMENTE (getPreventivaDaOS), e
+        // `_pgpTipoVisita` e um global do app cujo default e 'inspecao'. Bastava
+        // a tela ainda nao ter virado preventiva no instante da carga para a
+        // coleta gravada ficar invisivel — sem erro, sem aviso, tela em branco.
+        // A OS + a maquina ja identificam a visita; `tipo:''` significa
+        // "qualquer" no contrato do GAS desde o v93.
+        tipo: '',
         incluir_assinaturas: true               // V87 (P3) — GAS v93 ignora e não devolve; aditivo
       }, 1);
     }catch(e){ return; }                            // GAS v92 ou rede ruim
-    if(!d || d.status !== 'ok' || !d.encontrada || !d.visita) return;
+    if(!d || d.status !== 'ok' || !d.encontrada || !d.visita){
+      // V95 (A6) — ate aqui a funcao desistia MUDA e o tecnico via a tela em
+      // branco sem saber se o app tinha tentado. Nao ha coleta gravada nesta OS
+      // para esta maquina: e um estado legitimo (primeira visita, ou fotos
+      // enviadas sem a preventiva registrada), e agora ele e DITO.
+      try{ window._PGP_COLETA_REPOSTA = window._PGP_COLETA_REPOSTA || {}; }catch(_){}
+      return;
+    }
+    try{ (window._PGP_COLETA_REPOSTA = window._PGP_COLETA_REPOSTA || {})[String(idx)] = 1; }catch(_){}
 
     const v = d.visita || {};
     const parts = d.parts || {};
@@ -12678,70 +12938,16 @@ async function pgpRestaurarColetaGravada(midx, eq){
       }
     }catch(eAs){ console.warn('[PCF V87] reidratação de assinaturas:', eAs); }
 
-    // ── V87 (P4) — FOTOS DA VISITA VOLTAM DO DRIVE (1ª marcha: thumbs) ──────
-    // Só quando o photoStore desta máquina está VAZIO (nunca sobrescreve foto
-    // local). Entram com driveStatus:'ok' e SEM passar por storePhotoBase64/
-    // queuePhotoDriveUpload — a foto JÁ ESTÁ no Drive; reenviar duplicaria.
-    // A imagem CHEIA é buscada por foto, sob demanda, na geração do PDF
-    // (pgpTrocarThumbsPorImagemCheia — lição v79 F-23).
-    try{
-      let temFotoLocal = false;
-      try{
-        const bk = photoStore[idx] || {};
-        temFotoLocal = Object.keys(bk).some(function(k){ return (bk[k] || []).length > 0; });
-      }catch(_){}
-      if(!temFotoLocal){
-        const rf = await pgpPostJson('getFotosDaVisita', {
-          os_id: window._PGP_OS_ID,
-          machine_id: (eq && eq.id) || '',
-          serial: (eq && eq.serial) || '',
-          thumb: true, max_fotos: 24
-        }, 1);
-        if(rf && rf.status === 'ok' && (rf.fotos || []).length){
-          if(!photoStore[idx]) photoStore[idx] = {};
-          const chavesRepostas = {};
-          rf.fotos.forEach(function(f){
-            if(!f || !f.photo_key || !f.dataUrl) return;
-            const arr = photoStore[idx][f.photo_key] = photoStore[idx][f.photo_key] || [];
-            if(arr.length >= MAX_FOTOS_POR_ITEM) return;
-            arr.push({ label: f.caption || '', dataUrl: f.dataUrl, w: 0, h: 0,
-                       driveStatus: 'ok', origemDrive: true, fileId: f.file_id || '',
-                       thumbOnly: !!f.thumb });
-            chavesRepostas[f.photo_key] = 1;
-          });
-          const chaves = Object.keys(chavesRepostas);
-          chaves.forEach(function(pk){
-            try{ renderPhotoThumbs(idx, pk); }catch(_){}
-            try{ syncDoneButtonsForKey(idx, pk); }catch(_){}
-          });
-          // Marca .photo-checked como a captura faria — o fotosStatus do PDF
-          // (seção 6) lê exatamente essas classes.
-          try{
-            const panel87 = document.getElementById('panel-' + idx);
-            if(panel87){
-              const fotosDe = pgpPhotosDe(idx) || [];
-              panel87.querySelectorAll('.photo-item').forEach(function(item){
-                const pidx = parseInt(item.dataset.pidx);
-                const ph = fotosDe[pidx];
-                if(ph && chavesRepostas[ph.photoKey]){
-                  const ndBtn = item.querySelector('.photo-nd-btn');
-                  if(ndBtn) ndBtn.classList.remove('active');
-                  item.classList.remove('photo-nd');
-                  item.classList.add('photo-checked');
-                  try{ refreshSection(item.closest('[data-section]')); }catch(_){}
-                }
-              });
-            }
-          }catch(_){}
-          try{ pgpPersistPhotosIDB('draft'); }catch(_){}
-          try{ updateProgress(); }catch(_){}
-          if(chaves.length){
-            showNotification('📷 ' + rf.retornadas + ' foto(s) da visita repostas do Drive' +
-              (rf.truncated ? ' (parcial)' : ''));
-          }
-        }
-      }
-    }catch(eFo){ console.warn('[PCF V87] reidratação de fotos:', eFo); }
+    // V95 (A4) — a reidratacao de fotos SAIU daqui. Ela vivia depois do
+    // `if(!d.encontrada) return` la em cima, entao so acontecia quando havia
+    // visita GRAVADA. O caso real do Fernando foi o oposto: o tecnico subiu as
+    // fotos e NAO registrou a preventiva — nao havia linha em VISITAS, e as
+    // fotos (que estavam no Drive desde a captura) nunca voltavam. Agora e
+    // `pgpRestaurarFotosDaVisita`, chamada pela carga da maquina da OS,
+    // independente de existir visita. A chamada abaixo cobre o caminho em que
+    // ESTA funcao rodou primeiro; a segunda chamada e idempotente (dedupe por
+    // fileName/file_id).
+    try{ await pgpRestaurarFotosDaVisita(idx, eq); }catch(eFo){ console.warn('[PCF V95] fotos:', eFo); }
 
     if(d.em_correcao){
       showNotification('↩ Coleta anterior reposta (' + reposta + ' peça(s)). Esta OS foi REABERTA — ao registrar, os dados desta máquina serão CORRIGIDOS, não duplicados.');
@@ -12750,6 +12956,120 @@ async function pgpRestaurarColetaGravada(midx, eq){
     }
   }catch(e){
     console.warn('[PCF V86] pgpRestaurarColetaGravada:', e);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// V95 (A4) — AS FOTOS VOLTAM DO DRIVE MESMO SEM VISITA GRAVADA.
+//
+// 🔴 O que estava errado. Este bloco nasceu na V87 DENTRO de
+//    `pgpRestaurarColetaGravada`, depois do `if(!d.encontrada) return`. Isso
+//    amarrou a volta das FOTOS a existencia de uma linha em VISITAS. Mas a
+//    foto sobe ao Drive NA CAPTURA (`queuePhotoDriveUpload`), muito antes de a
+//    preventiva ser registrada — sao dois ciclos de vida diferentes. O caso do
+//    Fernando (25/08) foi exatamente esse: tecnico subiu tudo, nao registrou a
+//    preventiva, e ao reabrir a OS nao havia foto nenhuma na tela.
+//
+// 🔴 O guard "ja tem foto local" era POR MAQUINA. Uma unica foto em qualquer
+//    chave (a do horimetro geral, por exemplo) cancelava a reidratacao das
+//    outras vinte. Agora e POR CHAVE: cada item decide sozinho.
+//
+// 🔴 DEDUPE REAL. A V87 empurrava tudo que o GAS mandasse; chamar duas vezes
+//    duplicava. O `fileName` e deterministico (`<photoKey>_<ms>.jpg`, congelado
+//    na captura e agora tambem gravado no proprio objeto da foto), e o
+//    `file_id` vem do Drive. Se qualquer um dos dois ja estiver na chave, a
+//    foto e IGNORADA. Reidratar N vezes = reidratar uma vez.
+//
+// ⚠ Nunca entra na fila de upload: a foto JA ESTA no Drive (driveStatus:'ok',
+//   origemDrive:true). A imagem CHEIA continua vindo sob demanda no PDF
+//   (pgpTrocarThumbsPorImagemCheia).
+// ⚠ Silenciosa em qualquer falha: sem rede ou contra GAS antigo, o
+//   comportamento e o de antes (a tela abre sem as fotos do servidor).
+// ══════════════════════════════════════════════════════════════════════════
+window._PGP_FOTOS_EM_VOO = window._PGP_FOTOS_EM_VOO || {};
+async function pgpRestaurarFotosDaVisita(midx, eq){
+  const idx = pgpGetMachineIndex(midx);
+  try{
+    if(!window._PGP_OS_ID) return 0;
+    if(!_pgpGsConnected) return 0;
+    // V95 — trava de EM VOO. Esta funcao tem dois chamadores legitimos para a
+    // mesma maquina (`pgpRestaurarColetaGravada`, que preserva o contrato da
+    // V87, e a carga da OS, que e o caminho novo). Sem a trava sairiam DUAS
+    // requisicoes iguais para o Apps Script por maquina — o dedupe impediria a
+    // foto dobrada, mas a rede do celular em campo pagaria a conta a toa.
+    const _chaveVoo = String(window._PGP_OS_ID) + '|' + String(idx);
+    if(window._PGP_FOTOS_EM_VOO[_chaveVoo]) return 0;
+    window._PGP_FOTOS_EM_VOO[_chaveVoo] = 1;
+    if(!photoStore[idx]) photoStore[idx] = {};
+
+    const rf = await pgpPostJson('getFotosDaVisita', {
+      os_id: window._PGP_OS_ID,
+      machine_id: (eq && eq.id) || '',
+      serial: (eq && eq.serial) || '',
+      thumb: true, max_fotos: 24
+    }, 1);
+    if(!rf || rf.status !== 'ok' || !(rf.fotos || []).length) return 0;
+
+    const chavesRepostas = {};
+    let novas = 0;
+    (rf.fotos || []).forEach(function(f){
+      if(!f || !f.photo_key || !f.dataUrl) return;
+      const arr = photoStore[idx][f.photo_key] = photoStore[idx][f.photo_key] || [];
+      // dedupe: mesma foto ja presente (por nome de arquivo OU por id do Drive)
+      const fn = String(f.fileName || '');
+      const fid = String(f.file_id || '');
+      const jaTem = arr.some(function(x){
+        return (fn && String(x.fileName || '') === fn) ||
+               (fid && String(x.fileId || '') === fid);
+      });
+      if(jaTem) return;
+      if(arr.length >= MAX_FOTOS_POR_ITEM) return;
+      arr.push({ label: f.caption || '', dataUrl: f.dataUrl, w: 0, h: 0,
+                 driveStatus: 'ok', origemDrive: true, fileId: fid,
+                 fileName: fn, thumbOnly: !!f.thumb });
+      chavesRepostas[f.photo_key] = 1;
+      novas++;
+    });
+
+    const chaves = Object.keys(chavesRepostas);
+    chaves.forEach(function(pk){
+      try{ renderPhotoThumbs(idx, pk); }catch(_){}
+      try{ syncDoneButtonsForKey(idx, pk); }catch(_){}
+    });
+    // Marca .photo-checked como a captura faria — o fotosStatus do PDF le
+    // exatamente essas classes.
+    try{
+      const panel95 = document.getElementById('panel-' + idx);
+      if(panel95){
+        const fotosDe = pgpPhotosDe(idx) || [];
+        panel95.querySelectorAll('.photo-item').forEach(function(item){
+          const pidx = parseInt(item.dataset.pidx);
+          const ph = fotosDe[pidx];
+          if(ph && chavesRepostas[ph.photoKey]){
+            const ndBtn = item.querySelector('.photo-nd-btn');
+            if(ndBtn) ndBtn.classList.remove('active');
+            item.classList.remove('photo-nd');
+            item.classList.add('photo-checked');
+            try{ refreshSection(item.closest('[data-section]')); }catch(_){}
+          }
+        });
+      }
+    }catch(_){}
+    if(novas){
+      try{ pgpPersistPhotosIDB('draft'); }catch(_){}
+      try{ updateProgress(); }catch(_){}
+      try{ pgpRepintarFotosDoPainel(idx); }catch(_){}
+      showNotification('📷 ' + novas + ' foto(s) da visita repostas do Drive' +
+        (rf.truncated ? ' (parcial)' : ''));
+    }
+    return novas;
+  }catch(e){
+    console.warn('[PCF V95] pgpRestaurarFotosDaVisita:', e && e.message);
+    return 0;
+  }finally{
+    // libera a trava SEMPRE — inclusive em erro. Trava que nao abre em falha
+    // e pior que trava nenhuma: a proxima tentativa nunca aconteceria.
+    try{ delete window._PGP_FOTOS_EM_VOO[String(window._PGP_OS_ID) + '|' + String(idx)]; }catch(_){}
   }
 }
 
@@ -12846,7 +13166,7 @@ function pgpSubirAssinaturasDaVisita(payload, midx){
         caption:       s.rot + ' — ' + (sig.nome || '-') + ' — ' + quando,
         entityType:    'assinatura',
         entityId:      vid,
-        createdBy:     pgpFieldVal(midx, 'tecnico')
+        createdBy:     (pgpFieldVal(midx, 'tecnico') || pgpNomeSessao())
       }, null);
       enviadas[chave] = Date.now();
     });
@@ -13786,7 +14106,11 @@ function pgpBuildPayload(midx=currentMachine){
     })(),
     branch: gv('filial'),
     brand:gv('marca'),model:gv('modelo'),serial:gv('ns'),tag:gv('tag'),
-    location:gv('localizacao'),tech:gv('tecnico'),hourTotal,hpw,
+    // V95 (A5) — ULTIMO RECURSO, nao substituicao: o que o tecnico digitou
+    // manda sempre. So quando o campo esta VAZIO entra o nome da sessao — e era
+    // o campo vazio que gravava `VISITAS.Tecnico` em branco e imprimia
+    // "Responsavel: —" no PDF que vai para o cliente.
+    location:gv('localizacao'),tech:(gv('tecnico') || pgpNomeSessao()),hourTotal,hpw,
     tipo: gv('tipo') || '',
     // v36 — alias inequívoco de tipo de equipamento (mesmo campo que 'tipo' acima),
     // para não ser confundido com "tipo de visita" nos payloads derivados (preventiva/visita)
