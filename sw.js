@@ -9,7 +9,7 @@
  * O activate abaixo apaga qualquer cache antigo com prefixo 'propertech-'.
  */
 const CACHE_BASE = 'propertech-';
-const CACHE = CACHE_BASE + 'v96';  // v96 (25/08/2026) — PCF_V95: a preventiva reaberta volta inteira.
+const CACHE = CACHE_BASE + 'v97';  // v97 (26/08/2026) — PCF_V96: a peca vira cartao no celular; marca e carimbo certos.
 // 🔴 ATENÇÃO À NUMERAÇÃO — ELA NÃO BATE COM A DO PCF, E ISSO É PROPOSITAL.
 //    Desde o conserto do desencontro de 16/08 o sw anda UM À FRENTE do arquivo:
 //        PCF_V90  ↔  propertech-v91   (deploy de 19/08)
@@ -17,7 +17,8 @@ const CACHE = CACHE_BASE + 'v96';  // v96 (25/08/2026) — PCF_V95: a preventiva
 //        PCF_V92  ↔  propertech-v93   (deploy de 22/08)
 //        PCF_V93  ↔  propertech-v94   (deploy de 24/08)
 //        PCF_V94  ↔  propertech-v95   (deploy de 25/08)
-//        PCF_V95  ↔  propertech-v96   (este)
+//        PCF_V95  ↔  propertech-v96   (deploy de 25/08)
+//        PCF_V96  ↔  propertech-v97   (este)
 //    Quem "corrigir" isto para propertech-v91 achando que alinha as versões
 //    reintroduz o pior modo de falha deste arquivo: a chave ficaria IGUAL à do
 //    deploy anterior, o activate não apagaria nada, e o técnico continuaria

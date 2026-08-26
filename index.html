@@ -993,8 +993,8 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ProperCare Field · PGP Preventivas v35 · build PCF_V95</title>
-<meta name="app-build" content="PCF_V95" data-date="2026-08-25">
+<title>ProperCare Field · PGP Preventivas v35 · build PCF_V96</title>
+<meta name="app-build" content="PCF_V96" data-date="2026-08-26">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -2312,6 +2312,9 @@ function pgpEnsureJsPDF() {
   /* Login overlay */
   .login-overlay{background:radial-gradient(ellipse at top,rgba(245,130,32,.15) 0%,var(--bg-app) 60%)!important}
   .login-box{background:var(--bg-card)!important;border:1px solid rgba(255,255,255,.08)!important;box-shadow:0 20px 60px rgba(0,0,0,.6),0 0 40px var(--brand-glow)!important;border-radius:20px!important;padding:32px 24px!important}
+  /* V96 — a marca acima do nome, na tela de acesso. */
+  .login-mark{width:56px;margin:0 auto 10px;display:block}
+  .login-mark svg{width:100%;height:auto;display:block}
   .login-logo{background:linear-gradient(135deg,var(--brand-start),var(--brand-end))!important;-webkit-background-clip:text;background-clip:text;color:transparent!important;font-family:'Inter',sans-serif!important;font-weight:900!important;font-size:28px!important;letter-spacing:.05em;text-align:center;margin-bottom:6px}
   .login-sub{color:var(--text-light)!important;text-align:center;font-family:'JetBrains Mono',monospace!important;font-size:10px!important;letter-spacing:.15em;text-transform:uppercase;margin-bottom:20px}
   .login-box input{background:var(--bg-app)!important;color:var(--text)!important;border:1.5px solid rgba(255,255,255,.1)!important;border-radius:10px!important;padding:14px!important;min-height:52px!important;font-size:15px!important;font-family:'Inter',sans-serif}
@@ -2670,6 +2673,115 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
   border-left:3px solid var(--orange);border-radius:0 6px 6px 0;padding:6px 10px}
 #pgpNewMachine #nm_tipo{width:100%;padding:11px 10px;border:1.5px solid var(--gray-mid);border-radius:8px;
   font-size:14px;background:var(--bg-surface);color:var(--text)}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   V96 (26/08/2026) — A LINHA DE PEÇA DEIXA DE SER UMA LINHA DE TABELA.
+
+   🔴 POR QUE ISTO É UMA REESCRITA E NÃO MAIS UM AJUSTE DE PORCENTAGEM.
+   Este mesmo defeito — o nome da peça espremido a dois caracteres por linha,
+   com os botões N/A e ▸ empurrando tudo — já foi "corrigido" DUAS vezes:
+   na v40 (inputs compactos) e na v41 (colgroup + `table-layout:fixed` +
+   larguras por cenário). Voltou. Uma terceira rodada mexendo nas mesmas
+   porcentagens seria a terceira aposta na mesma mecânica.
+
+   A mecânica é o problema. A seção 4 é um `<table>` com 3 a 5 colunas, um
+   `<colgroup>` de porcentagens por cenário, `table-layout:fixed`, botões com
+   `min-width` disputando espaço — e, dentro da mesma tabela, um
+   `<td colspan="10">` que carrega um CARTÃO inteiro (referência, duas fotos,
+   três pílulas de ação). Quando qualquer motor resolve esse conjunto de forma
+   um pouco diferente — WebView antigo, inflação de fonte do Android, zoom de
+   texto do sistema — as colunas colapsam e o técnico fica sem alvo de toque.
+   Num celular NÃO EXISTE tabela ali: existe um cartão por peça.
+
+   ⇒ Abaixo de 640px o layout de tabela é DESLIGADO e cada peça vira um bloco
+     flex — exatamente o que o perfil PISTÃO já faz desde a V70 e onde este
+     defeito nunca apareceu. Sem colunas, não há o que espremer.
+   ⚠ Só CSS. Nenhum id, data-key, evento ou função mudou; `togglePartDetail`
+     continua alternando `display:''`/`'none'` e o CSS decide o resto (a mesma
+     disciplina que a V70.1 já tinha fixado).
+   ══════════════════════════════════════════════════════════════════════════ */
+@media (max-width:640px){
+  .pt-table:not(.pt-perfil-pistao){display:block!important;table-layout:auto!important;width:100%!important;min-width:0!important}
+  .pt-table:not(.pt-perfil-pistao)>colgroup,
+  .pt-table:not(.pt-perfil-pistao)>thead{display:none!important}
+  .pt-table:not(.pt-perfil-pistao)>tbody{display:block!important}
+  /* 🔴 SEM `!important` NO `display` DAS LINHAS — E DELIBERADO.
+     `togglePtNA` e `togglePartDetail` escondem a linha do cartao e a do
+     detalhe por ESTILO INLINE (`style.display='none'`), e `!important` no CSS
+     VENCE o inline: a primeira versao deste bloco deixou a caixa de observacao
+     de TODAS as pecas aberta para sempre. Uma classe simples ja vence o
+     `display:table-row` da folha do navegador — que e tudo o que precisamos —
+     e continua perdendo para o inline, que e quem manda esconder. */
+  .pt-table:not(.pt-perfil-pistao)>tbody>tr{display:block;border-bottom:none!important}
+
+  /* a linha-cabeçalho da peça: nome elástico, controles com largura fixa */
+  .pt-table:not(.pt-perfil-pistao)>tbody>tr.pt-group{
+    display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+    padding:8px 10px 6px;border-top:none!important;
+    background:var(--bg-elev);border-radius:10px 10px 0 0;margin-top:10px}
+  .pt-table:not(.pt-perfil-pistao)>tbody>tr.pt-group>td{
+    border-top:none!important;box-shadow:none!important;background:transparent!important;
+    padding:0!important;display:block}
+  .pt-table:not(.pt-perfil-pistao)>tbody>tr.pt-group>td.pt-name{
+    flex:1 1 42%;min-width:0;border-left:3px solid transparent;padding-left:8px!important;
+    white-space:normal!important;word-break:normal!important;overflow-wrap:anywhere!important}
+  .pt-table:not(.pt-perfil-pistao)>tbody>tr.pt-group>td.pt-inp{flex:1 1 96px;min-width:88px}
+  .pt-table:not(.pt-perfil-pistao)>tbody>tr.pt-group>td.td-na{flex:0 0 60px;width:60px!important}
+  .pt-table:not(.pt-perfil-pistao)>tbody>tr.pt-group>td.td-detail{flex:0 0 46px;width:46px!important}
+  .pt-table:not(.pt-perfil-pistao) .btn-pt-na,
+  .pt-table:not(.pt-perfil-pistao) .btn-pt-detail{width:100%!important;min-height:44px!important}
+  /* rótulo do campo, que sumiu junto com o <thead> */
+  .pt-table:not(.pt-perfil-pistao)>tbody>tr.pt-group>td.pt-inp[data-rot]::before{
+    content:attr(data-rot);display:block;font-size:8px;font-weight:700;letter-spacing:.4px;
+    text-transform:uppercase;color:var(--text-light);margin-bottom:2px;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis}
+
+  .pt-table:not(.pt-perfil-pistao)>tbody>tr.pt-quick-row>td,
+  .pt-table:not(.pt-perfil-pistao)>tbody>tr.pt-detail-row>td{
+    display:block!important;padding:0!important;border-bottom:none!important}
+  .pt-table:not(.pt-perfil-pistao) .pt-quick-box{border-radius:0 0 10px 10px;border-left:3px solid var(--brand-start)}
+}
+/* Telas MUITO estreitas (≤379px — o piso real da frota, o Redmi de 320dp):
+   com nome + valor + intervalo + N/A + ▸ na mesma linha sobram ~100px para o
+   nome, e "Filtro Ar Sec." volta a quebrar feio. Aqui o nome ganha a linha
+   inteira e os controles descem — uma linha a mais por peça, e nenhuma peça
+   ilegível. É a mesma decisão do V94 sobre a tira de aviso: caber é mais
+   importante que ser compacto. */
+@media (max-width:379px){
+  .pt-table:not(.pt-perfil-pistao)>tbody>tr.pt-group>td.pt-name{flex:1 1 100%}
+  .pt-table:not(.pt-perfil-pistao)>tbody>tr.pt-group>td.pt-inp{flex:1 1 40%}
+  .pt-table:not(.pt-perfil-pistao)>tbody>tr.pt-detail-row>td .pt-detail-box{border-radius:0 0 10px 10px}
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   V96 — O TEMA ESCURO PARAVA NA PORTA DA SEÇÃO 4.
+   A paleta escura (`:root`) remapeia os tokens legados, mas dezenas de cores
+   CLARAS estão cravadas em literal (`#fbfcfe`, `#e8f0fb`, `#f5f7fb`,
+   `#fafafa`, `#f0f2f5`, `background:white`) e nenhuma delas passa por token.
+   Na tabela de peças isso desenhava uma MOLDURA BRANCA em volta de cada
+   cartão — o "problema de layout" que o Fernando fotografou. Não é decorativo:
+   moldura clara com texto claro dentro é o que faz o técnico achar que o
+   cartão está desativado.
+   ⚠ Escopo restrito à tabela de peças. Nenhuma outra tela é tocada.
+   ══════════════════════════════════════════════════════════════════════════ */
+.pt-table tbody tr.pt-group-cont>td{background:transparent!important}
+.pt-table tbody tr.pt-detail-row.pt-group-cont>td{background:transparent!important}
+.pt-table tbody tr{border-bottom-color:rgba(255,255,255,.06)!important}
+.pt-table tbody tr:active{background:rgba(245,130,32,.08)!important}
+.pt-table tbody tr.pt-group:focus-within>td{background:transparent!important}
+.pt-table .pt-quick-row>td{border-bottom:none!important}
+.pt-table .pt-quick-box,.pt-table .pt-detail-box{background:var(--bg-card)!important;color:var(--text)}
+.pt-table tbody tr.pt-group.pt-na>td{background:transparent!important}
+.pt-table .pt-inp input:focus,.pt-table .pt-det-field input:focus,
+.pt-table .pt-det-field textarea:focus{background:var(--bg-elev)!important;color:var(--text)}
+.pt-table .pt-inp select{background:var(--gray)!important;color:var(--text)}
+.pt-table tbody tr.pt-group.pt-na .pt-inp select{background:#26303f!important;color:#7c8797!important}
+
+/* V96 — a marca de verdade no lugar do "H" desenhado em CSS. */
+.proper-logo-mark{background:none!important;box-shadow:none!important;clip-path:none!important;
+  width:34px!important;height:34px!important;display:flex;align-items:center;justify-content:center;
+  color:var(--brand-start)}
+.proper-logo-mark svg{width:100%;height:auto;display:block}
 </style>
 </head>
 <body>
@@ -2690,8 +2802,10 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
 <!-- ── TELA DE LOGIN ── -->
 <div class="login-overlay" id="loginOverlay">
   <div class="login-box">
+    <div class="login-mark"><svg viewBox="0 0 153 113" aria-hidden="true" focusable="false"><defs><linearGradient id="pcfMarkG2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f7941e"/><stop offset="1" stop-color="#e85d1f"/></linearGradient></defs><path fill="url(#pcfMarkG2)" fill-rule="evenodd" d="M90.2 0.0 L68.0 45.5 L91.5 45.8 L103.2 23.8 L120.5 23.8 L130.0 33.2 L130.0 79.5 L120.5 90.0 L95.2 90.0 L84.0 112.5 L131.5 112.8 L152.8 90.5 L152.8 23.2 L129.5 0.0ZM23.2 0.0 L0.0 22.2 L0.0 90.5 L22.2 112.8 L62.5 112.8 L83.8 67.2 L61.2 67.0 L48.5 90.0 L33.2 90.0 L22.8 79.5 L22.8 33.2 L32.2 23.8 L58.5 22.8 L67.8 0.2Z"/></svg></div>
     <div class="login-logo">PROPER</div>
-    <div class="login-sub">ProperCare Field · v10</div>
+    <!-- V96 — tambem derivado do meta (dizia "v10" desde sempre). -->
+    <div class="login-sub" id="pcfLoginStamp">ProperCare Field</div>
     <label class="login-label">Senha de acesso</label>
     <input class="login-input" type="password" id="loginInput" placeholder="••••••"
            maxlength="20" onkeydown="if(event.key==='Enter')loginEntrar()">
@@ -2703,10 +2817,22 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
 <header>
   <div class="top-row">
     <div class="proper-logo">
-      <div class="proper-logo-mark">H</div>
+      <!-- V96 — a marca de verdade, tracada do arquivo oficial: vetorial e
+           inline (sem requisicao, sem depender de cache). O "H" que estava aqui
+           era um octogono desenhado em CSS com uma letra dentro. -->
+      <div class="proper-logo-mark"><svg viewBox="0 0 153 113" aria-hidden="true" focusable="false"><defs><linearGradient id="pcfMarkG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f7941e"/><stop offset="1" stop-color="#e85d1f"/></linearGradient></defs><path fill="url(#pcfMarkG)" fill-rule="evenodd" d="M90.2 0.0 L68.0 45.5 L91.5 45.8 L103.2 23.8 L120.5 23.8 L130.0 33.2 L130.0 79.5 L120.5 90.0 L95.2 90.0 L84.0 112.5 L131.5 112.8 L152.8 90.5 L152.8 23.2 L129.5 0.0ZM23.2 0.0 L0.0 22.2 L0.0 90.5 L22.2 112.8 L62.5 112.8 L83.8 67.2 L61.2 67.0 L48.5 90.0 L33.2 90.0 L22.8 79.5 L22.8 33.2 L32.2 23.8 L58.5 22.8 L67.8 0.2Z"/></svg></div>
       <div class="proper-logo-text">
         <span class="brand">PROPER</span>
-        <span class="brand-sub">Field · V89</span>
+        <!-- 🔴 V96 — ERA UM LITERAL A MAO, E DIZIA "V89" COM A V95 NO AR.
+             A tela que o tecnico olha mentia havia SEIS versoes: quando ele
+             mandou o print do defeito, ninguem conseguia dizer qual build o
+             aparelho estava rodando — e essa duvida custou meia investigacao.
+             O `<title>` sempre esteve certo, entao o VERSOES.md nunca mentiu;
+             quem mentia era a tela. Agora o carimbo e DERIVADO do
+             `<meta name="app-build">`, a mesma fonte do manifesto.
+             Carimbo duplicado a mao e carimbo que vai divergir — licao que o
+             PCM ja tinha pago no V132 e que aqui ninguem aplicou. -->
+        <span class="brand-sub" id="pcfBuildStamp">Field</span>
       </div>
     </div>
     <div class="header-right">
@@ -4930,10 +5056,12 @@ function buildPartsTable(p, midx, scenario) {
     let extraCols = '';
 
     if (scenario === 'B' || scenario === 'E') {
-      mainCell = `<td class="pt-inp"><input type="number" placeholder="${cfg.mainPlaceholder}" id="${pk}_valor_mostrado" data-key="${pk}_valor_mostrado" oninput="calcPartRow('${pk}',${pt.intDefault})" onclick="event.stopPropagation()"></td>`;
+      mainCell = `<td class="pt-inp" data-rot="${cfg.mainLabel||''}"><input type="number" placeholder="${cfg.mainPlaceholder}" id="${pk}_valor_mostrado" data-key="${pk}_valor_mostrado" oninput="calcPartRow('${pk}',${pt.intDefault})" onclick="event.stopPropagation()"></td>`;
     } else if (scenario === 'C') {
-      mainCell = `<td class="pt-inp"><input type="number" placeholder="${cfg.mainPlaceholder}" id="${pk}_valor_mostrado" data-key="${pk}_valor_mostrado" oninput="calcPartRow('${pk}',${pt.intDefault})" onclick="event.stopPropagation()"></td>`;
-      extraCols = `<td class="pt-inp" style="min-width:72px">
+      // V96 — `data-rot` alimenta o rotulo ::before do layout de cartao do
+      // celular, onde o <thead> some. Aditivo: no desktop o atributo e inerte.
+      mainCell = `<td class="pt-inp" data-rot="${cfg.mainLabel||''}"><input type="number" placeholder="${cfg.mainPlaceholder}" id="${pk}_valor_mostrado" data-key="${pk}_valor_mostrado" oninput="calcPartRow('${pk}',${pt.intDefault})" onclick="event.stopPropagation()"></td>`;
+      extraCols = `<td class="pt-inp" data-rot="Contador" style="min-width:72px">
         <select id="${pk}_contador" data-key="${pk}_contador" onchange="calcPartRow('${pk}',${pt.intDefault})" onclick="event.stopPropagation()" style="font-size:11px;padding:4px 2px">
           <option value="">?</option>
           <option value="progressivo">↑ Prog.</option>
@@ -4942,8 +5070,8 @@ function buildPartsTable(p, midx, scenario) {
         </select>
       </td>`;
     } else if (scenario === 'D') {
-      mainCell = `<td class="pt-inp"><input type="number" placeholder="${cfg.mainPlaceholder}" id="${pk}_valor_mostrado" data-key="${pk}_valor_mostrado" oninput="calcPartRow('${pk}',${pt.intDefault})" onclick="event.stopPropagation()"></td>`;
-      extraCols = `<td class="pt-inp" style="min-width:60px"><input type="number" placeholder="${pt.intDefault}" id="${pk}_int" data-key="${pk}_int" oninput="calcPartRow('${pk}',${pt.intDefault})" onclick="event.stopPropagation()"></td>`;
+      mainCell = `<td class="pt-inp" data-rot="${cfg.mainLabel||''}"><input type="number" placeholder="${cfg.mainPlaceholder}" id="${pk}_valor_mostrado" data-key="${pk}_valor_mostrado" oninput="calcPartRow('${pk}',${pt.intDefault})" onclick="event.stopPropagation()"></td>`;
+      extraCols = `<td class="pt-inp" data-rot="Interv. (h)" style="min-width:60px"><input type="number" placeholder="${pt.intDefault}" id="${pk}_int" data-key="${pk}_int" oninput="calcPartRow('${pk}',${pt.intDefault})" onclick="event.stopPropagation()"></td>`;
     }
 
     // Campos ocultos obrigatórios para compatibilidade de IDs
@@ -18623,6 +18751,41 @@ if(window._PGP_OS_ID && (function(){ try { return localStorage.getItem('proper_p
         }
       }catch(_){ }
     };
+  }
+})();
+</script>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════════════
+   V96 — O CARIMBO DA TELA PASSA A SER DERIVADO.
+   Ate a V95 o rodape da marca dizia "Field · V89" — um literal escrito a mao
+   que ninguem bumpava desde a V89. Com a V95 publicada, a tela do tecnico
+   ainda dizia V89: quando ele mandou o print de um defeito, ninguem conseguia
+   afirmar qual build o aparelho estava rodando, e meia investigacao foi gasta
+   nessa duvida. O `<title>` e o `<meta name="app-build">` sempre estiveram
+   certos — eles sao a fonte que o `gerar_versoes.py` le.
+   ⇒ Uma fonte so. Se o meta subir, a tela sobe junto; se alguem esquecer o
+     meta, o manifesto acusa. Nao ha mais um terceiro lugar para esquecer.
+   ⚠ Silencioso e defensivo de proposito: sem o meta, mantem o texto do HTML.
+   ══════════════════════════════════════════════════════════════════════════ */
+(function(){
+  function pcfCarimbarVersao(){
+    try{
+      var meta = document.querySelector('meta[name="app-build"]');
+      var build = meta ? String(meta.getAttribute('content') || '').trim() : '';
+      if(!build) return false;                       // sem fonte, nao inventa
+      var curto = build.replace(/^PCF[_-]?/i, '');   // PCF_V96 -> V96
+      var h = document.getElementById('pcfBuildStamp');
+      if(h) h.textContent = 'Field · ' + curto;
+      var l = document.getElementById('pcfLoginStamp');
+      if(l) l.textContent = 'ProperCare Field · ' + curto;
+      window.PCF_BUILD = build;                      // util para diagnostico
+      return true;
+    }catch(e){ return false; }
+  }
+  window.pcfCarimbarVersao = pcfCarimbarVersao;
+  if(!pcfCarimbarVersao()){
+    document.addEventListener('DOMContentLoaded', pcfCarimbarVersao, {once:true});
   }
 })();
 </script>
