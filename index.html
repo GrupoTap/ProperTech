@@ -1,3 +1,58 @@
+<!-- PCF V98 (27/08/2026) — A DESIGNACAO DECIDE; A FILA SUGERE.
+     100% ADITIVO E FRONT-ONLY sobre a V97: nenhum id, funcao, action ou chip
+     existente foi renomeado ou removido. Par do GAS v127 (que traz os campos
+     `responsavel_nome`, `designada_a_outro`, `minhas_tarefas` e a guarda no
+     servidor). Contra o v126 o app continua funcionando: campo ausente = falso.
+     ⚠ ORDEM DE PUBLICACAO: GAS v127 primeiro; bumpar o `sw.js` para
+       `propertech-v99` JUNTO — sem isso o aparelho serve o V97 do cache.
+
+     🔑 O CHAMADO (27/08, 15h44): a OS PGP-2026-0057 (Jalk, corretiva EXTERNA,
+        RESPONSAVEL = Paulo) apareceu como "A SUA VEZ" no celular do Geovani.
+        Um toque em "Nao consigo fazer" travaria a OS do Paulo para todos.
+        Causa: `_pfMinhaVez` so respeitava designacao para OS ja em andamento;
+        fora isso apontava `fila[0]` de uma fila GLOBAL, cega ao responsavel.
+        O cabecalho do bloco V94 dizia "A FILA DECIDE" — a decisao de 24/08
+        registrada na memoria do projeto dizia o contrario, e o Fernando
+        fechou em 27/08: "so mostrar o servico se for de fato do tecnico".
+
+     V1  A REGRA DA VEZ (nova ordem):
+         1o  o que EU ja comecei (lock meu / minha e em andamento);
+         2o  o que foi DESIGNADO a mim — na OS (RESPONSAVEL) ou por tarefa
+             (Agenda do PCM) — mesmo ainda aberta. Externa designada E vez.
+             Ordem: hora/prazo primeiro, prioridade como desempate, depois idade.
+         3o  NADA designado ⇒ a tela diz isso ("combine com o escritorio ou na
+             reuniao") e mostra, em secao SEPARADA, a SUGESTAO DA FILA: 1a OS
+             INTERNA, nao designada a outro, nao travada — urgente primeiro,
+             depois a posicao que o servidor calcula (#N), depois a chegada.
+             So botao "Abrir": sugestao NAO se recusa ("Nao consigo fazer" nao
+             existe ali — ninguem recusa o que nao lhe foi dado).
+         Tarefa designada a mim numa camada FUTURA aparece como "designada,
+         aguardando a etapa X" — nao e vez. OS minha travada fica em TRAVADAS.
+
+     V2  "NAO CONSIGO FAZER" so sobre o que e MEU, e marca A MINHA tarefa
+         (`minhas_tarefas` do v127 / `Lock_Por` = eu), nao a primeira aberta
+         da OS. O servidor devolve `designada_outro` se for de outro — o app
+         mostra o nome e nao insiste.
+
+     V3  ASSUMIR TAREFA DE OUTRO pede confirmacao: `assumirTarefa` do v127
+         devolve `{status:'designada_outro', designado_nome}`; o app pergunta
+         "Designada a Paulo Mayer — assumir mesmo assim?" e reenvia com
+         `forcar:true`. (Dois tecnicos na mesma OS continua possivel.)
+
+     V4  "Fila da oficina" vira "BACKLOG" (o nome dizia o que a vista NAO e:
+         ela sempre foi o universo, externas inclusive). Os filtros que viviam
+         atras da engrenagem (Todas/Externas/Internas · Ativas/Concluidas/Todas)
+         sobem para a barra, com rotulo ORDENAR / MOSTRAR — dois tipos de
+         controle na mesma linha sem dizer qual e qual era o que confundia.
+         O botao da engrenagem vira "📥 Dia" e guarda so o "Preparar o dia"
+         (que e acao, nao filtro). Nenhum id/data-*/funcao mudou.
+
+     V5  O card do Backlog mostra "👤 designada a Paulo Mayer" quando a OS e de
+         outro (`responsavel_nome` do v127) — o tecnico sabe A QUEM perguntar.
+
+     V6  `<meta name="app-build">` estava em PCF_V96 num app V97 — o rodape
+         mentia. Bumpado junto com o title; o carimbo continua derivado do meta.
+-->
 <!-- PCF V95 (25/08/2026) — A PREVENTIVA REABERTA VOLTA INTEIRA.
      100% ADITIVO E FRONT-ONLY sobre a V94: nenhum id, funcao, action ou chip
      existente foi renomeado ou removido.
@@ -993,8 +1048,8 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ProperCare Field · PGP Preventivas v35 · build PCF_V97</title>
-<meta name="app-build" content="PCF_V96" data-date="2026-08-26">
+<title>ProperCare Field · PGP Preventivas v35 · build PCF_V98</title>
+<meta name="app-build" content="PCF_V98" data-date="2026-08-27">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -1306,6 +1361,11 @@ function pgpEnsureJsPDF() {
   .pf-vez-dep .it .tx .c{font-size:14px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .pf-vez-dep .it .tx .s{font-size:12px;color:var(--text-light);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .pf-vez-dep .it.trav{opacity:.6}
+  /* V98 — a sugestao da fila tem cara propria: ambar, nao azul. Nao e a vez. */
+  .pf-vez.sug{background:linear-gradient(160deg,#2a2210,#1a1508);border-color:#6b5320}
+  .pf-vez.sug .cli{color:#fde68a}
+  .pf-os-rotulo{font-size:10.5px;letter-spacing:.12em;font-weight:800;color:var(--text-light);margin-top:8px}
+  .pf-os-outro{color:#fbbf24 !important}
   .pf-vez-vazio{text-align:center;padding:26px 12px}
   .pf-vez-vazio .em{font-size:44px;line-height:1}
   .pf-vez-vazio .t{font-size:20px;font-weight:800;margin-top:10px}
@@ -15966,12 +16026,16 @@ function pfSetOSDesignFilter(filtro) {
 // 100% ADITIVO: nenhum id, funcao ou chip da lista mudou de nome; a vista e
 // um display:none coordenado sobre o markup que ja existia.
 //
-// ── AS REGRAS QUE O FERNANDO FECHOU EM 24/08 ─────────────────────────────
-//  1. A FILA DECIDE. A reuniao presencial so resolve o que e duvidoso.
-//  2. FIFO conta da CHEGADA FISICA da maquina.
-//  3. Urgente fura a fila.
+// ── AS REGRAS (24/08, REESCRITAS EM 27/08 — ver changelog V98) ───────────
+//  ⚠ A versao V94 deste cabecalho dizia "A FILA DECIDE". Estava em desacordo
+//    com a decisao de 24/08 registrada na memoria do projeto (designacao
+//    MANUAL, em reuniao; a fila e sugestao) e o Fernando fechou em 27/08.
+//  1. A DESIGNACAO DECIDE. A fila so SUGERE, e so quando nada foi designado.
+//  2. FIFO conta da CHEGADA FISICA da maquina (posicao_fila do v127 ja e assim).
+//  3. So URGENTE fura a fila (alta NAO fura).
 //  4. Bloqueada SAI da fila ate destravar.
-//  5. Dois tecnicos podem dividir a mesma OS.
+//  5. Dois tecnicos podem dividir a mesma OS — cada um com a sua tarefa.
+//  6. OS de outro nao e a vez de ninguem; sugestao nao tem "nao consigo fazer".
 //
 // ⚠ SOBRE A REGRA 2 — E A HONESTIDADE DO NUMERO. A data de chegada existe na
 //   planilha (`MAQUINAS.Custodia_Desde`, gravada no evento "entrada na
@@ -16028,39 +16092,139 @@ function _pfIdade(o) {
 
 // A ORDEM DA FILA. Mesma regra do quadro: urgente primeiro, depois o mais
 // antigo. Bloqueada nao entra. Concluida nao entra.
-function _pfFilaOrdenada() {
-  var lista = (typeof _pfOsList !== 'undefined' && Array.isArray(_pfOsList)) ? _pfOsList : [];
-  return lista.filter(function (o) {
-    var st = String((o && o.status) || 'aberta').toLowerCase();
-    if (st !== 'aberta' && st !== 'em_andamento') return false;
-    return !_pfEhBloqueada(o);
-  }).slice().sort(function (a, b) {
-    var ra = _pfRank(a), rb = _pfRank(b);
-    if (rb !== ra) return rb - ra;                       // urgente fura
-    return _pfIdade(b).n - _pfIdade(a).n;                // mais antiga primeiro
+// ═══════════════════════════════════════════════════════════════════════════
+// V98 · A VEZ E DE QUEM FOI DESIGNADO. A FILA SO SUGERE.
+// ⚠ A ordem dos testes E a regra — quem mexer aqui muda a politica da oficina.
+//   Campos do GAS v127 (`designada_a_outro`, `minhas_tarefas`, `responsavel_*`,
+//   `tem_designado`, `tarefas_livres_camada`): AUSENTES contra o v126 ⇒ falso /
+//   vazio — o app degrada para "tudo que nao e meu pode ser sugerido", nunca
+//   esconde OS e nunca inventa dono.
+// ═══════════════════════════════════════════════════════════════════════════
+function _pfMeuId() {
+  var t = (window.PROPER_SESSION && window.PROPER_SESSION.tecnico) || {};
+  return String(t.id || t.nome || '').trim();
+}
+function _pfMeuNome() {
+  var t = (window.PROPER_SESSION && window.PROPER_SESSION.tecnico) || {};
+  return String(t.nome || t.id || '').trim();
+}
+function _pfOsAtiva(o) {
+  var st = String((o && o.status) || 'aberta').toLowerCase();
+  return st === 'aberta' || st === 'em_andamento';
+}
+// tenho lock ATIVO em alguma tarefa desta OS?
+function _pfEuExecuto(o) {
+  var id = _pfMeuId().toLowerCase(), nome = _pfMeuNome().toLowerCase();
+  if (!o || !Array.isArray(o.em_execucao)) return false;
+  return o.em_execucao.some(function (x) {
+    var p = String(x.por || '').trim().toLowerCase();
+    return p && (p === id || p === nome);
   });
 }
-
-// A MINHA VEZ. Devolve {os, motivo} ou null.
-// ⚠ A ordem dos testes E a regra — quem mexer aqui muda a politica da oficina.
-function _pfMinhaVez() {
+// a designacao a mim esta LIBERADA (camada atual) ou ainda espera uma etapa?
+function _pfMinhaLiberada(o) {
+  if (!o || !Array.isArray(o.minhas_tarefas) || !o.minhas_tarefas.length) return true; // designacao na OS, ou GAS antigo
+  return o.minhas_tarefas.some(function (t) { return t.liberada !== false; });
+}
+function _pfEtapaAguardando(o) {
+  if (!o || !Array.isArray(o.minhas_tarefas) || !o.minhas_tarefas.length) return '';
+  var t = o.minhas_tarefas.slice().sort(function (a, b) { return (a.camada || 0) - (b.camada || 0); })[0];
+  return t ? (t.fase || t.nome || '') : '';
+}
+// prazo em ms (data_prevista + hora_prevista quando houver); Infinity sem prazo
+function _pfPrazoMs(o) {
+  if (!o || !o.data_prevista) return Infinity;
+  var d = String(o.data_prevista).slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) { var t0 = new Date(o.data_prevista).getTime(); return isNaN(t0) ? Infinity : t0; }
+  var h = String(o.hora_prevista || '').trim();
+  if (!/^\d{2}:\d{2}$/.test(h)) h = '23:59';
+  var p = d.split('-').map(Number), q = h.split(':').map(Number);
+  return new Date(p[0], p[1] - 1, p[2], q[0], q[1]).getTime();
+}
+function _pfPrazoTxt(o) {
+  var ms = _pfPrazoMs(o);
+  if (ms === Infinity) return '';
+  var d = new Date(ms);
+  var dia = ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2);
+  var h = String((o && o.hora_prevista) || '').trim();
+  return dia + (/^\d{2}:\d{2}$/.test(h) ? ' ' + h : '');
+}
+// dentro do que e MEU: hora/prazo primeiro, prioridade desempata, depois idade
+function _pfOrdemMinhas(a, b) {
+  var pa = _pfPrazoMs(a), pb = _pfPrazoMs(b);
+  if (pa !== pb) return pa - pb;
+  var ra = _pfRank(a), rb = _pfRank(b);
+  if (rb !== ra) return rb - ra;
+  return _pfIdade(b).n - _pfIdade(a).n;
+}
+// a OS pode ser SUGERIDA a mim? interna, ativa, livre, de ninguem (ou com tarefa livre)
+function _pfSugerivel(o) {
+  if (!o || !_pfOsAtiva(o) || _pfEhBloqueada(o) || _pfEhMinha(o)) return false;
+  if (typeof pfOsEhExterna === 'function' && pfOsEhExterna(o)) return false;   // campo e agendado pelo escritorio
+  if (o.designada_a_outro === true) return false;
+  if (o.tem_designado === true && typeof o.tarefas_livres_camada === 'number' && o.tarefas_livres_camada === 0) return false;
+  return true;
+}
+function _pfOrdemSugestao(a, b) {
+  var ua = _pfRank(a) >= 3 ? 1 : 0, ub = _pfRank(b) >= 3 ? 1 : 0;
+  if (ub !== ua) return ub - ua;                              // so URGENTE fura
+  var fa = (typeof a.posicao_fila === 'number' && a.posicao_fila > 0) ? a.posicao_fila : Infinity;
+  var fb = (typeof b.posicao_fila === 'number' && b.posicao_fila > 0) ? b.posicao_fila : Infinity;
+  if (fa !== fb) return fa - fb;                              // a posicao que o SERVIDOR calcula (chegada fisica, v127)
+  return _pfIdade(b).n - _pfIdade(a).n;                      // sem posicao: a mais antiga primeiro
+}
+// Classifica a lista inteira uma vez. Devolve as pilhas que a tela desenha.
+function _pfClassificar() {
   var lista = (typeof _pfOsList !== 'undefined' && Array.isArray(_pfOsList)) ? _pfOsList : [];
-  // 1 · o que EU ja comecei e nao terminei vem antes de qualquer maquina nova
-  var minha = lista.filter(function (o) {
-    return _pfEhMinha(o) && String((o && o.status) || '').toLowerCase() === 'em_andamento' && !_pfEhBloqueada(o);
-  }).sort(function (a, b) { return _pfIdade(b).n - _pfIdade(a).n; })[0];
-  if (minha) return { os: minha, motivo: 'voce assumiu esta OS e ela nao foi concluida. Termine antes de pegar maquina nova.' };
+  var r = { continuar: [], minhas: [], aguardando: [], travadasMinhas: [], sugestao: [], travadas: [] };
+  lista.forEach(function (o) {
+    if (!_pfOsAtiva(o)) return;
+    var minha = _pfEhMinha(o) || _pfEuExecuto(o);
+    var bq = _pfEhBloqueada(o);
+    if (bq) { r.travadas.push(o); if (minha) r.travadasMinhas.push(o); return; }
+    if (minha) {
+      if (_pfEuExecuto(o) || String(o.status || '').toLowerCase() === 'em_andamento') r.continuar.push(o);
+      else if (_pfMinhaLiberada(o)) r.minhas.push(o);
+      else r.aguardando.push(o);
+      return;
+    }
+    if (_pfSugerivel(o)) r.sugestao.push(o);
+  });
+  r.continuar.sort(_pfOrdemMinhas);
+  r.minhas.sort(_pfOrdemMinhas);
+  r.aguardando.sort(_pfOrdemMinhas);
+  r.sugestao.sort(_pfOrdemSugestao);
+  return r;
+}
+// A SUGESTAO DA FILA, ordenada. (Nome mantido da V94; o conteudo mudou: so o
+// que pode ser sugerido — interna, livre, de ninguem.)
+function _pfFilaOrdenada() { return _pfClassificar().sugestao; }
 
-  var fila = _pfFilaOrdenada();
-  if (!fila.length) return null;
-  var p = fila[0];
-  var id = _pfIdade(p);
-  var urg = _pfRank(p) >= 3;
-  var mot;
-  if (urg) mot = 'esta marcada como <b>urgente</b> pelo administrativo e por isso fura a fila (' + id.txt + ').';
-  else if (id.real) mot = 'e a <b>maquina ha mais tempo na oficina</b> (' + id.txt + ').';
-  else mot = 'e a <b>OS aberta ha mais tempo</b> (' + id.txt + '). <i>A data de chegada da maquina ainda nao chega ate aqui.</i>';
-  return { os: p, motivo: mot };
+// A MINHA VEZ. Devolve {os, motivo, tipo} ou null. `tipo`: 'continuar' | 'minha'.
+// ⚠ NUNCA devolve a sugestao da fila como vez: sugestao tem nome proprio na tela.
+function _pfMinhaVez() {
+  var c = _pfClassificar();
+  var o = c.continuar[0];
+  if (o) return { os: o, tipo: 'continuar', motivo: 'voce assumiu esta OS e ela nao foi concluida. Termine antes de pegar outra.' };
+  o = c.minhas[0];
+  if (!o) return null;
+  var quem = String(o.responsavel_nome || '').trim();
+  var pz = _pfPrazoTxt(o);
+  var mot = 'foi <b>designada a voce</b>' + (quem && quem.toLowerCase() !== _pfMeuNome().toLowerCase() ? ' (com ' + pgpEscHtml(quem) + ')' : '') + ' pelo escritorio';
+  if (pz) mot += ' · prazo <b>' + pgpEscHtml(pz) + '</b>';
+  if (_pfRank(o) >= 3) mot += ' · marcada como <b>urgente</b>';
+  else if (_pfRank(o) === 2) mot += ' · prioridade <b>alta</b>';
+  if (c.minhas.length > 1) mot += '. Voce tem ' + c.minhas.length + ' OS designadas; esta e a de prazo mais proximo.';
+  else mot += '.';
+  return { os: o, tipo: 'minha', motivo: mot };
+}
+// Por que ESTA e a sugestao — texto honesto sobre o criterio usado.
+function _pfMotivoSugestao(o) {
+  var id = _pfIdade(o);
+  var pos = (typeof o.posicao_fila === 'number' && o.posicao_fila > 0) ? ' · <b>#' + o.posicao_fila + ' na fila</b>' : '';
+  if (_pfRank(o) >= 3) return 'esta marcada como <b>urgente</b> pelo administrativo e fura a fila (' + id.txt + ')' + pos + '.';
+  if (id.real) return 'e a <b>maquina ha mais tempo na oficina</b> (' + id.txt + ')' + pos + '.';
+  return 'e a <b>OS aberta ha mais tempo</b> sem dono (' + id.txt + ')' + pos + '. <i>A data de chegada da maquina nao esta registrada.</i>';
 }
 
 function pfSetVista(v) {
@@ -16093,69 +16257,97 @@ function pfRenderVez() {
 
   if (!lista.length) {
     el.innerHTML = '<div class="pf-vez-vazio"><div class="em">⏳</div><div class="t">Carregando as OS…</div>'
-      + '<div class="s">Se demorar, veja a fila na outra aba — ela abre do cache.</div></div>';
+      + '<div class="s">Se demorar, veja o Backlog na outra aba — ele abre do cache.</div></div>';
     return;
   }
 
+  var c = _pfClassificar();
   var vez = _pfMinhaVez();
-  var fila = _pfFilaOrdenada();
+  var esc = function (s) { return String(s).replace(/'/g, "\\'"); };
+  var maqDe = function (o) { return Array.isArray(o.maquinas_vinculadas) ? o.maquinas_vinculadas.join(' · ') : String(o.maquinas_vinculadas || ''); };
+  var localDe = function (o) { return (typeof pfOsEhExterna === 'function' && pfOsEhExterna(o)) ? '🚗 campo' : '🏭 oficina'; };
+  var html = '';
 
-  // ── nada liberado: a tela NAO pode fingir que ha trabalho ──────────────
-  if (!vez) {
-    var travadas = lista.filter(_pfEhBloqueada);
-    if (travadas.length) {
-      el.innerHTML = '<div class="pf-vez-vazio"><div class="em">🚧</div>'
-        + '<div class="t">Nada liberado agora</div>'
-        + '<div class="s">' + travadas.length + ' OS ' + (travadas.length === 1 ? 'esta travada' : 'estao travadas')
-        + ' esperando o escritorio.</div></div>'
-        + travadas.slice(0, 5).map(function (o) {
-            return '<div class="pf-vez-dep"><div class="it"><div class="tx"><div class="c">'
-              + pgpEscHtml(String(o.cliente || '—')) + '</div><div class="s">'
-              + pgpEscHtml(_pfMotivoBloqueio(o) || 'travada') + '</div></div></div></div>';
-          }).join('')
-        + '<div class="pf-vez-aviso">Ficar parado sem avisar e o que faz uma maquina chegar a 35 dias. '
-        + 'O bloqueio ja esta registrado na tarefa — o administrativo ve.</div>';
-    } else {
-      el.innerHTML = '<div class="pf-vez-vazio"><div class="em">✅</div>'
-        + '<div class="t">Nenhuma OS aberta na sua vez</div>'
-        + '<div class="s">A fila da oficina esta vazia por enquanto.</div></div>';
-    }
+  // ── listas auxiliares (usadas nos dois ramos) ──────────────────────────
+  var secAguard = c.aguardando.length
+    ? '<div class="pf-vez-dep"><div class="t">DESIGNADAS A VOCE — AGUARDANDO A ETAPA</div>'
+      + c.aguardando.slice(0, 3).map(function (x) {
+          var et = _pfEtapaAguardando(x);
+          return '<div class="it"><div class="n">⏳</div><div class="tx"><div class="c">' + pgpEscHtml(String(x.cliente || '—')) + '</div>'
+            + '<div class="s">' + pgpEscHtml(maqDe(x) || String(x.tipo_os || '')) + (et ? ' · sua etapa: ' + pgpEscHtml(et) : '') + ' · ainda nao liberada</div></div></div>';
+        }).join('') + '</div>'
+    : '';
+  var secTrav = c.travadasMinhas.length
+    ? '<div class="pf-vez-dep"><div class="t">SUAS OS TRAVADAS — FORA DA FILA</div>'
+      + c.travadasMinhas.slice(0, 3).map(function (x) { return _pfVezLinha(x, 0); }).join('') + '</div>'
+    : '';
+
+  if (vez) {
+    // ── ramo 1: e MEU ──────────────────────────────────────────────────────
+    var o = vez.os;
+    var rotulo = pgpEscHtml(String(o.cliente || '—')) + (o.tipo_os ? ' · ' + pgpEscHtml(String(o.tipo_os)) : '');
+    var cont = vez.tipo === 'continuar';
+    var depois = c.minhas.filter(function (x) { return String(x.id_os) !== String(o.id_os); }).slice(0, 3);
+    var pz = _pfPrazoTxt(o);
+    html =
+      '<div class="pf-vez-kick">' + (cont ? 'CONTINUE' : 'A SUA VEZ') + '</div>'
+      + '<div class="pf-vez" data-vez-tipo="' + vez.tipo + '" data-os-id="' + pgpEscHtml(String(o.id_os)) + '">'
+      +   '<div class="cli">' + pgpEscHtml(String(o.cliente || '—')) + '</div>'
+      +   '<div class="maq">' + pgpEscHtml(maqDe(o) || String(o.tipo_os || '')) + '</div>'
+      +   '<div class="maq" style="font-size:13px;margin-top:6px">' + localDe(o) + (pz ? ' · 📅 ' + pgpEscHtml(pz) : '')
+      +     (o.responsavel_nome ? ' · 👤 ' + (String(o.responsavel_nome).trim().toLowerCase() === _pfMeuNome().toLowerCase() ? 'voce' : pgpEscHtml(String(o.responsavel_nome))) : '') + '</div>'
+      +   '<div class="hr"></div>'
+      +   '<div class="lb">ETAPA ATUAL</div>'
+      +   '<div class="tar">' + pgpEscHtml(String(o.estagio && o.estagio !== '—' ? o.estagio : (o.tipo_os || 'Abrir a OS'))) + '</div>'
+      +   '<div class="pq">' + (cont ? 'E a sua vez porque ' : 'E a sua vez porque ') + vez.motivo + '</div>'
+      +   '<button type="button" class="pf-vez-btn go" onclick="pfSelecionarOS(\'' + esc(String(o.id_os)) + '\',\'' + esc(rotulo) + '\')">'
+      +     (cont ? 'Continuar esta OS' : 'Abrir a OS') + '</button>'
+      +   '<button type="button" class="pf-vez-btn blk" onclick="pfAbrirBloqueio(\'' + esc(String(o.id_os)) + '\')">Nao consigo fazer</button>'
+      + '</div>'
+      + (depois.length
+          ? '<div class="pf-vez-dep"><div class="t">DEPOIS DESTA — TAMBEM SUAS</div>'
+            + depois.map(function (x, i) { return _pfVezLinha(x, i + 2); }).join('') + '</div>'
+          : '')
+      + secAguard + secTrav
+      + '<div class="pf-vez-aviso">A vez e o que foi <b>designado a voce</b> na reuniao ou pelo escritorio. '
+      + 'O que nao foi designado a ninguem aparece como sugestao quando voce estiver livre — e no Backlog, sempre.</div>';
+    el.innerHTML = html;
     return;
   }
 
-  var o = vez.os;
-  var id = _pfIdade(o);
-  var maq = Array.isArray(o.maquinas_vinculadas) ? o.maquinas_vinculadas.join(' · ') : String(o.maquinas_vinculadas || '');
-  var rotulo = pgpEscHtml(String(o.cliente || '—')) + (o.tipo_os ? ' · ' + pgpEscHtml(String(o.tipo_os)) : '');
-  var jaMinha = _pfEhMinha(o) && String(o.status || '').toLowerCase() === 'em_andamento';
-  var depois = fila.filter(function (x) { return String(x.id_os) !== String(o.id_os); }).slice(0, 3);
-  var travadas = lista.filter(_pfEhBloqueada).slice(0, 2);
+  // ── ramo 2: NADA meu ───────────────────────────────────────────────────
+  var s = c.sugestao[0];
+  html = '<div class="pf-vez-vazio" style="padding-bottom:14px"><div class="em">' + (s ? '🙋' : (c.travadas.length ? '🚧' : '✅')) + '</div>'
+    + '<div class="t">Nada designado a voce agora</div>'
+    + '<div class="s">Combine com o escritorio ou na reuniao da manha. '
+    + (s ? 'Enquanto isso, a fila sugere:' : (c.travadas.length ? 'Tudo o que ha esta travado esperando o escritorio.' : 'A fila da oficina esta vazia por enquanto.')) + '</div></div>';
 
-  el.innerHTML =
-    '<div class="pf-vez-kick">' + (jaMinha ? 'CONTINUE' : 'A SUA VEZ') + '</div>'
-    + '<div class="pf-vez">'
-    +   '<div class="cli">' + pgpEscHtml(String(o.cliente || '—')) + '</div>'
-    +   '<div class="maq">' + pgpEscHtml(maq || String(o.tipo_os || '')) + '</div>'
-    +   '<div class="hr"></div>'
-    +   '<div class="lb">ETAPA ATUAL</div>'
-    +   '<div class="tar">' + pgpEscHtml(String(o.estagio && o.estagio !== '—' ? o.estagio : (o.tipo_os || 'Abrir a OS'))) + '</div>'
-    +   '<div class="pq">' + (jaMinha ? 'E a sua vez porque ' : 'E a proxima da fila porque ') + vez.motivo + '</div>'
-    +   '<button type="button" class="pf-vez-btn go" onclick="pfSelecionarOS(\'' + String(o.id_os).replace(/'/g, "\\'") + '\',\'' + rotulo.replace(/'/g, "\\'") + '\')">'
-    +     (jaMinha ? 'Continuar esta OS' : 'Assumir e abrir') + '</button>'
-    +   '<button type="button" class="pf-vez-btn blk" onclick="pfAbrirBloqueio(\'' + String(o.id_os).replace(/'/g, "\\'") + '\')">Nao consigo fazer</button>'
-    + '</div>'
-    + (depois.length
-        ? '<div class="pf-vez-dep"><div class="t">DEPOIS DESTA</div>'
-          + depois.map(function (x, i) { return _pfVezLinha(x, i + 2); }).join('') + '</div>'
-        : '')
-    + (travadas.length
-        ? '<div class="pf-vez-dep"><div class="t">TRAVADAS — FORA DA FILA</div>'
-          + travadas.map(function (x) { return _pfVezLinha(x, 0); }).join('') + '</div>'
-        : '')
-    + '<div class="pf-vez-aviso">A fila decide; o que for duvidoso a reuniao resolve. '
-    + (id.real ? 'A ordem conta da <b>chegada da maquina na oficina</b>.'
-               : 'Hoje a ordem conta da <b>abertura da OS</b> — a chegada da maquina ainda nao chega ate esta tela.')
-    + '</div>';
+  if (s) {
+    var rot2 = pgpEscHtml(String(s.cliente || '—')) + (s.tipo_os ? ' · ' + pgpEscHtml(String(s.tipo_os)) : '');
+    var depois2 = c.sugestao.slice(1, 4);
+    html +=
+      '<div class="pf-vez-kick" style="color:#fbbf24">SUGESTAO DA FILA · NINGUEM DESIGNOU</div>'
+      + '<div class="pf-vez sug" data-vez-tipo="sugestao" data-os-id="' + pgpEscHtml(String(s.id_os)) + '">'
+      +   '<div class="cli">' + pgpEscHtml(String(s.cliente || '—')) + '</div>'
+      +   '<div class="maq">' + pgpEscHtml(maqDe(s) || String(s.tipo_os || '')) + '</div>'
+      +   '<div class="hr"></div>'
+      +   '<div class="lb">ETAPA ATUAL</div>'
+      +   '<div class="tar">' + pgpEscHtml(String(s.estagio && s.estagio !== '—' ? s.estagio : (s.tipo_os || 'Abrir a OS'))) + '</div>'
+      +   '<div class="pq">A fila sugere esta porque ' + _pfMotivoSugestao(s) + '</div>'
+      +   '<button type="button" class="pf-vez-btn go" onclick="pfSelecionarOS(\'' + esc(String(s.id_os)) + '\',\'' + esc(rot2) + '\')">Abrir e assumir uma tarefa</button>'
+      + '</div>'
+      + (depois2.length
+          ? '<div class="pf-vez-dep"><div class="t">DEPOIS DESTA — NA FILA</div>'
+            + depois2.map(function (x, i) { return _pfVezLinha(x, (typeof x.posicao_fila === 'number' && x.posicao_fila > 0) ? x.posicao_fila : i + 2); }).join('') + '</div>'
+          : '');
+  } else if (c.travadas.length) {
+    html += '<div class="pf-vez-dep"><div class="t">TRAVADAS — FORA DA FILA</div>'
+      + c.travadas.slice(0, 5).map(function (x) { return _pfVezLinha(x, 0); }).join('') + '</div>';
+  }
+  html += secAguard + secTrav
+    + '<div class="pf-vez-aviso">Sugestao <b>nao e designacao</b>: ela nao tem "nao consigo fazer" — se nao for pegar, e so nao pegar. '
+    + 'Ao abrir, o que reserva a tarefa para voce e o <b>🔒 Assumir tarefa</b> dentro da OS.</div>';
+  el.innerHTML = html;
 }
 
 // ── "Nao consigo fazer" ────────────────────────────────────────────────────
@@ -16198,27 +16390,46 @@ async function pfConfirmarBloqueio(motivoKey) {
   _pfBqGravar(osId, def.t);
   pfSetVista('vez');
   try { pfShowUnlockBanner('🚧 ' + def.t + ' — registrado. Proxima tarefa na tela.'); } catch (e) {}
-  // A tarefa alvo e a que estiver aberta e designada a mim nesta OS. Sem ela,
-  // o bloqueio fica local e o proximo abrir da OS mostra o estado real —
-  // NUNCA inventa uma tarefa para poder gravar.
+  // V98 — A tarefa alvo e a MINHA: designada a mim (`Usuario_Designado`, por
+  // id OU nome — o PCM grava nome) ou com o MEU lock. Sem tarefa minha, cai na
+  // primeira aberta SO se a OS e minha no cabecalho (designada_para_mim). Se a
+  // OS nao e minha, nao grava nada no servidor: o botao nem deveria existir, e
+  // o servidor (v127) recusaria de todo modo. NUNCA inventa uma tarefa.
   try {
     var tref = null;
+    var _oBq = (_pfOsList || []).find(function (x) { return String(x.id_os) === String(osId); }) || {};
+    var _idBq = _pfMeuId().toLowerCase(), _nomeBq = _pfMeuNome().toLowerCase();
+    var _ehMeu = function (v) { var s = String(v || '').trim().toLowerCase(); return !!s && (s === _idBq || s === _nomeBq); };
     try {
       var pipe = await pgpPostJson('getPipelineByOS', { os_id: osId }, 1, null, { timeoutMs: 20000 });
       var ts = (pipe && (pipe.tarefas || pipe.pipeline)) || [];
-      tref = ts.find(function (t) {
+      var abertas = ts.filter(function (t) {
         var st = String(t.status || t.Status || '').toLowerCase();
         return ['pendente', 'em_andamento', 'incompleto'].indexOf(st) >= 0;
       });
+      tref = abertas.find(function (t) { return _ehMeu(t.Lock_Por || t.lock_por); })
+          || abertas.find(function (t) { return _ehMeu(t.Usuario_Designado || t.usuario_designado); })
+          || null;
+      if (!tref && (_oBq.designada_para_mim === true || _oBq.minha_tarefa === true)) tref = abertas[0] || null;
     } catch (eP) { tref = null; }
     if (tref) {
-      await pgpPostJson('updateTarefaStatus', {
+      var rBq = await pgpPostJson('updateTarefaStatus', {
         os_id: osId,
         tarefa_id: tref.tarefa_id || tref.Tarefa_ID,
         status: 'com_pendencia',
         usuario: usuario,
         observacao: '🚧 ' + def.t + ' — registrado pelo tecnico no PCF em ' + new Date().toLocaleString('pt-BR')
       }, undefined, undefined, { timeoutMs: 30000 });
+      if (rBq && rBq.status === 'designada_outro') {
+        // o servidor sabe melhor: nao e minha. Desfaz o bloqueio local e avisa COM NOME.
+        try { var _m = _pfBqLocal(); delete _m[String(osId)]; localStorage.setItem('pf_bloqueios_v94', JSON.stringify(_m)); } catch (eU) {}
+        try { pfShowUnlockBanner('Esta OS e de ' + (rBq.designado_nome || 'outro tecnico') + ' — so quem foi designado pode marcar que nao consegue.', true); } catch (eB) {}
+        pfSetVista('vez');
+      }
+    } else if (!(_oBq.designada_para_mim === true || _oBq.minha_tarefa === true)) {
+      try { var _m2 = _pfBqLocal(); delete _m2[String(osId)]; localStorage.setItem('pf_bloqueios_v94', JSON.stringify(_m2)); } catch (eU2) {}
+      try { pfShowUnlockBanner('Esta OS nao esta designada a voce — nada foi registrado.', true); } catch (eB2) {}
+      pfSetVista('vez');
     }
   } catch (e) {
     try { pgpQueueRequest('updateTarefaStatus', { os_id: osId, status: 'com_pendencia', usuario: usuario,
@@ -16285,6 +16496,13 @@ function _pfAb(o) { var t = o.data_abertura ? new Date(o.data_abertura).getTime(
 function _pfOrdenarOS(lista) {
   var arr = lista.slice();
   function porFila(a, b) {
+    // V98 — quem tem posicao_fila (v127: internas, chegada fisica, so urgente
+    // fura) vem primeiro, na ordem do SERVIDOR; o "#N na fila" do card e a
+    // ordem da lista passam a ser o mesmo numero. Sem posicao (externas,
+    // inspecao, GAS antigo): a regra de sempre, prioridade desc + abertura.
+    var fa = (typeof a.posicao_fila === 'number' && a.posicao_fila > 0) ? a.posicao_fila : Infinity;
+    var fb = (typeof b.posicao_fila === 'number' && b.posicao_fila > 0) ? b.posicao_fila : Infinity;
+    if (fa !== fb) return fa - fb;
     var ra = _pfRank(a), rb = _pfRank(b);
     if (rb !== ra) return rb - ra;          // prioridade desc
     return _pfAb(a) - _pfAb(b);             // FIFO
@@ -16491,6 +16709,10 @@ function pfRenderOS() {
       linha3.push('<span class="pf-os-meta pf-os-exec">' + _ex + _mais + '</span>');
     }
 
+    // V98 — de quem e a OS, com NOME (v127: responsavel_nome). So quando nao e minha.
+    if (o.designada_a_outro === true && o.responsavel_nome) {
+      linha3.push('<span class="pf-os-meta pf-os-outro" title="Designada pelo escritorio">👤 ' + pfEscHtmlOS(String(o.responsavel_nome)) + '</span>');
+    }
     var progHtml = '';
     if (o.progresso && o.progresso.total) {
       var pct = Math.round((o.progresso.concluidas / o.progresso.total) * 100);
@@ -17101,6 +17323,26 @@ async function pfAssumirTarefa(tarefaId, btn) {
   try {
     var r = await pgpPostJson('assumirTarefa', { os_id: _pfOsId, tarefa_id: tarefaId, usuario: usuario },
                               1, null, { timeoutMs: 25000 });
+    // ── V98 · DESIGNADA A OUTRO: pergunta, com o nome, e so entao forca ────
+    // O v127 recusa com `designada_outro` quando a tarefa (ou a OS) tem dono e
+    // nao sou eu. Dois tecnicos na mesma OS continua possivel — mas e uma
+    // decisao consciente, nao um toque no card errado.
+    if (r && r.status === 'designada_outro') {
+      var _quem = r.designado_nome || 'outro tecnico';
+      var _okF = false;
+      try {
+        _okF = (typeof AppDialog !== 'undefined' && AppDialog && typeof AppDialog.confirm === 'function')
+          ? await AppDialog.confirm('Esta tarefa esta designada a ' + _quem + '. Assumir mesmo assim? (voces dois ficam na OS)',
+                                    { title: 'Designada a ' + _quem, okLabel: 'Assumir mesmo assim', cancelLabel: 'Deixar com ' + _quem })
+          : window.confirm('Esta tarefa esta designada a ' + _quem + '. Assumir mesmo assim?');
+      } catch (eC) { _okF = false; }
+      if (_okF) {
+        r = await pgpPostJson('assumirTarefa', { os_id: _pfOsId, tarefa_id: tarefaId, usuario: usuario, forcar: true },
+                              1, null, { timeoutMs: 25000 });
+      } else {
+        r = { status: 'error', error: 'Tarefa deixada com ' + _quem };
+      }
+    }
     clearTimeout(_wd);
     delete window._pfSincronizandoTarefas[tarefaId];
     if (r && r.status === 'locked') {
@@ -18683,7 +18925,7 @@ if(window._PGP_OS_ID && (function(){ try { return localStorage.getItem('proper_p
          toque. O bloco da fila abaixo NAO foi tocado.                    -->
     <div class="pf-vista" role="tablist" aria-label="Vista da tela de OS">
       <button type="button" id="pfVistaVez"  class="on" onclick="pfSetVista('vez')">Minha vez</button>
-      <button type="button" id="pfVistaFila" onclick="pfSetVista('fila')">Fila da oficina</button>
+      <button type="button" id="pfVistaFila" onclick="pfSetVista('fila')">Backlog</button>
     </div>
     <div id="pfVezPainel"></div>
     <div id="pfFilaBloco">
@@ -18701,7 +18943,7 @@ if(window._PGP_OS_ID && (function(){ try { return localStorage.getItem('proper_p
              autocomplete="off" name="pf_os_busca_nofill"
              data-lpignore="true" data-1p-ignore="true"
              aria-label="Buscar ordem de serviço">
-      <button type="button" id="pfBtnFiltrosOS" class="pf-os-filtros-btn" onclick="pfToggleFiltrosOS()" aria-label="Mais filtros">⚙</button>
+      <button type="button" id="pfBtnFiltrosOS" class="pf-os-filtros-btn" onclick="pfToggleFiltrosOS()" aria-label="Preparar o dia (baixar OS para usar sem sinal)" title="Preparar o dia">📥</button>
     </div>
     <!-- ══ 24/08 (P1) — ORDENAR ≠ FILTRAR ═══════════════════════════════════
          O chip dizia "👤 Minhas" ao lado de Fila e Prazo, com o mesmo desenho,
@@ -18711,15 +18953,32 @@ if(window._PGP_OS_ID && (function(){ try { return localStorage.getItem('proper_p
          diz "Minhas primeiro" e o filtro tem chip próprio, à vista, com rótulo
          que não deixa dúvida. Nenhuma função foi renomeada: os dois chips
          chamam pfSetOSSort/pfSetOSDesignFilter, que já existiam. -->
-    <div class="pf-os-filter pf-os-sort" aria-label="Ordenação da lista" style="margin-top:8px">
+    <!-- ══ V98 — OS FILTROS SAEM DA ENGRENAGEM ═════════════════════════════
+         "Fila da oficina" virou "Backlog" (a vista sempre foi o universo, externas
+         inclusive), e os dois grupos que viviam atras do ⚙ (local e status) sobem
+         para ca, com rotulo ORDENAR / MOSTRAR. O ⚙ vira 📥 e guarda so o
+         "Preparar o dia", que e acao. Nenhum id, data-* ou funcao mudou. -->
+    <div class="pf-os-rotulo">ORDENAR</div>
+    <div class="pf-os-filter pf-os-sort" aria-label="Ordenação da lista" style="margin-top:4px">
       <button type="button" class="pf-os-filter-chip pf-os-sort-chip active" data-sort="fila"   onclick="pfSetOSSort('fila')">🎫 Fila</button>
       <button type="button" class="pf-os-filter-chip pf-os-sort-chip"        data-sort="prazo"  onclick="pfSetOSSort('prazo')">📅 Prazo</button>
       <button type="button" class="pf-os-filter-chip pf-os-sort-chip"        data-sort="minhas" onclick="pfSetOSSort('minhas')">👤 Minhas primeiro</button>
     </div>
-    <div class="pf-os-filter" aria-label="Mostrar apenas as minhas" style="margin-top:8px">
+    <div class="pf-os-rotulo" style="margin-top:10px">MOSTRAR</div>
+    <div class="pf-os-filter" aria-label="Mostrar apenas as minhas" style="margin-top:4px">
       <button type="button" class="pf-os-filter-chip pf-os-design-filter-chip" data-design-filter="todas"  onclick="pfSetOSDesignFilter('todas')">Ver todas</button>
       <button type="button" class="pf-os-filter-chip pf-os-design-filter-chip" data-design-filter="minhas" onclick="pfSetOSDesignFilter('minhas')">👤 Só as minhas</button>
       <span class="pf-os-minhas-hint" id="pfOsMinhasHint"></span>
+    </div>
+    <div class="pf-os-filter" aria-label="Filtro de local de atendimento" style="margin-top:6px">
+      <button type="button" class="pf-os-filter-chip active" data-filter="todas" onclick="pfSetOSFilter('todas')">Todas</button>
+      <button type="button" class="pf-os-filter-chip" data-filter="externas" onclick="pfSetOSFilter('externas')">🚗 Externas</button>
+      <button type="button" class="pf-os-filter-chip" data-filter="internas" onclick="pfSetOSFilter('internas')">🏭 Internas</button>
+    </div>
+    <div class="pf-os-filter" aria-label="Filtro de status da OS" style="margin-top:6px">
+      <button type="button" class="pf-os-filter-chip pf-os-status-filter-chip active" data-status-filter="ativas" onclick="pfSetOSStatusFilter('ativas')">Ativas</button>
+      <button type="button" class="pf-os-filter-chip pf-os-status-filter-chip" data-status-filter="concluidas" onclick="pfSetOSStatusFilter('concluidas')">Concluídas</button>
+      <button type="button" class="pf-os-filter-chip pf-os-status-filter-chip" data-status-filter="todas" onclick="pfSetOSStatusFilter('todas')">Todas</button>
     </div>
 
     <div id="pfOsFiltrosExtra" style="display:none">
@@ -18730,16 +18989,7 @@ if(window._PGP_OS_ID && (function(){ try { return localStorage.getItem('proper_p
            coisa. A função `pfSetOSDesignFilter` e a classe
            `.pf-os-design-filter-chip` seguem existindo, intactas — o que mudou
            foi ONDE os chips moram. -->
-      <div class="pf-os-filter" aria-label="Filtro de local de atendimento" style="margin-top:8px">
-        <button type="button" class="pf-os-filter-chip active" data-filter="todas" onclick="pfSetOSFilter('todas')">Todas</button>
-        <button type="button" class="pf-os-filter-chip" data-filter="externas" onclick="pfSetOSFilter('externas')">Externas</button>
-        <button type="button" class="pf-os-filter-chip" data-filter="internas" onclick="pfSetOSFilter('internas')">Internas</button>
-      </div>
-      <div class="pf-os-filter" aria-label="Filtro de status da OS" style="margin-top:8px">
-        <button type="button" class="pf-os-filter-chip pf-os-status-filter-chip active" data-status-filter="ativas" onclick="pfSetOSStatusFilter('ativas')">Ativas</button>
-        <button type="button" class="pf-os-filter-chip pf-os-status-filter-chip" data-status-filter="concluidas" onclick="pfSetOSStatusFilter('concluidas')">Concluídas</button>
-        <button type="button" class="pf-os-filter-chip pf-os-status-filter-chip" data-status-filter="todas" onclick="pfSetOSStatusFilter('todas')">Todas</button>
-      </div>
+      <!-- V98: os chips de local e status SUBIRAM para a barra (ver acima). Aqui fica so a acao. -->
       <!-- V77 (G5): baixa pipeline + máquinas das OS ativas para uso offline -->
       <button id="pfBtnPrepararDia" onclick="pfPrepararODia(this)" style="width:100%;margin-top:10px;background:#0f766e;border:0;color:#ecfeff;padding:11px;border-radius:10px;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;cursor:pointer;letter-spacing:.03em">📥 Preparar o dia</button>
       <div style="font-size:11px;color:#64748b;text-align:center;margin-top:5px;line-height:1.4">Escolha as OS externas que você vai atender hoje e baixe as tarefas e máquinas delas para funcionarem sem sinal.</div>
