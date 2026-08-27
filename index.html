@@ -993,7 +993,7 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ProperCare Field · PGP Preventivas v35 · build PCF_V96</title>
+<title>ProperCare Field · PGP Preventivas v35 · build PCF_V97</title>
 <meta name="app-build" content="PCF_V96" data-date="2026-08-26">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
@@ -6679,20 +6679,122 @@ async function novaColeta() {
 // ── BACK GUARD (botão voltar mobile) ─────────────────
 let _allowLeave = false;
 
+// ════════════════════════════════════════════════════════════════════════════
+// V97 · O QUE O TÉCNICO PREENCHEU × O QUE A TELA JÁ NASCE CONTENDO
+// ════════════════════════════════════════════════════════════════════════════
+// 🔴 O DEFEITO (relatado pelo Fernando, 26/08): abrir a tela de coleta e sair
+//    SEM DIGITAR NADA disparava o guard de saída E o diálogo "Já existe uma
+//    coleta salva para esta mesma máquina". Com a tela em branco.
+//
+//    A causa estava na linha que varria `input, textarea, select` inteiros e
+//    devolvia true no primeiro valor não-vazio. Ela não distinguia dado do
+//    TÉCNICO de dado que a TELA JÁ NASCE CONTENDO — e o painel de máquina nasce
+//    com campos ocultos preenchidos:
+//        <input type="hidden" data-key="m0_perfil"    value="parafuso">
+//        <input type="hidden" data-key="..._contador" value="progressivo">
+//        <input type="hidden" data-key="m0_scenario"  value="PISTAO">
+//    (e, fora do painel, o `cfgUrlInput` com a URL do GAS, sempre preenchido).
+//    Ou seja: `temDadosPreenchidos()` respondia SIM desde o primeiro instante,
+//    em toda coleta, para sempre. O "já existe coleta" vinha em seguida porque a
+//    saída anterior — igualmente vazia — tinha salvado uma sessão com a MESMA
+//    assinatura de máquina.
+//
+// 🔑 A CORREÇÃO NÃO É EXCLUIR OS OCULTOS. É comparar com o ZERO desta tela.
+//    `_pgpBaseline` guarda a assinatura da tela **como ela nasceu**, e é
+//    RECAPTURADA a cada mudança no DOM enquanto o técnico não tiver encostado.
+//    No instante em que ele encosta, a recaptura para e a comparação passa a
+//    valer. Isso dispensa qualquer suposição de tempo: não importa se a máquina
+//    do catálogo chega em 50 ms ou em 3 s, o que ela preenche entra no zero.
+//
+// ⚠ A assinatura inclui o que NÃO é <input>: chips marcados, fotos com Ok/N.A.
+//   e botões de peça em N/A moram em CLASSE, não em valor. Assinatura que só
+//   lesse `.value` diria "nada preenchido" para uma inspeção inteira feita de
+//   toques — exatamente o erro oposto, e mais caro.
+let _pgpBaseline = null;
+let _pgpTocou = false;
+
+function pgpAssinaturaColeta() {
+  var partes = [];
+  document.querySelectorAll('[data-key]').forEach(function (el) {
+    if (!('value' in el)) return;
+    partes.push(el.getAttribute('data-key') + '=' + String(el.value == null ? '' : el.value));
+  });
+  // o que vive em classe, não em valor
+  try {
+    partes.push('#chk=' + document.querySelectorAll('.machine-panel .field-item.checked').length);
+    partes.push('#foto=' + document.querySelectorAll('.machine-panel .photo-item.photo-checked, .machine-panel .photo-item.photo-nd').length);
+    partes.push('#na=' + document.querySelectorAll('.btn-pt-na.active').length);
+  } catch (e) {}
+  return partes.join('\u0001');
+}
+
+function pgpRebaselineSeIntocado() {
+  if (_pgpTocou) return;                       // encostou: o zero está congelado
+  try { _pgpBaseline = pgpAssinaturaColeta(); } catch (e) { _pgpBaseline = null; }
+}
+
+function pgpIniciarSentinelaColeta() {
+  if (window._pgpSentinelaOn) return;
+  window._pgpSentinelaOn = true;
+  // 🔑 `isTrusted` separa o dedo do técnico de `.value = ...` feito por código:
+  //    atribuição programática não dispara evento nenhum, e evento sintético
+  //    chega com isTrusted=false. É o sinal mais honesto que o navegador dá.
+  ['input', 'change'].forEach(function (ev) {
+    document.addEventListener(ev, function (e) {
+      if (!e.isTrusted || !e.target) return;
+      if (e.target.closest && e.target.closest('.machine-panel')) _pgpTocou = true;
+    }, true);
+  });
+  document.addEventListener('click', function (e) {
+    if (!e.isTrusted || !e.target || !e.target.closest) return;
+    if (e.target.closest('.machine-panel')) _pgpTocou = true;
+  }, true);
+  // ⚠ Um clique só CONGELA o zero — não responde "tem dado". Expandir um item
+  //   é clique e não é preenchimento; a resposta continua vindo da comparação.
+  try {
+    var alvo = document.getElementById('machineContent') || document.body;
+    new MutationObserver(function () { pgpRebaselineSeIntocado(); })
+      .observe(alvo, { childList: true, subtree: true, attributes: true,
+                       attributeFilter: ['class', 'value'] });
+  } catch (e) {}
+  // 🔴 O OBSERVADOR NÃO BASTA — e isso a bancada provou. `el.value = 'X'` NÃO
+  //    altera o ATRIBUTO value do elemento: muda só a propriedade. Nenhuma
+  //    mutação é emitida. E é exatamente assim que a máquina do catálogo chega
+  //    à tela. Um zero que só o observador atualiza continuaria enxergando a
+  //    carga automática como digitação do técnico.
+  //    ⇒ o zero também é reconferido por relógio, e o relógio PARA no instante
+  //      em que o técnico encosta (não fica rodando pela sessão inteira).
+  var _tZero = setInterval(function () {
+    if (_pgpTocou) { clearInterval(_tZero); return; }
+    pgpRebaselineSeIntocado();
+  }, 500);
+  pgpRebaselineSeIntocado();
+}
+
 function temDadosPreenchidos() {
   // V68 — F-30: fotos capturadas também são "dados preenchidos". Antes, uma
   // coleta feita SÓ de fotos (nenhum input digitado ainda) não disparava nem o
   // back-guard nem o beforeunload: o técnico saía/recarregava sem aviso nenhum
   // e o photoStore (memória) ia junto.
   try { if (pgpContarFotosCapturadas() > 0) return true; } catch(e) {}
-  const inputs = document.querySelectorAll('input, textarea, select');
-  for (const el of inputs) {
-    if (el.value && el.value.trim() !== '') return true;
+  // V97 — a comparação com o zero desta tela (ver o bloco acima).
+  if (_pgpBaseline !== null) {
+    try { return pgpAssinaturaColeta() !== _pgpBaseline; } catch (e) { /* cai no plano B */ }
+  }
+  // Plano B (sentinela não ligou): a varredura antiga, mas SEM os ocultos e
+  // limitada aos campos da coleta. Não é tão boa quanto o zero — é honesta o
+  // bastante para não travar a saída de uma tela em branco.
+  var els = document.querySelectorAll('.machine-panel [data-key]');
+  for (var i = 0; i < els.length; i++) {
+    var el = els[i];
+    if (el.type === 'hidden') continue;
+    if (el.value && String(el.value).trim() !== '') return true;
   }
   return false;
 }
 
 function setupBackGuard() {
+  pgpIniciarSentinelaColeta();      // V97 — antes de qualquer guard consultar
   // Empurra um estado extra no histórico para capturar o "voltar"
   history.pushState({pgp: true}, '');
 
