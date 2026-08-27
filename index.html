@@ -1,3 +1,86 @@
+<!-- PCF V99 (27/08/2026) — O QUE A V98 PROMETEU E NÃO ENTREGOU, E O VOLTAR
+     QUE NÃO EXISTIA.
+     Feito EM CIMA da V98 (o `index.html` da pasta, carimbo conferido de dentro
+     do arquivo). 100% aditivo: nenhum id, função, action ou chip renomeado.
+     ⚠ ORDEM DE PUBLICAÇÃO: GAS v128 primeiro (item B depende dele); depois este
+       arquivo E o `sw.js` bumpado para `propertech-v100`, EM PAR — sem o sw o
+       aparelho serve a V98 do cache.
+     Bancada: _testes/NEWFILE_T_PCF_V99_volta.mjs (com --negativo).
+
+     A   🔴 O RECURSO PRINCIPAL DA V98 ERA CÓDIGO MORTO.
+         O v127 recusa com `{status:'designada_outro', designado_nome}` e a V98
+         escreveu DUAS telas para tratar isso — "Designada a Paulo Mayer,
+         assumir mesmo assim?" (`pfAssumirTarefa`) e o desfazer do bloqueio
+         local (`pfBloquear`). Só que `pgpPostJson` LANÇA para todo status
+         diferente de 'ok'. Os dois `if (r.status === 'designada_outro')` nunca
+         rodaram uma vez. Na prática: o técnico não tinha como assumir tarefa de
+         colega (`forcar:true` jamais foi enviado) e o "Não consigo fazer"
+         recusado caía no `catch`, que ENFILEIRAVA um `updateTarefaStatus` que o
+         servidor vai recusar para sempre — dead-letter silencioso.
+         Correção: `opts.aceitarStatus` (OPT-IN, 3 call sites). Sem a chave,
+         byte a byte a V98 — em especial o `pgpFlushPending`, que precisa
+         continuar tratando veredito de negócio como falha permanente.
+         🔑 A bancada da V98 mockava `assumirTarefa` direto no `AppDialog`:
+            nunca passou pelo `pgpPostJson` real, que era onde estava a parede.
+            É a mesma falha do V131 do PCM (`google_credential`) num disfarce
+            novo — bancada que mocka justamente a camada que precisava provar.
+
+     B   O CHIP "🔒 QUEM ESTÁ EXECUTANDO" NUNCA APARECEU NA LISTA DE OS.
+         `_pfEuExecuto` e o card leem `o.em_execucao`; o `_filaOficinaCalc_` do
+         GAS CALCULA `porOS[x].em_execucao` e o `_filaItem_` o expõe — mas o
+         bloco `com_fila` do `getOS` monta campo a campo e nunca copiou essa
+         chave. O próprio GAS avisa disso num comentário do v119. Uma linha no
+         GAS v128 (`oo.em_execucao`). Com o v127 no ar o app segue como na V98.
+
+     C   O BOTÃO VOLTAR DO ANDROID SAÍA DO APP EM VEZ DE VOLTAR UM PASSO.
+         O `popstate` só conhecia dois desfechos: abrir o aviso de sair (com
+         coleta preenchida) ou deixar sair. Com o pipeline aberto e nada
+         digitado — o caso mais comum — o botão físico fechava o PCF.
+         E havia um segundo defeito por baixo: `.back-guard` tinha `z-index:400`
+         com SEIS overlays acima (pfOverlay 500, assinatura 100000, fila/falta
+         100001, solicitação 100002). Com qualquer um deles aberto, o aviso
+         abria ESCONDIDO — o técnico apertava Voltar e não acontecia nada, de
+         novo, e de novo. Agora: `_pgpVoltarUmaCamada()` fecha a camada de cima
+         (uma por toque, na ordem do z-index), o pipeline volta para a lista, e
+         só quando não sobra camada o guard de coleta decide. z-index 100050.
+
+     D   TAREFA DA OS SEM CAMINHO DE VOLTA. `pgpMostrarVoltarParaOS` só era
+         chamada DEPOIS de `pgpEnviarPreventiva` responder OK — meia hora de
+         coleta sem volta — e na tarefa de INSPEÇÃO nunca era chamada (o
+         `pgpEnviarGS` não a chama). Agora o card nasce COM a tarefa, nos dois
+         tipos, com texto próprio de entrada (`momento='entrada'`, parâmetro
+         opcional: sem ele, byte a byte a V98). O carimbo no localStorage
+         continua só na saída — reabri-lo num reload diria "registrada" para
+         uma coleta que não foi enviada.
+
+     E   O 🔧 DO CABEÇALHO VOLTAVA DOIS PASSOS. `pfAbrir` forçava a LISTA de
+         todas as OS mesmo com `_pfOsId` preenchido: quem estava numa tarefa da
+         OS #X voltava para a lista e tinha de achar a #X de novo. Agora reabre
+         a OS em que se está (`pfAbrir(true)` força a lista, para quem quiser).
+
+     F   A ETAPA 2 DA BUSCA DE MÁQUINA FICAVA SEM SETA DENTRO DE UMA OS.
+         `pgpAtualizarModoOS` esconde todo `.pgp-so-avulso` — o que inclui o
+         "← Trocar cliente". A saída existia (o ✕ Cancelar do banner), em outro
+         lugar e com outro rótulo. Novo par `.pgp-so-emos`: um "← Voltar" que só
+         aparece dentro de uma OS, no mesmo lugar de sempre.
+
+     G   O PAINEL DE CONSULTA DE PEÇAS GANHA ✕ — era a única superfície do app
+         sem saída própria (fechava só re-tocando o 🔍 do cabeçalho).
+
+     H   🔴 MÁQUINA CADASTRADA EM CAMPO NASCIA SEM TIPO. O `saveMachine` do GAS
+         grava `m.type || m.tipoEquip`; `m.tipo` não é lido em NENHUMA das três
+         ramificações. O PCF só mandava `tipo` ⇒ `MAQUINAS.Tipo_Equip` sempre
+         vazio, inclusive o rótulo de perfil que a V69 assume por padrão. Sem
+         erro nenhum. Corrigido nos dois lados: `eq.type` aqui (é o mesmo objeto
+         que a fila offline reenvia) e leitura tolerante no GAS v128.
+
+     I   O CONTATO DO CLIENTE JÁ VIAJAVA DESDE O GAS v108 E O PCF NÃO LIA.
+         `getMaquinasByOS` anexa `cliente_contato/endereco/uf/filial`; o
+         `pgpClientDataDaOS` montava só 5 chaves e um comentário afirmava que o
+         GAS "não anexa a coluna Contato". Dentro de uma OS o campo ficava
+         vazio — e travado pelo V74, então nem dava para digitar — e o PDF do
+         cliente imprimia "Contato: —".
+-->
 <!-- PCF V98 (27/08/2026) — A DESIGNACAO DECIDE; A FILA SUGERE.
      100% ADITIVO E FRONT-ONLY sobre a V97: nenhum id, funcao, action ou chip
      existente foi renomeado ou removido. Par do GAS v127 (que traz os campos
@@ -1048,8 +1131,8 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ProperCare Field · PGP Preventivas v35 · build PCF_V98</title>
-<meta name="app-build" content="PCF_V98" data-date="2026-08-27">
+<title>ProperCare Field · PGP Preventivas v35 · build PCF_V99</title>
+<meta name="app-build" content="PCF_V99" data-date="2026-08-27">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -1477,7 +1560,11 @@ function pgpEnsureJsPDF() {
   .pgp-btn.done{background:var(--green);border-color:var(--green);color:white}
 
   /* back-guard overlay */
-  .back-guard{display:none;position:fixed;inset:0;background:rgba(10,20,50,.82);z-index:400;align-items:center;justify-content:center;padding:24px}
+  /* V99 — z-index 400 punha o aviso de sair DEBAIXO de seis overlays (o
+     pfOverlay é 500, o de assinatura 100000, os de fila/falta/solicitação
+     100001-2). Com qualquer um deles aberto, apertar Voltar não mostrava nada:
+     o aviso abria escondido e o técnico apertava de novo, e de novo. */
+  .back-guard{display:none;position:fixed;inset:0;background:rgba(10,20,50,.82);z-index:100050;align-items:center;justify-content:center;padding:24px}
   .back-guard.open{display:flex}
   .back-guard-box{background:white;border-radius:16px;padding:24px 20px;max-width:320px;width:100%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.3)}
   .back-guard-box h3{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;text-transform:uppercase;color:#c0392b;margin-bottom:8px}
@@ -2935,8 +3022,12 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
 
 <!-- PCF-5: Painel de consulta de peças -->
 <div id="catalogLookupPanel" style="display:none;background:white;border-bottom:2px solid var(--blue-mid);padding:10px 12px">
-  <div style="font-weight:700;font-size:12px;color:var(--blue);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">
-    🔍 Consulta de Peças — Catálogo Local
+  <div style="font-weight:700;font-size:12px;color:var(--blue);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:8px">
+    <span style="flex:1">🔍 Consulta de Peças — Catálogo Local</span>
+    <!-- V99: era o único painel do app sem saída própria (fechava só re-tocando
+         o 🔍 do cabeçalho, que o técnico não associa a "fechar"). -->
+    <button type="button" onclick="pgpToggleCatalogPanel()" aria-label="Fechar consulta"
+      style="background:none;border:0;font-size:18px;line-height:1;color:#64748b;padding:0 2px;cursor:pointer">✕</button>
   </div>
   <input type="text" id="catalogLookupInput"
     placeholder="Referência, nome da peça ou modelo..."
@@ -2995,6 +3086,15 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
     <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
       <button class="pgp-link-btn pgp-so-avulso" onclick="pgpBackToStep1()">
         ← Trocar cliente
+      </button>
+      <!-- V99: dentro de uma OS o `pgpAtualizarModoOS` esconde TODO
+           `.pgp-so-avulso` — inclusive o "← Trocar cliente" acima. A etapa 2
+           ficava sem NENHUMA seta de volta; a saída existia (o "✕ Cancelar" do
+           banner de OS), mas em outro lugar da tela e com outro rótulo. Este
+           botão é o par: só aparece dentro de uma OS, no mesmo lugar de sempre. -->
+      <button class="pgp-link-btn pgp-so-emos" id="pgpStep2VoltarOS" style="display:none"
+              onclick="pgpCancelarIncluirMaquina()">
+        ← Voltar
       </button>
     </div>
   </div>
@@ -6860,6 +6960,20 @@ function setupBackGuard() {
 
   window.addEventListener('popstate', function(e) {
     if (_allowLeave) return;
+    // ═════════════════════════════════════════════════════════════════════
+    // V99 · O VOLTAR DO ANDROID PASSA A FECHAR A CAMADA DE CIMA
+    //
+    // Até a V98 este handler só conhecia dois desfechos: abrir o aviso de sair
+    // (com coleta preenchida) ou DEIXAR SAIR DO APP. Com o pipeline de OS
+    // aberto e nada digitado — o caso mais comum do dia — o botão físico
+    // fechava o PCF inteiro. O técnico não tinha como voltar um passo: nem
+    // botão na tela em algumas telas, nem o botão do aparelho.
+    // 🔑 Uma camada por toque, do topo para o fundo. Só quando não sobra
+    //    camada nenhuma é que o guard de coleta volta a decidir.
+    if (_pgpVoltarUmaCamada()) {
+      history.pushState({pgp: true}, '');
+      return;
+    }
     if (temDadosPreenchidos()) {
       // Reempurra o estado para que o guard continue funcionando
       history.pushState({pgp: true}, '');
@@ -6876,6 +6990,55 @@ function setupBackGuard() {
       return '';
     }
   });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// V99 · A PILHA DE CAMADAS DO APP, DO TOPO PARA O FUNDO
+// Devolve true se FECHOU alguma coisa (e portanto o "voltar" foi consumido).
+// A ordem é a ordem visual (z-index): fecha o que está por cima primeiro.
+// ⚠ Toda entrada é `try`: uma tela que ainda não existe nesta build não pode
+//   derrubar o botão físico do aparelho.
+// ═══════════════════════════════════════════════════════════════════════════
+function _pgpVisivel(id) {
+  var el = document.getElementById(id);
+  if (!el) return false;
+  var d = (el.style && el.style.display) || '';
+  if (d === 'none') return false;
+  if (el.classList && (el.classList.contains('open') || el.classList.contains('show'))) return true;
+  return d !== '' || getComputedStyle(el).display !== 'none';
+}
+function _pgpVoltarUmaCamada() {
+  // o aviso de sair é ele próprio uma camada: o Voltar em cima dele é "ficar"
+  try {
+    var bg = document.getElementById('backGuard');
+    if (bg && bg.classList.contains('open')) { guardarFicar(); return true; }
+  } catch (e) {}
+  var camadas = [
+    ['pgpSolicOverlay',  function () { pgpFecharSolicitacao(); }],
+    ['pcfFaltaOverlay',  function () { pcfFecharFaltaPanel(); }],
+    ['pgpFilaOverlay',   function () { pgpFecharFilaPanel(); }],
+    ['pgpSignOverlay',   function () { var b = document.getElementById('pgpSignCancelBtn'); if (b) b.click(); }],
+    ['fotoPickerOverlay',function () { fotoPickerFechar(); }],
+    ['sessionsOverlay',  function () { fecharSessoes(); }],
+    ['modalOverlay',     function () { fecharModalBtn(); }],
+    ['cfgOverlay',       function () { fecharConfig(); }],
+    ['catalogLookupPanel', function () { pgpToggleCatalogPanel(); }]
+  ];
+  for (var i = 0; i < camadas.length; i++) {
+    try {
+      if (_pgpVisivel(camadas[i][0])) { camadas[i][1](); return true; }
+    } catch (e) {}
+  }
+  // o pipeline de OS: dentro de uma OS volta para a LISTA; na lista, fecha o
+  // overlay — mas nunca o `pfFechar()` que manda para o Hub sem avisar.
+  try {
+    if (_pgpVisivel('pfOverlay')) {
+      if (_pgpVisivel('pfScreenPipeline')) { pfVoltarOS(); return true; }
+      document.getElementById('pfOverlay').style.display = 'none';
+      return true;
+    }
+  } catch (e) {}
+  return false;
 }
 
 function guardarFicar() {
@@ -10160,6 +10323,32 @@ async function pgpPostJson(action, body, retries, onRetry, opts){ // V76 (F3b): 
   };
   if (opts && opts.timeoutMs) _o.__timeoutMs = opts.timeoutMs;
   const d = await _pgpFetchComRetry_(_pgpGsUrl, _o, retries, onRetry);
+  // ═══════════════════════════════════════════════════════════════════════
+  // V99 · 🔴 O RECURSO PRINCIPAL DA V98 ERA CÓDIGO MORTO
+  //
+  // O v127 recusa com `{status:'designada_outro', designado_nome}` — um
+  // VEREDITO DE NEGÓCIO que a V98 escreveu duas telas para tratar
+  // (`pfAssumirTarefa` ~17330, `pfBloquear` ~16423). Mas esta função lança
+  // para TODO status != 'ok': os dois `if (r.status === 'designada_outro')`
+  // nunca rodaram uma vez sequer. O técnico via só um banner e não tinha como
+  // assumir; `forcar:true` jamais foi enviado. No `pfBloquear` era pior — o
+  // throw caía no `catch`, que ENFILEIRAVA o `updateTarefaStatus` que o
+  // servidor vai recusar para sempre, e o item terminava em dead-letter
+  // ("⚠ Conferir: 1") sem que ninguém entendesse por quê.
+  //
+  // 🔑 Mesma família do `google_credential` (V131 do PCM) e do `_maqs` do
+  //    celular: o cano existia, a água nunca chegou. A bancada da V98 mockava
+  //    `assumirTarefa` devolvendo `designada_outro` DIRETO no `AppDialog` —
+  //    nunca passou pelo `pgpPostJson` real, que é onde estava a parede.
+  //
+  // ⚠ OPT-IN, não mudança global. `opts.aceitarStatus` é uma lista de status
+  //   que este chamador SABE tratar. Sem a chave, byte a byte o comportamento
+  //   da V98 — em especial o `pgpFlushPending`, que PRECISA continuar tratando
+  //   veredito de negócio como falha permanente (dead-letter) e não como ok.
+  if (d && d.status && opts && Array.isArray(opts.aceitarStatus) &&
+      opts.aceitarStatus.indexOf(d.status) >= 0) {
+    return d;
+  }
   if(!d || d.status!=='ok'){
     // V64 — resposta do servidor com veredito de negócio (locked/duplicate/erro de
     // validação) = falha PERMANENTE: reenviar em loop não resolve. Marca o erro para
@@ -12662,6 +12851,11 @@ function pgpAtualizarModoOS(){
     document.querySelectorAll('.pgp-so-avulso').forEach(function(el){
       el.style.display = emOS ? 'none' : '';
     });
+    // V99 — e o par: o que só existe DENTRO de uma OS (a seta de volta da
+    // etapa 2, que a linha acima apagava junto com a busca livre).
+    document.querySelectorAll('.pgp-so-emos').forEach(function(el){
+      el.style.display = emOS ? '' : 'none';
+    });
   }catch(_){}
   if(emOS){
     var w = document.getElementById('pgpLastClientsWrap');
@@ -12911,9 +13105,13 @@ function _v91EhSubsistema(eq) {
 // ⚠ Front-only: nenhuma requisição nova, nenhuma chave nova de payload.
 // ⚠ Preencher campo travado pelo V74 é legítimo — a trava é contra DIGITAÇÃO
 //   do técnico, não contra o cadastro; e os helpers só escrevem em campo VAZIO.
-// ⚠ `contato` não vem no envelope (o GAS não anexa a coluna Contato de
-//   CLIENTES). Ele é complementado pelo espelho local quando existir; se não,
-//   segue vazio — corrigir isso exigiria mudar o GAS, o que esta rodada não faz.
+// ⚠ V99 — ESTE COMENTÁRIO ESTAVA VELHO. O GAS anexa `cliente_contato`,
+//   `cliente_endereco`, `cliente_uf` e `cliente_filial` DESDE O v108
+//   (getMaquinasByOS, no bloco que busca o CLIENTES pelo id_cliente). O PCF
+//   nunca leu essas quatro: dentro de uma OS o campo Contato ficava vazio —
+//   e travado pelo V74, então nem dava para digitar — e o cabeçalho do PDF que
+//   vai ao cliente imprimia "Contato: —" com o dado na mão. Cano com água e
+//   torneira fechada.
 function pgpClientDataDaOS(osObj){
   try{
     var o = osObj || window._PGP_OS_OBJ || null;
@@ -12923,9 +13121,14 @@ function pgpClientDataDaOS(osObj){
       cnpj:     o.cliente_cnpj     || '',
       cidade:   o.cliente_cidade   || '',
       telefone: o.cliente_telefone || '',
-      email:    o.cliente_email    || ''
+      email:    o.cliente_email    || '',
+      // V99 — as chaves que o v108 já mandava. GAS antigo: vêm undefined e o
+      // resultado é byte a byte o da V98.
+      contato:  o.cliente_contato  || '',
+      uf:       o.cliente_uf       || '',
+      filial:   o.cliente_filial   || ''
     };
-    var tem = ['nome','cnpj','cidade','telefone','email'].some(function(k){
+    var tem = ['nome','cnpj','cidade','telefone','email','contato'].some(function(k){
       return String(cd[k] || '').trim() !== '';
     });
     return tem ? cd : null;
@@ -14142,20 +14345,34 @@ async function pgpEnviarPreventiva(midx=currentMachine, opts){
 // v28 — Preventiva↔Pipeline: banner fixo oferecendo voltar para o pipeline da OS depois de
 // registrar a preventiva. Fica sempre visível (não navega sozinho) porque o técnico pode
 // preferir continuar preenchendo outras máquinas da mesma OS antes de voltar.
-function pgpMostrarVoltarParaOS(){
+// V99 — `momento` OPCIONAL. Sem ele, byte a byte a V98 (o texto de "registrada").
+// 🔴 Por que o parâmetro existe: até a V98 este card só era pintado DEPOIS de
+//    `pgpEnviarPreventiva`/`pgpEnviarTodasPreventivas` responderem OK. Entre
+//    entrar na tarefa e enviar — meia hora de coleta — não havia caminho de
+//    volta ao pipeline. E na tarefa de INSPEÇÃO ele não aparecia NUNCA: o
+//    `pgpEnviarGS` (o envio da inspeção) jamais chamou esta função. O único
+//    escape era o 🔧 do cabeçalho, que caía na LISTA de OS.
+function pgpMostrarVoltarParaOS(momento){
   if(!window._PGP_OS_ID) return;
   var wrap = document.getElementById('pgpReturnToOSContainer');
   if(!wrap) return;
+  var _entrada = (momento === 'entrada');
   wrap.innerHTML =
     '<div class="pgp-return-os-card">' +
       '<div class="pgp-return-os-txt">' +
-        '<strong>✅ Preventiva registrada</strong>' +
-        '<small>Você pode revisar/editar. Ao terminar, volte para a OS.</small>' +
+        (_entrada
+          ? '<strong>🔧 Tarefa da OS ' + pgpEscHtml(String(window._PGP_OS_NUMERO || window._PGP_OS_ID || '')) + '</strong>' +
+            '<small>Colete normalmente. Para trocar de tarefa ou ver o pipeline, volte para a OS.</small>'
+          : '<strong>✅ Preventiva registrada</strong>' +
+            '<small>Você pode revisar/editar. Ao terminar, volte para a OS.</small>') +
       '</div>' +
       '<button type="button" onclick="pgpVoltarParaOS()">🔧 Voltar para OS</button>' +
     '</div>';
   wrap.style.display = 'block';
-  try { localStorage.setItem('proper_pcf_return_os_' + window._PGP_OS_ID, '1'); } catch(e){}
+  // ⚠ o carimbo no localStorage só é gravado DEPOIS de registrar: é ele que
+  //   reabre o card num reload, e reabri-lo por uma coleta ainda não enviada
+  //   diria ao técnico que algo foi registrado quando não foi.
+  if (!_entrada) { try { localStorage.setItem('proper_pcf_return_os_' + window._PGP_OS_ID, '1'); } catch(e){} }
 }
 
 function pgpVoltarParaOS(){
@@ -14240,6 +14457,15 @@ async function pgpRegisterNew(btnEl){
     tipo: (document.getElementById('nm_tipo') && document.getElementById('nm_tipo').value)
           || (PERFIS_EQUIP[pgpPerfilId(currentMachine)] || {}).rotulo || '',
   };
+  // 🔴 V99 — `saveMachine` do GAS grava `m.type || m.tipoEquip`; `m.tipo` não é
+  //    lido em NENHUMA das três ramificações (match, serial_unique, insert). O
+  //    PCF só mandava `tipo` ⇒ TODA máquina cadastrada em campo nascia com
+  //    `MAQUINAS.Tipo_Equip` VAZIO, inclusive o rótulo de perfil que a V69
+  //    passou a assumir por padrão. Sem erro nenhum: o campo só aparecia em
+  //    branco depois, no PCF e no PCM. O PCM manda `type` — é o nome canônico.
+  // ⚠ Aqui, e não só no POST: `eq` é o MESMO objeto que a fila offline
+  //   enfileira (`pgpAddPending('machine', eq)`), e a fila reenviaria o defeito.
+  eq.type = eq.tipo;
   // Salvar no localStorage do admin
   pgpUpdateAdminLocal({machine_id:eq.id,serial:eq.serial,tag:eq.tag,client:eq.client,branch:eq.branch,brand:eq.brand,model:eq.model,location:eq.location,hourTotal:eq.hourTotal,hpw:eq.hpw});
 
@@ -15849,9 +16075,34 @@ var _pfGsConnected = false;
 var _pfBannerTimeout = null;
 
 // ── Abertura / fechamento do overlay ─────────────────────────────────────────
-async function pfAbrir() {
+// V99 — `pfAbrir` é o 🔧 do cabeçalho. Ele SEMPRE forçava a lista de todas as
+// OS, mesmo com `_pfOsId` preenchido: quem estava numa tarefa da OS #X voltava
+// para a lista inteira e tinha de achar a #X e reabrir. Reabrir a OS em que se
+// está é voltar UM passo; cair na lista é voltar dois.
+async function pfAbrir(forcarLista) {
   var ov = document.getElementById('pfOverlay');
   ov.style.display = 'flex';
+  // 🔴 ACHADO DA AUDITORIA (27/08): a condição não podia ser só `_pfOsId`.
+  //    `pfFechar()` esconde o overlay e NÃO limpa `_pfOsId` (só `pfVoltarOS`
+  //    limpa) — então o 🔧 passaria a reabrir o pipeline da última OS mesmo
+  //    depois de o técnico ter FECHADO o overlay de propósito, para sempre.
+  //    O item E fala de quem está DENTRO DE UMA TAREFA da OS, e é exatamente
+  //    isso que `window._PGP_OS_ID` marca: só `pfAbrirForm` o escreve, com o
+  //    mesmo id. Fora desse caso, o caminho é o de sempre (a lista).
+  // ⚠ `_PGP_OS_ID` é o mesmo sinal que o `pgpOsIdSeguro` já usa para decidir
+  //   se o os_id acompanha o payload — não é um estado novo.
+  var _naTarefaDaOS = !!(_pfOsId && window._PGP_OS_ID &&
+                         String(window._PGP_OS_ID) === String(_pfOsId));
+  if (!forcarLista && _naTarefaDaOS && typeof pfSelecionarOS === 'function') {
+    try {
+      if (!_pfNotifInterval) {
+        _pfNotifInterval = setInterval(pollPfNotificacoes, 60000);
+        pollPfNotificacoes();
+      }
+      await pfSelecionarOS(_pfOsId, _pfOsNome || '');
+      return;
+    } catch (eR) { /* qualquer tropeço cai no caminho antigo, abaixo */ }
+  }
   // V79 (P2/K2) — preferência de ordenação sobrevive ao reload.
   try {
     var _sv = localStorage.getItem('pf_os_sort_v1');
@@ -16117,8 +16368,10 @@ function _pfEuExecuto(o) {
   var id = _pfMeuId().toLowerCase(), nome = _pfMeuNome().toLowerCase();
   if (!o || !Array.isArray(o.em_execucao)) return false;
   return o.em_execucao.some(function (x) {
+    // V99 — `por_nome` (v128) entra ao lado de `por`; sem ele, idêntico à V98.
     var p = String(x.por || '').trim().toLowerCase();
-    return p && (p === id || p === nome);
+    var q = String(x.por_nome || '').trim().toLowerCase();
+    return (p && (p === id || p === nome)) || (q && (q === id || q === nome));
   });
 }
 // a designacao a mim esta LIBERADA (camada atual) ou ainda espera uma etapa?
@@ -16419,7 +16672,7 @@ async function pfConfirmarBloqueio(motivoKey) {
         status: 'com_pendencia',
         usuario: usuario,
         observacao: '🚧 ' + def.t + ' — registrado pelo tecnico no PCF em ' + new Date().toLocaleString('pt-BR')
-      }, undefined, undefined, { timeoutMs: 30000 });
+      }, undefined, undefined, { timeoutMs: 30000, aceitarStatus: ['designada_outro'] });
       if (rBq && rBq.status === 'designada_outro') {
         // o servidor sabe melhor: nao e minha. Desfaz o bloqueio local e avisa COM NOME.
         try { var _m = _pfBqLocal(); delete _m[String(osId)]; localStorage.setItem('pf_bloqueios_v94', JSON.stringify(_m)); } catch (eU) {}
@@ -16701,8 +16954,14 @@ function pfRenderOS() {
       var _meu = (window.PROPER_SESSION && window.PROPER_SESSION.tecnico &&
                   window.PROPER_SESSION.tecnico.nome) || '';
       var _ex = o.em_execucao.slice(0, 2).map(function (x) {
-        var _eu = _meu && String(x.por) === String(_meu);
-        return (_eu ? '🔧 você' : '🔒 ' + pfEscHtmlOS(String(x.por))) +
+        // V99 — `por` é a célula `Lock_Por` CRUA e às vezes guarda o ID
+        //   ("TEC-001"), não o nome. O v128 passa a mandar `por_nome` resolvido
+        //   pelo tradutor id↔nome; sem ele o comportamento é o da V98.
+        //   🔑 O próprio `_pfEuExecuto` já compara contra id OU nome porque
+        //      sabia disso — só o texto na tela não sabia.
+        var _quem = x.por_nome || x.por;
+        var _eu = _meu && (String(x.por) === String(_meu) || String(_quem) === String(_meu));
+        return (_eu ? '🔧 você' : '🔒 ' + pfEscHtmlOS(String(_quem))) +
                ' — ' + pfEscHtmlOS(String(x.nome || 'tarefa'));
       }).join(' · ');
       var _mais = o.em_execucao.length > 2 ? ' +' + (o.em_execucao.length - 2) : '';
@@ -17322,7 +17581,7 @@ async function pfAssumirTarefa(tarefaId, btn) {
   }, 20000);
   try {
     var r = await pgpPostJson('assumirTarefa', { os_id: _pfOsId, tarefa_id: tarefaId, usuario: usuario },
-                              1, null, { timeoutMs: 25000 });
+                              1, null, { timeoutMs: 25000, aceitarStatus: ['designada_outro'] });
     // ── V98 · DESIGNADA A OUTRO: pergunta, com o nome, e so entao forca ────
     // O v127 recusa com `designada_outro` quando a tarefa (ou a OS) tem dono e
     // nao sou eu. Dois tecnicos na mesma OS continua possivel — mas e uma
@@ -17338,7 +17597,7 @@ async function pfAssumirTarefa(tarefaId, btn) {
       } catch (eC) { _okF = false; }
       if (_okF) {
         r = await pgpPostJson('assumirTarefa', { os_id: _pfOsId, tarefa_id: tarefaId, usuario: usuario, forcar: true },
-                              1, null, { timeoutMs: 25000 });
+                              1, null, { timeoutMs: 25000, aceitarStatus: ['designada_outro'] });
       } else {
         r = { status: 'error', error: 'Tarefa deixada com ' + _quem };
       }
@@ -18090,6 +18349,10 @@ async function pfAbrirForm(tarefaId, formUrl, btn) {
     window._PGP_PREVENTIVA_INICIO_ISO = inicioPreventivaISO;
     var _ovPf = document.getElementById('pfOverlay');
     if (_ovPf) _ovPf.style.display = 'none';
+    // V99 — o caminho de volta nasce COM a tarefa, não depois de enviá-la, e
+    // vale para inspeção tanto quanto para preventiva. (Ver o cabeçalho de
+    // pgpMostrarVoltarParaOS.)
+    try { pgpMostrarVoltarParaOS('entrada'); } catch(_) {}
     // ═══════════════════════════════════════════════════════════════════
     // V72 (P3) — decidir PREVENTIVA pelo TIPO DA TAREFA, não só pela URL.
     // Antes, uma tarefa auto:preventiva cujo Form_URL não trouxesse
