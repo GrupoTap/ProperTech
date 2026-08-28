@@ -9,7 +9,7 @@
  * O activate abaixo apaga qualquer cache antigo com prefixo 'propertech-'.
  */
 const CACHE_BASE = 'propertech-';
-const CACHE = CACHE_BASE + 'v100'; // v100 (27/08/2026) — PCF_V99: designada_outro deixa de ser codigo morto; o Voltar do Android volta um passo; tipo da maquina; contato da OS.
+const CACHE = CACHE_BASE + 'v101'; // v101 (28/08/2026) — PCF_V100: as portas que nasciam sem OS. ⚠ ESTE BUMP É O QUE ENTREGA O `manifest.webmanifest` NOVO: ele está no APP_SHELL abaixo, e sem chave nova o start_url velho (`?source=pwa`, sem modo) fica no cache do aparelho.
 // 🔴 ATENÇÃO À NUMERAÇÃO — ELA NÃO BATE COM A DO PCF, E ISSO É PROPOSITAL.
 //    Desde o conserto do desencontro de 16/08 o sw anda UM À FRENTE do arquivo:
 //        PCF_V90  ↔  propertech-v91   (deploy de 19/08)
@@ -21,7 +21,8 @@ const CACHE = CACHE_BASE + 'v100'; // v100 (27/08/2026) — PCF_V99: designada_o
 //        PCF_V96  ↔  propertech-v97   (deploy de 26/08)
 //        PCF_V97  ↔  propertech-v98   (deploy de 27/08)
 //        PCF_V98  ↔  propertech-v99   (deploy de 27/08)
-//        PCF_V99  ↔  propertech-v100  (este)
+//        PCF_V99  ↔  propertech-v100  (deploy de 27/08)
+//        PCF_V100 ↔  propertech-v101  (este)
 //    Quem "corrigir" isto para propertech-v91 achando que alinha as versões
 //    reintroduz o pior modo de falha deste arquivo: a chave ficaria IGUAL à do
 //    deploy anterior, o activate não apagaria nada, e o técnico continuaria

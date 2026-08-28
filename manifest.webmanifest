@@ -1,6 +1,6 @@
 {
   "id": "/ProperTech/",
-  "start_url": "/ProperTech/?source=pwa",
+  "start_url": "/ProperTech/?modo=pipeline&source=pwa",
   "scope": "/ProperTech/",
   "name": "ProperTech",
   "short_name": "ProperTech",

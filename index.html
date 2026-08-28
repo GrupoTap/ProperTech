@@ -1,3 +1,49 @@
+<!-- PCF V100 (28/08/2026) — AS PORTAS QUE NASCIAM SEM OS.
+     Feito EM CIMA da V99 (o `index.html` no ar, md5 conferido por clone do
+     GitHub). 100% aditivo: nenhum id, função, action ou chip renomeado.
+     ⚠ PUBLICAR EM TRIO: este arquivo + `sw.js` em `propertech-v101` +
+       `manifest.webmanifest` com o `start_url` novo. Sem o bump do sw o
+       aparelho serve a V99 do cache E o manifest velho, e a rodada inteira
+       não chega ao técnico.
+     Bancada: _testes/NEWFILE_T_PCF_V100_portas.mjs (com --negativo).
+
+     O CHAMADO (27/08, Fundição São Cristóvão / Copa 20HP / UT110749R): o mesmo
+     atendimento apareceu em TRÊS lugares na Gestão de Documentos — PGP-2026-0058
+     (só o PDF), INS-2026-0021 (1 arquivo) e 13 fotos + assinatura em
+     "Atendimentos sem OS". O fluxo correto, nas palavras do Fernando, é "o
+     técnico sair da oficina já com a OS aberta e preencher o PCF dentro da OS".
+
+     🔑 A CAUSA NÃO É UM BUG. É QUE ESTE ARQUIVO TINHA QUATRO PORTAS DE ENTRADA
+        E SÓ UMA NASCIA COM OS:
+          ?modo=pipeline    → única correta (carrega a OS)
+          ?modo=preventiva  → só troca o tipo de visita; nenhuma OS é aberta
+          sem query         → cai no default `_pgpTipoVisita = 'inspecao'`
+          ícone do PWA      → `start_url: /ProperTech/?source=pwa` ⇒ sem modo,
+                              sem os_id. É a porta que o técnico usa TODO DIA
+                              sem ter clicado em nada.
+
+     A2  AUSÊNCIA DE `modo` DEIXA DE SIGNIFICAR "TELA LIVRE".
+         Passa a significar `pipeline` — a lista de OS. O caminho avulso continua
+         existindo inteiro, mas agora alguém precisa PEDIR por ele
+         (`?modo=inspecao`, que o ProperHub v20 passa a mandar).
+         ⚠ Três guardas, e cada uma existe por um motivo lido no arquivo:
+           1. `os_id` na URL desliga o default. Um retorno de formulário chega
+              como `?os_id=…` SEM `modo` (está documentado no comentário da V81,
+              ~L7888) e é a tela de coleta daquela OS que ele quer, não o
+              pipeline. Sem esta guarda, todo form voltaria para o lugar errado.
+           2. Rascunho em andamento (`pgp_draft_v1`, < 48 h) desliga o default.
+              O técnico que fechou o app no meio de uma coleta tem que reabrir
+              EM CIMA dela — cobrir isso com o overlay do pipeline é a forma
+              mais rápida de fazer o campo odiar o app, e não fecha porta
+              nenhuma: o rascunho só existe porque ele já entrou por alguma.
+           3. `modo` desconhecido (typo, link velho, `modo=inspeção` com til)
+              cai em `pipeline`, não na tela livre. Lista branca explícita: um
+              valor que ninguém reconhece não pode virar a porta dos fundos.
+     ⚠ NÃO É ESTA RODADA: dar "casa" à preventiva avulsa (abrir OS automática do
+       campo). Resolveria o sintoma e pioraria a doença — furar o processo
+       ficaria barato E invisível. Fica no backlog, e só com carimbo de exceção
+       caindo no Kanban do Adm.
+-->
 <!-- PCF V99 (27/08/2026) — O QUE A V98 PROMETEU E NÃO ENTREGOU, E O VOLTAR
      QUE NÃO EXISTIA.
      Feito EM CIMA da V98 (o `index.html` da pasta, carimbo conferido de dentro
@@ -1131,8 +1177,8 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ProperCare Field · PGP Preventivas v35 · build PCF_V99</title>
-<meta name="app-build" content="PCF_V99" data-date="2026-08-27">
+<title>ProperCare Field · PGP Preventivas v35 · build PCF_V100</title>
+<meta name="app-build" content="PCF_V100" data-date="2026-08-28">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -3893,6 +3939,51 @@ function limparSessaoStorage() {
     // Ler parâmetro ?modo=preventiva da URL e ativar tipo de visita
     var urlParams = new URLSearchParams(window.location.search);
     var modoUrl = urlParams.get('modo');
+
+    // ══════════════════════════════════════════════════════════════════════
+    // V100 (A2 · 28/08) — SEM `modo` NA URL NÃO É MAIS "TELA LIVRE".
+    //
+    // Era o buraco do chamado de 27/08: o `start_url` do PWA
+    // (`/ProperTech/?source=pwa`), qualquer bookmark antigo e qualquer link nu
+    // caíam no default `_pgpTipoVisita = 'inspecao'` (~L9352 + 40 linhas) e o
+    // atendimento nascia SEM OS — fotos e assinatura em `_SEM_OS`, uma `INS-`
+    // aberta sozinha, e o PDF da preventiva numa terceira pasta.
+    //
+    // ⚠ AS TRÊS GUARDAS ABAIXO NÃO SÃO ZELO: cada uma protege um caminho REAL.
+    //   Tirar qualquer delas quebra algo que hoje funciona.
+    // ══════════════════════════════════════════════════════════════════════
+    var _MODOS_CONHECIDOS = { preventiva: 1, pistao: 1, pipeline: 1, inspecao: 1 };
+
+    // (1) `os_id` na URL = a OS já veio junto; isto NÃO é entrada sem OS.
+    //     O retorno dos formulários chega como `?os_id=…` sem `modo` — está
+    //     escrito no comentário da V81 em `pgpRestaurarRascunho` (~L7888):
+    //     "quando a entrada veio por ?os_id= sem ?modo= (checkHubSession nunca
+    //     o seta)". Forçar `pipeline` aqui jogaria o técnico no pipeline da OS
+    //     em vez da tela de coleta que ele acabou de terminar.
+    var _v100TemOsNaUrl = !!String(urlParams.get('os_id') || '').trim();
+
+    // (2) Rascunho em andamento manda mais que o default.
+    //     Quem fechou o app no meio de uma coleta precisa reabrir EM CIMA dela.
+    //     ⚠ A chave é escrita LITERAL de propósito: `DRAFT_KEY` só é declarada
+    //       ~3.500 linhas abaixo (~L7420) e este bloco roda no parse.
+    //     ⚠ Janela de 48 h: rascunho é apagado no envio (4 `removeItem` no
+    //       arquivo), então o que sobra é trabalho inacabado de verdade — mas
+    //       um rascunho esquecido em março não pode manter a porta aberta para
+    //       sempre.
+    var _v100TemRascunho = false;
+    try {
+      var _v100d = JSON.parse(localStorage.getItem('pgp_draft_v1') || 'null');
+      _v100TemRascunho = !!(_v100d && _v100d.ts && (Date.now() - Number(_v100d.ts)) < 48 * 3600 * 1000);
+    } catch (e100) { _v100TemRascunho = false; }
+
+    // (3) Valor desconhecido cai em `pipeline`, NUNCA na tela livre.
+    //     `modo=inspeção` (com til), `modo=insp`, um link truncado — tudo isso
+    //     hoje escorrega para a porta dos fundos sem uma palavra. Lista branca.
+    if (!_v100TemOsNaUrl && !_v100TemRascunho && !_MODOS_CONHECIDOS[String(modoUrl || '')]) {
+      modoUrl = 'pipeline';
+    }
+    window._V100_PORTA = { modo_url: urlParams.get('modo') || '', modo_efetivo: modoUrl || '',
+                           tinha_os: _v100TemOsNaUrl, tinha_rascunho: _v100TemRascunho };
     // v28 — Preventiva↔Pipeline: os_id presente na URL indica que o formulário foi aberto
     // a partir de uma tarefa do pipeline de uma OS (não é uma preventiva avulsa).
     window._PGP_OS_ID = urlParams.get('os_id') || null;
