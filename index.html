@@ -1177,8 +1177,8 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ProperCare Field · PGP Preventivas v35 · build PCF_V100</title>
-<meta name="app-build" content="PCF_V100" data-date="2026-08-28">
+<title>ProperCare Field · PGP Preventivas v35 · build PCF_V102</title>
+<meta name="app-build" content="PCF_V102" data-date="2026-09-01">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -3264,6 +3264,29 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
 
 <div class="content" id="machineContent"></div>
 
+<!-- ══════════════════════════════════════════════════════════════════════
+     V102 (item 6b, decisão do Fernando) — UM BOTÃO DE CONCLUSÃO.
+
+     Antes o fim da tela eram três botões soltos (💾 Salvar Coleta · 📄 Gerar
+     PDF · 🔧 Registrar Preventiva) sem ordem declarada, e o técnico tinha de
+     saber que precisava dos três — e em que sequência. Quem esquecia um saía
+     do cliente com coleta salva e sem laudo, ou com laudo e sem registro.
+
+     O botão faz as três, na ordem, dizendo em que pé está cada uma. Os botões
+     antigos CONTINUAM existindo, com os mesmos ids e as mesmas funções, dentro
+     de "Ações avançadas" — nada renomeado, nada removido (invariante).
+     ══════════════════════════════════════════════════════════════════════ -->
+<div class="actions" style="padding-top:6px">
+  <button class="btn" id="btnConcluirVisita" onclick="pgpConcluirVisita(this)"
+          style="flex:1;background:var(--green,#16a34a);color:#fff;border-color:var(--green,#16a34a);font-size:15px;font-weight:700;padding:14px">
+    ✅ Concluir visita
+  </button>
+</div>
+<div id="pgpEtapasStatus" style="font-size:12px;margin:4px 2px 0;line-height:1.5"></div>
+<div id="pgpRegistroLinha" style="display:none"></div>
+
+<details id="pgpAcoesAvancadas" style="margin-top:8px">
+  <summary style="cursor:pointer;font-size:12.5px;color:var(--text-light);padding:6px 2px">▸ Ações avançadas (salvar, PDF, registrar separado)</summary>
 <div class="actions">
   <button class="btn btn-reset" onclick="resetCurrent()">↺ Limpar</button>
   <button class="btn btn-done" id="btnDone" onclick="gerarResumo()">Gerar Resumo 📲</button>
@@ -3291,8 +3314,6 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
   Status: <span id="pgpGsStatusTextMain">verificando...</span>
 </div>
 
-<div id="pgpReturnToOSContainer" style="display:none"></div>
-
 <div id="pgpPrevActionsWrap" class="pgp-prev-actions" style="display:none">
   <button class="btn-preventiva" onclick="pgpEnviarTodasPreventivas()">
     🔧 Registrar Preventiva
@@ -3305,6 +3326,9 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
   </button>
   <div id="pgpAssinStatus" style="text-align:center;font-size:12px;color:var(--text-light);margin-top:4px"></div>
 </div>
+</details>
+
+<div id="pgpReturnToOSContainer" style="display:none"></div>
 
 <!-- OVERLAY DE ASSINATURA (montado 1x, reutilizado técnico/responsável) -->
 <div class="pgp-sign-overlay" id="pgpSignOverlay" aria-hidden="true">
@@ -4834,8 +4858,22 @@ function pgpReporColetaAoConectar(){
 
 function pgpRepintarFotosDoPainel(midx) {
   try {
+    // ══════════════════════════════════════════════════════════════════════
+    // V102 (item 4a) — A REPINTURA IGNORAVA AS THUMBS DA VISITA ANTERIOR.
+    // Este helper percorria só as chaves do `photoStore` (fotos DESTA coleta).
+    // As da visita anterior vivem em `_pfItensAnteriores` e são desenhadas pelo
+    // MESMO `renderPhotoThumbs` — mas uma chave que só tem foto ANTERIOR nunca
+    // entrava no laço. Como `selectScenario` e `pgpAplicarPerfil` recriam todos
+    // os `.photo-thumbs-mini` vazios, a ↩ sumia da tela e só voltava quando o
+    // técnico tirava uma foto nova naquele ponto (aí `renderPhotoThumbs` rodava
+    // para a chave e pintava as duas) — exatamente o sintoma relatado.
+    // ══════════════════════════════════════════════════════════════════════
     var byKey = photoStore[midx] || {};
-    Object.keys(byKey).forEach(function (pk) {
+    var _antes = (typeof _pfItensAnteriores === 'object' && _pfItensAnteriores) ? (_pfItensAnteriores[midx] || {}) : {};
+    var _todas = {};
+    Object.keys(byKey).forEach(function (k) { _todas[k] = 1; });
+    Object.keys(_antes).forEach(function (k) { _todas[k] = 1; });
+    Object.keys(_todas).forEach(function (pk) {
       try { renderPhotoThumbs(midx, pk); } catch (e) {}
       try { syncDoneButtonsForKey(midx, pk); } catch (e) {}
     });
@@ -4901,8 +4939,36 @@ function cssEscapeKey(key) {
 }
 
 // Remove uma foto específica do item e re-renderiza tudo
-function removePhotoDoStore(midx, photoKey, i) {
+async function removePhotoDoStore(midx, photoKey, i) {
   if (!photoStore[midx] || !photoStore[midx][photoKey]) return;
+  // ══════════════════════════════════════════════════════════════════════
+  // V102 — A FOTO QUE VEIO DO DRIVE VOLTAVA DEPOIS DE APAGADA.
+  // `pgpRestaurarFotosDaVisita` reidrata fotos JÁ ENVIADAS (origemDrive:true).
+  // O × só as tirava do `photoStore` em memória: na próxima abertura da OS a
+  // reidratação as trazia de volta e o técnico apagava a mesma foto de novo.
+  // Agora o × pergunta e desativa o anexo no servidor.
+  // ⚠ `attachmentId` só existe com o GAS v134 (o v133 não devolve a chave em
+  //   `getFotosDaVisita`); sem ele, a remoção segue LOCAL e a mensagem diz isso.
+  // ══════════════════════════════════════════════════════════════════════
+  try {
+    var _f = photoStore[midx][photoKey][i];
+    if (_f && _f.origemDrive) {
+      var _okDrive = false;
+      try {
+        _okDrive = await AppDialog.confirm(
+          'Esta foto já está no Drive desta OS.\n\n' +
+          (_f.attachmentId
+            ? 'Remover apaga o registro dela para todo mundo (o arquivo continua no Drive).'
+            : 'Este servidor ainda não sabe removê-la do registro: ela sai só deste aparelho e volta na próxima abertura.'),
+          { title:'Remover foto já enviada', okLabel:'Remover', cancelLabel:'Manter', danger:true });
+      } catch(e){ _okDrive = true; }
+      if (!_okDrive) return;
+      if (_f.attachmentId) {
+        try { await pgpPostJson('desativarAnexo', { attachment_id: _f.attachmentId }, 1); }
+        catch(e){ showNotification('🚫 Não consegui remover no servidor: ' + pgpMsgErro(e)); return; }
+      }
+    }
+  } catch(e){}
   photoStore[midx][photoKey].splice(i, 1);
   renderPhotoThumbs(midx, photoKey);
   syncDoneButtonsForKey(midx, photoKey);
@@ -5523,6 +5589,11 @@ function pgpRestoreLoadedParts(p, midx) {
         const tr = document.getElementById(`${pk}_tr`);
         if (tr) tr.classList.add('pt-na');
       }
+      // V102 (achado F) — o `togglePtNA` grava 'na' no hidden da ação; repor o
+      // botão sem o hidden deixava a pílula "N/A" apagada depois de qualquer
+      // reconstrução da tabela (`pgpRepintarPilulasDoPainel` lê o hidden).
+      const _hidNA = document.getElementById(`${pk}_acao`);
+      if (_hidNA && !String(_hidNA.value || '').trim()) _hidNA.value = 'na';
     }
     // V69 — perfil pistão: o "estado encontrado" viaja em sp.status
     const estEl = document.getElementById(`${pk}_estado`);
@@ -6104,6 +6175,26 @@ function addMachine() {
   // v8.5.4: copiar regime de trabalho da máquina 0 se preenchido
   copyRegimeFromFirst(idx);
   pgpAtualizarAcoesPorTipoVisita();
+  // ══════════════════════════════════════════════════════════════════════
+  // V102 (item 9b) — A ABA NOVA JÁ ABRE O BANCO DE MÁQUINAS DO CLIENTE.
+  //
+  // `copyClientDataSilent()` acima copia razão social, CNPJ e contato para os
+  // CAMPOS — mas o banner "Carregar máquina do banco" é global e voltava para
+  // "1. Selecione o cliente", vazio. Numa OS já existia o caminho certo
+  // (`pgpIncluirMaquinaDaOS`, que trava o cliente e lista as máquinas); fora de
+  // OS não existia nada e o técnico redigitava o cliente a cada máquina.
+  // ⚠ Dentro de OS NÃO duplicamos: quem manda lá continua sendo a barra
+  //   "➕ Incluir outra máquina de <cliente>".
+  // ══════════════════════════════════════════════════════════════════════
+  try {
+    if (!pgpEmOS()) {
+      var _cliNovo = (typeof pgpDriveClientName === 'function' ? pgpDriveClientName(0) : '') || vg(0, 'razao_social');
+      if (_cliNovo && _cliNovo !== '—') {
+        pgpBackToStep1();
+        pgpSelectClient(_cliNovo);
+      }
+    }
+  } catch(e) { console.warn('[PCF V102] abrir banco na aba nova:', e && e.message); }
 }
 
 function switchMachine(idx) {
@@ -6128,6 +6219,7 @@ function switchMachine(idx) {
   }
   updateProgress();
   checkDone();
+  try { pgpRegistroPintar(); } catch(e){}   // V102 (item 6a) — a linha é POR MÁQUINA
 }
 
 function renderTabs() {
@@ -7580,6 +7672,10 @@ function captureState() {
     return _c;
   })();
 
+  // V102 — as respostas "é similar / é outra peça" moram em memória (a tabela
+  // de peças é recriada o tempo todo); sem isto elas morriam a cada rascunho.
+  try { state.refResp = JSON.parse(JSON.stringify(_pgpRefResp || {})); } catch(e) { state.refResp = {}; }
+
   // FIX retomada (aditivo): guarda o ponto de trabalho para reabrir onde parou.
   try {
     state.osId = (typeof window._PGP_OS_ID !== 'undefined') ? window._PGP_OS_ID : null;
@@ -7693,6 +7789,12 @@ function restoreState(state) {
 
   // v23: restaurar fotos (miniaturas) e o estado "feito" dos botões vinculados
   restorePhotoStore(state.photoStore);
+
+  // V102 — respostas de referência divergente (similar / outra peça)
+  try {
+    _pgpRefResp = (state.refResp && typeof state.refResp === 'object') ? state.refResp : {};
+    Object.keys(_pgpRefResp).forEach(function(pk){ try { pgpChecarRefDivergente(pk); } catch(e){} });
+  } catch(e){}
 
   // Recalcular tudo após restore
   machines.forEach((_, i) => {
@@ -7926,6 +8028,58 @@ let _pgpDraftFotosPendentes = 0;
 
 // V88 (D7) — `btnEl` OPCIONAL no FIM. Mesmo raciocínio de restaurarSessao, e
 // aqui ainda soma a reidratação das fotos vindas do IndexedDB (multi-MB).
+// ══════════════════════════════════════════════════════════════════════════
+// V102 (item 9a) — A RETOMADA VIRA UMA FUNÇÃO SÓ, USADA PELOS DOIS CAMINHOS.
+//
+// `captureState` guarda `tipoVisita`, `osId`, `osCliente` e `currentMachine`
+// desde o "FIX retomada". O `restoreDraft` (banner "Continuar") aplicava os
+// quatro; o `restaurarSessao` (a 📁, "Restaurar coleta") NÃO aplicava NENHUM —
+// `restoreState` nem conhece esses campos. Por isso uma coleta salva em
+// PREVENTIVA reabria em INSPEÇÃO, no default `_pgpTipoVisita='inspecao'`.
+//
+// ⚠ As guardas do V72 (P3) e do V81 são preservadas byte a byte: dentro de uma
+//   OS, trocar o tipo continua exigindo confirmação humana.
+// ══════════════════════════════════════════════════════════════════════════
+async function pgpAplicarRetomada(estado){
+  if(!estado) return;
+  try {
+    if (estado.tipoVisita) {
+      const _esp = window._PGP_TIPO_ESPERADO;
+      if (_esp && estado.tipoVisita !== _esp) {
+        let okTipo = false;
+        try {
+          okTipo = await AppDialog.confirm(
+            'A coleta estava em ' + (_PGP_TIPO_NOME[estado.tipoVisita] || estado.tipoVisita) +
+            ', mas esta OS prevê ' + (_PGP_TIPO_NOME[_esp] || _esp) + '.\n\nQual manter?',
+            { title: 'Tipo de visita', okLabel: 'Usar o da coleta', cancelLabel: 'Manter ' + (_PGP_TIPO_NOME[_esp] || _esp) }
+          );
+        } catch(e) { okTipo = false; }
+        if (okTipo) pgpSetTipoVisita(estado.tipoVisita);
+      } else if (!_esp && pgpEmOS() && estado.tipoVisita !== _pgpTipoVisita) {
+        let okTipo2 = false;
+        try {
+          okTipo2 = await AppDialog.confirm(
+            'A coleta estava em ' + (_PGP_TIPO_NOME[estado.tipoVisita] || estado.tipoVisita) +
+            ', e a tela está em ' + (_PGP_TIPO_NOME[_pgpTipoVisita] || _pgpTipoVisita) + '.\n\nQual manter?',
+            { title: 'Tipo de visita', okLabel: 'Usar o da coleta', cancelLabel: 'Manter ' + (_PGP_TIPO_NOME[_pgpTipoVisita] || _pgpTipoVisita) }
+          );
+        } catch(e) { okTipo2 = false; }
+        if (okTipo2) pgpSetTipoVisita(estado.tipoVisita);
+      } else {
+        pgpSetTipoVisita(estado.tipoVisita);
+      }
+    }
+  } catch(e){}
+  try { if (estado.osId && !pgpEmOS()) { window._PGP_OS_ID = estado.osId; window._PGP_OS_CLIENTE = estado.osCliente || ''; } } catch(e){}
+  try { pgpAtualizarModoOS(); } catch(e){}
+  try {
+    if (typeof estado.currentMachine === 'number' && machines.length) {
+      switchMachine(Math.max(0, Math.min(estado.currentMachine, machines.length - 1)));
+    }
+  } catch(e){}
+  try { pgpRegistroPintar(); } catch(e){}
+}
+
 async function restoreDraft(btnEl) {
   const draft = getDraft();
   if (!draft) return;
@@ -7960,6 +8114,9 @@ async function restoreDraft(btnEl) {
   restoreState(draft);
   // FIX retomada (aditivo): volta ao ponto exato - tipo de visita, OS em curso,
   // fotos (via IndexedDB) e a maquina que estava aberta.
+  // V102 — o bloco abaixo virou `pgpAplicarRetomada`, compartilhado com o
+  // `restaurarSessao`. Mantido aqui INTACTO por segurança de comportamento; a
+  // função nova é chamada logo depois e é idempotente (só repõe o mesmo).
   try {
     if (draft.tipoVisita) {
       const _esp = window._PGP_TIPO_ESPERADO;
@@ -8080,6 +8237,17 @@ async function restaurarSessao(idx, btnEl) {
     machines = [{}];
     createPanel(0);
     restoreState(sessions[idx]);
+    // V102 (item 9a) — o que o `restoreState` não sabe repor: tipo de visita,
+    // OS em curso e a aba que estava aberta. Sem isto uma coleta salva em
+    // preventiva reabria em INSPEÇÃO, e o técnico só descobria ao registrar.
+    await pgpAplicarRetomada(sessions[idx]);
+    // as fotos de visitas anteriores desta máquina não passam por
+    // `pgpLoadMachine` neste caminho — pedir aqui é o que faz a ↩ aparecer.
+    try {
+      for (var _ri = 0; _ri < (machines || []).length; _ri++) {
+        if (typeof pfCarregarFotosItensMaquina === 'function') pfCarregarFotosItensMaquina(_ri);
+      }
+    } catch(eF) {}
     _editingSessionIndex = idx; // Rastreia que estamos editando a sessão no índice idx
     _currentSessionId = sessions[idx].sessionId || null;
   });
@@ -9432,7 +9600,7 @@ function pgpMachineKey(client, brand, model, serial){
 
 // ── AUTH ──────────────────────────────────────────────────────────────────
 const _AUTH_KEY  = 'proper_auth_ok';
-const _AUTH_HASH = 'fb9e6bd8b112a4a50eb30fbcedc7681fc29c331af4600584656ade9dace002da';
+const _AUTH_HASH = '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92';
 // ──────────────────────────────────────────────────────────────────────────
 
 const _DEFAULT_GAS_URL='https://script.google.com/macros/s/AKfycbz_qSb4Ib6VoZs4TE15EYp9qO5sSEhrjadY71yK0Sd4vqnu4msidsObXnQtkCGXpIqq/exec';
@@ -10480,6 +10648,14 @@ async function pgpFlushPending(){
       // chegue nesse teste em segundos, não em minutos.
       await pgpPostJson(item.action, item.body || {}, 1, null, { timeoutMs: 30000 });
       sent++;
+      // V102 (item 6a) — o item que estava "na fila" passa a dizer REGISTRADA.
+      // Sem isto o flush subia em silêncio e a tela continuava mostrando ⏳
+      // para sempre — foi exatamente o que fez o Fernando clicar de novo.
+      try {
+        if (item.action === 'savePreventiva' || item.action === 'saveVisit') {
+          pgpRegistroPorVisitId((item.body && item.body.visit_id) || '', 'ok');
+        }
+      } catch(eReg) {}
     }catch(e){
       // V64 — separa falha PERMANENTE (veredito do servidor: locked/duplicate/erro)
       // de falha transitória (rede). Permanente, ou estourou o teto de tentativas →
@@ -11963,6 +12139,12 @@ function pgpLoadMachine(eq,localDb,midx=currentMachine,clientData=null){
   sv('tag',eq.tag);             sv('horimetro',eq.hourTotal||'');
   if(eq.tipo){ pgpGarantirOpcaoTipo(idx, eq.tipo); sv('tipo', eq.tipo); }
   if(eq.potencia) sv('potencia',eq.potencia);
+  // V102 (item 2) — `Obs_Op` é gravado pelo `ensureMachineFromVisit` desde o
+  // v1.9 e chega aqui em `eq.obsOp` (rowToMachine) — e NUNCA era reposto. O
+  // técnico via "Observações operacionais" em branco numa máquina que já tinha
+  // as queixas do operador anotadas. É campo de CADASTRO: no MODO MERGE o `sv`
+  // já respeita o que o técnico tocou nesta sessão.
+  if(eq.obsOp) sv('obs_op', eq.obsOp);
   // V69 — o Tipo_Equip cadastrado decide o perfil do checklist DESTE painel
   // (pistão / parafuso). Roda aqui, antes da restauração das peças, porque
   // pgpAplicarPerfil re-renderiza a seção 4 inteira: os ids das peças do perfil
@@ -12058,10 +12240,29 @@ function pgpLoadMachine(eq,localDb,midx=currentMachine,clientData=null){
           nb.classList.add('active');nb.textContent='✕ N/A';
           const tr=document.getElementById(`${pk}_tr`);if(tr)tr.classList.add('pt-na');
         }
+        const _hidNA2=document.getElementById(`${pk}_acao`);   // V102 (achado F)
+        if(_hidNA2 && !String(_hidNA2.value||'').trim()) _hidNA2.value='na';
       }
     });
   }
 
+  // ══════════════════════════════════════════════════════════════════════
+  // V102 (item 5, a metade que FALTAVA) — A TABELA DE PEÇAS NASCE SOZINHA
+  // QUANDO O CADASTRO JÁ SABE O CENÁRIO.
+  //
+  // O pedido do Fernando é que o N/A e as referências "retornem ao abrir a
+  // máquina, seja em inspeção ou preventiva". O dado SEMPRE esteve gravado
+  // (medido: 138 de 549 linhas de MACHINE_PARTS com NA='SIM') — o que faltava
+  // era a TELA: a tabela de peças só existe depois de `selectScenario`, e sem
+  // ela não há onde pintar N/A nem referência.
+  //
+  // 🔑 O cenário não é adivinhado: sai do `Contador` que a própria máquina tem
+  //    gravado (progressivo ⇒ D, regressivo ⇒ E, valor sem sentido conhecido
+  //    ⇒ C). É leitura do cadastro, não invenção — e o técnico troca com um
+  //    toque, como sempre.
+  // ⚠ Só quando NÃO há cenário na tela: escolha do técnico nunca é atropelada.
+  // ══════════════════════════════════════════════════════════════════════
+  try { pgpAplicarCenarioDoCadastro(idx, eq); } catch(e){ console.warn('pgpAplicarCenarioDoCadastro:', e && e.message); }
   pgpReporEstadoFixoDoPerfil(idx); // V70.1 — o clear acima zerou os hiddens fixos do perfil
   pgpPartsDe(idx).forEach(pt => { try{ calcPartRow('m'+idx+'_'+pt.k, pt.intDefault); }catch(_){} });
   pgpRenderLoadedCard(idx);
@@ -12082,6 +12283,44 @@ function pgpLoadMachine(eq,localDb,midx=currentMachine,clientData=null){
     pgpHighlightMissingClientFields(idx);
     pgpMarkDynamicFieldsForUpdate(idx);
   }, 100);
+}
+
+// V102 (item 5) — deriva o cenário do que está gravado nas peças da máquina.
+// Devolve 'D' | 'E' | 'C' | '' (vazio = não dá para saber, o técnico escolhe).
+function pgpCenarioDoCadastro(eq, midx){
+  try {
+    if(!eq || !eq.parts) return '';
+    var idMap = pgpPartIdMapDe(midx) || {};
+    var prog = 0, regr = 0, comValor = 0;
+    (pgpPartsDe(midx) || []).forEach(function(pt){
+      var aid = idMap[pt.k]; if(!aid) return;
+      var sp = eq.parts[aid]; if(!sp) return;
+      var c = String(sp.contador || '').trim().toLowerCase();
+      var v = String(sp.valorMostrado === 0 ? '0' : (sp.valorMostrado || '')).trim();
+      if(c === 'progressivo') prog++;
+      else if(c === 'regressivo') regr++;
+      if(v !== '') comValor++;
+    });
+    if(prog && prog >= regr) return 'D';
+    if(regr) return 'E';
+    if(comValor) return 'C';
+  } catch(e){}
+  return '';
+}
+
+function pgpAplicarCenarioDoCadastro(midx, eq){
+  var idx = pgpGetMachineIndex(midx);
+  var p = 'm' + idx + '_';
+  var scEl = document.getElementById(p + 'scenario');
+  // já escolhido (pelo técnico, pelo rascunho ou pelo perfil pistão) ⇒ não toca
+  if(scEl && String(scEl.value || '').trim()) return false;
+  var alvo = pgpCenarioDoCadastro(eq, idx);
+  if(!alvo) return false;
+  if(typeof selectScenario !== 'function') return false;
+  selectScenario(p, alvo, idx, { stopPropagation: function(){} });
+  // `selectScenario` já chama `pgpRestoreLoadedParts` — o N/A e as referências
+  // do cadastro entram junto com a tabela.
+  return true;
 }
 
 function pgpClearMachine(){
@@ -12511,7 +12750,28 @@ async function pgpFetchMachinesByClient(client){
       pgpMachineCardNew(client);
     return;
   }
-  listEl.innerHTML=machines.map(m=>pgpMachineCardHtml(m)).join('')+pgpMachineCardNew(client);
+  // V102 (item 9b) — marca o que JÁ ESTÁ em outro painel desta coleta. Sem
+  // isso o técnico escolhe de novo a máquina que acabou de coletar e sobrescreve
+  // o painel (ou abre um duplicado) sem nenhum aviso.
+  var _jaNaColeta = {};
+  try {
+    for (var _pi = 0; _pi < (machines || []).length; _pi++) {
+      var _eqP = pgpGetLoadedMachineForIndex(_pi);
+      if (!_eqP) continue;
+      var _kP = pgpMachineIdentityKey(_eqP);
+      if (_kP) _jaNaColeta[_kP] = _pi + 1;
+    }
+  } catch(e){}
+  listEl.innerHTML=machines.map(function(m){
+    var html = pgpMachineCardHtml(m);
+    var k = pgpMachineIdentityKey(m);
+    var n = k ? _jaNaColeta[k] : 0;
+    if (n) {
+      html = html.replace('</div>\n  </div>',
+        '</div><div style="font-size:11px;color:var(--green,#16a34a);font-weight:600;margin-top:2px">✓ já nesta coleta (Máq. ' + n + ')</div>\n  </div>');
+    }
+    return html;
+  }).join('')+pgpMachineCardNew(client);
 }
 
 function pgpMachineCardHtml(m){
@@ -13052,8 +13312,18 @@ async function pgpIniciarPreventivaDeOS(osId){
       return;
     }
   }catch(_){}
-  window._PGP_TIPO_ESPERADO = 'preventiva';        // V72 (P3)
-  pgpSetTipoVisita('preventiva');
+  // ═══════════════════════════════════════════════════════════════════════
+  // V101 — O TIPO JÁ DECLARADO MANDA, TAMBÉM NO CAMINHO PRINCIPAL.
+  // Esta função é o ÚNICO lugar do PCF que lê `getMaquinasByOS` e abre um
+  // painel por máquina vinculada. O nome diz "Preventiva" por herança do
+  // v28 e NÃO é renomeado (invariante: nunca renomear função) — quem decide
+  // o TIPO é o `pfAbrirForm`, pelo Tipo da tarefa.
+  // ⚠ O guard de reentrada logo acima já fazia exatamente isto desde o V81.
+  //   A assimetria estava aqui: o caminho principal desfazia a decisão.
+  // ═══════════════════════════════════════════════════════════════════════
+  var _v101Insp = (window._PGP_TIPO_ESPERADO === 'inspecao');
+  window._PGP_TIPO_ESPERADO = _v101Insp ? 'inspecao' : 'preventiva';  // V72 (P3) · V101
+  pgpSetTipoVisita(_v101Insp ? 'inspecao' : 'preventiva');
   try{ pgpAtualizarModoOS(); }catch(_){}           // V72 (P2)
 
   // v47 — Fix F (P0 contaminação cruzada): mesmo padrão de novaColeta() — garante que
@@ -13610,6 +13880,8 @@ async function pgpRestaurarFotosDaVisita(midx, eq){
       if(arr.length >= MAX_FOTOS_POR_ITEM) return;
       arr.push({ label: f.caption || '', dataUrl: f.dataUrl, w: 0, h: 0,
                  driveStatus: 'ok', origemDrive: true, fileId: fid,
+                 // V102 — a chave que o `desativarAnexo` exige (GAS v134)
+                 attachmentId: String(f.attachment_id || ''),
                  fileName: fn, thumbOnly: !!f.thumb });
       chavesRepostas[f.photo_key] = 1;
       novas++;
@@ -13769,6 +14041,91 @@ function pgpSubirAssinaturasDaVisita(payload, midx){
 
 // ── ETAPA 5 — REGISTRAR PREVENTIVA ───────────────────────────────────────────
 
+// ══════════════════════════════════════════════════════════════════════════
+// V102 (decisão do Fernando, 01/09) — A REFERÊNCIA DIFERENTE VIRA PERGUNTA.
+//
+// Quando o técnico digita uma referência diferente da que está cadastrada, o
+// app pergunta se é a MESMA peça (similar) ou OUTRA. Respondendo "similar", o
+// par vai para o catálogo de similares pelo GAS v134.
+//
+// 🔑 A resposta mora em MEMÓRIA (`_pgpRefResp`), não no DOM: `selectScenario` e
+//    `pgpAplicarPerfil` recriam a tabela de peças inteira, e um hidden morreria
+//    junto — exatamente o que aconteceu com as pílulas de ação até o V95 (A3).
+//    Ela viaja no rascunho (captureState/restoreState) e no payload das peças.
+// ⚠ NÃO BLOQUEIA nada: sem resposta, o servidor v134 só preenche referência
+//   VAZIA e nunca sobrescreve — o silêncio é conservador de propósito.
+// ══════════════════════════════════════════════════════════════════════════
+var _pgpRefResp = {};        // { 'm0_p1': 'similar' | 'outra' }
+
+function pgpRefCadastrada(midx, partK){
+  try {
+    var eq = pgpGetLoadedMachineForIndex(midx);
+    var aid = (pgpPartIdMapDe(midx) || {})[partK];
+    if(!eq || !eq.parts || !aid) return '';
+    var sp = eq.parts[aid];
+    return sp ? String(sp.ref || '').trim() : '';
+  } catch(e){ return ''; }
+}
+
+function pgpRefNorm(s){ return String(s == null ? '' : s).trim().toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+
+// Desenha (ou apaga) a pergunta logo abaixo do campo de referência.
+function pgpChecarRefDivergente(pk){
+  try {
+    var el = document.getElementById(pk + '_ref');
+    if(!el) return;
+    var m = String(pk).match(/^m(\d+)_(.+)$/);
+    if(!m) return;
+    var midx = parseInt(m[1], 10), partK = m[2];
+    var lida = String(el.value || '').trim();
+    var cad  = pgpRefCadastrada(midx, partK);
+    var box  = document.getElementById(pk + '_refq');
+    var diverge = !!lida && !!cad && pgpRefNorm(lida) !== pgpRefNorm(cad);
+    if(!diverge){
+      if(box) box.remove();
+      delete _pgpRefResp[pk];
+      return;
+    }
+    if(!box){
+      box = document.createElement('div');
+      box.id = pk + '_refq';
+      box.style.cssText = 'margin:4px 0 2px;padding:6px 8px;border-radius:6px;' +
+        'background:rgba(245,130,32,.10);border:1px solid rgba(245,130,32,.45);font-size:12px;line-height:1.35';
+      el.insertAdjacentElement('afterend', box);
+    }
+    var resp = _pgpRefResp[pk] || '';
+    if(resp){
+      box.innerHTML = '<span style="color:var(--green,#16a34a);font-weight:600">' +
+        (resp === 'similar' ? '✅ Marcada como SIMILAR de ' : '✅ Registrada como OUTRA peça (cadastrada: ') +
+        pgpEscHtml(cad) + (resp === 'similar' ? '' : ')') + '</span>' +
+        ' <button type="button" style="font-size:11px;padding:2px 6px;margin-left:4px" ' +
+        'onclick="event.stopPropagation();pgpResponderRef(\'' + pk + '\',\'\')">desfazer</button>';
+      return;
+    }
+    box.innerHTML =
+      '<div style="margin-bottom:4px">⚠ No cadastro desta máquina está <b>' + pgpEscHtml(cad) +
+      '</b>. A que você leu é a <b>mesma peça</b>?</div>' +
+      '<button type="button" style="font-size:12px;padding:3px 9px;margin-right:6px" ' +
+      'onclick="event.stopPropagation();pgpResponderRef(\'' + pk + '\',\'similar\')">É similar</button>' +
+      '<button type="button" style="font-size:12px;padding:3px 9px" ' +
+      'onclick="event.stopPropagation();pgpResponderRef(\'' + pk + '\',\'outra\')">É outra peça</button>';
+  } catch(e){ console.warn('pgpChecarRefDivergente:', e && e.message); }
+}
+
+function pgpResponderRef(pk, resp){
+  if(resp) _pgpRefResp[pk] = resp; else delete _pgpRefResp[pk];
+  try { pgpChecarRefDivergente(pk); } catch(e){}
+  try { autoSaveDraft(); } catch(e){}
+}
+
+// Delegação: qualquer campo `<pk>_ref` que mude dispara a checagem.
+document.addEventListener('change', function(e){
+  try {
+    var id = e.target && e.target.id;
+    if(id && /_ref$/.test(id)) pgpChecarRefDivergente(id.slice(0, -4));
+  } catch(_){}
+}, true);
+
 function pgpSetAcao(pk, acao){
   // Atualizar input hidden (lido por pgpBuildPreventivaPayload)
   const hidden=document.getElementById(pk+'_acao');
@@ -13794,6 +14151,92 @@ function pgpNowHHMMLocal(){
   var d = new Date();
   return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
 }
+// ══════════════════════════════════════════════════════════════════════════
+// V102 (item 6b) — CONCLUIR VISITA: as três ações, na ordem, com veredito.
+//
+// ⚠ NÃO reimplementa nada: chama as MESMAS funções dos botões antigos. Se uma
+//   delas mudar, esta muda junto — não há segunda verdade.
+// ⚠ Cada etapa diz o que aconteceu. "Registrada" só aparece quando o registro
+//   (P7) confirma um desfecho positivo — nunca por ter chamado a função.
+// ⚠ O PDF fica por último de propósito: ele já cuida das assinaturas na
+//   preventiva e precisa da coleta já registrada para casar OS/pasta.
+// ══════════════════════════════════════════════════════════════════════════
+var _pgpConcluirBusy = false;
+
+function pgpEtapaPintar(etapas){
+  var box = document.getElementById('pgpEtapasStatus');
+  if(!box) return;
+  box.innerHTML = etapas.map(function(e){
+    var ic = e.st === 'ok' ? '✓' : (e.st === 'erro' ? '✗' : (e.st === 'indo' ? '⏳' : '·'));
+    var cor = e.st === 'ok' ? 'var(--green,#16a34a)' : (e.st === 'erro' ? '#dc2626' : (e.st === 'indo' ? 'var(--orange,#f58220)' : 'var(--text-light)'));
+    return '<div style="color:' + cor + '">' + ic + ' ' + pgpEscHtml(e.rot) +
+           (e.msg ? ' <span style="opacity:.8">— ' + pgpEscHtml(e.msg) + '</span>' : '') + '</div>';
+  }).join('');
+}
+
+async function pgpConcluirVisita(btn){
+  if(_pgpConcluirBusy) return;
+  _pgpConcluirBusy = true;
+  if(btn){ btn.disabled = true; btn.classList.add('is-busy'); }
+  var ehPrev = (_pgpTipoVisita === 'preventiva');
+  var etapas = [
+    { k:'salvar',    rot:'Salvar a coleta no aparelho', st:'' },
+    { k:'registrar', rot: ehPrev ? 'Registrar a preventiva' : 'Enviar a inspeção', st:'' },
+    { k:'pdf',       rot:'Gerar o PDF' + (ehPrev ? ' (com assinaturas)' : ''), st:'' }
+  ];
+  var falhou = false;
+  try {
+    // 1 · salvar (silencioso: o AppDialog do botão antigo atrapalharia a fila)
+    etapas[0].st = 'indo'; pgpEtapaPintar(etapas);
+    try {
+      if(!temDadosPreenchidos()){
+        etapas[0].st = 'erro'; etapas[0].msg = 'nada preenchido nesta tela'; falhou = true;
+      } else {
+        var _sv = await saveCurrentSession();
+        if(_sv === false){ etapas[0].st = 'erro'; etapas[0].msg = 'você cancelou a sobrescrita'; falhou = true; }
+        else etapas[0].st = 'ok';
+      }
+    } catch(e){ etapas[0].st = 'erro'; etapas[0].msg = pgpMsgErro(e); falhou = true; }
+    pgpEtapaPintar(etapas);
+    if(falhou){ return; }
+
+    // 2 · registrar
+    etapas[1].st = 'indo'; pgpEtapaPintar(etapas);
+    var antes = pgpRegistroDaMaquinaAtiva();
+    try {
+      if(ehPrev) await pgpEnviarTodasPreventivas();
+      else await pgpEnviarGS(null);
+    } catch(e){ etapas[1].msg = pgpMsgErro(e); }
+    var depois = pgpRegistroDaMaquinaAtiva();
+    if(depois && (!antes || depois.quando !== antes.quando)){
+      etapas[1].st = 'ok';
+      etapas[1].msg = depois.estado === 'fila' ? 'na fila — sobe ao conectar'
+                    : (depois.estado === 'duplicado' ? 'já estava registrada' : '');
+    } else {
+      // 🔑 sem desfecho positivo NÃO se diz "registrada" (regra V68/F-18a)
+      etapas[1].st = 'erro';
+      etapas[1].msg = etapas[1].msg || 'não confirmado — veja o aviso na tela';
+      falhou = true;
+    }
+    pgpEtapaPintar(etapas);
+    if(falhou){ return; }
+
+    // 3 · PDF
+    etapas[2].st = 'indo'; pgpEtapaPintar(etapas);
+    try { await gerarPDF(null); etapas[2].st = 'ok'; }
+    catch(e){ etapas[2].st = 'erro'; etapas[2].msg = pgpMsgErro(e); falhou = true; }
+    pgpEtapaPintar(etapas);
+  } finally {
+    _pgpConcluirBusy = false;
+    if(btn){ btn.disabled = false; btn.classList.remove('is-busy'); }
+    try { pgpRegistroPintar(); } catch(e){}
+    if(!falhou){
+      try { showNotification('✅ Visita concluída — coleta salva, registrada e PDF gerado.'); } catch(e){}
+      if(window._PGP_OS_ID){ try { pgpMostrarVoltarParaOS(); } catch(e){} }
+    }
+  }
+}
+
 function pgpAtualizarAcoesPorTipoVisita(){
   var isPrev = (_pgpTipoVisita === 'preventiva');
   var btnResumo = document.getElementById('btnDone');
@@ -13927,6 +14370,8 @@ function pgpBuildPreventivaPayload(midx=currentMachine){
         name:(pgpPartNameMapDe(idx)[pt.k])||pt.label||pt.k,
         acao:acaoFinal,
         na:isNA,
+        _na_lido:true,                        // V102 (item 5)
+        ref_resposta:_pgpRefResp[pk] || '',   // V102 (decisão D1)
         ref:_refP,
         refAnterior,
         interval:_diasP,
@@ -13977,6 +14422,8 @@ function pgpBuildPreventivaPayload(midx=currentMachine){
       name:(base.parts[aid]?.name)||pt.k,  // eslint-disable-line
       acao:acaoFinal,
       na:isNA, // V66: o boolean nunca viajava — o GAS gravava NA='NÃO' p/ peça marcada N/A
+      _na_lido:true,                        // V102 (item 5)
+      ref_resposta:_pgpRefResp[pk] || '',   // V102 (decisão D1)
       ref:refEl?.value.trim()||'',
       refAnterior,
       interval,
@@ -14087,6 +14534,110 @@ function pgpBuildPreventivaPayload(midx=currentMachine){
     parts
   };
 }
+
+// ══════════════════════════════════════════════════════════════════════════
+// V102 (item 6a) — O REGISTRO DEIXA DE SER UM AVISO DE 2,5 SEGUNDOS.
+//
+// Chamado do Fernando (01/09): "cliquei pra registrar a preventiva e precisei
+// minimizar a tela; quando voltei já havia sido registrada, mas o PCF não
+// deixa nenhum aviso disso — tive que clicar de novo para ter certeza."
+//
+// O que existia: `showNotification`, que o `setTimeout` apaga em 2.500 ms. Se
+// o aparelho suspendeu o JS durante o `fetch`, o toque voltava como falha, o
+// item ia para a fila e o `pgpFlushPending` subia depois SEM PINTAR NADA (o
+// servidor responde `duplicate:true` porque a 1ª tentativa já gravou).
+//
+// 🔑 Registro é ESTADO, não evento (a regra do V156, do outro lado). Fica em
+//    `localStorage` por máquina+tipo, sobrevive a fechar o app, e é repintado
+//    quando a aba volta a ficar visível.
+// ⚠ NUNCA grava sem desfecho positivo (V68/F-18a): 'ok' = servidor confirmou,
+//   'duplicado' = servidor já tinha, 'fila' = gravado na fila offline.
+// ══════════════════════════════════════════════════════════════════════════
+var PGP_REGISTRO_KEY = 'pgp_registro_v1';
+
+function pgpRegistroTudo(){
+  try { return JSON.parse(localStorage.getItem(PGP_REGISTRO_KEY) || '{}') || {}; }
+  catch(e){ return {}; }
+}
+function pgpRegistroChave(machineId, tipo){
+  return String(machineId || 'sem-maquina') + '|' + String(tipo || 'inspecao');
+}
+function pgpRegistroGravar(payload, estado, tipo){
+  try {
+    if(!payload) return;
+    var todos = pgpRegistroTudo();
+    var mid = payload.machine_id || payload.serial || '';
+    var k = pgpRegistroChave(mid, tipo || payload.tipo || _pgpTipoVisita);
+    var nPecas = 0;
+    try { nPecas = Object.values(payload.parts || {}).filter(function(x){ return x && x.acao === 'trocada'; }).length; } catch(e){}
+    todos[k] = {
+      quando: Date.now(), estado: estado, visit_id: payload.visit_id || '',
+      os_id: payload.os_id || '', machine_id: mid,
+      maquina: [payload.brand, payload.model].filter(Boolean).join(' '),
+      trocadas: nPecas
+    };
+    // teto: 40 registros, os mais antigos saem primeiro (é memória de tela)
+    var chaves = Object.keys(todos).sort(function(a,b){ return (todos[a].quando||0) - (todos[b].quando||0); });
+    while(chaves.length > 40) { delete todos[chaves.shift()]; }
+    localStorage.setItem(PGP_REGISTRO_KEY, JSON.stringify(todos));
+  } catch(e){ console.warn('pgpRegistroGravar:', e && e.message); }
+  try { pgpRegistroPintar(); } catch(e){}
+}
+// Usado pelo flush da fila: lá só existe o visit_id do item enfileirado.
+function pgpRegistroPorVisitId(visitId, estado){
+  try {
+    if(!visitId) return;
+    var todos = pgpRegistroTudo(), mudou = false;
+    Object.keys(todos).forEach(function(k){
+      if(String(todos[k].visit_id || '') === String(visitId)){ todos[k].estado = estado; todos[k].quando = Date.now(); mudou = true; }
+    });
+    if(mudou){ localStorage.setItem(PGP_REGISTRO_KEY, JSON.stringify(todos)); pgpRegistroPintar(); }
+  } catch(e){}
+}
+function pgpRegistroDaMaquinaAtiva(){
+  try {
+    var idx = pgpGetMachineIndex(currentMachine);
+    var eq = pgpGetLoadedMachineForIndex(idx);
+    var mid = (eq && (eq.id || eq.machine_id)) || pgpFieldVal(idx, 'ns') || '';
+    return pgpRegistroTudo()[pgpRegistroChave(mid, _pgpTipoVisita)] || null;
+  } catch(e){ return null; }
+}
+function pgpRegistroPintar(){
+  try {
+    var box = document.getElementById('pgpRegistroLinha');
+    if(!box) return;
+    var r = pgpRegistroDaMaquinaAtiva();
+    if(!r){ box.style.display = 'none'; box.innerHTML = ''; return; }
+    var d = new Date(r.quando || Date.now());
+    var hhmm = String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+    var hoje = (new Date()).toDateString() === d.toDateString();
+    var quando = hoje ? ('hoje ' + hhmm) : (String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') + ' ' + hhmm);
+    var rot = (_pgpTipoVisita === 'preventiva') ? 'Preventiva' : 'Inspeção';
+    var txt, cor;
+    if(r.estado === 'fila'){
+      cor = 'var(--orange,#f58220)';
+      txt = '⏳ ' + rot + ' na fila desde ' + quando + ' — sobe sozinha ao conectar';
+    } else if(r.estado === 'duplicado'){
+      cor = 'var(--green,#16a34a)';
+      txt = '✅ ' + rot + ' já estava registrada (conferido ' + quando + ')';
+    } else {
+      cor = 'var(--green,#16a34a)';
+      txt = '✅ ' + rot + ' registrada ' + quando + (r.trocadas ? ' · ' + r.trocadas + ' peça(s) trocada(s)' : '');
+    }
+    box.style.display = '';
+    box.style.cssText = 'display:block;margin:6px 2px 0;padding:7px 10px;border-radius:8px;font-size:12.5px;' +
+      'font-weight:600;color:' + cor + ';background:rgba(255,255,255,.04);border:1px solid ' + cor;
+    box.innerHTML = pgpEscHtml(txt) + (r.visit_id ? '<div style="font-weight:400;font-size:11px;opacity:.75">' + pgpEscHtml(r.visit_id) + '</div>' : '');
+  } catch(e){ console.warn('pgpRegistroPintar:', e && e.message); }
+}
+
+// 🔑 É ISTO que responde ao "minimizei e voltei": ao reaparecer, a tela repinta
+//    o estado real e ainda empurra a fila, que pode ter ficado parada.
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState !== 'visible') return;
+  try { pgpRegistroPintar(); } catch(e){}
+  try { if(typeof pgpFlushPending === 'function') pgpFlushPending(); } catch(e){}
+});
 
 async function pgpEnviarTodasPreventivas(){
   if(!Array.isArray(machines) || machines.length <= 1){
@@ -14342,6 +14893,7 @@ async function pgpEnviarPreventiva(midx=currentMachine, opts){
     }
     // V68 — F-18a: desfecho positivo ⇒ agora sim o espelho local pode registrar.
     pgpUpdateAdminLocal(payload, { deferSave: _deferAdm });   // V88 (A5)
+    pgpRegistroGravar(payload, 'fila', 'preventiva');   // V102 (item 6a)
     pgpSubirAssinaturasDaVisita(payload, idx); // V72 (P7.4)
     if(silent) return { status:'queued' };
     showNotification('⚠ Muitas fotos/observações — dados salvos na fila (' + qResultSize.count + '/' + QUEUE_LIMIT + '). Envie em partes ou reduza fotos.');
@@ -14372,6 +14924,7 @@ async function pgpEnviarPreventiva(midx=currentMachine, opts){
     }
     // V68 — F-18a: só espelha localmente depois de a fila confirmar a gravação.
     pgpUpdateAdminLocal(payload, { deferSave: _deferAdm });   // V88 (A5)
+    pgpRegistroGravar(payload, 'fila', 'preventiva');   // V102 (item 6a)
     pgpSubirAssinaturasDaVisita(payload, idx); // V72 (P7.4)
     if(silent) return { status:'queued' };
     showNotification('📋 Preventiva salva na fila (' + qResult.count + '/' + QUEUE_LIMIT + ') — enviada ao conectar');
@@ -14383,12 +14936,14 @@ async function pgpEnviarPreventiva(midx=currentMachine, opts){
     if(d.duplicate){
       // V68 — F-18a: o servidor JÁ tem esta preventiva ⇒ espelhar é correto.
       pgpUpdateAdminLocal(payload, { deferSave: _deferAdm });   // V88 (A5)
+      pgpRegistroGravar(payload, 'duplicado', 'preventiva');    // V102 (item 6a)
       pgpSubirAssinaturasDaVisita(payload, idx); // V72 (P7.4)
       if(silent) return { status:'duplicate' };
       showNotification('ℹ Esta preventiva já foi registrada');
     } else if(d.status==='ok'){
       // V68 — F-18a: gravado no servidor ⇒ espelho local pode acompanhar.
       pgpUpdateAdminLocal(payload, { deferSave: _deferAdm });   // V88 (A5)
+      pgpRegistroGravar(payload, 'ok', 'preventiva');           // V102 (item 6a)
       pgpSubirAssinaturasDaVisita(payload, idx); // V72 (P7.4)
       if(silent) return { status:'ok' };
       showNotification('✅ Preventiva registrada — '+nTrocadas+' peça(s) atualizada(s)');
@@ -14414,6 +14969,7 @@ async function pgpEnviarPreventiva(midx=currentMachine, opts){
       } else {
         // V68 — F-18a: fila confirmou a gravação ⇒ espelho local pode acompanhar.
         pgpUpdateAdminLocal(payload, { deferSave: _deferAdm });   // V88 (A5)
+        pgpRegistroGravar(payload, 'fila', 'preventiva');         // V102 (item 6a)
         pgpSubirAssinaturasDaVisita(payload, idx); // V72 (P7.4)
         if(silent) return { status:'queued' };
         showNotification('⏳ Falha — preventiva salva na fila (' + qResult.count + '/' + QUEUE_LIMIT + ')');
@@ -14604,6 +15160,22 @@ function pgpBuildPayload(midx=currentMachine){
     const pk=`${p}${pt.k}`;
     const aid=pgpPartIdMapDe(idx)[pt.k]; if(!aid) return;
     const naBtn=document.getElementById(`${pk}_na`);
+    // ══════════════════════════════════════════════════════════════════════
+    // 🔴 V102 (item 5) — PEÇA QUE NÃO ESTÁ NA TELA NÃO ENTRA NO PAYLOAD.
+    //
+    // A tabela de peças só nasce em `selectScenario`. Sem ela, este laço lia
+    // elementos INEXISTENTES e montava as 6 peças do perfil com `na:false` e
+    // `ref:''` — e o `pgpEnviarGS` manda isso para `updateMachineParts` numa
+    // chamada PRÓPRIA, que não passa pelo guard `tipoVisita === 'preventiva'`
+    // do `saveVisit`. Resultado medido no ar: uma inspeção rápida rebaixava o
+    // N/A de 'SIM' para 'NÃO' e apagava a referência de toda a máquina.
+    // ⚠ Sem peça nenhuma, `payload.parts` fica `{}` e o `pgpEnviarGS` nem
+    //   chega a chamar a action (o `if` dele exige `Object.keys(...).length>0`).
+    // ⚠ O par desta trava é o GAS v134, que passa a exigir `_na_lido` para
+    //   REBAIXAR um N/A — a defesa para os aparelhos que ficarem na versão
+    //   antiga com fila offline.
+    // ══════════════════════════════════════════════════════════════════════
+    if(!naBtn && !document.getElementById(`${pk}_ref`)) return;
     const isNA=naBtn?.classList.contains('active')||false;
     const valorEl=document.getElementById(`${pk}_valor_mostrado`);
     const ultEl  =document.getElementById(`${pk}_ult`);
@@ -14656,6 +15228,11 @@ function pgpBuildPayload(midx=currentMachine){
       else if (_estP === 'ok' && !_stP) _stP = 'OK';
       parts[aid]={name:pgpPartNameMapDe(idx)[pt.k]||pt.label||pt.k,lastChange:0,interval,
         ref:refEl?.value.trim()||'',obs:obsEl?.value.trim()||'',na:isNA,
+        // V102 — "eu LI esta linha na tela". Sem isto o GAS v134 não rebaixa
+        //   um N/A gravado, porque `na:false` pode significar "não olhei".
+        _na_lido:true,
+        refAnterior: pgpRefCadastrada(idx, pt.k),
+        ref_resposta: _pgpRefResp[pk] || '',
         // V73: o ESTADO ENCONTRADO cru (ok|nao_conforme) passa a viajar
         // separado do `status` de PRAZO. Antes os dois eram fundidos e
         // "peça conforme com a troca vencida" perdia o "conforme".
@@ -14668,6 +15245,9 @@ function pgpBuildPayload(midx=currentMachine){
     }
     parts[aid]={name:pgpPartNameMapDe(idx)[pt.k]||pt.k,lastChange:Math.max(0,lastChange),interval,
       ref:refEl?.value.trim()||'',obs:obsEl?.value.trim()||'',na:isNA,
+      _na_lido:true,                                   // V102 (item 5)
+      refAnterior: pgpRefCadastrada(idx, pt.k),        // V102 — o par da pergunta
+      ref_resposta: _pgpRefResp[pk] || '',             // V102 — 'similar' | 'outra' | ''
       // V73: o parafuso não tem pill de estado — vai '' e o PDF mostra o prazo.
       estado:(document.getElementById(`${pk}_estado`)||{}).value||'',
       // v8.4.4:
@@ -15302,6 +15882,7 @@ async function pgpEnviarGS(srcBtn){
       showNotification('🚫 Fila cheia. Nem todos os dados foram enfileirados. Sincronize antes de continuar.');
     } else {
       queued++;
+      pgpRegistroGravar(payload, 'fila', 'inspecao');   // V102 (item 6a)
       // v55: antes era sucesso silencioso (só queued++); agora avisa visivelmente
       // que caiu na fila offline em vez de ter sido enviado.
       setSendStatus('<span style="color:var(--orange)">🔴 Sem conexão — salvo na fila, reenvio automático</span>');
@@ -15378,6 +15959,7 @@ async function pgpEnviarGS(srcBtn){
     }
 
     sent++;
+    pgpRegistroGravar(payload, 'ok', 'inspecao');   // V102 (item 6a)
     setSendStatus('<span style="color:var(--green)">✅ Enviado — visita: '+(d1.visitId||'OK')+partsWarn+'</span>');
     btn.textContent='✅ Enviado!';
     btn.style.background='var(--green)';
@@ -17906,11 +18488,59 @@ function pfThumbsAnterioresHtml(midx, photoKey){
     var open = f.file_url
       ? ' onclick="event.stopPropagation();window.open(\'' + String(f.file_url).replace(/'/g,'%27') + '\',\'_blank\')" style="cursor:pointer"'
       : '';
+    // V102 (item 4b) — o × TAMBÉM na foto de visita anterior.
+    // ⚠ Só aparece quando o servidor mandou o `attachment_id`: é a chave que o
+    //   `desativarAnexo` exige, e só o GAS v134 a devolve em
+    //   `getFotosItensMaquina`. Com o v133 no ar o × simplesmente não nasce —
+    //   um botão que não teria como funcionar é pior que botão nenhum.
+    var _delPrev = f.attachment_id
+      ? ('<div class="photo-thumb-del" title="Remover do histórico desta máquina" ' +
+         'onclick="event.stopPropagation();pfRemoverFotoAnterior(' + midx + ',\'' +
+         String(photoKey).replace(/'/g, "\\'") + '\',\'' +
+         String(f.attachment_id).replace(/'/g, "\\'") + '\')">✕</div>')
+      : '';
     return '<div class="photo-thumb-mini photo-thumb-prev" title="' + pgpEscHtml(t) + '"' + open + '>' +
              '<img src="' + f.thumb + '" alt="" loading="lazy" width="120" height="120">' +
+             _delPrev +
              '<div class="photo-thumb-prev-tag">&#8617;</div>' +
            '</div>';
   }).join('');
+}
+
+// V102 (item 4b) — remove do HISTÓRICO da máquina uma foto de visita anterior.
+// ⚠ "Remover" é `Ativo='NÃO'` no índice: o arquivo CONTINUA no Drive (padrão do
+//   v75, o mesmo do 🗑 da Gestão de Documentos no PCM V163).
+// ⚠ Confirmação obrigatória: esta foto não é da coleta de agora, é do acervo da
+//   máquina — e some para todo mundo, não só para este aparelho.
+async function pfRemoverFotoAnterior(midx, photoKey, attachmentId){
+  if(!attachmentId) return;
+  var ok = false;
+  try {
+    ok = await AppDialog.confirm(
+      'Remover esta foto do histórico da máquina?\n\n' +
+      'Ela sai da lista de fotos anteriores para todo mundo. O arquivo continua guardado no Drive.',
+      { title:'Remover foto anterior', okLabel:'Remover', cancelLabel:'Manter', danger:true });
+  } catch(e){ try { ok = confirm('Remover esta foto do histórico da máquina?'); } catch(_){ ok = false; } }
+  if(!ok) return;
+  try {
+    await pgpPostJson('desativarAnexo', { attachment_id: attachmentId }, 1);
+  } catch(e){
+    showNotification('🚫 Não consegui remover: ' + pgpMsgErro(e));
+    return;
+  }
+  try {
+    var arr = (_pfItensAnteriores[midx] && _pfItensAnteriores[midx][photoKey]) || [];
+    _pfItensAnteriores[midx][photoKey] = arr.filter(function(x){ return String(x.attachment_id||'') !== String(attachmentId); });
+  } catch(e){}
+  // o cache de 30 dias guarda a lista ANTIGA — invalidar, senão a foto volta
+  // na próxima abertura do painel e o técnico acha que o × não funcionou.
+  try {
+    var eqC = pgpGetLoadedMachineForIndex(midx);
+    var ck = 'pa::' + ((eqC && (eqC.id || eqC.machine_id)) || pgpFieldVal(midx, 'ns') || '');
+    if (ck !== 'pa::') pgpIdbDel(ck);
+  } catch(e){}
+  try { renderPhotoThumbs(midx, photoKey); }catch(e){}
+  showNotification('🗑 Foto removida do histórico da máquina.');
 }
 
 function pfAplicarFotosItens(idx, itens){
@@ -18500,8 +19130,48 @@ async function pfAbrirForm(tarefaId, formUrl, btn) {
       // pipeline que já existia.
       window._PGP_OS_CLIENTE = _pfOsCliente || window._PGP_OS_CLIENTE || '';
       try { pgpAtualizarModoOS(); } catch(_) {}
+      // ═════════════════════════════════════════════════════════════════
+      // 🔴 V101 — INSPEÇÃO DE OS TAMBÉM CARREGA AS MÁQUINAS DA OS
+      //
+      // O ramo de cima (preventiva) chama `pgpIniciarPreventivaDeOS`, que lê
+      // `getMaquinasByOS` e abre UM PAINEL POR MÁQUINA VINCULADA. Este ramo
+      // não chamava nada: o painel 0 nascia vazio e o técnico escolhia UMA
+      // máquina à mão. Uma OS de inspeção com 2 máquinas selecionadas no PCM
+      // chegava ao campo como 1 — e o relatório saía com 1.
+      // Caso real: PGP-2026-0060 (SORRAG - Matriz, 2 máquinas), 31/08/2026.
+      // O servidor estava certo o tempo todo: total 2, missing [].
+      //
+      // ⚠ Depois do `_PGP_OS_CLIENTE` de propósito (lição V78/C1): a função
+      //   pode voltar do CACHE OFFLINE com `r.os` null e zerar o cliente —
+      //   por isso ele é REPOSTO logo abaixo com o canônico de `_pfOsList`.
+      // ⚠ Não precisa de fallback: OS sem máquina vinculada cai, dentro da
+      //   própria função, no `pgpSelectClient(clienteOS)` — que é a tela de
+      //   escolher à mão de antes, byte a byte.
+      // ⚠ Reentrada NÃO recarrega: o guard V71/FIX2 preserva coleta aberta.
+      // ═════════════════════════════════════════════════════════════════
+      if (_tInsp && typeof pgpIniciarPreventivaDeOS === 'function') {
+        try {
+          await pgpIniciarPreventivaDeOS(_pfOsId);
+        } catch (eV101) {
+          console.warn('[PCF V101] carga das máquinas da OS falhou:', eV101 && eV101.message);
+        }
+        if (!window._PGP_OS_CLIENTE) window._PGP_OS_CLIENTE = _pfOsCliente || '';
+        try { pgpAtualizarModoOS(); } catch(_) {}
+      }
+      // V101 — conta o que CARREGOU, não quantos painéis existem: o painel 0
+      // nasce vazio no boot e faria a conta dizer "1" com zero máquina.
+      var _v101N = 0;
+      try {
+        for (var _i101 = 0; _i101 < (machines || []).length; _i101++) {
+          if (pgpGetLoadedMachineForIndex(_i101)) _v101N++;
+        }
+      } catch (_e101) {}
       showNotification('🔧 Inspeção da OS #' + ((osObj && osObj.numero_os) || _pfOsId) +
-        ' — selecione a máquina e colete normalmente.');
+        (_v101N > 1
+          ? ' — ' + _v101N + ' máquinas desta OS já estão na tela; troque pelas abas.'
+          : (_v101N === 1
+              ? ' — máquina da OS carregada, pode coletar.'
+              : ' — selecione a máquina e colete normalmente.')));
     }
     return;
   }
