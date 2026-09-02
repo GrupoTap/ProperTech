@@ -1,3 +1,72 @@
+<!-- PCF V103 (02/09/2026) — OS SEIS BURACOS DE SALVAMENTO, RESTAURAÇÃO E REGISTRO.
+     Feito EM CIMA da V102 PUBLICADA (clone do repo GrupoTap/ProperTech, md5
+     conferido). 100% aditivo: nenhum id, função, action, data-key ou view
+     renomeado. ZERO mudança de GAS.
+     Bancada: _testes/NEWFILE_T_PCF_V103_coleta.mjs (6 controles negativos).
+
+     O PEDIDO (Fernando, 02/09): "uma série de pequenos problemas com o PCF em
+     salvamentos, restauração de coletas, registros de preventivas, aberturas
+     de OS, retornos involuntários de telas e perda de dados — não consigo
+     detalhar, são erros com funcionários que não sabem explicar."
+
+     🔑 O MÉTODO: dirigir a UI real no Chromium com DIGITAÇÃO DE VERDADE
+        (`isTrusted`), não `el.value = …`. Os dois primeiros defeitos são
+        INVISÍVEIS para uma bancada que preenche por código — a sentinela do
+        V97 escuta exatamente `isTrusted`, e evento sintético a mantém dormindo.
+        (Na 1ª rodada foi a bancada que errou; ver o documento da rodada.)
+
+     D1 · O ZERO DA TELA NUNCA ERA REARMADO. `_pgpTocou` era trava de mão única
+          da SESSÃO DO APP e `_pgpBaseline` congelava no zero da 1ª coleta ⇒ da
+          2ª em diante `temDadosPreenchidos()` diz SIM numa tela em branco. O
+          preço não é o alerta a mais: `guardarSair()` salva a tela vazia, a
+          assinatura colide e o "sobrescrever?" TROCA a coleta boa pela vazia.
+          MEDIDO: coleta 7777 → coleta 241 (o valor do catálogo).
+     D2 · RESTAURAR PERDIA O VÍNCULO COM A MÁQUINA DO CADASTRO. O estado não
+          guardava `_pgpLoadedMachinesByIndex`; o payload caía no fallback de
+          chave determinística. MEDIDO NO TRANSPORTE: `saveVisit` e
+          `updateMachineParts` saindo com machine_id
+          `MK-sorragmatrizbetoneiras-…` no lugar de `MK-sorrag-…`.
+     D3 · POSIÇÃO NÃO É IDENTIDADE. `_editingSessionIndex` é índice numa lista
+          que `deletarSessao` (splice) e `autoSaveSession` (unshift) remexem.
+          MEDIDO: restaurar a Coleta 1, excluir a Coleta 0 e salvar DESTRÓI a
+          Coleta 2.
+     D4 · "NOVA COLETA" NÃO ESPERAVA O SALVAMENTO — a mesma armadilha que o
+          V75 (P1) fechou no `salvarColeta`, viva aqui. "Salvar antes" +
+          cancelar a sobrescrita = coleta apagada da tela e não salva.
+     D5 · O "CONTINUAR" DO RASCUNHO VOLTAVA PELA METADE. O comentário do V102
+          afirma que `pgpAplicarRetomada` é chamada nesse caminho; não é. Sem
+          a linha de status do registro (item 6a) e sem as miniaturas ↩ da
+          visita anterior (item 4a) — no caminho MAIS usado dos dois.
+     D6 · ENTRAR NUMA TAREFA DE OS NÃO SOLTAVA A COLETA SALVA ANTERIOR. MEDIDO:
+          a coleta da SORRAG virou a coleta do outro cliente e sumiu da lista.
+
+     ── 2ª parte da mesma rodada (02/09, pedido do Fernando) ────────────────
+     A REGRA DO TRANSPORTE: cliente e regime da primeira aba vão para a máquina
+     nova da mesma coleta. A regra EXISTIA e estava furada em cinco pontos.
+     Bancada: _testes/NEWFILE_T_PCF_V103_regime.mjs (5 controles negativos).
+
+     R1 · A LISTA DE CAMPOS DO CLIENTE ERA ESCRITA À MÃO e já tinha envelhecido:
+          `uf` e `data_visita` existem na seção e nunca eram copiados. MEDIDO:
+          m0_uf="SP" ⇒ m1_uf="". Agora a lista é DERIVADA da seção do painel.
+     R2 · A CÓPIA DO REGIME ERA TUDO OU NADA: exigia dias E início E fim; um
+          regime meio preenchido copiava NADA, em silêncio.
+     R3 · A CÓPIA SÓ ACONTECIA NO `addMachine()`. Numa OS os painéis nascem
+          todos ANTES de o técnico digitar: MEDIDO, OS de 2 máquinas com o
+          regime digitado na primeira ⇒ a segunda vazia. A herança passou a ser
+          ESTADO (ao entrar na aba, o que está vazio herda), não evento.
+     R4 · E A HERANÇA MENTIA: o regime copiado TAPAVA o regime REAL da máquina
+          escolhida no banco (cadastro seg-sáb 22:00–06:00, tela seg-sex
+          07:00–17:00) — e é o regime que alimenta a projeção de horímetro.
+          Agora o herdado carrega marca: o cadastro da própria máquina passa
+          por cima dele; o regime DIGITADO, nunca.
+     R5 · CARREGAR A MÁQUINA DO BANCO APAGAVA O CONTATO COPIADO — campo de
+          cadastro preenchido por código não tem `pgpTocado` e era zerado por um
+          valor vazio do servidor. Ausência de dado não é fato (lição do V140):
+          o cadastro refresca com dado, nunca apaga com vazio.
+
+     ⚠ ORDEM DE PUBLICAÇÃO: este arquivo + `sw.js` em `propertech-v104`.
+       Sem o bump do sw o aparelho continua servindo a V102 do cache.
+-->
 <!-- PCF V100 (28/08/2026) — AS PORTAS QUE NASCIAM SEM OS.
      Feito EM CIMA da V99 (o `index.html` no ar, md5 conferido por clone do
      GitHub). 100% aditivo: nenhum id, função, action ou chip renomeado.
@@ -1177,8 +1246,8 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ProperCare Field · PGP Preventivas v35 · build PCF_V102</title>
-<meta name="app-build" content="PCF_V102" data-date="2026-09-01">
+<title>ProperCare Field · PGP Preventivas v35 · build PCF_V103</title>
+<meta name="app-build" content="PCF_V103" data-date="2026-09-02">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -6206,6 +6275,7 @@ function switchMachine(idx) {
   const tab = document.getElementById('tab-'+idx);
   if (tab) tab.classList.add('active');
   document.getElementById('machineCounter').textContent = 'Máquina '+(idx+1)+' de '+machines.length;
+  try { pgpHerdarDaPrimeira(idx); } catch(e) {}    // V103 (R3)
   pgpRenderLoadedCard(idx);
   // V76 (F4b): dispara a carga de fotos que ficou pendente enquanto o painel
   // não estava na tela (histórico já vem pelo pgpRenderLoadedCard acima).
@@ -6244,15 +6314,60 @@ function renderTabs() {
   if (btnConsolidar) btnConsolidar.style.display = machines.length > 1 ? '' : 'none';
 }
 
-function copyClientDataSilent() {
-  // v27: auxiliar/hora_inicio/hora_fim também copiados — mesma equipe e
-  // horário para todas as máquinas da coleta, evita redigitação.
-  const fields = ['razao_social','contato','telefone','email','cidade','cnpj','ult_visita','prox_visita','filial','auxiliar','hora_inicio','hora_fim'];
-  fields.forEach(f => {
-    const src = document.querySelector('[data-key="m0_'+f+'"]');
-    const dst = document.querySelector('[data-key="m'+currentMachine+'_'+f+'"]');
-    if (src && dst) dst.value = src.value;
+// ══════════════════════════════════════════════════════════════════════════
+// V103 (R1) · A LISTA ESCRITA À MÃO JÁ TINHA ENVELHECIDO.
+//
+// 🔴 MEDIDO: `m0_uf = "SP"` → `m1_uf = ""`. O campo UF existe na seção do
+//    cliente do painel e nunca esteve nesta lista; `data_visita` também não.
+//    É a armadilha que o CLAUDE.md nomeia: *lista escrita à mão em dois
+//    lugares é bug esperando data* — a seção ganha um campo e a cópia não
+//    fica sabendo, em silêncio.
+// 🔑 A lista dos campos de CLIENTE passa a ser DERIVADA da própria seção do
+//    painel da máquina 1 (o `[data-section]` que contém a razão social).
+//    Campo novo naquela seção passa a ser copiado sozinho, para sempre.
+//    Os três extras continuam explícitos porque moram FORA dessa seção
+//    (auxiliar/hora_inicio/hora_fim, do v27) — e a lista antiga fica como
+//    rede se a seção não for encontrada.
+//
+// `opts.soVazios` é a herança preguiçosa (R3): preenche o que está em branco
+// e NUNCA encosta no que já tem valor. `opts.midx` permite herdar para um
+// painel que não é o ativo.
+// ══════════════════════════════════════════════════════════════════════════
+function pgpCamposClienteDaSecao() {
+  var fora = ['auxiliar', 'hora_inicio', 'hora_fim'];   // v27 — fora da seção
+  var lista = [];
+  try {
+    var ref = document.querySelector('[data-key="m0_razao_social"]');
+    var sec = ref && ref.closest && ref.closest('[data-section]');
+    if (sec) {
+      lista = Array.prototype.slice.call(sec.querySelectorAll('[data-key]'))
+        .map(function (el) { return String((el.dataset && el.dataset.key) || '').replace(/^m0_/, ''); })
+        .filter(function (k) { return k && k !== 'perfil' && k !== 'scenario'; });
+    }
+  } catch (e) { lista = []; }
+  if (!lista.length) {   // rede: a lista do v27, agora COM o uf e o data_visita
+    lista = ['razao_social','contato','telefone','email','cidade','uf','cnpj',
+             'ult_visita','prox_visita','data_visita','filial'];
+  }
+  fora.forEach(function (k) { if (lista.indexOf(k) < 0) lista.push(k); });
+  return lista;
+}
+
+function copyClientDataSilent(opts) {
+  opts = opts || {};
+  var alvo = (typeof opts.midx === 'number') ? opts.midx : currentMachine;
+  var soVazios = !!opts.soVazios;
+  var copiados = 0;
+  pgpCamposClienteDaSecao().forEach(function (f) {
+    var src = document.querySelector('[data-key="m0_' + f + '"]');
+    var dst = document.querySelector('[data-key="m' + alvo + '_' + f + '"]');
+    if (!src || !dst || src === dst) return;
+    if (soVazios && String(dst.value || '').trim() !== '') return;
+    if (String(src.value || '').trim() === '') return;   // não "copiar" vazio por cima
+    dst.value = src.value;
+    copiados++;
   });
+  return copiados;
 }
 
 // v8.5.4: copiar regime de trabalho da máquina 0 para a nova
@@ -6263,13 +6378,22 @@ function copyRegimeFromFirst(dstIdx) {
   const srcRows = srcContainer.querySelectorAll('.turno-row');
   if(!srcRows.length) return;
 
-  // Verificar se ao menos um turno tem dados preenchidos
+  // ══════════════════════════════════════════════════════════════════════
+  // V103 (R2) — 🔴 ERA TUDO OU NADA. A guarda exigia dias E início E fim nos
+  // TRÊS campos; um regime meio preenchido (o caso do técnico que escolhe
+  // "Seg–Sex" e a hora de entrada e é interrompido) copiava **nada**, em
+  // silêncio, e a máquina 2 nascia em branco. MEDIDO: m0 com dias e início
+  // preenchidos ⇒ m1 com os três vazios.
+  // 🔑 Copiar o que existe é sempre melhor que copiar nada: o que falta o
+  //    técnico completa uma vez, na máquina 1, e as outras acompanham.
+  // ══════════════════════════════════════════════════════════════════════
   let temDados = false;
   srcRows.forEach(row => {
     const diasEl = row.querySelector('.turno-dias-sel');
     const inicioEl = row.querySelector('input[type="time"][data-key$="_inicio"]');
     const fimEl = row.querySelector('input[type="time"][data-key$="_fim"]');
-    if(diasEl?.value && inicioEl?.value && fimEl?.value) temDados = true;
+    const algumCb = !!row.querySelector('.custom-days-wrap input[type="checkbox"]:checked');
+    if(diasEl?.value || inicioEl?.value || fimEl?.value || algumCb) temDados = true;
   });
   if(!temDados) return;
 
@@ -6281,7 +6405,7 @@ function copyRegimeFromFirst(dstIdx) {
     const allCbs = [...(row.querySelectorAll('.custom-days-wrap input[type="checkbox"]')||[])];
     const customChecked = allCbs.map((cb,i)=>cb.checked?i:-1).filter(i=>i>=0);
     return { dias: diasEl?.value||'', inicio: inicioEl?.value||'', fim: fimEl?.value||'', customDays: customChecked };
-  }).filter(t=>t.dias&&t.inicio&&t.fim);
+  }).filter(t=>t.dias||t.inicio||t.fim||(t.customDays&&t.customDays.length));   // V103 (R2)
 
   if(!regimeData.length) return;
 
@@ -6323,7 +6447,104 @@ function copyRegimeFromFirst(dstIdx) {
 
   const delBtns = dstContainer.querySelectorAll('.turno-del');
   delBtns.forEach(b=>b.style.display = delBtns.length>1?'':'none');
+  // V103 (R4) — o que veio da máquina 1 é PALPITE, não medição. A marca é o
+  // que permite ao cadastro da própria máquina passar por cima dele depois
+  // (ver `pgpLoadMachine`), sem nunca passar por cima do que o técnico digitou.
+  try { pgpMarcarRegimeHerdado(dstIdx, true); } catch(e) {}
   calcRegime(dstIdx);
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// V103 (R3/R4) · A HERANÇA DA MÁQUINA 1 — PREGUIÇOSA E REVERSÍVEL
+//
+// 🔴 O DEFEITO (relatado pelo Fernando, 02/09): "preencho cliente e regime na
+//    primeira aba e isso deveria ir para a máquina nova". A cópia EXISTIA —
+//    mas só no instante do `addMachine()`. Dentro de uma OS os painéis das N
+//    máquinas nascem TODOS no carregamento, ANTES de o técnico digitar coisa
+//    alguma: MEDIDO numa OS de 2 máquinas, regime digitado na máquina 1 ⇒
+//    máquina 2 com dias/início/fim vazios. O técnico redigitava por máquina.
+// 🔑 A cópia deixa de ser um evento (criar a aba) e passa a ser um ESTADO:
+//    ao ENTRAR numa aba, o que estiver VAZIO herda da máquina 1. Só o vazio —
+//    nada do que o técnico escreveu, nada do que veio do cadastro.
+//
+// 🔴 E a herança não pode virar mentira: MEDIDO, o regime copiado TAPAVA o
+//    regime REAL da máquina escolhida no banco (cadastro dizia seg-sáb
+//    22:00–06:00 e a tela seguia com seg-sex 07:00–17:00, porque o MODO MERGE
+//    do V71 trata regime como coleta sagrada). Isso corrompe a projeção de
+//    horímetro. Por isso o regime herdado carrega uma MARCA: o cadastro da
+//    própria máquina pode substituí-lo; o regime DIGITADO, nunca.
+// ⚠ A marca cai no primeiro toque humano na seção de turnos (`isTrusted`) —
+//   a partir daí aquele regime é do técnico, e é sagrado como sempre foi.
+// ══════════════════════════════════════════════════════════════════════════
+function pgpMarcarRegimeHerdado(midx, valor){
+  var c = document.getElementById('m' + pgpGetMachineIndex(midx) + '_turnos');
+  if(!c) return;
+  if(valor) c.dataset.pgpHerdado = '1'; else delete c.dataset.pgpHerdado;
+}
+function pgpRegimeEhHerdado(midx){
+  var c = document.getElementById('m' + pgpGetMachineIndex(midx) + '_turnos');
+  return !!(c && c.dataset && c.dataset.pgpHerdado === '1');
+}
+function pgpRegimeVazio(midx){
+  var c = document.getElementById('m' + pgpGetMachineIndex(midx) + '_turnos');
+  if(!c) return false;                      // sem seção de turnos: nada a herdar
+  var linhas = c.querySelectorAll('.turno-row');
+  for(var i=0; i<linhas.length; i++){
+    var r = linhas[i];
+    var d = r.querySelector('.turno-dias-sel');
+    var a = r.querySelector('input[type="time"][data-key$="_inicio"]');
+    var f = r.querySelector('input[type="time"][data-key$="_fim"]');
+    if((d && d.value) || (a && a.value) || (f && f.value)) return false;
+    if(r.querySelector('.custom-days-wrap input[type="checkbox"]:checked')) return false;
+  }
+  return true;
+}
+// Qualquer mexida na seção de turnos tira a marca de "herdado".
+// ══════════════════════════════════════════════════════════════════════════
+// 🔴 ACHADO CONTRA A BANCADA, E ELE MUDOU O DESENHO: a 1ª versão exigia
+//    `e.isTrusted`, como a sentinela do V97. MEDIDO: preencher um
+//    `<input type="time">` dispara `input` e `change` com **isTrusted=false** —
+//    o navegador trata hora como valor posto, não como digitação. Ou seja, a
+//    marca sobreviveria a uma edição REAL do técnico, e o cadastro da máquina
+//    passaria por cima do regime que ele acabou de corrigir. Perda de dado.
+// 🔑 Aqui o `isTrusted` é o guard ERRADO, e o erro dele é assimétrico:
+//    deixar a marca de pé custa dado; tirá-la à toa custa uma conveniência.
+//    E ele nem é necessário: quem repõe regime por código (`copyRegimeFromFirst`
+//    e `pgpLoadMachine`) escreve `.value` DIRETO, sem disparar evento nenhum —
+//    então nenhum caminho programático passa por aqui. Evento nesta seção só
+//    existe porque alguém mexeu.
+// ══════════════════════════════════════════════════════════════════════════
+['input','change','click'].forEach(function(ev){
+  document.addEventListener(ev, function(e){
+    try{
+      if(!e.target || !e.target.closest) return;
+      var c = e.target.closest('.regime-turnos');
+      if(c && c.dataset) delete c.dataset.pgpHerdado;
+    }catch(_){}
+  }, true);
+});
+
+// ⚠ Durante a carga das máquinas de uma OS a herança fica SUSPENSA: cada
+//   painel ainda vai receber o cadastro da sua própria máquina, e herdar antes
+//   disso poria o painel em MODO MERGE cedo demais (a armadilha do V71/FIX 2).
+//   A herança roda uma vez só, no fim, com todas as máquinas já carregadas.
+window._pgpCarregandoOS = false;
+function pgpHerdarDaPrimeira(midx){
+  var idx = pgpGetMachineIndex(midx);
+  if(!idx) return false;                       // a máquina 1 não herda de ninguém
+  if(window._pgpCarregandoOS) return false;
+  var herdouRegime = false;
+  try{
+    if(pgpRegimeVazio(idx) && !pgpRegimeVazio(0)){
+      copyRegimeFromFirst(idx);
+      herdouRegime = !pgpRegimeVazio(idx);
+    }
+  }catch(e){}
+  try{ copyClientDataSilent({ midx: idx, soVazios: true }); }catch(e){}
+  if(herdouRegime){
+    try{ showNotification('↻ Regime de trabalho copiado da Máquina 1 — confira'); }catch(e){}
+  }
+  return herdouRegime;
 }
 
 function showNotification(msg) {
@@ -6938,7 +7159,23 @@ async function novaColeta() {
   if (temDadosPreenchidos()) {
     const salvar = await AppDialog.confirm('Deseja salvar a coleta atual antes de começar uma nova?', {title:'Nova coleta', okLabel:'Salvar antes', cancelLabel:'Descartar'});
     if (salvar) {
-      saveCurrentSession();
+      // ═══════════════════════════════════════════════════════════════════
+      // V103 — 🔴 ERA `saveCurrentSession()` SEM `await`, a MESMA armadilha
+      // que o V75 (P1) fechou no `salvarColeta` e no `guardarSair` e que
+      // sobreviveu aqui. `saveCurrentSession` é async e, quando a assinatura
+      // da máquina colide com uma coleta já salva, ABRE UM CONFIRM. Sem o
+      // await, `novaColeta` seguia em frente: apagava os painéis, o
+      // `photoStore`, o rascunho e o contexto da OS — e a pergunta
+      // "sobrescrever?" aparecia por cima de uma tela JÁ LIMPA.
+      // Medido: técnico responde "Salvar antes", cancela a sobrescrita, e a
+      // coleta (2222) some da tela E não entra em `pgp_sessions_v1`. Sem uma
+      // palavra. Agora esperamos, e um "não salvei" ABORTA a limpeza.
+      // ═══════════════════════════════════════════════════════════════════
+      const _salvouAntes = await saveCurrentSession();
+      if (_salvouAntes === false) {
+        try { showNotification('⚠ Coleta NÃO salva — nada foi apagado. Salve ou escolha "Descartar".'); } catch(e) {}
+        return;
+      }
     }
   }
   document.querySelectorAll('.machine-panel').forEach(p => p.remove());
@@ -7017,6 +7254,7 @@ async function novaColeta() {
   _pgpDestinoNovoPainel = false;
   pgpClearMachine();        // limpar máquina carregada do banco
   try { pgpAtualizarModoOS(); pgpRenderLastClients(); } catch(e){}
+  try { pgpRearmarZeroColeta('vazio'); } catch(e){}   // V103 (D1)
 }
 
 // ── BACK GUARD (botão voltar mobile) ─────────────────
@@ -7107,11 +7345,61 @@ function pgpIniciarSentinelaColeta() {
   //    carga automática como digitação do técnico.
   //    ⇒ o zero também é reconferido por relógio, e o relógio PARA no instante
   //      em que o técnico encosta (não fica rodando pela sessão inteira).
-  var _tZero = setInterval(function () {
-    if (_pgpTocou) { clearInterval(_tZero); return; }
+  pgpArmarRelogioZero();          // V103 — era um setInterval local, irremediável
+  pgpRebaselineSeIntocado();
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// V103 (02/09/2026) · O ZERO DA TELA PRECISA SER REARMADO — MEDIDO
+//
+// 🔴 O DEFEITO. O V97 acertou o conceito (comparar com o zero DESTA tela) e
+//    errou o ciclo de vida: `_pgpTocou` era trava de mão única para a SESSÃO
+//    DO APP inteira e `_pgpBaseline` congelava no zero da PRIMEIRA coleta.
+//    Bancada, com digitação real (isTrusted):
+//        tela virgem ............ tem=false ✓
+//        digitou ................ tem=true  ✓
+//        "Nova coleta" (branco) . tem=TRUE  🔴
+//        2ª máquina carregada ... tem=TRUE  🔴
+//    Da 2ª coleta em diante `temDadosPreenchidos()` mente para SEMPRE. E não é
+//    um alerta a mais: `guardarSair()` salva o que a tela tem, a assinatura da
+//    máquina COLIDE com a coleta boa e o "Já existe uma coleta salva… deseja
+//    sobrescrever?" TROCA a coleta de verdade por uma tela em branco. Medido:
+//    coleta com 7777 virou coleta com o valor de catálogo, 241.
+//
+// 🔑 A CORREÇÃO NÃO É MEXER NA ASSINATURA — é dar ao zero os três estados que
+//    a vida da tela tem, e rearmá-lo em toda troca de contexto:
+//      'vazio'   tela recomeçou do nada (nova coleta, máquinas da OS recém
+//                carregadas): o zero é recapturado e o relógio volta a rodar,
+//                para a carga do catálogo entrar no zero como na 1ª vez.
+//      'comdado' a tela recebeu trabalho pronto (restaurar coleta/rascunho):
+//                perder isso É perda. O zero vira uma sentinela que a
+//                assinatura NUNCA produz ⇒ a resposta é sim, honestamente.
+// ⚠ A sentinela não pode ser '' nem null: '' compararia diferente por acaso e
+//   null cai no Plano B da varredura. É um literal impossível.
+// ══════════════════════════════════════════════════════════════════════════
+var _PGP_ZERO_RESTAURADO = '\u0001__COLETA_RESTAURADA_V103__';
+var _pgpTZero = null;
+
+function pgpArmarRelogioZero(){
+  if (_pgpTZero) { try { clearInterval(_pgpTZero); } catch (e) {} _pgpTZero = null; }
+  _pgpTZero = setInterval(function () {
+    if (_pgpTocou) { try { clearInterval(_pgpTZero); } catch (e) {} _pgpTZero = null; return; }
     pgpRebaselineSeIntocado();
   }, 500);
-  pgpRebaselineSeIntocado();
+}
+
+function pgpRearmarZeroColeta(estado){
+  if (estado === 'comdado') {
+    // trabalho restaurado na tela: sair daqui perde dado, e isso é verdade
+    // desde o primeiro instante — não depende de o técnico encostar em nada.
+    if (_pgpTZero) { try { clearInterval(_pgpTZero); } catch (e) {} _pgpTZero = null; }
+    _pgpTocou = true;
+    _pgpBaseline = _PGP_ZERO_RESTAURADO;
+    return;
+  }
+  _pgpTocou = false;
+  try { _pgpBaseline = pgpAssinaturaColeta(); } catch (e) { _pgpBaseline = null; }
+  pgpArmarRelogioZero();
 }
 
 function temDadosPreenchidos() {
@@ -7676,6 +7964,32 @@ function captureState() {
   // de peças é recriada o tempo todo); sem isto elas morriam a cada rascunho.
   try { state.refResp = JSON.parse(JSON.stringify(_pgpRefResp || {})); } catch(e) { state.refResp = {}; }
 
+  // ══════════════════════════════════════════════════════════════════════
+  // V103 (D2) — 🔴 A COLETA SALVA NÃO GUARDAVA A MÁQUINA DO CADASTRO.
+  // `_pgpLoadedMachinesByIndex` é o vínculo com a linha real de MAQUINAS; ele
+  // não entrava no estado e o restore não o repunha. Como `pgpBuildPayload`
+  // só usa `loadedMachine.id` quando ele existe, a coleta restaurada caía no
+  // fallback `pgpMachineKey(cliente, marca, modelo, série)` — que NÃO é a
+  // mesma chave quando a máquina foi cadastrada sob outro nome de cliente.
+  // MEDIDO NO TRANSPORTE, mesma máquina, mesma tela:
+  //     antes de salvar ... machine_id = MK-sorrag-schulz-srp3010iii-41805
+  //     depois de restaurar  machine_id = MK-sorragmatrizbetoneiras-schulz-…
+  // e é ESSE id que sai pela rede em `saveVisit` e `updateMachineParts`: a
+  // visita e as peças vão para uma máquina que não existe. Da tela some o
+  // card verde e o histórico junto.
+  // ⚠ Guardamos o objeto do cadastro (é pequeno), não uma referência viva —
+  //   pela mesma razão do `photoStore` no V95.
+  // ⚠ Coleta salva por uma versão antiga não tem este campo: o restore só
+  //   repõe o que encontrar, e o comportamento antigo continua valendo.
+  // ══════════════════════════════════════════════════════════════════════
+  try {
+    state.loadedMachines = {};
+    Object.keys(_pgpLoadedMachinesByIndex || {}).forEach(function(i){
+      var eq = _pgpLoadedMachinesByIndex[i];
+      if (eq) { try { state.loadedMachines[i] = JSON.parse(JSON.stringify(eq)); } catch(e) {} }
+    });
+  } catch(e) { state.loadedMachines = {}; }
+
   // FIX retomada (aditivo): guarda o ponto de trabalho para reabrir onde parou.
   try {
     state.osId = (typeof window._PGP_OS_ID !== 'undefined') ? window._PGP_OS_ID : null;
@@ -7807,10 +8121,21 @@ function restoreState(state) {
   // V95 (A1/A3) — repintura final: as pilulas de acao (que agora viajam no
   // rascunho, A3) e qualquer miniatura cuja chave nao estivesse na lista fixa.
   machines.forEach((_, i) => { try { pgpRepintarFotosDoPainel(i); } catch (e) {} });
+  // V103 (D2) — repõe o vínculo com a linha real de MAQUINAS ANTES de pintar
+  // o card e o histórico. Sem isto o `machine_id` do payload muda no meio da
+  // coleta (ver o bloco do `captureState`).
+  try {
+    var _lm = state.loadedMachines || {};
+    Object.keys(_lm).forEach(function(i){
+      if (_lm[i]) { try { pgpSetLoadedMachineForIndex(parseInt(i, 10), _lm[i]); } catch(e) {} }
+    });
+  } catch(e) {}
+
   document.querySelectorAll('[data-section]').forEach(s => refreshSection(s));
   updateProgress();
   updateAllTabNames();
   switchMachine(0);
+  try { pgpRenderLoadedCard(currentMachine); } catch(e) {}   // V103 (D2)
 }
 
 // v23: repovoa o objeto global photoStore a partir do draft/sessão salvos e redesenha
@@ -7881,7 +8206,7 @@ function autoSaveSession() {
 
     let sessions = getSessions();
 
-    if (_editingSessionIndex >= 0 && _editingSessionIndex < sessions.length) {
+    if (_pgpPosicaoAindaValida(sessions, _editingSessionIndex)) {   // V103 (D3)
       sessions[_editingSessionIndex] = state;
     } else {
       const existingIdxById = sessions.findIndex(s => s.sessionId === _currentSessionId);
@@ -7937,6 +8262,38 @@ function getDraft() {
 // ID único da coleta atual — evita duplicatas ao abrir o resumo várias vezes
 let _currentSessionId = null;
 
+// ══════════════════════════════════════════════════════════════════════════
+// V103 (D3) · POSIÇÃO NÃO É IDENTIDADE.
+//
+// 🔴 `_editingSessionIndex` guarda o ÍNDICE da coleta restaurada dentro de
+//    `pgp_sessions_v1` — e essa lista se mexe embaixo dele: `deletarSessao`
+//    faz `splice`, e `autoSaveSession` faz `unshift` de coleta nova. Medido:
+//        [Coleta 0, Coleta 1, Coleta 2] → restaura a 1 (índice 1)
+//        exclui a Coleta 0             → lista vira [Coleta 1, Coleta 2]
+//        salva                          → grava no ÍNDICE 1, que agora é a
+//                                         Coleta 2 ⇒ a COLETA 2 É DESTRUÍDA.
+//    Resultado real da bancada: ["Coleta 1", "cópia da Coleta 1"].
+//
+// 🔑 O `sessionId` já existia e já era usado no ramo de baixo (`existingIdxById`).
+//    Bastava exigir que a posição AINDA aponte para a mesma coleta; quando não
+//    aponta, o caminho por id que já existe acerta sozinho.
+// ══════════════════════════════════════════════════════════════════════════
+function _pgpPosicaoAindaValida(sessions, idx){
+  if (!(idx >= 0 && idx < sessions.length)) return false;
+  var s = sessions[idx];
+  return !!(s && String(s.sessionId || '') === String(_currentSessionId || ''));
+}
+
+// V103 (D6) — trocar de trabalho é trocar de coleta. Entrar numa tarefa de OS
+// (ou em outra OS) reaproveitava o `_currentSessionId` da coleta ANTERIOR: o
+// "Concluir visita" da OS gravava por cima da coleta salva de outro cliente.
+// Medido: coleta da SORRAG virou coleta do "OUTRO CLIENTE LTDA", e a da SORRAG
+// deixou de existir.
+function pgpSoltarColetaSalva(){
+  _editingSessionIndex = -1;
+  _currentSessionId = null;
+}
+
 async function saveCurrentSession() {
   try{ pgpFlushDraftPendente(); }catch(e){}   // V88 (A1)
   const state = captureState();
@@ -7949,7 +8306,7 @@ async function saveCurrentSession() {
 
   let sessions = getSessions();
 
-  if (_editingSessionIndex >= 0 && _editingSessionIndex < sessions.length) {
+  if (_pgpPosicaoAindaValida(sessions, _editingSessionIndex)) {     // V103 (D3)
     sessions[_editingSessionIndex] = state;
     _editingSessionIndex = -1;
   } else {
@@ -8160,6 +8517,29 @@ async function restoreDraft(btnEl) {
       switchMachine(Math.max(0, Math.min(draft.currentMachine, machines.length - 1)));
     }
   } catch(e){}
+  // ══════════════════════════════════════════════════════════════════════
+  // V103 (D5) — 🔴 O COMENTÁRIO DA V102 LOGO ACIMA AFIRMA QUE
+  // `pgpAplicarRetomada` "é chamada logo depois". NÃO É — o texto ficou, a
+  // chamada nunca entrou. Conferido com os comentários REMOVIDOS do fonte
+  // (a lição do SYNC-01: checagem que a prosa engana não é checagem):
+  //     pgpAplicarRetomada ......... rascunho=false · coleta salva=true
+  //     pfCarregarFotosItensMaquina  rascunho=false · coleta salva=true
+  //     pgpRegistroPintar .......... rascunho=false · coleta salva=true(via retomada)
+  // O "Continuar" do banner é o caminho MAIS usado dos dois — é por onde o
+  // técnico volta quando o celular mata o app — e voltava sem a linha de
+  // status do registro (item 6a do V102) e sem as miniaturas ↩ da visita
+  // anterior (item 4a). Aqui NÃO chamamos `pgpAplicarRetomada`: o bloco de
+  // tipo/OS acima já fez o que ela faria, e chamá-la perguntaria "qual tipo
+  // manter?" uma SEGUNDA vez — a resposta da 2ª pergunta desfaria a 1ª.
+  // Repomos só o que falta.
+  // ══════════════════════════════════════════════════════════════════════
+  try {
+    for (var _di = 0; _di < (machines || []).length; _di++) {
+      if (typeof pfCarregarFotosItensMaquina === 'function') pfCarregarFotosItensMaquina(_di);
+    }
+  } catch(eDF) {}
+  try { pgpRegistroPintar(); } catch(e){}
+  try { pgpRearmarZeroColeta('comdado'); } catch(e){}   // V103 (D1)
   document.getElementById('restoreBanner').style.display = 'none';
   try { localStorage.removeItem(DRAFT_KEY); } catch(e) {}
 }
@@ -8250,6 +8630,7 @@ async function restaurarSessao(idx, btnEl) {
     } catch(eF) {}
     _editingSessionIndex = idx; // Rastreia que estamos editando a sessão no índice idx
     _currentSessionId = sessions[idx].sessionId || null;
+    try { pgpRearmarZeroColeta('comdado'); } catch(e){}   // V103 (D1)
   });
   fecharSessoes();
 }
@@ -8257,8 +8638,14 @@ async function restaurarSessao(idx, btnEl) {
 async function deletarSessao(idx) {
   if (!(await AppDialog.confirm('Excluir esta coleta salva?', {title:'Excluir coleta', okLabel:'Excluir', danger:true}))) return;
   const sessions = getSessions();
+  // V103 (D3) — se a excluída é justamente a que está aberta na tela, o próximo
+  // salvamento tem de criar uma coleta NOVA, não reocupar um índice herdado.
+  var _apagada = sessions[idx] || null;
+  const _eraAAtual = !!(_apagada && String(_apagada.sessionId || '') === String(_currentSessionId || ''));
   sessions.splice(idx, 1);
   persistSessions(sessions);
+  if (_eraAAtual) { try { pgpSoltarColetaSalva(); } catch(e) {} }
+  else if (_editingSessionIndex > idx) { _editingSessionIndex--; }   // a posição andou
   renderSessoesList();
 }
 
@@ -12115,6 +12502,13 @@ function pgpLoadMachine(eq,localDb,midx=currentMachine,clientData=null){
       const temValor = String(el.value||'').trim()!=='';
       if(pgpEhCampoColeta(`${p}${key}`)){ if(temValor) return; }
       else if(_pgpTocado(el)) return;
+      // V103 (R5) — 🔴 MEDIDO: o contato COPIADO da máquina 1 sumia ao escolher
+      // a máquina no banco. Campo de cadastro copiado por código não tem
+      // `pgpTocado`, então caía na linha de baixo e era zerado por um
+      // `eq.contact` vazio. **Ausência de dado no cadastro não é um fato sobre
+      // a máquina** (a lição do V140): o servidor REFRESCA com dado, nunca
+      // apaga com vazio.
+      else if(temValor && String(val ?? '').trim()==='') return;
     }
     el.value=val??'';
   };
@@ -12172,12 +12566,16 @@ function pgpLoadMachine(eq,localDb,midx=currentMachine,clientData=null){
   // V71 (FIX 1): no MODO MERGE o regime que está na TELA é mais novo que o do
   // cadastro (foi coletado agora, no cliente) — só repõe do servidor se a tela
   // estiver inteiramente vazia.
-  if(eq.regimeData && eq.regimeData.length && !(modoMerge && pgpTemRegimeNaTela(idx))){
+  // V103 (R4) — `pgpRegimeEhHerdado` é a única exceção ao "regime da tela é
+  // sagrado" do V71: um regime que veio COPIADO da máquina 1 não foi medido
+  // nesta máquina, e o cadastro dela sabe mais. Regime digitado segue intocável.
+  if(eq.regimeData && eq.regimeData.length && !(modoMerge && pgpTemRegimeNaTela(idx) && !pgpRegimeEhHerdado(idx))){
     const container = document.getElementById(p+'turnos');
     if(container){
       // Limpar turnos existentes (manter só o primeiro)
       const existingRows = container.querySelectorAll('.turno-row');
       existingRows.forEach((r,i)=>{ if(i>0) r.remove(); });
+      try { pgpMarcarRegimeHerdado(idx, false); } catch(e) {}   // V103 (R4): agora é cadastro
       eq.regimeData.forEach((t, tIdx)=>{
         let row;
         if(tIdx === 0){
@@ -13331,6 +13729,12 @@ async function pgpIniciarPreventivaDeOS(osId){
   // vaze para o carregamento das máquinas da OS.
   _pgpLoadedMachine = null;
   _pgpLoadedMachinesByIndex = {};
+  // V103 (D6) — o v47 zerou a MÁQUINA e esqueceu a COLETA. `_currentSessionId`
+  // e `_editingSessionIndex` sobreviviam à entrada na OS, então o primeiro
+  // salvamento daqui gravava POR CIMA da coleta salva do cliente anterior.
+  // ⚠ Só aqui, no caminho principal: o guard de reentrada acima devolve antes
+  //   e a coleta que está na tela É a mesma — soltar ali criaria duplicata.
+  try { pgpSoltarColetaSalva(); } catch(e) {}
 
   const step1 = document.getElementById('pgpStep1');
   const step2 = document.getElementById('pgpStep2');
@@ -13391,6 +13795,7 @@ async function pgpIniciarPreventivaDeOS(osId){
     try{ _dbParque = JSON.parse(localStorage.getItem('proper_admin_v2') || 'null'); }catch(eDb){ _dbParque = null; }
 
     // Primeira máquina usa o painel 0, que já existe por padrão ao abrir o app.
+    window._pgpCarregandoOS = true;   // V103 (R3): herança suspensa até o fim da carga
     await pgpCarregarMaquinaOS(osMachines[0], 0, _dbParque, r.os || null);   // V91.1 (P3)
 
     // Máquinas adicionais: cria um painel por máquina, reaproveitando addMachine()
@@ -13400,9 +13805,18 @@ async function pgpIniciarPreventivaDeOS(osId){
       await pgpCarregarMaquinaOS(osMachines[i], currentMachine, _dbParque, r.os || null);   // V88 (B3) · V91.1 (P3)
     }
 
+    window._pgpCarregandoOS = false;   // V103 (R3)
+    // V103 (R3) — agora sim: máquina da OS sem regime no cadastro herda o da
+    // máquina 1 da MESMA OS. MEDIDO antes: OS de 2 máquinas, regime só na
+    // primeira ⇒ a segunda ficava vazia e o técnico redigitava.
+    try { for (var _hi = 1; _hi < (machines || []).length; _hi++) pgpHerdarDaPrimeira(_hi); } catch(e) {}
     switchMachine(0);
     renderTabs();
     if(typeof updateAllTabNames === 'function') updateAllTabNames();
+    // V103 (D1) — o catálogo da OS acabou de preencher a tela; isso é ZERO,
+    // não é trabalho do técnico. Sem rearmar, o botão voltar do aparelho
+    // abriria o aviso de sair numa OS recém-aberta e ainda ofereceria salvar.
+    try { pgpRearmarZeroColeta('vazio'); } catch(e){}
     if(window._PGP_OS_ID){
       var hi = pgpIsoToHHMMLocal(window._PGP_PREVENTIVA_INICIO_ISO) || pgpNowHHMMLocal();
       var elHi = document.querySelector('[data-key="m0_hora_inicio"]');
@@ -13417,6 +13831,7 @@ async function pgpIniciarPreventivaDeOS(osId){
       found.classList.add('show');
     }
   }catch(e){
+    window._pgpCarregandoOS = false;   // V103 (R3): erro não pode deixar a herança desligada
     if(e.message && e.message.includes('AUTH_GOOGLE')){ pfHubLogout(); return; }
     // V77 (F1): mensagem de gente + saída explícita no modo offline.
     if (pgpModoOfflineAtivo()){
