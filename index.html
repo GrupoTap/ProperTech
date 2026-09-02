@@ -64,6 +64,29 @@
           valor vazio do servidor. Ausência de dado não é fato (lição do V140):
           o cadastro refresca com dado, nunca apaga com vazio.
 
+     ── 3ª parte da mesma rodada (02/09) ───────────────────────────────────
+     🔴 O CHECKLIST DO PISTÃO ERA DESTRUÍDO AO VOLTAR PARA A COLETA.
+     Investigação das capturas do técnico de 01/09 (6 máquinas de pistão, todas
+     a 0% e "item(ns) sem estado encontrado", "NADA foi salvo para elas").
+     Bancada: _testes/NEWFILE_T_PCF_V103_pistao.mjs (4 controles negativos).
+
+     P1 · A CAUSA. `selectScenario` é o ÚNICO ponto que escreve em
+          `parts_table_content`, e monta SEMPRE a tabela do PARAFUSO. No perfil
+          pistão não há cenário: o hidden `scenario` guarda o literal 'PISTAO',
+          que é carimbo de PERFIL. O `restoreState` replicava `state.scenarios`
+          sem olhar ⇒ `selectScenario(p,'PISTAO',…)` trocava as 13 linhas
+          q1..q13 pela tabela p1..p9 e a repovoação de `state.fields` não achava
+          mais `m<i>_q*`. REPRODUZIDO: 100% antes de salvar → 0% depois de
+          restaurar, com "item(ns) sem estado encontrado". Vale para "Restaurar
+          coleta" E para o "Continuar" do rascunho. O dado estava salvo; o que
+          sumia era o LUGAR na tela para ele voltar.
+     P2 · O QUE DEIXOU ISSO INVISÍVEL: a repovoação de `state.fields` descarta
+          em silêncio todo valor cujo campo não existe. Agora ela CONTA e avisa.
+     P3 · E A MENSAGEM CULPAVA O TÉCNICO: "item(ns) sem estado encontrado" com o
+          checklist inteiro fora da tela manda ele procurar um botão que não
+          existe. Tabela ausente virou diagnóstico próprio — a mesma família do
+          "foto não disponível neste aparelho" e do "nome não achado".
+
      ⚠ ORDEM DE PUBLICAÇÃO: este arquivo + `sw.js` em `propertech-v104`.
        Sem o bump do sw o aparelho continua servindo a V102 do cache.
 -->
@@ -5682,7 +5705,44 @@ function pgpRestoreLoadedParts(p, midx) {
 }
 
 function selectScenario(p, scId, midx, e) {
-  e.stopPropagation();
+  if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+  // ══════════════════════════════════════════════════════════════════════
+  // V103 · 🔴 A TABELA DO PISTÃO MORRIA AQUI — E COM ELA A COLETA INTEIRA.
+  //
+  // `selectScenario` é o ÚNICO ponto do app que escreve em
+  // `<p>parts_table_content`, e ele monta SEMPRE a tabela do PARAFUSO
+  // (`buildPartsTable`). No perfil pistão não existem cenários A–E: o hidden
+  // `<p>scenario` guarda o literal **'PISTAO'**, que é carimbo de perfil, não
+  // cenário. E o `restoreState` replicava `state.scenarios` sem olhar:
+  //     selectScenario(p, 'PISTAO', midx, …)
+  // ⇒ as 13 linhas q1..q13 (estado, ação, referência, data, observação) eram
+  //   SUBSTITUÍDAS pela tabela p1..p9 do parafuso, e a repovoação seguinte de
+  //   `state.fields` não achava mais `m<i>_q*` e virava no-op SILENCIOSO.
+  //
+  // 🔑 REPRODUZIDO, coleta de pistão com os 13 itens preenchidos:
+  //       antes de salvar ....... 100% · pronta
+  //       depois de restaurar ...   0% · "item(ns) sem estado encontrado"
+  //       ids no painel .......... m0_p1_acao … (q1..q13 sumiram)
+  //    Idêntico à tela que o técnico fotografou em 01/09 (6 máquinas a 0%).
+  //    Vale para os DOIS caminhos de volta: "Restaurar coleta" e o "Continuar"
+  //    do rascunho — este último é o que pega o técnico quando o celular mata
+  //    o app no meio do dia. O dado estava salvo em `pgp_sessions_v1`; o que
+  //    não existia mais era o lugar na TELA para ele voltar.
+  //
+  // A guarda fica AQUI, no estrangulamento, e não só no chamador: existem
+  // três chamadores e um quarto vai existir.
+  // ══════════════════════════════════════════════════════════════════════
+  var _scTxt = String(scId == null ? '' : scId).toUpperCase();
+  if (_scTxt === 'PISTAO' || pgpEhPistao(midx)) {
+    var _hidPist = document.getElementById(`${p}scenario`);
+    if (_hidPist) _hidPist.value = 'PISTAO';
+    // painel que ainda não desenhou o pistão (nasceu parafuso): quem monta a
+    // tabela certa é o PERFIL, nunca o cenário.
+    if (!document.getElementById(`${p}q1_estado`)) {
+      try { pgpAplicarPerfil(midx, 'pistao', { force: true }); } catch (_) {}
+    }
+    return;
+  }
   // Botões
   SCENARIOS.forEach(sc => {
     const btn = document.getElementById(`${p}sc_${sc.id}`);
@@ -8035,6 +8095,12 @@ function restoreState(state) {
 
   // Restaurar cenários (gera a tabela com os IDs corretos) — DEPOIS do perfil.
   Object.entries(state.scenarios || {}).forEach(([midx, scId]) => {
+    // V103 — 'PISTAO' NÃO É CENÁRIO: é o carimbo do perfil, e a tabela dele já
+    // foi montada pelo `pgpAplicarPerfil` acima. Repassá-lo ao `selectScenario`
+    // era o que destruía o checklist (ver o bloco lá). A guarda do
+    // `selectScenario` já basta; esta linha diz a INTENÇÃO no lugar onde ela
+    // se lê, e evita a chamada por completo.
+    if (String(scId || '').toUpperCase() === 'PISTAO') return;
     const p = 'm'+midx+'_';
     const fakeEvt = {stopPropagation:()=>{}};
     selectScenario(p, scId, parseInt(midx), fakeEvt);
@@ -8066,11 +8132,25 @@ function restoreState(state) {
     });
   })();
 
-  // Depois restaurar valores dos campos
+  // ══════════════════════════════════════════════════════════════════════
+  // V103 — A REPOVOAÇÃO ERA UM NO-OP SILENCIOSO, E É ASSIM QUE 13 ITENS SOMEM
+  // SEM UMA PALAVRA. Este laço é o último passo de TODA volta de coleta; se o
+  // DOM não tem o campo, o valor salvo era simplesmente descartado. Foi essa
+  // mudez que transformou o defeito do pistão numa tela limpa e plausível —
+  // com cliente, modelo e série no lugar — em vez de um erro.
+  // 🔑 Agora ele CONTA o que não coube. A conta ignora campo vazio (não há o
+  //    que perder) e os hidden de compatibilidade `_valor_mostrado_hidden`,
+  //    que por desenho nem sempre existem — alerta falso gasta o alerta.
+  // ══════════════════════════════════════════════════════════════════════
+  var _pgpRestNaoCoube = [];
   Object.entries(state.fields || {}).forEach(([key, val]) => {
     const el = document.querySelector('[data-key="' + key + '"]');
-    if (el && val !== undefined) el.value = val;
+    if (el) { if (val !== undefined) el.value = val; return; }
+    if (val === undefined || val === null || String(val).trim() === '') return;
+    if (/_valor_mostrado_hidden$/.test(key)) return;
+    _pgpRestNaoCoube.push(key);
   });
+  try { window._pgpUltimoRestoreSemLugar = _pgpRestNaoCoube.slice(); } catch(e) {}
 
   (state.fieldItems || []).forEach(({key, checked, expanded}) => {
     const input = document.querySelector('[data-key="' + key + '"]');
@@ -8136,6 +8216,14 @@ function restoreState(state) {
   updateAllTabNames();
   switchMachine(0);
   try { pgpRenderLoadedCard(currentMachine); } catch(e) {}   // V103 (D2)
+  // V103 — o que foi salvo e não achou lugar na tela vira NOTÍCIA, não silêncio.
+  try {
+    if (_pgpRestNaoCoube.length) {
+      console.warn('[PCF V103] restore: ' + _pgpRestNaoCoube.length +
+                   ' campo(s) salvos sem lugar na tela:', _pgpRestNaoCoube.slice(0, 40));
+      showNotification('⚠ ' + _pgpRestNaoCoube.length + ' campo(s) da coleta não couberam na tela — confira o checklist antes de registrar');
+    }
+  } catch(e) {}
 }
 
 // v23: repovoa o objeto global photoStore a partir do draft/sessão salvos e redesenha
@@ -15201,6 +15289,19 @@ async function pgpEnviarPreventiva(midx=currentMachine, opts){
     return;
   }
 
+  // V103 — mesmo diagnóstico do `pgpMaquinaPronta`: tabela ausente da tela não
+  // é checklist mal preenchido. Recusar é certo; culpar o técnico não é.
+  var _semDomEnv = 0;
+  pgpPartsDe(idx).forEach(function(pt){ if(!document.getElementById(p + pt.k + '_acao')) _semDomEnv++; });
+  if(_semDomEnv){
+    var _msgDom = (_semDomEnv === pgpPartsDe(idx).length)
+      ? 'o checklist desta máquina não está montado na tela — reabra a máquina'
+      : _semDomEnv + ' item(ns) do checklist não estão na tela — reabra a máquina';
+    if(silent) return { status:'skipped', reason:_msgDom };
+    showNotification('⚠ ' + _msgDom);
+    return;
+  }
+
   let todasComAcao=true;
   let algumaTrocadaSemRef=false;
   let algumSemEstado=false;
@@ -15821,6 +15922,21 @@ function pgpMaquinaPronta(midx){
     return el ? String(el.value || '').trim() : '';
   };
   const _perfPr = pgpPerfil(idx);
+  // ══════════════════════════════════════════════════════════════════════
+  // V103 — 🔑 "SEM ESTADO" E "SEM TABELA" SÃO COISAS DIFERENTES, e dizer a
+  // primeira quando é a segunda manda o técnico procurar um botão que não
+  // existe na tela. Foi o que ele leu nas 6 máquinas em 01/09. É a mesma
+  // família do "foto não disponível neste aparelho" e do "nome não achado":
+  // FALHA VESTIDA DE ESTADO NORMAL.
+  // ══════════════════════════════════════════════════════════════════════
+  var _semDomPr = 0;
+  pgpPartsDe(idx).forEach(function(pt){ if(!document.getElementById(p + pt.k + '_acao')) _semDomPr++; });
+  if(_semDomPr && _semDomPr === pgpPartsDe(idx).length){
+    return { pronta:false, motivo:'o checklist desta máquina não está montado na tela — reabra a máquina' };
+  }
+  if(_semDomPr){
+    return { pronta:false, motivo:_semDomPr + ' item(ns) do checklist não estão na tela — reabra a máquina' };
+  }
   if(_perfPr.horimetroObrigatorio && !(parseInt(gv('horimetro')) || 0)) return { pronta:false, motivo:'horímetro não informado' };
   let todasComAcao = true, algumaTrocadaSemRef = false, algumSemEstadoPr = false;
   pgpPartsDe(idx).forEach(pt => {
