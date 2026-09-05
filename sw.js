@@ -9,7 +9,10 @@
  * O activate abaixo apaga qualquer cache antigo com prefixo 'propertech-'.
  */
 const CACHE_BASE = 'propertech-';
-const CACHE = CACHE_BASE + 'v104'; // v101 (28/08/2026) — PCF_V100: as portas que nasciam sem OS. ⚠ ESTE BUMP É O QUE ENTREGA O `manifest.webmanifest` NOVO: ele está no APP_SHELL abaixo, e sem chave nova o start_url velho (`?source=pwa`, sem modo) fica no cache do aparelho.
+const CACHE = CACHE_BASE + 'v105'; // v105 (05/09/2026) — C2 TARDIO, ver a nota do PCF_V103 abaixo.
+// (nota herdada do v101, 28/08/2026 — PCF_V100: as portas que nasciam sem OS. ⚠ AQUELE BUMP É O QUE
+//  ENTREGOU o `manifest.webmanifest` NOVO: ele está no APP_SHELL abaixo, e sem chave nova o start_url
+//  velho (`?source=pwa`, sem modo) fica no cache do aparelho.)
 // 🔴 ATENÇÃO À NUMERAÇÃO — ELA NÃO BATE COM A DO PCF, E ISSO É PROPOSITAL.
 //    Desde o conserto do desencontro de 16/08 o sw anda UM À FRENTE do arquivo:
 //        PCF_V90  ↔  propertech-v91   (deploy de 19/08)
@@ -25,6 +28,15 @@ const CACHE = CACHE_BASE + 'v104'; // v101 (28/08/2026) — PCF_V100: as portas 
 //        PCF_V100 ↔  propertech-v101  (deploy de 28/08)
 //        PCF_V102 ↔  propertech-v103  (deploy de 01/09)
 //        PCF_V103 ↔  propertech-v104  (este — salvamento, restauração de coleta, registro e OS)
+//        PCF_V103 ↔  propertech-v105  (05/09 — 🔴 O MESMO app, um deploy NOVO: o C2 trocou a chave
+//                                      da API DENTRO do index.html. O carimbo do app continua
+//                                      PCF_V103 de propósito — rotação de chave não é versão nova
+//                                      (foi assim nos 19 arquivos de 29/08). Por isso o sw fica
+//                                      DOIS à frente do PCF, e não um: a regra é 'chave NOVA a cada
+//                                      DEPLOY', nunca 'um à frente do arquivo'. Reusar 'v104' aqui
+//                                      seria o pior modo de falha descrito logo abaixo — o activate
+//                                      não apagaria nada e o técnico seguiria abrindo, do cache, o
+//                                      index com a CHAVE VELHA, que morre no C4.)
 //    Quem "corrigir" isto para propertech-v91 achando que alinha as versões
 //    reintroduz o pior modo de falha deste arquivo: a chave ficaria IGUAL à do
 //    deploy anterior, o activate não apagaria nada, e o técnico continuaria
