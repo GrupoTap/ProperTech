@@ -1269,8 +1269,8 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ProperCare Field · PGP Preventivas v35 · build PCF_V104</title>
-<meta name="app-build" content="PCF_V104" data-date="2026-09-06">
+<title>ProperCare Field · PGP Preventivas v35 · build PCF_V105</title>
+<meta name="app-build" content="PCF_V105" data-date="2026-09-06">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -1555,6 +1555,27 @@ function pgpEnsureJsPDF() {
   .pf-vista button{flex:1;min-height:48px;border-radius:999px;border:1px solid var(--border);
     background:var(--bg-card);color:var(--text-light);font-size:14px;font-weight:800;font-family:inherit}
   .pf-vista button.on{background:#2563eb;border-color:#2563eb;color:#fff}
+  /* V105 — a terceira vista. Tres botoes cabem na fita sem apertar o alvo de
+     toque: o `flex:1` divide, o `min-height:48px` continua o mesmo. */
+  .pf-dia-sec{margin-top:16px}
+  .pf-dia-sec .h{display:flex;align-items:baseline;gap:8px;margin-bottom:9px}
+  .pf-dia-sec .h .t{font-size:11px;letter-spacing:.12em;color:var(--text-light);font-weight:800}
+  .pf-dia-sec .h .n{font-size:11px;font-weight:800;color:#93c5fd}
+  .pf-dia-sec.hoje .h .t{color:#93c5fd}
+  .pf-dia-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;
+    padding:12px 13px;margin-bottom:8px;display:flex;align-items:center;gap:11px;width:100%;
+    text-align:left;font-family:inherit;color:inherit}
+  .pf-dia-card.atras{border-color:#7f1d1d;background:#1b0f0f}
+  .pf-dia-card .q{width:52px;flex-shrink:0;font-size:12px;font-weight:800;color:#93c5fd;line-height:1.2}
+  .pf-dia-card.atras .q{color:#fca5a5}
+  /* ⚠ `display:block` nos dois: eles sao <span>, e em elemento INLINE o
+     `text-overflow:ellipsis` nao vale — o texto estoura o cartao e empurra o
+     chevron para fora da tela. Achado ao OLHAR a captura, nao ao ler o codigo
+     (a mesma licao do V135/A4 e do V151). */
+  .pf-dia-card .tx{flex:1;min-width:0;display:block;overflow:hidden}
+  .pf-dia-card .tx .c{display:block;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pf-dia-card .tx .s{display:block;font-size:12px;color:var(--text-light);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pf-dia-card .go{font-size:18px;color:var(--text-light);flex-shrink:0}
   .pf-vez-kick{font-size:11px;letter-spacing:.14em;font-weight:800;color:#60a5fa;margin-bottom:9px}
   .pf-vez{background:linear-gradient(160deg,#12233f,#0d1a30);border:1px solid #2b4576;border-radius:16px;padding:17px}
   .pf-vez .cli{font-size:24px;font-weight:800;line-height:1.13}
@@ -17713,15 +17734,148 @@ function _pfMotivoSugestao(o) {
 }
 
 function pfSetVista(v) {
-  _pfVista = (v === 'fila') ? 'fila' : 'vez';
+  // V105 — tres vistas. A chave do localStorage segue sendo `pf_vista_v94`: a
+  // regra do projeto e nao renomear, e um nome novo faria todo aparelho voltar
+  // para "Minha vez" no dia da virada.
+  _pfVista = (v === 'fila') ? 'fila' : (v === 'dia' ? 'dia' : 'vez');
   try { localStorage.setItem('pf_vista_v94', _pfVista); } catch (e) {}
   var bv = document.getElementById('pfVistaVez'), bf = document.getElementById('pfVistaFila');
+  var bd = document.getElementById('pfVistaDia');
   if (bv) bv.classList.toggle('on', _pfVista === 'vez');
   if (bf) bf.classList.toggle('on', _pfVista === 'fila');
+  if (bd) bd.classList.toggle('on', _pfVista === 'dia');
   var pv = document.getElementById('pfVezPainel'), fb = document.getElementById('pfFilaBloco');
+  var pd = document.getElementById('pfDiaPainel');
   if (pv) pv.style.display = (_pfVista === 'vez') ? '' : 'none';
   if (fb) fb.style.display = (_pfVista === 'fila') ? '' : 'none';
+  if (pd) pd.style.display = (_pfVista === 'dia') ? '' : 'none';
   if (_pfVista === 'vez') pfRenderVez();
+  if (_pfVista === 'dia') pfRenderDia();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// V105 · "MEU DIA" — a terceira vista, e a unica com eixo de TEMPO
+// ---------------------------------------------------------------------------
+// Pedido do Fernando (06/09/2026), depois de olhar a Agenda do TapFlow: as
+// duas vistas que existiam respondem "o que agora" (Minha vez) e "o que existe"
+// (Backlog). NENHUMA respondia "o que e meu HOJE" — a pergunta que o tecnico
+// faz ao acordar, e a unica que o escritorio ja respondeu quando marcou uma
+// data na OS.
+//
+// 🔑 ZERO MUDANCA DE GAS, ZERO CAMPO NOVO. `data_prevista` e `hora_prevista` ja
+//    chegam no envelope desde a V84 — o `_pfPrazoMs` que ordena o Backlog no
+//    modo "Prazo" e o MESMO que agrupa aqui. Nao ha segunda conta de prazo: se
+//    houvesse, o tecnico e o admin veriam datas diferentes para a mesma OS, que
+//    e exatamente o defeito que o v91 fechou.
+//
+// ⚠ SO O QUE E MEU. Sugestao da fila NAO entra: sugestao nao tem dia marcado
+//   nem compromisso com ninguem, e por-la aqui faria o tecnico planejar o dia
+//   com trabalho que ele nao pegou.
+// ⚠ "SEM DATA" E UM GRUPO, NAO UM DESCARTE. A OS minha sem prazo aparece no fim,
+//   com o motivo escrito. Some-la deixaria a tela limpa e o dia errado.
+// ⚠ A OS ATRASADA aparece PRIMEIRO e em vermelho, no seu proprio grupo: ela e a
+//   unica coisa desta tela que ja custou alguma coisa a alguem.
+// ═══════════════════════════════════════════════════════════════════════════
+function _pfDiaKeyISO(ms) {
+  var d = new Date(ms);
+  return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+}
+function _pfDiaHojeISO() { var d = new Date(); d.setHours(0, 0, 0, 0); return _pfDiaKeyISO(d.getTime()); }
+function _pfDiaSomaISO(iso, n) {
+  var p = String(iso).split('-').map(Number);
+  var d = new Date(p[0], p[1] - 1, p[2] + n, 12);
+  return _pfDiaKeyISO(d.getTime());
+}
+// As MINHAS OS ativas: designadas, assumidas, aguardando etapa e travadas.
+// A travada entra porque ela TEM prazo e continua sendo minha — o que ela nao
+// tem e vez. Escondê-la faria o dia parecer mais leve do que e.
+function _pfDiaMinhas() {
+  var c = _pfClassificar();
+  var vistas = {}, out = [];
+  [].concat(c.continuar, c.minhas, c.aguardando, c.travadasMinhas).forEach(function (o) {
+    var k = String(o.id_os || '');
+    if (!k || vistas[k]) return;
+    vistas[k] = 1; out.push(o);
+  });
+  return out;
+}
+function _pfDiaGrupos() {
+  var hoje = _pfDiaHojeISO();
+  var amanha = _pfDiaSomaISO(hoje, 1);
+  var fimSemana = _pfDiaSomaISO(hoje, 7);
+  var G = {
+    atrasadas: { rot: 'ATRASADAS', itens: [] },
+    hoje:      { rot: 'HOJE',      itens: [] },
+    amanha:    { rot: 'AMANHÃ',    itens: [] },
+    semana:    { rot: 'PRÓXIMOS 7 DIAS', itens: [] },
+    depois:    { rot: 'DEPOIS',    itens: [] },
+    semData:   { rot: 'SEM DATA MARCADA', itens: [] }
+  };
+  _pfDiaMinhas().forEach(function (o) {
+    var ms = _pfPrazoMs(o);
+    if (ms === Infinity) { G.semData.itens.push(o); return; }
+    var k = _pfDiaKeyISO(ms);
+    if (k < hoje) G.atrasadas.itens.push(o);
+    else if (k === hoje) G.hoje.itens.push(o);
+    else if (k === amanha) G.amanha.itens.push(o);
+    else if (k <= fimSemana) G.semana.itens.push(o);
+    else G.depois.itens.push(o);
+  });
+  ['atrasadas','hoje','amanha','semana','depois','semData'].forEach(function (k) {
+    G[k].itens.sort(_pfOrdemMinhas);
+  });
+  return G;
+}
+function _pfDiaCard(o, atras) {
+  var maq = Array.isArray(o.maquinas_vinculadas) ? o.maquinas_vinculadas.join(' · ') : String(o.maquinas_vinculadas || '');
+  var local = (typeof pfOsEhExterna === 'function' && pfOsEhExterna(o)) ? '🚗 campo' : '🏭 oficina';
+  var pz = _pfPrazoTxt(o);
+  var bq = _pfEhBloqueada(o);
+  var etapa = String(o.estagio && o.estagio !== '—' ? o.estagio : (o.tipo_os || ''));
+  var rot = pgpEscHtml(String(o.cliente || '—')) + (o.tipo_os ? ' · ' + pgpEscHtml(String(o.tipo_os)) : '');
+  var quando = pz ? pgpEscHtml(pz) : 'sem data';
+  return '<button type="button" class="pf-dia-card' + (atras ? ' atras' : '') + '"'
+    + ' onclick="pfSelecionarOS(\'' + String(o.id_os).replace(/'/g, "\\'") + '\',\'' + rot.replace(/'/g, "\\'") + '\')">'
+    + '<span class="q">' + quando + '</span>'
+    + '<span class="tx"><span class="c">' + pgpEscHtml(String(o.cliente || '—')) + '</span>'
+    + '<span class="s">' + pgpEscHtml(maq || String(o.tipo_os || '')) + ' · ' + local
+    + (etapa ? ' · ' + pgpEscHtml(etapa) : '')
+    + (bq ? ' · 🚧 travada' : '')
+    + (_pfRank(o) >= 3 ? ' · 🔥 urgente' : '') + '</span></span>'
+    + '<span class="go">›</span></button>';
+}
+function pfRenderDia() {
+  var el = document.getElementById('pfDiaPainel');
+  if (!el || _pfVista !== 'dia') return;
+  var lista = (typeof _pfOsList !== 'undefined' && Array.isArray(_pfOsList)) ? _pfOsList : [];
+  if (!lista.length) {
+    el.innerHTML = '<div class="pf-vez-vazio"><div class="em">⏳</div><div class="t">Carregando as OS…</div>'
+      + '<div class="s">Se demorar, veja o Backlog na outra aba — ele abre do cache.</div></div>';
+    return;
+  }
+  var G = _pfDiaGrupos();
+  var ordem = ['atrasadas', 'hoje', 'amanha', 'semana', 'depois', 'semData'];
+  var total = ordem.reduce(function (s, k) { return s + G[k].itens.length; }, 0);
+  if (!total) {
+    el.innerHTML = '<div class="pf-vez-vazio"><div class="em">✅</div>'
+      + '<div class="t">Nada designado a voce</div>'
+      + '<div class="s">Quando o escritorio marcar uma OS para voce, ela aparece aqui pelo dia. '
+      + 'Enquanto isso, o <b>Backlog</b> mostra o que existe na oficina.</div></div>';
+    return;
+  }
+  var html = '';
+  ordem.forEach(function (k) {
+    var g = G[k];
+    if (!g.itens.length) return;
+    html += '<div class="pf-dia-sec' + (k === 'hoje' ? ' hoje' : '') + '">'
+      + '<div class="h"><span class="t">' + g.rot + '</span><span class="n">' + g.itens.length + '</span></div>'
+      + g.itens.map(function (o) { return _pfDiaCard(o, k === 'atrasadas'); }).join('')
+      + '</div>';
+  });
+  html += '<div class="pf-vez-aviso">O dia vem da <b>data marcada pelo escritorio</b> na OS '
+    + '(a mesma que ordena o Backlog no modo 📅 Prazo). Aqui so aparece o que e <b>seu</b> — '
+    + 'sugestao da fila nao tem dia, e por isso fica no Backlog.</div>';
+  el.innerHTML = html;
 }
 
 function _pfVezLinha(o, pos) {
@@ -18037,6 +18191,7 @@ function pfRenderOS() {
 
   // 24/08 (P1) — a conta que o técnico precisa para confiar no que vê.
   try { if (_pfVista === 'vez') pfRenderVez(); } catch (eV) {}   // V94
+  try { if (_pfVista === 'dia') pfRenderDia(); } catch (eD) {}   // V105
   var _nMinhas = _pfOsList.filter(_pfEhMinha).length;
   var _hint = document.getElementById('pfOsMinhasHint');
   if (_hint) {
@@ -20508,9 +20663,11 @@ if(window._PGP_OS_ID && (function(){ try { return localStorage.getItem('proper_p
          toque. O bloco da fila abaixo NAO foi tocado.                    -->
     <div class="pf-vista" role="tablist" aria-label="Vista da tela de OS">
       <button type="button" id="pfVistaVez"  class="on" onclick="pfSetVista('vez')">Minha vez</button>
+      <button type="button" id="pfVistaDia"  onclick="pfSetVista('dia')">Meu dia</button>
       <button type="button" id="pfVistaFila" onclick="pfSetVista('fila')">Backlog</button>
     </div>
     <div id="pfVezPainel"></div>
+    <div id="pfDiaPainel" style="display:none"></div>
     <div id="pfFilaBloco">
     <!-- ══ V79 (P2/K2) — BARRA COMPACTA ═══════════════════════════════════
          Até a V78 esta tela empilhava TRÊS linhas de chips + o botão Preparar

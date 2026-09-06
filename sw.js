@@ -9,7 +9,7 @@
  * O activate abaixo apaga qualquer cache antigo com prefixo 'propertech-'.
  */
 const CACHE_BASE = 'propertech-';
-const CACHE = CACHE_BASE + 'v106'; // v105 (05/09/2026) — C2 TARDIO, ver a nota do PCF_V103 abaixo.
+const CACHE = CACHE_BASE + 'v107'; // v107 (06/09/2026) — PCF_V105, a vista "Meu dia".
 // (nota herdada do v101, 28/08/2026 — PCF_V100: as portas que nasciam sem OS. ⚠ AQUELE BUMP É O QUE
 //  ENTREGOU o `manifest.webmanifest` NOVO: ele está no APP_SHELL abaixo, e sem chave nova o start_url
 //  velho (`?source=pwa`, sem modo) fica no cache do aparelho.)
@@ -37,6 +37,10 @@ const CACHE = CACHE_BASE + 'v106'; // v105 (05/09/2026) — C2 TARDIO, ver a not
 //                                      seria o pior modo de falha descrito logo abaixo — o activate
 //                                      não apagaria nada e o técnico seguiria abrindo, do cache, o
 //                                      index com a CHAVE VELHA, que morre no C4.)
+//        PCF_V104 ↔  propertech-v106  (06/09 — os quatro consertos do laudo: pgpDoSearch,
+//                                      pgpEnsureClientsCache, _pipeConferirPdfs, openModalOS)
+//        PCF_V105 ↔  propertech-v107  (este — a vista "Meu dia": as MINHAS OS agrupadas
+//                                      por Hoje/Amanhã/7 dias/Depois/Sem data. Zero GAS.)
 //    Quem "corrigir" isto para propertech-v91 achando que alinha as versões
 //    reintroduz o pior modo de falha deste arquivo: a chave ficaria IGUAL à do
 //    deploy anterior, o activate não apagaria nada, e o técnico continuaria
