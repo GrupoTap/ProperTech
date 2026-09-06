@@ -1269,8 +1269,8 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ProperCare Field · PGP Preventivas v35 · build PCF_V103</title>
-<meta name="app-build" content="PCF_V103" data-date="2026-09-02">
+<title>ProperCare Field · PGP Preventivas v35 · build PCF_V104</title>
+<meta name="app-build" content="PCF_V104" data-date="2026-09-06">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -11996,6 +11996,11 @@ async function pgpDoSearch(){
   const normQ = clientKey(q);
   let found=localDb?.machines?.find(m=> clientKey(m.client||'').includes(normQ) && normQ.length > 1);
 
+  // V104 (A1) — a MESMA correção que a irmã `pgpDoSerialSearch` recebeu na
+  // V75 (P1), e que esta função nunca recebeu. Sem ela, rede oscilando no
+  // galpão faz o app AFIRMAR 'não encontrado' e ainda ABRIR o cadastro com o
+  // nome preenchido — o convite para a 2ª ficha do mesmo cliente.
+  let _erroConsultaCli=false;
   if(!found&&_pgpGsConnected){
     try{
       const r=await fetch(_pgpGsUrl+'?action=getMachinesByClient&client='+encodeURIComponent(q)+'&key='+_AUTH_HASH+gcParam());
@@ -12005,7 +12010,9 @@ async function pgpDoSearch(){
         pgpSelectClient(d.canonicalClient||q);
         return;
       }
-    }catch(e){}
+      // resposta veio, mas não é 'ok': também não autoriza afirmar ausência
+      if(!d||d.status!=='ok') _erroConsultaCli=true;
+    }catch(e){ _erroConsultaCli=true; console.warn('[V104] getMachinesByClient falhou:',e&&e.message); }
   }
 
   if(found){
@@ -12018,6 +12025,11 @@ async function pgpDoSearch(){
     pgpRenderLastClients();
     document.getElementById('pgpFound').textContent='✓ Carregado: '+found.brand+' '+found.model+' — '+found.client;
     document.getElementById('pgpFound').classList.add('show');
+  } else if(_erroConsultaCli){
+    // 🔑 Três estados, três frases. Aqui o sistema não sabe — e diz isso.
+    document.getElementById('pgpNotFound').textContent='📴 Sem resposta do servidor — não dá para saber se este cliente já está cadastrado. Tente de novo com internet antes de cadastrar.';
+    document.getElementById('pgpNotFound').classList.add('show');
+    document.getElementById('pgpNewMachine').classList.remove('show');
   } else {
     document.getElementById('pgpNotFound').textContent='Não encontrado. Preencha manualmente ou cadastre abaixo.';
     document.getElementById('pgpNotFound').classList.add('show');
@@ -12998,6 +13010,11 @@ function pgpBackToStep1(){
 // automaticamente refeito assim que a conexão for estabelecida.
 let _pgpAllClientsCache = null;
 let _pgpAllClientsCacheOk = false; // true somente após carregar com _pgpGsConnected=true
+// V104 (A2) — a lista do servidor falhou nesta tentativa. Sem esta bandeira,
+// `_pgpAllClientsCacheOk = _pgpGsConnected` marcava o cache como DEFINITIVO
+// mesmo com a busca falhada, e nem o `!force` nem o `if(!_pgpAllClientsCacheOk)`
+// tentavam de novo: UM timeout no boot envenenava a lista pela sessão inteira.
+let _pgpClientsFalhouServidor = false;
 let _pgpClientsCacheLoading = false;
 
 async function pgpEnsureClientsCache(force){
@@ -13012,6 +13029,7 @@ async function pgpEnsureClientsCache(force){
   if(_pgpAllClientsCache !== null && _pgpAllClientsCacheOk && !force) return;
   if(_pgpClientsCacheLoading) return;
   _pgpClientsCacheLoading = true;
+  _pgpClientsFalhouServidor = false;   // cada tentativa começa limpa
   // Locais
   // BUG3-FIX: incluir clientes cadastrados diretamente em db.clients, não só via máquinas
   let localClients = [];
@@ -13035,8 +13053,8 @@ async function pgpEnsureClientsCache(force){
       if(d.status==='ok'){
         serverClients=d.clients||[];
         if(d.clientsFull) window._pgpClientsFull=d.clientsFull;
-      }
-    }catch(e){}
+      } else { _pgpClientsFalhouServidor = true; }
+    }catch(e){ _pgpClientsFalhouServidor = true; console.warn('[V104] getClientsForField falhou:',e&&e.message); }
   }
   // Deduplicar
   const seenKeys=new Set();
@@ -13047,7 +13065,9 @@ async function pgpEnsureClientsCache(force){
     if(k&&!seenKeys.has(k)){seenKeys.add(k);all.push(c);}
   });
   _pgpAllClientsCache = all.sort((a,b)=>a.localeCompare(b,'pt-BR'));
-  _pgpAllClientsCacheOk = _pgpGsConnected; // só marca "definitivo" se buscou do servidor conectado
+  // V104 (A2) — CONECTADO E FALHADO não é definitivo. Era aqui que a bandeira
+  // mentia exatamente na hora em que ela importa.
+  _pgpAllClientsCacheOk = _pgpGsConnected && !_pgpClientsFalhouServidor;
   if (_pgpAllClientsCacheOk) window._pgpClientsCacheTs = Date.now(); // V76 (F4d): carimbo do throttle de reconexão
   _pgpClientsCacheLoading = false;
 }
@@ -13077,13 +13097,21 @@ async function pgpClientSearch(){
     filtered = filtered.filter(c=>norm(c).includes(nq));
   }
 
-  if(!filtered.length){acList.style.display='none';return;}
+  // V104 (A2) — lista PARCIAL não pode se passar por lista inteira. Com a
+  // busca do servidor falhada, o dropdown aparece mesmo sem resultado: o
+  // técnico precisa saber que o silêncio é da rede, não do cadastro.
+  if(!filtered.length && !_pgpClientsFalhouServidor){acList.style.display='none';return;}
 
   acList.style.display='block';
+  const _tiraParcial = _pgpClientsFalhouServidor
+    ? '<div class="pgp-ac-item" style="opacity:.85;font-size:12px;background:#fef3c7;color:#92400e" '
+      + 'onclick="pgpEnsureClientsCache(true).then(pgpClientSearch)">📴 Lista parcial — só o que está neste aparelho. '
+      + 'Toque para tentar carregar do servidor.</div>'
+    : '';
   // V76 (F5b): com o campo vazio (o onfocus também busca) o dropdown remontava a
   // lista COMPLETA de clientes a cada tecla. 30 é mais do que cabe na tela.
   const _fShow = filtered.slice(0, 30);
-  acList.innerHTML=_fShow.map(c=>
+  acList.innerHTML=_tiraParcial+_fShow.map(c=>
     `<div class="pgp-ac-item" onclick="pgpSelectClient('${c.replace(/'/g,"\\'")}')">
        <span class="pgp-ac-main">${c}</span>
      </div>`
