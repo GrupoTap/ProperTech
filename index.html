@@ -1,3 +1,61 @@
+<!-- PCF V106 (09/09/2026) — A RODADA DO HORÍMETRO.
+     Feito EM CIMA do PCF_V105 PUBLICADO. 100% aditivo: nenhum id, data-key,
+     action, chave de foto ou view renomeado. Par: GAS v139 · PCM V174 · sw v108.
+     Bancada: _testes/NEWFILE_BENCH_HORIMETRO_2026-09-09.mjs (53/53; --negativo
+     reprova 14). Laudo: 00_EM_ABERTO/NEWFILE_LAUDO_HORIMETRO_3062_2026-09-09.md
+
+     O CASO: Techto SD30 3062 (Fundição Realeza), preventiva de 08/09/2026.
+     O painel marcava 5.735 h — a foto está anexada ao PRÓPRIO relatório — e a
+     visita gravou 5.614 h, que é o Hor.Total do cadastro desde 24/08, na
+     unidade. A estimativa do sistema para aquele dia era 5.743: errou 8 h em 15
+     dias (0,14 %). 🔑 O sistema estava certo e a leitura manual o corrompeu.
+
+     C1  A LEITURA REAL NASCE VAZIA. `sv('horimetro', eq.hourTotal)` enchia o
+         campo de MEDIÇÃO com o cadastro. O v65 já mandava nascer vazio e
+         `pfReprojetar` limpava — mas só com `force=true`, e a chamada passa
+         `preservarColeta = modoMerge`, que zera o force. 🔑 Campo de medição
+         pré-preenchido com número plausível é armadilha, não conveniência.
+     C1b pfConferirLeitura: leitura que foge >10 % (piso 50 h) da projeção acende
+         alerta VERMELHO na hora, com o display na frente do técnico. Não trava.
+     C5  PEÇA TROCADA ANCORA NO HORÍMETRO DA VISITA. `calcUltimaTroca` responde
+         "quando ela foi trocada da vez ANTERIOR" — pergunta certa para peça
+         conferida, errada para peça trocada agora, e rodava para as duas. As 4
+         peças trocadas na 3062 saíram da visita já vencidas. Fonte única nova:
+         `pgpUltTrocaPeca_`, usada pelo payload, pelo PDF, pelo CSV e pelo resumo.
+         Novo campo `valorPos`: o estado do contador DEPOIS do serviço (0 no
+         progressivo, a validade no regressivo) — é ele que vai para o cadastro.
+     C6  ÚLTIMA TROCA IMPOSSÍVEL É AUSÊNCIA, NÃO ZERO. `calcUltimaTroca` devolve
+         null quando o resultado é negativo. 🔑 Três call sites faziam
+         `Math.max(0, …)` e um não fazia — o do payload, o único que GRAVA. E o
+         `Math.max(0,…)` também estava errado: virava "última troca = 0", a maior
+         fonte de falso "vencida" do painel (95 de 109 em 09/09).
+     C7  O PDF E O PAYLOAD PASSAM A DIZER O MESMO. O papel imprimia o `_ult`
+         pré-preenchido (valor ANTIGO) e o banco recebia o calculado: 4.676 no
+         relatório e −122 no cadastro, na mesma linha da mesma visita.
+     C8  PEÇA VENCIDA NÃO É INCONSISTÊNCIA. `calcPartRow` gritava
+         "⚠️ Inconsistência" em TODA peça vencida — o caso normal — e engolia os
+         números. 🔑 Alerta que dispara no caso normal é ruído, e ruído gasta o
+         alerta. Agora separa VENCIDA (segue) de IMPOSSÍVEL (contador maior que o
+         horímetro da máquina), e o envio pergunta só na segunda
+         (`pgpTripwireContadores`).
+     C9  DATAS DO RELATÓRIO EM dd/mm/aaaa. O PDF imprimia `2026-09-08`, o valor
+         cru do <input type="date">, em quatro campos. `pgpFmtDataBR` já existia.
+     C10 O CONTADOR DA PEÇA DEIXA DE SE CHAMAR "HORÍMETRO" NA TELA. A MESMA foto
+         — a do totalizador — respondeu a QUATRO legendas no relatório da 3062.
+         🔑 Rótulo ambíguo não é detalhe de texto: ele decide que dado entra.
+         (As chaves `hori_p*` e os ids NÃO mudaram.)
+     C11 A TRAVA DO CONTADOR ZERADO (pedido do Fernando, 09/09). O C5 grava
+         `Valor_Mostrado = 0` na peça trocada porque PARTE DO PRINCÍPIO de que o
+         contador foi zerado no painel. 🔑 Suposição embutida em dado gravado é
+         mentira com data marcada. Agora `pgpTripwireContadorZerado` pergunta —
+         e SÓ onde faz sentido: peça TROCADA com contador `progressivo` ou
+         `regressivo`. Máquina que só tem horímetro total (cenário A), adesivo e
+         calendário não têm contador para zerar, e ali a pergunta nunca aparece.
+         "Não zerei" ⇒ o cadastro guarda o contador COMO ESTÁ e a ficha da
+         máquina no PCM acusa a pendência. A ÂNCORA não muda nos dois casos: a
+         peça foi trocada nesta visita de qualquer jeito — são dois fatos
+         diferentes e agora ficam separados. NUNCA bloqueia o envio.
+-->
 <!-- PCF V103 (02/09/2026) — OS SEIS BURACOS DE SALVAMENTO, RESTAURAÇÃO E REGISTRO.
      Feito EM CIMA da V102 PUBLICADA (clone do repo GrupoTap/ProperTech, md5
      conferido). 100% aditivo: nenhum id, função, action, data-key ou view
@@ -1269,8 +1327,8 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ProperCare Field · PGP Preventivas v35 · build PCF_V105</title>
-<meta name="app-build" content="PCF_V105" data-date="2026-09-06">
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V106</title>
+<meta name="app-build" content="PCF_V106" data-date="2026-09-09">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -2975,6 +3033,11 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
 .pf-perfil-chip{margin-top:6px;font-size:11px;color:var(--text-light);background:var(--bg-elev);
   border:1px solid var(--gray-mid);border-radius:6px;padding:5px 9px;display:inline-block}
 .pf-perfil-chip b{color:var(--text)}
+/* V106 (C1b) — alerta de plausibilidade da leitura real. Vermelho de propósito:
+   é o único ponto do fluxo em que a leitura errada ainda pode ser corrigida de
+   graça, olhando para o display que está na frente do técnico. */
+.pf-horim-alerta{margin-top:6px;font-size:12px;line-height:1.5;color:#7f1d1d;background:#fef2f2;
+  border:1px solid #fca5a5;border-radius:8px;padding:8px 10px;font-weight:600}
 .pf-horim-nota{margin-top:6px;font-size:11px;line-height:1.5;color:#7B4000;background:#fff7e6;
   border-left:3px solid var(--orange);border-radius:0 6px 6px 0;padding:6px 10px}
 #pgpNewMachine #nm_tipo{width:100%;padding:11px 10px;border:1.5px solid var(--gray-mid);border-radius:8px;
@@ -5310,12 +5373,21 @@ Object.entries(PART_PHOTO_MAP).forEach(([partK, photoKey]) => {
 
 // v13: labels descritivos para fotos de horímetro por peça (usados no PDF)
 const HORI_PHOTO_LABELS = {
-  hori_p1: 'Horímetro – Filtro de Óleo',
-  hori_p2: 'Horímetro – Filtro Ar Primário',
-  hori_p3: 'Horímetro – Filtro Ar Secundário',
-  hori_p4: 'Horímetro – Sep. Ar/Óleo',
-  hori_p5: 'Horímetro – Óleo Lubrificante',
-  hori_p9: 'Horímetro – Correia',
+  // ── V106 (C10) · ESTES RÓTULOS PEDIAM A FOTO ERRADA ───────────────────────
+  // 🔴 No relatório da Techto SD30 3062 (08/09/2026) a MESMA foto — a do
+  //    TOTALIZADOR da máquina — respondeu a QUATRO legendas: "Horímetro – Filtro
+  //    Ar Primário", "– Sep. Ar/Óleo", "– Óleo Lubrificante" e "Horímetro (horas
+  //    legíveis)". Não foi desleixo: as quatro perguntas diziam "Horímetro", e o
+  //    horímetro da máquina é um só. Ele fotografou o que foi pedido — e depois
+  //    digitou 5.736 (o totalizador) no campo do contador da peça.
+  // 🔑 Rótulo ambíguo não é detalhe de texto: ele DECIDE que dado entra.
+  // ⚠ As chaves (`hori_p1`…) e os ids NÃO mudam — só o que o humano lê.
+  hori_p1: 'Contador da peça – Filtro de Óleo',
+  hori_p2: 'Contador da peça – Filtro Ar Primário',
+  hori_p3: 'Contador da peça – Filtro Ar Secundário',
+  hori_p4: 'Contador da peça – Sep. Ar/Óleo',
+  hori_p5: 'Contador da peça – Óleo Lubrificante',
+  hori_p9: 'Contador da peça – Correia',
 };
 
 // v31 item 9: equivalente de HORI_PHOTO_LABELS para a foto NÃO-horímetro da
@@ -5457,8 +5529,8 @@ function buildPartsTable(p, midx, scenario) {
   const colsMap = {
     A: {heads:['Peça','N/A','▸'], mainPlaceholder:null,   mainLabel:null},
     B: {heads:['Peça','Adesivo (h ou data)','N/A','▸'],   mainPlaceholder:'h ou data do adesivo', mainLabel:'Adesivo'},
-    C: {heads:['Peça','Valor mostrado','↑↓?','N/A','▸'],  mainPlaceholder:'Ex: 840',  mainLabel:'Valor'},
-    D: {heads:['Peça','Valor mostrado','Interv.(h)','N/A','▸'], mainPlaceholder:'Ex: 1240', mainLabel:'Valor'},
+    C: {heads:['Peça','Contador da peça','↑↓?','N/A','▸'],  mainPlaceholder:'Ex: 840',  mainLabel:'Contador'},
+    D: {heads:['Peça','Contador da peça','Interv.(h)','N/A','▸'], mainPlaceholder:'Ex: 1240', mainLabel:'Contador'},
     E: {heads:['Peça','H restantes','N/A','▸'],            mainPlaceholder:'Ex: 760',  mainLabel:'Restam (h)'},
   };
   const cfg = colsMap[scenario] || colsMap['A'];
@@ -5466,9 +5538,9 @@ function buildPartsTable(p, midx, scenario) {
   const hintMap = {
     A: '⚠️ Sem leitura por peça — anote o horímetro total na seção 3 e calcularemos pelo regime de trabalho.',
     B: '⚠️ Registre o valor do adesivo para cada peça. Use "▸ Detalhe" para anotar confiança e observações.',
-    C: '⚠️ Para cada peça, informe o valor mostrado e toque em "↑↓?" para indicar se o contador parece progressivo ou regressivo.',
-    D: '⬆️ Contador progressivo: o valor sobe com as horas. Informe o valor atual e o intervalo — calculamos o restante automaticamente.',
-    E: '⬇️ Contador regressivo: o valor mostrado já é o tempo restante. Informe o valor e confirmaremos o intervalo nos detalhes.',
+    C: '⚠️ Para cada peça, informe o valor mostrado <b>no contador DELA</b> (não o totalizador da máquina) e toque em "↑↓?" para indicar se ele parece progressivo ou regressivo.',
+    D: '⬆️ Contador progressivo: o valor sobe com as horas. Informe o valor do contador <b>DESTA PEÇA</b> (ex.: USO FILT. ÓLEO) — <b>não</b> o totalizador da máquina — e o intervalo; calculamos o restante.',
+    E: '⬇️ Contador regressivo: o valor mostrado no contador <b>DESTA PEÇA</b> já é o tempo restante até a próxima troca. Informe o valor e confirmaremos o intervalo nos detalhes.',
   };
 
   const colClassesMap = {
@@ -5533,10 +5605,11 @@ function buildPartsTable(p, midx, scenario) {
           </div>
           <div class="pt-photo-cols">
             <div class="pt-photo-col">
-              <button class="btn-foto-peca" id="${pk}_hori_btn" data-done-label="✅ Horímetro ok" data-orig-label="📷 Foto horímetro"
+              <button class="btn-foto-peca" id="${pk}_hori_btn" data-done-label="✅ Contador ok" data-orig-label="📷 Foto do contador desta peça"
                       data-photokey="hori_${pt.k}"
+                      title="É a tela do CONTADOR DESTA PEÇA (ex.: USO FILT. ÓLEO), não o totalizador da máquina — esse já foi na seção 3."
                       onclick="event.stopPropagation();abrirFotoPicker(this,'linked',${midx},'hori_${pt.k}')">
-                  📷 Foto horímetro
+                  📷 Foto do contador desta peça
               </button>
               <div class="photo-thumbs-mini" data-midx="${midx}" data-pkey="hori_${pt.k}"></div>
             </div>
@@ -5916,8 +5989,36 @@ function calcPartRow(pk, intDefault) {
   if (contador === 'progressivo') { rodadas = valor; restantes = intervalo - valor; }
   else                            { rodadas = intervalo - valor; restantes = valor; }
 
-  if (restantes < 0 || rodadas < 0) {
-    calcBox.innerHTML = `<div class="pt-calc-line pt-calc-err">⚠️ Inconsistência — verifique o intervalo ou o valor mostrado.</div>`;
+  // ══════════════════════════════════════════════════════════════════════════
+  // V106 (C8) — PEÇA VENCIDA NÃO É INCONSISTÊNCIA.
+  //
+  // 🔴 Até aqui, `restantes < 0` — que é o estado NORMAL de uma peça vencida, e
+  //    justamente o motivo de ela estar sendo trocada — imprimia
+  //    "⚠️ Inconsistência — verifique o intervalo ou o valor mostrado" e engolia
+  //    os números. Ou seja: o alarme tocava em TODA peça vencida.
+  // 🔑 Alerta que dispara no caso normal é ruído, e ruído gasta o alerta: na
+  //    terceira vez ninguém lê. Foi exatamente o que aconteceu na Techto SD30
+  //    3062 em 08/09/2026 — duas linhas acusaram e o técnico salvou por cima,
+  //    porque a mesma frase já tinha aparecido dezenas de vezes sem significar
+  //    nada.
+  //
+  // A partir daqui a tela separa DOIS fatos que estavam fundidos:
+  //   • VENCIDA  → segue o fluxo normal (a régua de pct/cls abaixo já pinta
+  //                vermelho e o `restantes` negativo é informação boa: diz
+  //                QUANTO passou);
+  //   • IMPOSSÍVEL → a peça marca mais horas do que a máquina inteira rodou.
+  //                Isso não é condição de peça, é dado errado — e o erro típico
+  //                é ter lido o TOTALIZADOR no lugar do contador da peça.
+  // ══════════════════════════════════════════════════════════════════════════
+  const _htPeca = pgpHorimetroInt_((document.querySelector('[data-key="m' + pgpMidxDePk(pk) + '_horimetro"]')||{}).value || 0);
+  const _impossivel = (_htPeca > 0 && isFinite(rodadas) && rodadas > _htPeca);
+  if (_impossivel) {
+    calcBox.innerHTML = `<div class="pt-calc-line pt-calc-err">⚠️ <b>Número impossível:</b> esta peça marca <b>${Math.round(rodadas).toLocaleString('pt-BR')} h</b> de uso, mas a máquina inteira só tem <b>${_htPeca.toLocaleString('pt-BR')} h</b>.<br><span style="font-weight:400">Confira se o valor lido é o do contador <b>desta peça</b> e não o totalizador da máquina.</span></div>`;
+    updatePartCompletionStatus(pk);
+    return;
+  }
+  if (rodadas < 0) {
+    calcBox.innerHTML = `<div class="pt-calc-line pt-calc-err">⚠️ O contador mostra <b>${Math.round(valor).toLocaleString('pt-BR')} h</b> restantes, mais que o intervalo cadastrado (<b>${intervalo} h</b>). Confira o intervalo desta peça.</div>`;
     updatePartCompletionStatus(pk);
     return;
   }
@@ -6177,8 +6278,9 @@ function buildPanelHTML(idx) {
                real no ato. Os DOIS são guardados (hourTotal=real, horimetro_estimado). -->
           <div class="row2">
             <div class="sub-group"><label>Estimado (regime)</label><input type="text" id="${p}horim_est_box" class="pf-horim-est" readonly tabindex="-1" placeholder="—" onclick="event.stopPropagation()"></div>
-            <div class="sub-group"><label id="${p}horim_label">${_perfilAtual.horimetroObrigatorio?'Real lido no display *':'Real lido (se houver)'}</label><input type="number" id="${p}horimetro" placeholder="Leitura real" data-key="${p}horimetro" onclick="event.stopPropagation()"></div>
+            <div class="sub-group"><label id="${p}horim_label">${_perfilAtual.horimetroObrigatorio?'Real lido no display *':'Real lido (se houver)'}</label><input type="number" id="${p}horimetro" placeholder="Leitura real" data-key="${p}horimetro" onclick="event.stopPropagation()" oninput="pfConferirLeitura(${idx})" onchange="pfConferirLeitura(${idx})"></div>
           </div>
+          <div class="pf-horim-alerta" id="${p}horim_alerta" style="display:none"></div>
           <div class="pf-horim-nota" id="${p}horim_nota" style="display:${_perfilAtual.horimetroObrigatorio?'none':''}">ℹ️ A maioria dos compressores de pistão não tem horímetro. Deixe em branco se não houver — a preventiva é controlada por data.</div>
           <div class="row2">
             <div class="sub-group"><label>Data da leitura</label><input type="date" id="${p}data_leitura" data-key="${p}data_leitura" onclick="event.stopPropagation()" onchange="pfReprojetar(${idx})"></div>
@@ -9704,15 +9806,22 @@ function pgpColetarDadosPdf(midx) {
     const intV = (document.getElementById(pk + '_int') || {}).value || String(pt.intDefault);
     const cont = (document.getElementById(pk + '_contador') || {}).value || '';
     const ref  = (document.getElementById(pk + '_ref') || {}).value || '';
-    // v31 item 8: campo "Última troca" foi removido da UI (item 3) — o
-    // input hidden só carrega valor se veio de uma coleta/rascunho antigo
-    // com edição manual; caso contrário, calcular sempre pela mesma
-    // fórmula usada nos payloads (calcUltimaTroca).
-    let ult = (document.getElementById(pk + '_ult') || {}).value || '';
-    if (!ult) {
-      const calcUlt = calcUltimaTroca(g('horimetro'), vm, intV, cont);
-      if (calcUlt !== null) ult = String(Math.max(0, calcUlt).toFixed(0));
-    }
+    // ── V106 (C7) · O PAPEL E O BANCO PASSAM A DIZER A MESMA COISA ───────────
+    // 🔴 Aqui morava o defeito mais traiçoeiro do conjunto: o PDF preferia o
+    //    hidden `_ult` — que chega PRÉ-PREENCHIDO com a última troca ANTIGA, do
+    //    cadastro — enquanto o payload preferia a conta. Mesma visita, mesma
+    //    linha, dois números. Na 3062 o papel imprimiu 4.676 e 5.351 e o banco
+    //    recebeu −122 nas duas peças. Quem conferisse um contra o outro nunca
+    //    fecharia a conta, e nada no sistema acusava.
+    // A prioridade agora é IDÊNTICA à dos payloads: mão do técnico > âncora
+    // calculada > o que estava no hidden.
+    const _ultEditadoPdf = (document.getElementById(pk + '_ult') || {}).dataset?.userEdited === 'true';
+    const _ancPdf = pgpUltTrocaPeca_({ acao: acao, hourTotal: g('horimetro'),
+      valorMostrado: vm, intervalo: intV, contador: cont });
+    let ult = '';
+    if (_ultEditadoPdf) ult = (document.getElementById(pk + '_ult') || {}).value || '';
+    else if (_ancPdf.ult !== null) ult = String(Math.round(_ancPdf.ult));
+    else ult = (document.getElementById(pk + '_ult') || {}).value || '';
 
     let rodadas = '', restantes = '', status = '';
     // V69 — perfil pistão: as colunas viram data/dias e o estado
@@ -9834,15 +9943,18 @@ function pgpColetarDadosPdf(midx) {
     cliente: {
       razao_social: g('razao_social'), filial: g('filial'), cnpj: g('cnpj'),
       contato: g('contato'), telefone: g('telefone'), email: g('email'),
-      cidade: g('cidade'), ult_visita: g('ult_visita'), prox_visita: g('prox_visita')
+      cidade: g('cidade'), ult_visita: _pdfDataBr_(g('ult_visita')), prox_visita: _pdfDataBr_(g('prox_visita'))   // V106 (C9)
     },
     maquina: {
       marca: g('marca'), modelo: g('modelo'), ns: g('ns'), ano: g('ano'),
       tipo: g('tipo'), potencia: g('potencia'), localizacao: g('localizacao'),
-      tag: g('tag'), data_visita: g('data_visita') || g('ult_visita'), obs_op: g('obs_op')
+      // V106 (C9) — o relatório imprimia `2026-09-08`, que é o valor CRU do
+      // <input type="date">. `pgpFmtDataBR` já existia e já era usada no perfil
+      // pistão; faltava nos quatro campos de data do cabeçalho.
+      tag: g('tag'), data_visita: _pdfDataBr_(g('data_visita') || g('ult_visita')), obs_op: g('obs_op')
     },
     horimetro: {
-      total: g('horimetro'), data_leitura: g('data_leitura'),
+      total: g('horimetro'), data_leitura: _pdfDataBr_(g('data_leitura')),   // V106 (C9)
       regime: _pgpRegimeTxt, h_sem_total: _pgpHSemTxt, tecnico: g('tecnico')   // V91.1 (P3)
     },
     preventiva: { auxiliar: g('auxiliar'), hora_inicio: g('hora_inicio'), hora_fim: g('hora_fim') },
@@ -11317,6 +11429,19 @@ function pgpParseDataLocal(iso){
   return isNaN(d.getTime()) ? null : d;
 }
 function pgpHojeLocal(){ var n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate()); }
+// ── V106 (C9) · _pdfDataBr_ — data ISO do <input type="date"> vira dd/mm/aaaa ──
+// O relatório do cliente imprimia `2026-09-08` em "Data da Visita", "Últ. Visita",
+// "Próxima Visita" e "Data da Leitura", porque o valor ia CRU do input para o PDF.
+// ⚠ Tolerante de propósito: se o campo não for uma data ISO (veio vazio, veio já
+//   formatado por um rascunho antigo, ou veio um texto), devolve o que recebeu.
+//   Formatador que engole o que não entende apaga dado; este só reformata o que
+//   reconhece.
+function _pdfDataBr_(v){
+  var t = String(v == null ? '' : v).trim();
+  if (!t) return t;
+  var d = pgpParseDataLocal(t);
+  return d ? pgpFmtDataBR(d) : t;
+}
 function pgpFmtDataBR(d){
   if(!d) return '—';
   return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
@@ -12551,6 +12676,114 @@ function pgpFaixasCustomSemDia(regime){
 // (h/semana no cadastro, h/semana calculada na tela, ou regime já conhecido),
 // isso é perda de dado — e perda de dado custa uma viagem ao cliente.
 // Devolve { ok:true } ou { ok:false, motivo }.
+// ── V106 (C11) · A TRAVA DO CONTADOR ZERADO ──────────────────────────────────
+// Pedido do Fernando, 09/09/2026: *"seria importante ter alguma trava que, ao
+// saber que a máquina possui horímetros por peça (algumas só têm horímetro
+// total), o sistema [cobre] atualizar os horímetros das peças trocadas naquela
+// visita."*
+//
+// 🔑 POR QUE ISTO É TRAVA E NÃO LEMBRETE: o C5 grava `Valor_Mostrado = 0` na peça
+//    trocada porque PARTE DO PRINCÍPIO de que o contador foi zerado no painel. Se
+//    não foi, esse zero é uma afirmação falsa sobre a máquina, e é dela que a
+//    projeção da visita seguinte nasce. **Suposição embutida em dado gravado é
+//    mentira com data marcada** — e é exatamente a família do 5.614.
+//
+// ⚠ A pergunta só existe onde faz sentido: peça TROCADA cujo contador é
+//   `progressivo` ou `regressivo`. Máquina que só tem horímetro total (cenário A)
+//   e peça de adesivo/calendário não têm contador para zerar, e perguntar ali
+//   seria ruído — e ruído gasta o alerta.
+// ⚠ NUNCA bloqueia o envio: as duas respostas seguem. O que muda é o que é
+//   GRAVADO. Prender o técnico no cliente por um contador com senha, ou por um
+//   controlador que não permite reset, seria pior que o dado ruim.
+const _pgpContadorZerado = {};   // idx → true | false | undefined (não perguntado)
+
+async function pgpTripwireContadorZerado(idx, opts){
+  opts = opts || {};
+  try{
+    delete _pgpContadorZerado[idx];
+    if(typeof pgpEhPistao === 'function' && pgpEhPistao(idx)) return { ok:true };  // gatilho por calendário
+    const p = 'm' + idx + '_';
+    const comContador = [];
+    (pgpPartsDe(idx)||[]).forEach(function(pt){
+      const pk = p + pt.k;
+      const naBtn = document.getElementById(pk + '_na');
+      if(naBtn && naBtn.classList.contains('active')) return;
+      const acao = (document.getElementById(pk + '_acao')||{}).value || '';
+      if(String(acao).trim().toLowerCase() !== 'trocada') return;
+      const cont = (document.getElementById(pk + '_contador')||{}).value || '';
+      if(cont !== 'progressivo' && cont !== 'regressivo') return;   // sem contador: nada a zerar
+      comContador.push(pt.label);
+    });
+    if(!comContador.length) return { ok:true };   // máquina só com horímetro total: não pergunta
+
+    const lista = comContador.map(function(l){ return '• ' + l; }).join('\n');
+    const msg = 'Esta máquina tem contador por peça.\n\n'
+      + 'Você ZEROU no painel o contador destas peças que trocou?\n\n' + lista + '\n\n'
+      + 'Se você zerou, o sistema vai contar a partir de agora.\n'
+      + 'Se NÃO zerou, ele guarda o contador como está — e o escritório vê a pendência.';
+    let zerou = false;
+    try{
+      zerou = await AppDialog.confirm(msg, { title:'Contador das peças trocadas',
+        okLabel:'✅ Zerei no painel', cancelLabel:'Não zerei' });
+    }catch(_){
+      try { zerou = confirm(msg + '\n\n[OK] = zerei   ·   [Cancelar] = não zerei'); } catch(__) { zerou = false; }
+    }
+    // ⚠ Fechar a caixa sem responder cai em "não zerei", de propósito: é a
+    //   resposta que guarda o número REAL lido no painel. Errar para o lado de
+    //   registrar o que se viu é sempre melhor que errar para o lado de afirmar
+    //   um zero que ninguém conferiu.
+    _pgpContadorZerado[idx] = !!zerou;
+    return { ok:true };
+  }catch(_){ return { ok:true }; }   // tripwire nunca trava o envio por bug próprio
+}
+
+// ── V106 (C8) · pgpTripwireContadores — o número impossível não passa calado ──
+// Par do conserto em `calcPartRow`: a TELA agora separa "vencida" (normal) de
+// "impossível" (dado errado); aqui o ENVIO cobra a segunda.
+// Só o impossível pede confirmação — peça vencida segue direto, que é o caso
+// para o qual a preventiva existe. 🔑 Tripwire que dispara no caso normal vira
+// ruído e o técnico aprende a clicar "seguir" sem ler.
+// ⚠ Nunca RECUSA: pergunta. A máquina pode ter trocado de horímetro, o cadastro
+//   pode estar errado, e o técnico está no cliente. Bloquear a coleta é pior que
+//   o dado ruim — o que não pode é passar em silêncio.
+async function pgpTripwireContadores(idx, opts){
+  opts = opts || {};
+  try{
+    const p = 'm' + idx + '_';
+    const ht = pgpHorimetroInt_((document.querySelector('[data-key="' + p + 'horimetro"]')||{}).value || 0);
+    if(!(ht > 0)) return { ok:true };
+    if(typeof pgpEhPistao === 'function' && pgpEhPistao(idx)) return { ok:true };  // gatilho por calendário
+    const ruins = [];
+    (pgpPartsDe(idx)||[]).forEach(function(pt){
+      const pk = p + pt.k;
+      const naBtn = document.getElementById(pk + '_na');
+      if(naBtn && naBtn.classList.contains('active')) return;
+      const cont = (document.getElementById(pk + '_contador')||{}).value || '';
+      if(cont !== 'progressivo' && cont !== 'regressivo') return;
+      const vm = parseFloat((document.getElementById(pk + '_valor_mostrado')||{}).value || '');
+      if(!isFinite(vm)) return;
+      const iv = parseFloat((document.getElementById(pk + '_int')||{}).value || pt.intDefault);
+      const rodadas = (cont === 'progressivo') ? vm : (isFinite(iv) ? (iv - vm) : NaN);
+      if(isFinite(rodadas) && rodadas > ht) ruins.push({ label: pt.label, rodadas: Math.round(rodadas) });
+    });
+    if(!ruins.length) return { ok:true };
+    const lista = ruins.map(function(r){ return '• ' + r.label + ': ' + r.rodadas.toLocaleString('pt-BR') + ' h'; }).join('\n');
+    const msg = '⚠ NÚMERO IMPOSSÍVEL em ' + ruins.length + ' peça(s).\n\n'
+      + 'O contador destas peças marca mais horas de uso do que a máquina inteira rodou ('
+      + ht.toLocaleString('pt-BR') + ' h):\n\n' + lista + '\n\n'
+      + 'O erro mais comum aqui é ter lido o TOTALIZADOR da máquina no lugar do contador da peça.\n\n'
+      + 'Se enviar assim, a data da última troca fica errada no cadastro e a peça vai aparecer vencida mesmo recém-trocada.';
+    if(opts.silent) return { ok:false, motivo: ruins.length + ' peça(s) com contador maior que o horímetro da máquina' };
+    let segue = false;
+    try{
+      segue = await AppDialog.confirm(msg, { title:'Contador maior que o horímetro', okLabel:'Enviar mesmo assim', cancelLabel:'Voltar e corrigir', danger:true });
+    }catch(_){
+      try { segue = confirm(msg); } catch(__) { segue = true; }
+    }
+    return segue ? { ok:true } : { ok:false, motivo:'cancelado pelo técnico (contador impossível)' };
+  }catch(_){ return { ok:true }; }   // tripwire nunca trava o envio por bug próprio
+}
+
 async function pgpTripwireRegime(idx, payload, opts){
   opts = opts || {};
   try{
@@ -12651,7 +12884,25 @@ function pgpLoadMachine(eq,localDb,midx=currentMachine,clientData=null){
   sv('contato',eq.contact);     sv('telefone',eq.phone);    sv('email',eq.email);
   sv('cidade',eq.city);         sv('marca',eq.brand);       sv('modelo',eq.model);
   sv('ns',eq.serial);           sv('ano',eq.year);          sv('localizacao',eq.location);
-  sv('tag',eq.tag);             sv('horimetro',eq.hourTotal||'');
+  sv('tag',eq.tag);
+  // ── V106 (C1) · A LEITURA REAL NASCE VAZIA, SEMPRE ─────────────────────────
+  // Aqui morava `sv('horimetro', eq.hourTotal||'')`. O campo "Real lido no display"
+  // é MEDIÇÃO, não cadastro, e chegava preenchido com o Hor.Total gravado em
+  // MAQUINAS. O v65 já tinha decidido que ele nasce vazio (é para isso que existem
+  // o mostrador "Estimado (regime)" ao lado e o botão "↧ Usar estimado"), e
+  // `pfReprojetar` limpava — mas só com `force=true`, e a chamada logo abaixo passa
+  // `preservarColeta = modoMerge`, que zera o `force`. Com coleta em andamento ou
+  // rascunho restaurado a limpeza NUNCA acontecia: o número velho ficava na tela,
+  // plausível, esperando ser confirmado.
+  // 🔴 Techto SD30 3062, 08/09/2026: o painel mostrava 5.735 h (a foto está anexada
+  //    ao próprio relatório da visita) e a preventiva gravou 5.614 h — o Hor.Total do
+  //    cadastro desde 24/08, na unidade. A base da calibração foi junto, a máquina
+  //    passou a estimar 121 h a menos e as quatro peças trocadas nasceram vencidas.
+  // 🔑 Campo de MEDIÇÃO pré-preenchido com número plausível é armadilha, não
+  //    conveniência.
+  // ⚠ A restauração de VISITA SALVA (`setSeVazio('horimetro', v.hourTotal)`, no
+  //   restaurador de visita) NÃO muda: ali o valor é a leitura DAQUELA visita, não o
+  //   cadastro — e é o que faz a correção pós-reabertura funcionar.
   if(eq.tipo){ pgpGarantirOpcaoTipo(idx, eq.tipo); sv('tipo', eq.tipo); }
   if(eq.potencia) sv('potencia',eq.potencia);
   // V102 (item 2) — `Obs_Op` é gravado pelo `ensureMachineFromVisit` desde o
@@ -14868,7 +15119,93 @@ function calcUltimaTroca(horimetroTotal, valorMostrado, intervalo, contador) {
   const iv = parseFloat(intervalo);
   if (isNaN(ht) || isNaN(vm) || isNaN(iv) || (contador !== 'progressivo' && contador !== 'regressivo')) return null;
   const horasRodadas = contador === 'progressivo' ? vm : (iv - vm);
-  return ht - horasRodadas;
+  const ult = ht - horasRodadas;
+  // ── V106 (C6) · RESULTADO IMPOSSÍVEL É AUSÊNCIA DE DADO, NÃO ZERO ──────────
+  // Uma peça não pode ter sido trocada ANTES da máquina existir. Quando o
+  // contador lido é maior que o horímetro total, a conta dá negativo e isso só
+  // pode significar uma coisa: um dos dois números está errado.
+  // 🔴 Techto SD30 3062, 08/09/2026: horímetro 5.614 (errado, o certo era 5.735)
+  //    e contador 5.736 (o técnico digitou o TOTALIZADOR no campo da peça) ⇒
+  //    −122 h foi gravado no cadastro, virou "próxima troca em 1.878 h" e a peça
+  //    trocada no dia apareceu como "Vencida 3.744 h atrás".
+  // Três chamadores faziam `Math.max(0, …)` e um não fazia — e era justamente o
+  // do payload da preventiva, o único que GRAVA. 🔑 Quando N call sites fazem a
+  // mesma conta e só alguns protegem, o desprotegido é o que vai a produção ⇒ a
+  // guarda mora AQUI, na conta, não em cada chamador.
+  // ⚠ E o `Math.max(0, …)` dos outros três também estava errado, só que mais
+  //   discreto: transformava impossível em ZERO, e "última troca = 0" é a maior
+  //   fonte de falso "vencida" do painel de preventivas (95 de 109 em 09/09).
+  //   Ausência de dado se representa como AUSÊNCIA. Por isso: null.
+  if (!isFinite(ult) || ult < 0) return null;
+  return ult;
+}
+
+// ── V106 (C5/C7) · pgpUltTrocaPeca_ — FONTE ÚNICA da âncora de uma peça ───────
+// Antes existiam QUATRO lugares decidindo "quando esta peça foi trocada": o
+// payload da preventiva, o da inspeção, o PDF e as telas de resumo/CSV. O PDF
+// preferia o campo `_ult` pré-preenchido (o valor ANTIGO, do cadastro) e o
+// payload preferia a conta — então o MESMO formulário imprimia 4.676 no papel e
+// gravava −122 no banco. 🔑 Duas verdades para o mesmo fato na mesma visita.
+//
+// A regra, decidida com o Fernando em 09/09/2026:
+//  • peça TROCADA nesta visita ⇒ **última troca = horímetro DA VISITA**, nos dois
+//    tipos de contador. O valor que o técnico digitou é a condição ENCONTRADA (a
+//    justificativa da troca) e continua indo inteiro para o relatório e o
+//    histórico — mas ele NUNCA mais decide a âncora.
+//    🕳 Era esse o defeito de fundo: `calcUltimaTroca` respondia "quando ela foi
+//       trocada da vez ANTERIOR", que é a pergunta certa para peça conferida e a
+//       pergunta errada para peça que acabou de ser trocada. O GAS já pretendia o
+//       certo desde o v79 F-07 ("troca sem lastChange cai para o horímetro da
+//       visita"), mas o PCF sempre mandava um valor e o fallback nunca disparava.
+//       Rede de segurança que o chamador nunca deixa acionar é rede desligada.
+//  • peça CONFERIDA ⇒ o painel diz há quanto tempo ela roda, e a conta de sempre
+//    vale: última troca = horímetro − horas rodadas.
+//    ℹ No contador REGRESSIVO a conta usa o intervalo (`ht − (iv − vm)`), e isso é
+//      seguro apesar de o intervalo do cadastro poder divergir do configurado no
+//      controlador: quem lê de volta (PCM) faz `próxima = última troca + intervalo`
+//      com o MESMO intervalo que foi gravado aqui, então ele se cancela e a
+//      PRÓXIMA TROCA — que é o número que importa na operação — sai exata.
+//
+// Devolve também `valorPos`: o que o painel passa a mostrar DEPOIS do serviço.
+// É ele que vai para o cadastro (MACHINE_PARTS.Valor_Mostrado), porque é dele que
+// a próxima visita projeta o contador. Deixar ali o valor ENCONTRADO fazia a
+// projeção da visita seguinte nascer de uma base já consumida.
+function pgpUltTrocaPeca_(o) {
+  o = o || {};
+  const cont = String(o.contador || '');
+  const conhecido = (cont === 'progressivo' || cont === 'regressivo');
+  const trocada = String(o.acao || '').trim().toLowerCase() === 'trocada';
+  const ht = parseFloat(o.hourTotal);
+  const vm = (o.valorMostrado === '' || o.valorMostrado === null || o.valorMostrado === undefined)
+    ? NaN : parseFloat(o.valorMostrado);
+  const iv = parseFloat(o.intervalo);
+  const out = { ult: null, valorPos: '', motivo: '' };
+
+  if (trocada) {
+    if (isFinite(ht) && ht > 0) { out.ult = ht; out.motivo = 'visita'; }
+    else out.motivo = 'sem_horimetro';
+    // pós-troca: progressivo volta a ZERO; regressivo volta para a validade
+    // configurada no controlador — o melhor valor que o sistema tem para ela é o
+    // intervalo cadastrado da peça.
+    // ── V106 (C11) · MAS ISSO SÓ VALE SE O CONTADOR FOI MESMO ZERADO ─────────
+    // `o.zerado === false` é a resposta explícita do técnico ("não zerei no
+    // painel"). Aí o contador continua de onde estava, e é ESSE número que o
+    // cadastro tem de guardar — senão a projeção da próxima visita parte de um
+    // zero que não existe na máquina.
+    // ⚠ `undefined` (não perguntado: peça sem contador, front antigo) mantém o
+    //   comportamento do C5. Só o `false` explícito muda a conta.
+    if (o.zerado === false) { out.valorPos = isFinite(vm) ? vm : ''; return out; }
+    if (cont === 'progressivo') out.valorPos = 0;
+    else if (cont === 'regressivo') out.valorPos = (isFinite(iv) && iv > 0) ? iv : '';
+    return out;
+  }
+
+  const calc = conhecido ? calcUltimaTroca(o.hourTotal, o.valorMostrado, o.intervalo, cont) : null;
+  if (calc !== null) { out.ult = calc; out.motivo = 'contador'; }
+  else if (conhecido && isFinite(ht) && isFinite(vm)) { out.motivo = 'impossivel'; }
+  else { out.motivo = 'sem_dados'; }
+  out.valorPos = isFinite(vm) ? vm : '';
+  return out;
 }
 
 function pgpBuildPreventivaPayload(midx=currentMachine){
@@ -14940,24 +15277,30 @@ function pgpBuildPreventivaPayload(midx=currentMachine){
       return;
     }
 
-    // v9: calcular lastChange com prioridade: valorMostrado+contador > _ult editado > fallback
+    // v9 · reescrito na V106 (C5/C6/C7) — a âncora sai de pgpUltTrocaPeca_, que é
+    // a MESMA função usada pelo PDF, pelo CSV e pelo resumo. Prioridade mantida:
+    // "última troca" editada À MÃO pelo técnico continua vencendo tudo.
     const ultUserEdited = ultEl?.dataset?.userEdited === 'true';
-    const hasValorMostrado = vmEl?.value && vmEl.value.trim() !== '';
-    const contadorConhecido = contVal === 'progressivo' || contVal === 'regressivo';
     const _hourTotal = parseInt(base.hourTotal) || 0;
     const _intervalResolved = parseInt(intEl?.value) || pt.intDefault;
-    let lastChange = 0;
-    if (hasValorMostrado && contadorConhecido && !ultUserEdited) {
-      lastChange = calcUltimaTroca(_hourTotal, vmEl.value, _intervalResolved, contVal) ?? 0;
-    } else if (ultUserEdited && ultEl?.value) {
+    const _anc = pgpUltTrocaPeca_({ acao: acaoFinal, hourTotal: _hourTotal,
+      valorMostrado: vmEl?.value, intervalo: _intervalResolved, contador: contVal,
+      zerado: _pgpContadorZerado[idx] });   // V106 (C11)
+    let lastChange = '';
+    if (ultUserEdited && ultEl?.value) {
       lastChange = parseInt(ultEl.value) || 0;
-    } else if (hasValorMostrado && contadorConhecido) {
-      lastChange = calcUltimaTroca(_hourTotal, vmEl.value, _intervalResolved, contVal) ?? 0;
+    } else if (_anc.ult !== null) {
+      lastChange = Math.round(_anc.ult);
     } else if (ultEl?.value) {
       lastChange = parseInt(ultEl.value) || 0;
     } else {
-      lastChange = base.parts[aid]?.lastChange || 0;
+      lastChange = base.parts[aid]?.lastChange ?? '';
     }
+    // ⚠ V106 (C6) — o fallback final deixou de ser `0`. Zero não é "não sei": ele
+    //   é uma troca no horímetro zero, e o painel do PCM o lê como peça vencida
+    //   desde sempre (95 dos 109 "vencidos" de 09/09 eram isto). Vazio o GAS
+    //   entende como "não informado" e cai no horímetro da visita (v79 F-07).
+    if (lastChange === null || lastChange === undefined || !isFinite(Number(lastChange))) lastChange = '';
 
     // v8.6: calcular horasRodadas/horasRestantes para o payload da preventiva
     const interval = parseInt(intEl?.value) || pt.intDefault;
@@ -14986,8 +15329,29 @@ function pgpBuildPreventivaPayload(midx=currentMachine){
         return refNova===refAnterior?'original':'manual';
       })(),
       lastChange,
+      // V106 (C5) — a marca de "o técnico digitou a última troca à mão" passa a
+      // viajar: é ela que autoriza o servidor a NÃO sobrescrever a âncora pelo
+      // horímetro da visita numa peça trocada.
+      lc_manual: !!(ultUserEdited && ultEl?.value),
       obs:(base.parts[aid]?.obs)||'',
       valorMostrado: vmEl?.value.trim()||'',
+      // ── V106 (C5) · valorPos — o que o painel passa a mostrar DEPOIS do serviço ──
+      // `valorMostrado` é a condição ENCONTRADA e continua indo inteira para o
+      // PECAS_LOG e para o relatório (é a justificativa da troca). Mas o CADASTRO
+      // (MACHINE_PARTS.Valor_Mostrado) precisa do estado de SAÍDA: é dele que a
+      // próxima visita projeta o contador (`baseVm ± delta`).
+      // 🔴 Guardar o valor encontrado ali fazia a projeção da visita seguinte
+      //    nascer de uma base já consumida — foi assim que o separador da 3062
+      //    chegou em 08/09 com o mesmo 2.048 de 24/08, depois de 121 h rodadas.
+      // Regra: progressivo zera; regressivo volta para a validade do controlador,
+      // e o melhor valor que o sistema tem para ela é o intervalo cadastrado.
+      // ⚠ Só viaja quando a peça foi TROCADA — em peça conferida o valor de saída
+      //   é o próprio valor lido, e o GAS já grava esse.
+      valorPos:      (acaoFinal==='trocada' ? _anc.valorPos : ''),
+      // V106 (C11) — viaja por peça também, para o servidor poder decidir sem
+      // depender do campo de visita (fila offline reenviando payload antigo).
+      contador_zerado: (acaoFinal==='trocada' && _pgpContadorZerado[idx] !== undefined)
+        ? (_pgpContadorZerado[idx] ? 'SIM' : 'NAO') : '',
       contador:      contVal,
       horasRodadas,
       horasRestantes,
@@ -15055,6 +15419,12 @@ function pgpBuildPreventivaPayload(midx=currentMachine){
     dataLeitura: base.dataLeitura || '',
     partsObs:    base.partsObs    || '',
     perfil:      base.perfil      || '',
+    // ⚠ V106 (C11) — este objeto é uma WHITELIST montada campo a campo (ver o
+    //   bloco V73 logo acima): campo que não for copiado aqui MORRE no caminho,
+    //   em silêncio. É por isso que a resposta do tripwire entra nesta lista, e
+    //   não só no payload por peça.
+    contadores_zerados: (_pgpContadorZerado[idx] === undefined) ? ''
+      : (_pgpContadorZerado[idx] ? 'SIM' : 'NAO'),
     machine_id:base.machine_id,
     serial:base.serial,
     tag:base.tag,
@@ -15324,6 +15694,21 @@ async function pgpEnviarPreventiva(midx=currentMachine, opts){
       return;
     }
   }
+
+  // V106 (C8) — TRIPWIRE DE CONTADOR: peça que marca mais horas que a máquina.
+  {
+    const _twc = await pgpTripwireContadores(idx, { silent: silent });
+    if(!_twc.ok){
+      if(silent) return { status:'skipped', reason: _twc.motivo };
+      return;
+    }
+  }
+
+  // V106 (C11) — TRIPWIRE DO RESET: o contador das peças trocadas foi zerado?
+  // ⚠ Em envio SILENCIOSO (lote / fila offline) não há ninguém para responder.
+  //   Aí a pergunta não é feita e a resposta fica VAZIA — que o servidor lê como
+  //   "não informado" e trata pelo caminho do C5, sem inventar um 'SIM'.
+  if(!silent){ await pgpTripwireContadorZerado(idx, { silent: silent }); }
 
   const _perfEnv = pgpPerfil(idx);
   // V71 (FIX 5): numBrJs_ no lugar de parseInt — "12.500" virava 12 e o
@@ -15757,21 +16142,22 @@ function pgpBuildPayload(midx=currentMachine){
       if (sc === 'D') contVal = 'progressivo';
       else if (sc === 'E') contVal = 'regressivo';
     }
-    // v9: prioridade valorMostrado+contador > _ult editado manualmente > fallback
+    // v9 · reescrito na V106 (C5/C6/C7) — mesma fonte única do payload da
+    // preventiva, do PDF e do CSV: `pgpUltTrocaPeca_`. A INSPEÇÃO não troca peça,
+    // então aqui a ação é sempre "conferida" e a conta do contador vale.
     const ultUserEdited = ultEl?.dataset?.userEdited === 'true';
-    const hasValorMostrado = valorEl?.value && valorEl.value.trim() !== '';
-    const contadorConhecido = contVal === 'progressivo' || contVal === 'regressivo';
     const interval=parseInt(intEl?.value)||pt.intDefault;
-    let lastChange = 0;
-    if (hasValorMostrado && contadorConhecido && !ultUserEdited) {
-      lastChange = calcUltimaTroca(hourTotal, valorEl.value, interval, contVal) ?? 0;
-    } else if (ultUserEdited && ultEl?.value) {
+    const _ancI = pgpUltTrocaPeca_({ acao: 'conferida', hourTotal: hourTotal,
+      valorMostrado: valorEl?.value, intervalo: interval, contador: contVal });
+    let lastChange = '';
+    if (ultUserEdited && ultEl?.value) {
       lastChange = parseInt(ultEl.value) || 0;
-    } else if (hasValorMostrado && contadorConhecido) {
-      lastChange = calcUltimaTroca(hourTotal, valorEl.value, interval, contVal) ?? 0;
+    } else if (_ancI.ult !== null) {
+      lastChange = Math.round(_ancI.ult);
     } else if (ultEl?.value) {
       lastChange = parseInt(ultEl.value) || 0;
     }
+    if (lastChange === null || lastChange === undefined || !isFinite(Number(lastChange))) lastChange = '';
     // v8.6: calcular horasRodadas/horasRestantes/status para o payload (contVal já resolvido acima)
     const vmN = parseFloat(vmEl?.value||'');
     let horasRodadas='', horasRestantes='', partStatus='';
@@ -15808,7 +16194,10 @@ function pgpBuildPayload(midx=currentMachine){
         status:_stP};
       return;
     }
-    parts[aid]={name:pgpPartNameMapDe(idx)[pt.k]||pt.k,lastChange:Math.max(0,lastChange),interval,
+    // V106 (C6) — era `Math.max(0,lastChange)`: leitura impossível virava ZERO, e
+    // "última troca = 0" é peça eternamente vencida no painel do PCM. Agora chega
+    // vazio e o GAS trata como "não informado".
+    parts[aid]={name:pgpPartNameMapDe(idx)[pt.k]||pt.k,lastChange:(lastChange===''?'':Math.max(0,Number(lastChange))),interval,
       ref:refEl?.value.trim()||'',obs:obsEl?.value.trim()||'',na:isNA,
       _na_lido:true,                                   // V102 (item 5)
       refAnterior: pgpRefCadastrada(idx, pt.k),        // V102 — o par da pergunta
@@ -19403,6 +19792,10 @@ function pfReprojetar(idx, force, preservarColeta) {
   // troca de data (force=false) preservamos o que o técnico já digitou.
   if (force && hEl) { hEl.value = ''; if (hEl.dataset) hEl.dataset.proj = ''; }
 
+  // V106 (C1b) — a projeção mudou ⇒ o alerta de plausibilidade tem de ser
+  // reavaliado (inclusive para SUMIR quando a base nova explica a leitura).
+  try { setTimeout(function(){ pfConferirLeitura(idx); }, 0); } catch (_e) {}
+
   // Sem baseline ou sem regime → não dá para projetar; orienta o técnico.
   if (baseReal == null || !baseTs || hSem <= 0) {
     if (estBox) estBox.value = '';
@@ -19469,6 +19862,39 @@ function pfUsarEstimado(idx) {
   try { hEl.dispatchEvent(new Event('change', { bubbles: true })); } catch(e){}
   var fi = hEl.closest('.field-item'); if (fi) fi.classList.add('checked');
   try { if (typeof updateProgress === 'function') updateProgress(); } catch(e){}
+}
+
+// ── V106 (C1b) · pfConferirLeitura — a leitura implausível é DENUNCIADA NA HORA ──
+// O sistema não tem como saber o horímetro certo; o que ele sabe é o que projetou
+// pelo regime. Quando a leitura digitada se afasta demais dessa projeção, a chance
+// de ser erro de digitação (ou de um campo pré-preenchido confirmado sem olhar) é
+// alta — e este é o ÚNICO instante em que consertar custa zero, porque o display
+// está na frente do técnico.
+// ⚠ NÃO trava. Bloquear a coleta em campo por causa de uma projeção é pior que o
+//   erro: máquina que ficou parada, ou que rodou dobrado, sai da faixa de propósito.
+//   O papel aqui é fazer o número gritar, não decidir por ele.
+// 🔴 Na Techto SD30 3062 (08/09/2026) o estimado era 5.743 e foi lançado 5.614:
+//    −129 h, 2,2 % — teria acendido este alerta.
+function pfConferirLeitura(idx) {
+  var box = document.getElementById('m' + idx + '_horim_alerta');
+  if (!box) return;
+  var estEl = document.getElementById('m' + idx + '_horimetro_estimado');
+  var hEl   = document.querySelector('[data-key="m' + idx + '_horimetro"]');
+  var est   = (estEl && estEl.value !== '') ? parseFloat(estEl.value) : NaN;
+  var real  = (hEl && String(hEl.value).trim() !== '') ? pgpHorimetroInt_(hEl.value) : NaN;
+  var _esconde = function () { box.style.display = 'none'; box.innerHTML = ''; };
+  if (!isFinite(est) || !isFinite(real) || real <= 0) { _esconde(); return; }
+  var dif = real - est;
+  // Tolerância: 10 % da projeção, com piso de 50 h — o mesmo critério que o PCM já
+  // usa para pintar a coluna "Erro" do histórico de calibração. Uma régua só.
+  var tol = Math.max(50, Math.abs(est) * 0.10);
+  if (Math.abs(dif) <= tol) { _esconde(); return; }
+  var _br = function (n) { return Math.round(n).toLocaleString('pt-BR'); };
+  box.innerHTML = '⚠️ <b>Confere esse número?</b> Pelo regime, o esperado para esta data é <b>' +
+    _br(est) + ' h</b> — você lançou <b>' + _br(real) + ' h</b> (' +
+    (dif > 0 ? '+' : '−') + _br(Math.abs(dif)) + ' h).' +
+    '<br><span style="font-weight:400">Se o display diz isso mesmo, siga: a máquina pode ter ficado parada ou rodado mais que o previsto, e é para isso que a calibração existe. Se não, corrija agora.</span>';
+  box.style.display = '';
 }
 
 // Formata um objeto Date para o formato aceito por <input type="datetime-local">
