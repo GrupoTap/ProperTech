@@ -1327,8 +1327,17 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V106</title>
-<meta name="app-build" content="PCF_V106" data-date="2026-09-09">
+<!--
+  ══════════════════════════════════════════════════════════════════════════
+  PCF PCF_V107 — o icone que nao conhecia `condicional` nem `dispensado`
+                                                              09/09/2026
+  Achado EXECUTANDO o fluxo Diagnostico -> Reforma Geral numa OS de ensaio,
+  nao lendo codigo. Ver 00_EM_ABERTO/NEWFILE_LAUDO_ENSAIO_OFICINA_2026-09-09.md
+
+  Bancada: _testes/NEWFILE_T_PCF_V107.mjs   (--negativo)
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V107</title>
+<meta name="app-build" content="PCF_V107" data-date="2026-09-09">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -19077,6 +19086,25 @@ async function pfLoadPipeline(opts) {
 }
 
 // ── Construção dos cards de tarefa ────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+// V107 (Z1) — O ICONE NAO CONHECIA `condicional` NEM `dispensado`.
+//
+// Os dois caiam no `default` e saiam como ⬜, o MESMO quadradinho da tarefa que
+// o tecnico tem de fazer agora. Medido na OS de ensaio PGP-2026-0074, com a
+// decisao do eletrico respondida "nao":
+//     ⬜  dispensado    Diagnostico eletrico (Form 04)   <- foi DESCARTADO
+//     ⬜  pendente      Orcar e cadastrar pecas          <- e a de AGORA
+//     ⬜  condicional   Devolver maquina                 <- so se recusar
+//
+// 🔑 O QUE TORNA ISTO UM DEFEITO E NAO UM ESQUECIMENTO: duas funcoes abaixo, a
+//    guarda das acoes JA sabia dos dois —
+//      `if (st !== 'bloqueado' && st !== 'completo' && st !== 'dispensado' && st !== 'condicional')`
+//    A GUARDA APRENDEU; O ICONE, QUE E O QUE O OLHO LE PRIMEIRO, NAO.
+// 🔑 Familia do V140: ausencia de dado exibida como fato. Aqui e "nao vai
+//    acontecer" exibido como "faca agora".
+// ⚠ `default` continua sendo `pendente`: status novo que o GAS invente segue
+//    degradando para o quadradinho, nunca para linha vazia.
+// ══════════════════════════════════════════════════════════════════════════
 function pfStatusIcon(status) {
   switch(status) {
     case 'completo':      return '✅';
@@ -19084,8 +19112,21 @@ function pfStatusIcon(status) {
     case 'incompleto':    return '🟡';
     case 'com_pendencia': return '🔴';
     case 'bloqueado':     return '🔒';
+    case 'condicional':   return '❓';
+    case 'dispensado':    return '➖';
     default:              return '⬜'; // pendente
   }
+}
+
+// V107 (Z1) — e a linha que DIZ o porque, com o mesmo vocabulario do PCM.
+// Icone sozinho ensina quem ja sabe; a frase ensina quem esta com a maquina
+// na frente e o galpao barulhento.
+function pfLinhaStatusEspecial(status) {
+  if (status === 'condicional')
+    return '<div class="pf-card-meta" style="color:#94a3b8">❓ Aguardando decisão para definir se será executada.</div>';
+  if (status === 'dispensado')
+    return '<div class="pf-card-meta" style="color:#94a3b8">➖ Ramo não seguido — tarefa dispensada.</div>';
+  return '';
 }
 
 function pfGetFormUrl(tipo, tarefa) {
@@ -19164,6 +19205,9 @@ function pfBuildCard(t) {
   if (st === 'completo' && (conclBy || conclAt)) {
     metaHtml = '<div class="pf-card-meta">✓ ' + (conclBy ? conclBy : '') + (conclAt ? ' · ' + conclAt : '') + '</div>';
   }
+  // V107 (Z1) — a explicacao entra no MESMO slot, so para os dois status que
+  // nao tinham nenhuma. Nao mexe no caminho de `completo`.
+  metaHtml = metaHtml + pfLinhaStatusEspecial(st);
 
   var acaoHtml = '';
   if (st !== 'bloqueado' && st !== 'completo' && st !== 'dispensado' && st !== 'condicional') {

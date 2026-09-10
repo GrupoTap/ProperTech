@@ -9,7 +9,7 @@
  * O activate abaixo apaga qualquer cache antigo com prefixo 'propertech-'.
  */
 const CACHE_BASE = 'propertech-';
-const CACHE = CACHE_BASE + 'v108'; // v108 (09/09/2026) — PCF_V106, a rodada do horímetro (C1/C5–C10).
+const CACHE = CACHE_BASE + 'v109'; // v108 (09/09/2026) — PCF_V106, a rodada do horímetro (C1/C5–C10).
 // (nota herdada do v101, 28/08/2026 — PCF_V100: as portas que nasciam sem OS. ⚠ AQUELE BUMP É O QUE
 //  ENTREGOU o `manifest.webmanifest` NOVO: ele está no APP_SHELL abaixo, e sem chave nova o start_url
 //  velho (`?source=pwa`, sem modo) fica no cache do aparelho.)
