@@ -1336,8 +1336,28 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 
   Bancada: _testes/NEWFILE_T_PCF_V107.mjs   (--negativo)
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V107</title>
-<meta name="app-build" content="PCF_V107" data-date="2026-09-09">
+<!--
+  ══════════════════════════════════════════════════════════════════════════
+  PCF PCF_V108 — rodada CAMPO E DOCUMENTOS (entrega unica, par do GAS v140) 11/09/2026
+  ══════════════════════════════════════════════════════════════════════════
+  A-11 a tela das OS comeca por 🚗 Externas / 🏭 Oficina, com contador; OS
+       sem local aparece nos dois lados com ⚠.
+  A-2  o cartao diz a MAQUINA (marca modelo · serie), o RESPONSAVEL (com
+       "voce") e o LOCAL nas tres vistas; o tipo pelo NOME.
+  A-3  "e minha?" e a regra do SERVIDOR (responsavel OU designado OU
+       executando). A-4 lock vencido dito e retomavel. A-10 lembra o Meu dia.
+  G    🗺 Ir ate o cliente (Maps/Waze) registra a SAIDA; perto do cliente,
+       com o app aberto, a CHEGADA e registrada sozinha (ou "📍 Cheguei");
+       abrir o formulario e o INICIO; "Sai do cliente". O tecnico marca o
+       ponto do cliente na 1a visita (GPS <= 50 m, arrasta ate a entrada).
+       O GPS so e lido nesses eventos, com o app aberto. Nada trava.
+  R    🧰 Carga do dia: a lista das OS externas de hoje, com conferencia na
+       saida e na volta; falta vira aviso no PCM, nunca trava a saida.
+  L-6  a maquina da Proper emprestada, vinculada a OS, nao derruba o os_id.
+  Tudo de G, R e L obedece aos interruptores do servidor (BLOCO_G/R/L).
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V108</title>
+<meta name="app-build" content="PCF_V108" data-date="2026-09-09">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -4633,6 +4653,10 @@ function pgpOsIdSeguro(clientAtual) {
     ? clientAtual : pgpDriveClientName(0);
   function norm(s){ return String(s || '').trim().toLowerCase().replace(/\s+/g, ' '); }
   if (norm(cli) === norm(cliOS)) return osId;
+  // V108 (L-6) — a maquina DA PROPER emprestada ao cliente da OS esta
+  // cadastrada em nome da Proper Locacao: o nome nao bate, mas ela e DESTA OS.
+  // Aceita so a maquina VINCULADA a esta OS; o GAS v140 confere a posse de novo.
+  try { if (typeof _pf108MaquinaDaOS === 'function' && _pf108MaquinaDaOS(osId)) return osId; } catch (e108) {}
   try { console.warn('[PCF] os_id suprimido: OS(' + cliOS + ') != máquina(' + cli + ')'); } catch(e){}
   // ═══════════════════════════════════════════════════════════════════════════
   // V83 (L-2) — A SUPRESSÃO DEIXA DE SER MUDA.
@@ -17861,6 +17885,9 @@ async function pfLoadOS() {
     // Confirmado por leitura: não há whitelist no caminho de LEITURA da lista
     // (as 3 whitelists conhecidas do PCF são todas de escrita).
     params.com_fila = 'true';
+    // V108 (A-1) — rotulos de maquina, nome do tipo, destino e o "e minha" do
+    // SERVIDOR (GAS v140). Opt-in: GAS antigo ignora a chave e devolve o de sempre.
+    params.com_campo = 'true';
     var r = await pfGet('getOS', params, 1, function(){
       // V76 (F3b): retry deixa de ser silencioso — o técnico vê que está tentando
       try { statusEl.textContent = '📶 Sinal fraco — tentando de novo…'; statusEl.style.display='block'; } catch(eR) {}
@@ -17871,6 +17898,7 @@ async function pfLoadOS() {
       return st !== 'cancelada';
     });
     _pfGsConnected = true;
+    try { if (r && r.blocos && typeof _pf108GravarBlocos === 'function') _pf108GravarBlocos(r.blocos); } catch (eB108) {}   // V108
     // O1.2 (V61): guarda a lista para leitura offline
     try { localStorage.setItem('pf_os_cache_v1', JSON.stringify({ ts: Date.now(), os: _pfOsList })); } catch(eC) {}
     pfRenderOS();
@@ -17948,7 +17976,7 @@ function pfSetOSDesignFilter(filtro) {
 //   Nunca escreve "na oficina ha 35d" com um numero que e de outra coisa.
 // ═══════════════════════════════════════════════════════════════════════════
 var _pfVista = 'vez';
-try { var _vv = localStorage.getItem('pf_vista_v94'); if (_vv === 'fila' || _vv === 'vez') _pfVista = _vv; } catch (e) {}
+try { var _vv = localStorage.getItem('pf_vista_v94'); if (_vv === 'fila' || _vv === 'vez' || _vv === 'dia') _pfVista = _vv; /* V108 (A-10): o pfSetVista ja GRAVAVA 'dia' — so a leitura o descartava */ } catch (e) {}
 
 // Bloqueios declarados por ESTE aparelho, para a vez nao reapontar a mesma OS
 // enquanto o GAS ainda nao devolve o estado de bloqueio no envelope da OS.
@@ -18080,6 +18108,7 @@ function _pfOrdemSugestao(a, b) {
 // Classifica a lista inteira uma vez. Devolve as pilhas que a tela desenha.
 function _pfClassificar() {
   var lista = (typeof _pfOsList !== 'undefined' && Array.isArray(_pfOsList)) ? _pfOsList : [];
+  if (typeof _pf108DoLado === 'function') lista = _pf108DoLado(lista);   // V108 (A-11)
   var r = { continuar: [], minhas: [], aguardando: [], travadasMinhas: [], sugestao: [], travadas: [] };
   lista.forEach(function (o) {
     if (!_pfOsAtiva(o)) return;
@@ -18225,8 +18254,8 @@ function _pfDiaGrupos() {
   return G;
 }
 function _pfDiaCard(o, atras) {
-  var maq = Array.isArray(o.maquinas_vinculadas) ? o.maquinas_vinculadas.join(' · ') : String(o.maquinas_vinculadas || '');
-  var local = (typeof pfOsEhExterna === 'function' && pfOsEhExterna(o)) ? '🚗 campo' : '🏭 oficina';
+  var maq = (typeof _pf108Maq === 'function') ? _pf108Maq(o) : (Array.isArray(o.maquinas_vinculadas) ? o.maquinas_vinculadas.join(' · ') : String(o.maquinas_vinculadas || ''));   // V108 (A-2)
+  var local = (typeof _pf108Local === 'function') ? _pf108Local(o) : ((typeof pfOsEhExterna === 'function' && pfOsEhExterna(o)) ? '🚗 campo' : '🏭 oficina');   // V108
   var pz = _pfPrazoTxt(o);
   var bq = _pfEhBloqueada(o);
   var etapa = String(o.estagio && o.estagio !== '—' ? o.estagio : (o.tipo_os || ''));
@@ -18236,11 +18265,12 @@ function _pfDiaCard(o, atras) {
     + ' onclick="pfSelecionarOS(\'' + String(o.id_os).replace(/'/g, "\\'") + '\',\'' + rot.replace(/'/g, "\\'") + '\')">'
     + '<span class="q">' + quando + '</span>'
     + '<span class="tx"><span class="c">' + pgpEscHtml(String(o.cliente || '—')) + '</span>'
-    + '<span class="s">' + pgpEscHtml(maq || String(o.tipo_os || '')) + ' · ' + local
+    + '<span class="s">' + pgpEscHtml(maq || String(o.tipo_os_nome || o.tipo_os || '')) + ((typeof _pf108Resp === 'function') ? ' · ' + pgpEscHtml(_pf108Resp(o)) : '') + ' · ' + local
     + (etapa ? ' · ' + pgpEscHtml(etapa) : '')
     + (bq ? ' · 🚧 travada' : '')
     + (_pfRank(o) >= 3 ? ' · 🔥 urgente' : '') + '</span></span>'
-    + '<span class="go">›</span></button>';
+    + '<span class="go">›</span></button>'
+    + ((typeof _pf108AcoesDia === 'function') ? _pf108AcoesDia(o) : '');   // V108 (G-2)
 }
 function pfRenderDia() {
   var el = document.getElementById('pfDiaPainel');
@@ -18279,7 +18309,7 @@ function pfRenderDia() {
 function _pfVezLinha(o, pos) {
   var id = _pfIdade(o);
   var bq = _pfEhBloqueada(o);
-  var maq = Array.isArray(o.maquinas_vinculadas) ? o.maquinas_vinculadas.join(' · ') : String(o.maquinas_vinculadas || '');
+  var maq = (typeof _pf108Maq === 'function') ? _pf108Maq(o) : (Array.isArray(o.maquinas_vinculadas) ? o.maquinas_vinculadas.join(' · ') : String(o.maquinas_vinculadas || ''));   // V108 (A-2)
   return '<div class="it' + (bq ? ' trav' : '') + '">'
     + '<div class="n">' + (bq ? '—' : pos) + '</div>'
     + '<div class="tx"><div class="c">' + pgpEscHtml(String(o.cliente || '—')) + '</div>'
@@ -18301,8 +18331,8 @@ function pfRenderVez() {
   var c = _pfClassificar();
   var vez = _pfMinhaVez();
   var esc = function (s) { return String(s).replace(/'/g, "\\'"); };
-  var maqDe = function (o) { return Array.isArray(o.maquinas_vinculadas) ? o.maquinas_vinculadas.join(' · ') : String(o.maquinas_vinculadas || ''); };
-  var localDe = function (o) { return (typeof pfOsEhExterna === 'function' && pfOsEhExterna(o)) ? '🚗 campo' : '🏭 oficina'; };
+  var maqDe = function (o) { return (typeof _pf108Maq === 'function') ? _pf108Maq(o) : (Array.isArray(o.maquinas_vinculadas) ? o.maquinas_vinculadas.join(' · ') : String(o.maquinas_vinculadas || '')); };   // V108 (A-2)
+  var localDe = function (o) { return (typeof _pf108Local === 'function') ? _pf108Local(o) : ((typeof pfOsEhExterna === 'function' && pfOsEhExterna(o)) ? '🚗 campo' : '🏭 oficina'); };   // V108
   var html = '';
 
   // ── listas auxiliares (usadas nos dois ramos) ──────────────────────────
@@ -18339,6 +18369,7 @@ function pfRenderVez() {
       +   '<div class="pq">' + (cont ? 'E a sua vez porque ' : 'E a sua vez porque ') + vez.motivo + '</div>'
       +   '<button type="button" class="pf-vez-btn go" onclick="pfSelecionarOS(\'' + esc(String(o.id_os)) + '\',\'' + esc(rotulo) + '\')">'
       +     (cont ? 'Continuar esta OS' : 'Abrir a OS') + '</button>'
+      +   ((typeof _pf108BotaoIr === 'function' && _pf108BotaoIr(o)) ? '<div style="display:flex;margin-top:9px">' + _pf108BotaoIr(o) + '</div>' : '')   // V108 (G-2)
       +   '<button type="button" class="pf-vez-btn blk" onclick="pfAbrirBloqueio(\'' + esc(String(o.id_os)) + '\')">Nao consigo fazer</button>'
       + '</div>'
       + (depois.length
@@ -18517,7 +18548,13 @@ function pfToggleFiltrosOS() {
 // "Minhas". Agora as três perguntam a MESMA função.
 // ⚠ Aditivo e tolerante a cache frio: campo ausente = falso, nunca esconde OS.
 // ══════════════════════════════════════════════════════════════════════════
-function _pfEhMinha(o) { return !!(o && (o.minha_tarefa || o.designada_para_mim)); }
+function _pfEhMinha(o) {
+  // V108 (A-3) — UMA regra, calculada no SERVIDOR (responsavel OU designado de
+  // tarefa aberta OU executando agora). Sem o campo: a regra de antes.
+  var _v108 = (typeof _pf108EhMinha === 'function') ? _pf108EhMinha(o) : null;
+  if (_v108 !== null) return _v108;
+  return !!(o && (o.minha_tarefa || o.designada_para_mim));
+}
 
 // Ordenadores. ⚠ Cache frio (lista antiga, sem os campos novos) NÃO pode fazer
 // OS sumir nem quebrar a ordenação: sem prioridade_rank tudo vira rank 1 e a
@@ -18605,6 +18642,7 @@ function pfRenderOS() {
     var okLocal = true;
     if (_pfOsFilter === 'externas') okLocal = pfOsEhExterna(o);   // V85 — regra única
     if (_pfOsFilter === 'internas') okLocal = local === 'interna' || local === 'interno';
+    if (okLocal && typeof _pf108NoLado === 'function') okLocal = _pf108NoLado(o);   // V108 (A-11)
     if (!okLocal) return false;
     // V79 — busca por número, cliente ou máquina. String(x ?? '') sempre:
     // numero_os é NUMBER no Sheets e já congelou filtro duas vezes neste projeto.
@@ -18664,7 +18702,7 @@ function pfRenderOS() {
     var numeroDisplay = String(o.numero_os == null || o.numero_os === '' ? (o.id_os || '—') : o.numero_os);
     var idOperacional = o.id_os || o.numero_os || '—';
     var cli   = o.cliente || '';
-    var tipo  = o.tipo_os ? (' · ' + o.tipo_os) : '';
+    var tipo  = (o.tipo_os_nome || o.tipo_os) ? (' · ' + (o.tipo_os_nome || o.tipo_os)) : '';   // V108 (A-2): o nome, nao o slug
     var st    = String(o.status || 'aberta').toLowerCase();
     var stLbl = st === 'em_andamento' ? 'Em andamento' : (st.charAt(0).toUpperCase() + st.slice(1));
     var stCls = st.replace(/_/g, '_');
@@ -18813,6 +18851,7 @@ function pfRenderOS() {
       '<div style="flex:1;min-width:0">' +
         '<div class="pf-os-topo">' + prioHtml + sitIco + '<span class="pf-os-numero">OS #' + pfEscHtmlOS(numeroDisplay) + '</span></div>' +
         '<div class="pf-os-cliente">' + (cli ? pfEscHtmlOS(cli) : '—') + pfEscHtmlOS(tipo) + '</div>' +
+        ((typeof _pf108LinhaCard === 'function') ? _pf108LinhaCard(o) : '') +   // V108 (A-2)
         linha3Html + progHtml +
       '</div>' +
       '<span class="pf-os-status ' + stCls + '">' + stLbl + '</span>' +
@@ -19278,7 +19317,17 @@ function pfBuildCard(t) {
   // uma vez assumida, ela trava para ele e os demais veem "em execução por X".
   var lockHtml = '';
   if (st !== 'bloqueado' && st !== 'completo' && st !== 'dispensado' && st !== 'condicional') {
-    if (lockedByOther) {
+    // V108 (A-4) — o servidor ja tratava o lock vencido (8 h) como livre; a
+    // tela seguia dizendo "Voce esta executando". Agora diz, e oferece retomar.
+    var _v108Venc = (lockPor && typeof _pf108LockVencido === 'function') ? _pf108LockVencido(t) : null;
+    if (_v108Venc) {
+      var _v108H = ('0' + _v108Venc.getHours()).slice(-2) + ':' + ('0' + _v108Venc.getMinutes()).slice(-2);
+      var _v108D = _v108Venc.toDateString() === new Date().toDateString() ? '' : ' de ' + ('0' + _v108Venc.getDate()).slice(-2) + '/' + ('0' + (_v108Venc.getMonth() + 1)).slice(-2);
+      lockHtml = lockedByMe
+        ? '<div class="pf-card-meta" style="color:#f59e0b">⏰ Sua execução venceu às ' + _v108H + _v108D + ' — toque para retomar</div>'
+        : '<div class="pf-card-meta" style="color:#f59e0b">🔓 A execução de ' + lockPor + ' venceu às ' + _v108H + _v108D + ' — a tarefa está livre</div>';
+      acaoHtml = '<div style="margin-top:10px"><button class="pf-btn pf-btn-concluir" onclick="pfAssumirTarefa(\'' + tidSafe + '\',this)">' + (lockedByMe ? '🔒 Retomar a tarefa' : '🔒 Assumir tarefa') + '</button></div>';
+    } else if (lockedByOther) {
       lockHtml = '<div class="pf-card-meta" style="color:#f59e0b">🔒 Em execução por ' + lockPor + '</div>';
       acaoHtml = ''; // outro técnico detém o lock — sem ações
     } else if (!lockPor && (st === 'pendente' || st === 'em_andamento')) {
@@ -21350,6 +21399,795 @@ if(window._PGP_OS_ID && (function(){ try { return localStorage.getItem('proper_p
     document.addEventListener('DOMContentLoaded', pcfCarimbarVersao, {once:true});
   }
 })();
+</script>
+<script>
+// ════════════════════════════════════════════════════════════════════════════
+// ████ PCF V108 · RODADA CAMPO E DOCUMENTOS — o lado do celular (11/09/2026) ████
+// Par do GAS v140. Spec: 00_EM_ABERTO/NEWFILE_BACKLOG_CAMPO_E_DOCUMENTOS_2026-09-10
+//   A  achar a OS: uma regra de "é minha" (A-3), um cartão (A-2), o lock
+//      vencido dito (A-4), o "Meu dia" lembrado (A-10) e a tela Externas /
+//      Oficina (A-11). Sem interruptor: é conserto.
+//   G  ir até o cliente (G-2), presença (G-3…G-8) e o ponto no mapa (G-1).
+//   R  a carga do dia com conferência na saída e na volta (R-4/R-5).
+//   L  a máquina da Proper com o cliente não derruba mais o os_id (L-6).
+// 🔌 G, R e L obedecem aos interruptores do servidor (o `blocos` que viaja no
+//    getOS com_campo). GAS antigo = nada disso aparece.
+// 🔑 Presença AVISA, nunca trava (G-8). GPS negado, sem sinal ou fora do raio:
+//    o evento é gravado assim mesmo, marcado — e o furo aparece no PCM.
+// 🔑 O GPS só é lido nos EVENTOS da OS (ir, chegar, iniciar, sair) e com o app
+//    aberto. Não existe rastreamento contínuo — nem poderia, num app web.
+// ⚠ Módulo ADITIVO: prefixo _pf108; as funções antigas são embrulhadas, não
+//    reescritas; as trocas no corpo antigo são poucas, ancoradas e comentadas.
+// ════════════════════════════════════════════════════════════════════════════
+
+var _pf108Blocos = null;
+try { _pf108Blocos = JSON.parse(localStorage.getItem('pf_blocos_v108') || 'null'); } catch (e) { _pf108Blocos = null; }
+function _pf108Bloco(l) { return !!(_pf108Blocos && _pf108Blocos[l] === true); }
+function _pf108GravarBlocos(b) {
+  if (!b || typeof b !== 'object') return;
+  _pf108Blocos = b;
+  try { localStorage.setItem('pf_blocos_v108', JSON.stringify(b)); } catch (e) {}
+}
+function _pf108Esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+function _pf108Js(s) { return String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
+function _pf108Uid() { return 'pf108' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+function _pf108Hora(ts) { var d = new Date(ts); return isNaN(d.getTime()) ? '—' : ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
+function _pf108HojeISO() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+function _pf108Dist(m) { m = Number(m); if (!isFinite(m)) return ''; return m >= 1000 ? (m / 1000).toFixed(1).replace('.', ',') + ' km' : Math.round(m) + ' m'; }
+function _pf108Haversine(a, b, c, d) {
+  var R = 6371000, r = Math.PI / 180;
+  var x = Math.sin((c - a) * r / 2), y = Math.sin((d - b) * r / 2);
+  var h = x * x + Math.cos(a * r) * Math.cos(c * r) * y * y;
+  return Math.round(2 * R * Math.asin(Math.min(1, Math.sqrt(h))));
+}
+function _pf108Eu() {
+  var t = (window.PROPER_SESSION && window.PROPER_SESSION.tecnico) || {};
+  return { id: String(t.id || t.nome || ''), nome: String(t.nome || t.id || '') };
+}
+function _pf108Os(osId) {
+  return ((typeof _pfOsList !== 'undefined' && Array.isArray(_pfOsList)) ? _pfOsList : [])
+    .filter(function (o) { return String(o.id_os || '') === String(osId || ''); })[0] || null;
+}
+function _pf108Toast(msg, tipo) { try { pfToast(msg, tipo); } catch (e) { try { showNotification(msg); } catch (x) {} } }
+
+// Envia AGORA se há conexão; senão (ou se a rede falhar) vai para a fila do app,
+// que reenvia sozinha. `tarefa_id` único entra na assinatura da fila: sem ele,
+// dois eventos da mesma OS teriam a MESMA assinatura e a dedup descartaria um.
+async function _pf108Enviar(action, body) {
+  var online = false;
+  try { online = !!_pgpGsConnected && !(typeof pgpRedeBloqueada === 'function' && pgpRedeBloqueada()); } catch (e) {}
+  if (online) {
+    try { return await pgpPostJson(action, body, 1, null, { timeoutMs: 20000 }); }
+    catch (e) {
+      if (e && e.permanent) throw e;      // veredito do servidor: não adianta enfileirar
+    }
+  }
+  try { pgpQueueRequest(action, body); } catch (e) {}
+  return { status: 'ok', na_fila: true };
+}
+
+// ── estilo do módulo (um <style> só, injetado uma vez) ──────────────────────
+(function () {
+  if (document.getElementById('pf108Css')) return;
+  var st = document.createElement('style'); st.id = 'pf108Css';
+  st.textContent =
+    '.pf108-lado{display:flex;flex-direction:column;gap:12px;margin:4px 0 14px}' +
+    '.pf108-lado button{min-height:96px;border-radius:18px;border:1px solid #2b4576;background:linear-gradient(160deg,#12233f,#0d1a30);color:#e2e8f0;text-align:left;padding:14px 16px;font-family:inherit;cursor:pointer}' +
+    '.pf108-lado button .t{display:block;font-size:22px;font-weight:800}' +
+    '.pf108-lado button .s{display:block;font-size:13.5px;color:#93c5fd;margin-top:4px}' +
+    '.pf108-lado button.ofi{border-color:#3f3a26;background:linear-gradient(160deg,#241f10,#18150b)}' +
+    '.pf108-lado button.ofi .s{color:#fcd34d}' +
+    '.pf108-aviso{font-size:12.5px;color:#fbbf24;background:#1b1509;border:1px solid #5b4a25;border-radius:10px;padding:9px 11px}' +
+    '.pf108-barra{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:13px;color:#94a3b8}' +
+    '.pf108-barra button{background:transparent;border:1px solid #334155;color:#cbd5e1;border-radius:999px;padding:6px 12px;font-family:inherit;font-size:13px;cursor:pointer}' +
+    '.pf108-linha{font-size:12px;color:#94a3b8;margin-top:3px;line-height:1.45}' +
+    '.pf108-acoes{display:flex;gap:8px;margin:-4px 0 10px 0}' +
+    '.pf108-btn{flex:1;min-height:46px;border-radius:12px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;font-family:inherit;font-size:15px;font-weight:800;cursor:pointer}' +
+    '.pf108-btn.ir{background:#1d4ed8;border-color:#1d4ed8;color:#fff}' +
+    '.pf108-btn.ok{background:#16a34a;border-color:#16a34a;color:#fff}' +
+    '.pf108-btn[disabled]{opacity:.45}' +
+    '.pf108-campo{background:#0d1a30;border:1px solid #2b4576;border-radius:14px;padding:12px;margin-bottom:14px}' +
+    '.pf108-folha{position:fixed;inset:0;background:rgba(2,6,23,.92);z-index:900;display:flex;flex-direction:column;padding:16px;overflow-y:auto;color:#e2e8f0}' +
+    '.pf108-folha h3{margin:0 0 8px;font-size:19px}' +
+    '.pf108-item{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid #334155;border-radius:10px;margin-bottom:6px;background:#0f172a}' +
+    '.pf108-item input{width:24px;height:24px}' +
+    '.pf108-mapa{position:relative;height:300px;overflow:hidden;border-radius:14px;border:1px solid #334155;background:#1e293b;touch-action:none}' +
+    '.pf108-mapa img{position:absolute;width:256px;height:256px;user-select:none;-webkit-user-drag:none;pointer-events:none}' +
+    '.pf108-pino{position:absolute;left:50%;top:50%;transform:translate(-50%,-100%);font-size:38px;pointer-events:none;filter:drop-shadow(0 2px 3px rgba(0,0,0,.6))}' +
+    '.pf108-perto{position:fixed;left:12px;right:12px;bottom:18px;z-index:880;background:#14532d;border:1px solid #16a34a;border-radius:14px;padding:12px;color:#ecfdf5;box-shadow:0 6px 24px rgba(0,0,0,.5)}';
+  document.head.appendChild(st);
+})();
+
+// ════════════════════════════════════════════════════════════════════════════
+// BLOCO A · ACHAR A OS
+// ════════════════════════════════════════════════════════════════════════════
+
+// A-3 · "É minha?" é UMA regra, calculada NO SERVIDOR (getOS com_campo):
+// responsável da OS OU designado de tarefa aberta OU executando agora. O card,
+// o selo, o filtro "Só as minhas", o "Meu dia" e a "Minha vez" perguntam esta
+// função (todas já passavam por `_pfEhMinha`). Sem o campo (GAS antigo, cache
+// frio) cai na regra de antes — nunca esconde OS.
+function _pf108EhMinha(o) {
+  if (o && typeof o.eh_minha === 'boolean') return o.eh_minha;
+  return null;
+}
+
+
+// A-2 · o que o cartão diz, igual nas três vistas.
+function _pf108Maq(o) {
+  if (!o) return '';
+  var r = Array.isArray(o.maquinas_rotulos) ? o.maquinas_rotulos.filter(function (x) { return x && (x.rotulo || x.id); }) : [];
+  if (r.length) return String(r[0].rotulo || r[0].id) + (r.length > 1 ? ' (+' + (r.length - 1) + ')' : '');
+  var v = o.maquinas_vinculadas;
+  if (Array.isArray(v)) return v.length ? String(v[0]) + (v.length > 1 ? ' (+' + (v.length - 1) + ')' : '') : '';
+  return String(v || '');
+}
+function _pf108Tipo(o) { return String((o && (o.tipo_os_nome || o.tipo_os)) || ''); }
+function _pf108Local(o) {
+  if (typeof pfOsSemLocal === 'function' && pfOsSemLocal(o)) return '⚠ sem local';
+  return (typeof pfOsEhExterna === 'function' && pfOsEhExterna(o)) ? '🚗 campo' : '🏭 oficina';
+}
+function _pf108Resp(o) {
+  var nome = String((o && o.responsavel_nome) || '').trim();
+  if (!nome) return '👤 sem responsável';
+  var eu = _pf108Eu();
+  var souEu = nome.toLowerCase() === eu.nome.toLowerCase() || (o.responsavel_id && String(o.responsavel_id) === eu.id);
+  return '👤 ' + nome + (souEu ? ' (você)' : '');
+}
+
+function _pf108LinhaCard(o) {
+  var partes = [];
+  var m = _pf108Maq(o); if (m) partes.push('🔧 ' + _pf108Esc(m));
+  partes.push(_pf108Esc(_pf108Resp(o)));
+  partes.push(_pf108Local(o));
+  return '<div class="pf108-linha">' + partes.join(' · ') + '</div>';
+}
+
+
+// ── A-11 · a tela Externas / Oficina ─────────────────────────────────────────
+// A primeira tela das OS são dois botões grandes com contador. Externas abre
+// no "Meu dia"; Oficina na "Minha vez" (a fila fica no Backlog). OS SEM LOCAL
+// aparece nos DOIS lados, com ⚠ — e a escolha avisa quantas são.
+var _pf108Lado = '';          // '' = escolhendo · 'ext' · 'ofi' · 'todas'
+
+function _pf108NoLado(o) {
+  if (!_pf108Lado || _pf108Lado === 'todas') return true;
+  if (typeof pfOsSemLocal === 'function' && pfOsSemLocal(o)) return true;
+  var ext = (typeof pfOsEhExterna === 'function') && pfOsEhExterna(o);
+  return _pf108Lado === 'ext' ? ext : !ext;
+}
+function _pf108DoLado(lista) { return (lista || []).filter(_pf108NoLado); }
+function _pf108Contagens() {
+  var l = ((typeof _pfOsList !== 'undefined' && Array.isArray(_pfOsList)) ? _pfOsList : []).filter(function (o) {
+    var st = String(o.status || 'aberta').toLowerCase(); return st === 'aberta' || st === 'em_andamento';
+  });
+  var hoje = _pf108HojeISO();
+  var minha = function (o) { try { return _pfEhMinha(o) || _pfEuExecuto(o); } catch (e) { return false; } };
+  var sem = l.filter(function (o) { return pfOsSemLocal(o); });
+  var ext = l.filter(function (o) { return pfOsEhExterna(o) || pfOsSemLocal(o); });
+  var ofi = l.filter(function (o) { return !pfOsEhExterna(o) || pfOsSemLocal(o); });
+  var extMinhas = ext.filter(minha);
+  var dia = function (o) { var d = String(o.data_prevista || '').slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : ''; };
+  var fila = 0;
+  try { fila = _pfClassificar().sugestao.length; } catch (e) {}
+  return {
+    sem: sem.length, total: l.length,
+    ext_hoje: extMinhas.filter(function (o) { return dia(o) === hoje; }).length,
+    ext_atras: extMinhas.filter(function (o) { var d = dia(o); return d && d < hoje; }).length,
+    ext_minhas: extMinhas.length,
+    ofi_minhas: ofi.filter(minha).length, fila: fila
+  };
+}
+function _pf108PintarLado() {
+  var tela = document.getElementById('pfScreenOS');
+  if (!tela) return;
+  var box = document.getElementById('pf108Lado');
+  if (!box) {
+    box = document.createElement('div'); box.id = 'pf108Lado';
+    tela.insertBefore(box, tela.firstChild);
+  }
+  var escolhendo = !_pf108Lado;
+  ['pfVezPainel', 'pfDiaPainel', 'pfFilaBloco'].forEach(function (id) {
+    var e = document.getElementById(id);
+    if (!e) return;
+    if (escolhendo) { if (!e.dataset.pf108) { e.dataset.pf108 = e.style.display || '-'; } e.style.display = 'none'; }
+  });
+  var vista = tela.querySelector('.pf-vista');
+  if (vista) vista.style.display = escolhendo ? 'none' : '';
+  // os chips Externas/Internas somem: quem escolhe o lado é esta tela
+  var chipsLocal = tela.querySelector('[aria-label="Filtro de local de atendimento"]');
+  if (chipsLocal) chipsLocal.style.display = (_pf108Lado && _pf108Lado !== 'todas') ? 'none' : '';
+  var c = _pf108Contagens();
+  if (escolhendo) {
+    var semTxt = c.sem ? '<div class="pf108-aviso">⚠ ' + c.sem + ' OS sem local definido — aparecem nos dois lados. Corrigir no PCM (Campo → Local das OS abertas).</div>' : '';
+    box.innerHTML =
+      '<div class="pf108-lado">' +
+        '<button type="button" onclick="_pf108Escolher(\'ext\')"><span class="t">🚗 Externas</span><span class="s">' +
+          (c.ext_hoje ? c.ext_hoje + ' sua' + (c.ext_hoje > 1 ? 's' : '') + ' hoje' : 'nenhuma sua hoje') +
+          (c.ext_atras ? ' · <b style="color:#fca5a5">' + c.ext_atras + ' atrasada' + (c.ext_atras > 1 ? 's' : '') + '</b>' : '') + '</span></button>' +
+        '<button type="button" class="ofi" onclick="_pf108Escolher(\'ofi\')"><span class="t">🏭 Oficina</span><span class="s">' +
+          (c.ofi_minhas ? c.ofi_minhas + ' sua' + (c.ofi_minhas > 1 ? 's' : '') : 'nenhuma sua') +
+          ' · ' + c.fila + ' na fila</span></button>' +
+      '</div>' + semTxt +
+      (_pf108Bloco('R') ? '<button type="button" class="pf108-btn" style="width:100%;margin-top:10px" onclick="_pf108CargaAbrir()">🧰 Carga do dia</button>' : '') +
+      '<div style="text-align:center;margin-top:12px"><a href="#" style="color:#64748b;font-size:13px" onclick="_pf108Escolher(\'todas\');return false">ver todas as OS</a></div>';
+    return;
+  }
+  var nome = { ext: '🚗 Externas', ofi: '🏭 Oficina', todas: 'Todas as OS' }[_pf108Lado];
+  box.innerHTML = '<div class="pf108-barra"><button type="button" onclick="_pf108Escolher(\'\')">← Externas / Oficina</button><b style="color:#e2e8f0">' + nome + '</b>' +
+    (_pf108Lado === 'ext' && _pf108Bloco('R') ? '<button type="button" style="margin-left:auto" onclick="_pf108CargaAbrir()">🧰 Carga</button>' : '') + '</div>';
+}
+window._pf108Escolher = function (lado) {
+  _pf108Lado = lado || '';
+  ['pfVezPainel', 'pfDiaPainel', 'pfFilaBloco'].forEach(function (id) {
+    var e = document.getElementById(id);
+    if (e && e.dataset.pf108) { e.style.display = e.dataset.pf108 === '-' ? '' : e.dataset.pf108; delete e.dataset.pf108; }
+  });
+  _pf108PintarLado();
+  if (!_pf108Lado) return;
+  try {
+    if (_pf108Lado === 'ext') pfSetVista('dia');
+    else if (_pf108Lado === 'ofi') pfSetVista('vez');
+    else pfSetVista(_pfVista);
+  } catch (e) {}
+  try { pfRenderOS(); } catch (e) {}
+};
+
+
+
+// A-4 · o lock VENCIDO dito igual nos dois lados. O servidor já tratava o lock
+// de mais de 8 h como livre; a tela seguia dizendo "Você está executando".
+function _pf108LockVencido(t) {
+  var ex = t && (t.Lock_Expira || t.lock_expira);
+  if (!ex) return null;
+  var d = new Date(ex);
+  if (isNaN(d.getTime())) return null;
+  return d.getTime() <= Date.now() ? d : null;
+}
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// BLOCO G · IR ATÉ O CLIENTE (G-2) · PRESENÇA (G-3…G-8) · PONTO NO MAPA (G-1)
+// ════════════════════════════════════════════════════════════════════════════
+var PF108_PRES_KEY = 'pf_presenca_v108';
+function _pf108PresLer() {
+  var o = {};
+  try { o = JSON.parse(localStorage.getItem(PF108_PRES_KEY) || '{}') || {}; } catch (e) { o = {}; }
+  // o estado local vale ~20 h: é o "dia de trabalho" da OS neste aparelho
+  var lim = Date.now() - 20 * 3600000, mudou = false;
+  Object.keys(o).forEach(function (k) { if (!o[k] || (o[k].em || 0) < lim) { delete o[k]; mudou = true; } });
+  if (mudou) { try { localStorage.setItem(PF108_PRES_KEY, JSON.stringify(o)); } catch (e) {} }
+  return o;
+}
+function _pf108PresGravar(osId, tipo, dados) {
+  var o = _pf108PresLer();
+  var r = o[osId] || { em: Date.now() };
+  r[tipo] = Object.assign({ ts: Date.now() }, dados || {});
+  r.em = Date.now();
+  o[osId] = r;
+  try { localStorage.setItem(PF108_PRES_KEY, JSON.stringify(o)); } catch (e) {}
+  return r;
+}
+function _pf108PresDe(osId) { return _pf108PresLer()[osId] || {}; }
+function _pf108Destino(o) { return (o && o.destino && typeof o.destino === 'object') ? o.destino : null; }
+function _pf108TemPonto(d) { return !!(d && isFinite(Number(d.lat)) && isFinite(Number(d.lng)) && d.lat !== null && d.lng !== null && d.lat !== '' && d.lng !== ''); }
+
+// GPS "de uma vez", sem travar nada: devolve null se negado/sem sinal/demorou.
+var _pf108UltimaPos = null;
+function _pf108Gps(timeoutMs) {
+  return new Promise(function (res) {
+    if (!navigator.geolocation) { res(null); return; }
+    var feito = false;
+    var t = setTimeout(function () { if (!feito) { feito = true; res(null); } }, timeoutMs || 9000);
+    try {
+      navigator.geolocation.getCurrentPosition(function (p) {
+        if (feito) return; feito = true; clearTimeout(t);
+        _pf108UltimaPos = p; res(p);
+      }, function () { if (!feito) { feito = true; clearTimeout(t); res(null); } },
+      { enableHighAccuracy: true, timeout: timeoutMs || 9000, maximumAge: 30000 });
+    } catch (e) { if (!feito) { feito = true; clearTimeout(t); res(null); } }
+  });
+}
+
+// Registra um evento de presença. NUNCA lança: presença avisa, não trava.
+async function _pf108Registrar(osId, tipo, origem, pos, obs) {
+  var o = _pf108Os(osId) || {};
+  var eu = _pf108Eu();
+  var uid = _pf108Uid();
+  var c = pos && pos.coords;
+  var dest = _pf108Destino(o);
+  var dist = (c && _pf108TemPonto(dest)) ? _pf108Haversine(c.latitude, c.longitude, Number(dest.lat), Number(dest.lng)) : null;
+  var body = {
+    os_id: osId, tipo: tipo, origem: origem || 'manual', client_uid: uid, tarefa_id: 'presenca:' + uid,
+    lat: c ? c.latitude : '', lng: c ? c.longitude : '', precisao_m: c ? Math.round(c.accuracy) : '',
+    hora_aparelho: new Date().toISOString(), hora_gps: pos ? new Date(pos.timestamp).toISOString() : '',
+    usuario_id: eu.id, usuario_nome: eu.nome, obs: obs || ''
+  };
+  _pf108PresGravar(osId, tipo, { origem: body.origem, dist: dist, sem_gps: !c });
+  var r = null;
+  try { r = await _pf108Enviar('presencaRegistrar', body); } catch (e) { r = { status: 'error', error: e && e.message }; }
+  return { r: r, dist: dist, sem_gps: !c };
+}
+
+// ── G-2 · 🗺 Ir até o cliente ────────────────────────────────────────────────
+
+function _pf108UrlNav(app, d) {
+  var ponto = _pf108TemPonto(d);
+  var txt = String((d && (d.endereco || d.nome)) || '').trim();
+  if (app === 'waze') return ponto ? 'https://waze.com/ul?ll=' + Number(d.lat) + ',' + Number(d.lng) + '&navigate=yes'
+                                   : 'https://waze.com/ul?q=' + encodeURIComponent(txt) + '&navigate=yes';
+  return 'https://www.google.com/maps/dir/?api=1&destination=' + (ponto ? Number(d.lat) + ',' + Number(d.lng) : encodeURIComponent(txt));
+}
+function _pf108BotaoIr(o) {
+  if (!_pf108Bloco('G') || !o || !pfOsEhExterna(o)) return '';
+  return '<button type="button" class="pf108-btn ir" onclick="event.stopPropagation();_pf108Ir(\'' + _pf108Js(o.id_os) + '\')">🗺 Ir até o cliente</button>';
+}
+// a linha de ação embaixo do cartão do "Meu dia" (o cartão é um botão inteiro)
+function _pf108AcoesDia(o) {
+  var b = _pf108BotaoIr(o);
+  return b ? '<div class="pf108-acoes">' + b + '</div>' : '';
+}
+window._pf108Ir = function (osId) {
+  var o = _pf108Os(osId);
+  var d = _pf108Destino(o);
+  if (!d || (!_pf108TemPonto(d) && !String(d.endereco || '').trim())) {
+    _pf108Toast('⚠ Esta OS não tem endereço nem ponto no mapa. Peça ao escritório para completar o cadastro do cliente.');
+    return;
+  }
+  var ult = ''; try { ult = localStorage.getItem('pf_nav_app_v108') || ''; } catch (e) {}
+  var f = _pf108Folha(
+    '<h3>🗺 Ir até ' + _pf108Esc(d.nome || o.cliente || 'o cliente') + '</h3>' +
+    '<div class="pf108-linha" style="font-size:13.5px">' + _pf108Esc(d.endereco || '') + (_pf108TemPonto(d) ? ' · 📍 ponto marcado' : ' · <b style="color:#fbbf24">sem ponto no mapa — vai pelo endereço</b>') + '</div>' +
+    (d.obs_acesso ? '<div class="pf108-linha" style="font-size:13.5px;color:#fcd34d">Acesso: ' + _pf108Esc(d.obs_acesso) + '</div>' : '') +
+    '<div style="display:flex;flex-direction:column;gap:10px;margin-top:16px">' +
+      '<button type="button" class="pf108-btn' + (ult !== 'waze' ? ' ir' : '') + '" style="min-height:58px" onclick="_pf108IrCom(\'' + _pf108Js(osId) + '\',\'maps\')">Google Maps</button>' +
+      '<button type="button" class="pf108-btn' + (ult === 'waze' ? ' ir' : '') + '" style="min-height:58px" onclick="_pf108IrCom(\'' + _pf108Js(osId) + '\',\'waze\')">Waze</button>' +
+      '<button type="button" class="pf108-btn" onclick="_pf108FecharFolha()">Cancelar</button>' +
+    '</div>' +
+    '<div class="pf108-linha" style="margin-top:12px">Ao sair, o app registra a <b>saída</b> desta OS. Deixe o ProperTech aberto quando chegar: ele registra a <b>chegada</b> sozinho perto do cliente (ou toque em "Cheguei").</div>');
+  return f;
+};
+window._pf108IrCom = function (osId, app) {
+  try { localStorage.setItem('pf_nav_app_v108', app); } catch (e) {}
+  var o = _pf108Os(osId), d = _pf108Destino(o);
+  var url = _pf108UrlNav(app, d);
+  _pf108FecharFolha();
+  // a navegação não espera o GPS nem o servidor
+  try { window.open(url, '_blank', 'noopener'); } catch (e) { location.href = url; }
+  _pf108PresGravar(osId, 'A_CAMINHO', {});
+  _pf108Gps(8000).then(function (pos) { return _pf108Registrar(osId, 'SAIDA', pos ? 'auto' : 'manual', pos); })
+    .then(function () { if (typeof _pf108VigiarChegada === 'function') _pf108VigiarChegada(); try { _pf108PintarCampo(); } catch (e) {} });
+};
+
+
+// ── G-3/G-4/G-5 · chegada ────────────────────────────────────────────────────
+
+var _pf108Watch = null;
+function _pf108ACaminho() {
+  var p = _pf108PresLer(), out = [];
+  Object.keys(p).forEach(function (k) { if ((p[k].A_CAMINHO || p[k].SAIDA) && !p[k].CHEGADA) out.push(k); });
+  return out;
+}
+function _pf108ConferirPosicao(pos) {
+  if (!pos || !pos.coords) return;
+  _pf108ACaminho().forEach(function (osId) {
+    var o = _pf108Os(osId), d = _pf108Destino(o);
+    if (!_pf108TemPonto(d)) return;
+    var dist = _pf108Haversine(pos.coords.latitude, pos.coords.longitude, Number(d.lat), Number(d.lng));
+    var raio = Number(d.raio_m) || 300;
+    var folga = Math.min(Number(pos.coords.accuracy) || 0, 100);
+    if (dist <= raio + folga) {
+      _pf108Registrar(osId, 'CHEGADA', 'auto', pos).then(function (x) {
+        _pf108Toast('📍 Chegada em ' + (d.nome || (o && o.cliente) || 'cliente') + ' registrada às ' + _pf108Hora(Date.now()) + ' (a ' + _pf108Dist(x.dist) + ')');
+        try { _pf108PintarCampo(); } catch (e) {}
+      });
+    }
+  });
+}
+function _pf108VigiarChegada() {
+  var precisa = _pf108ACaminho().length > 0 && document.visibilityState !== 'hidden';
+  if (!precisa) { if (_pf108Watch !== null) { try { navigator.geolocation.clearWatch(_pf108Watch); } catch (e) {} _pf108Watch = null; } return; }
+  if (_pf108Watch !== null || !navigator.geolocation) return;
+  try {
+    _pf108Watch = navigator.geolocation.watchPosition(function (p) { _pf108UltimaPos = p; _pf108ConferirPosicao(p); },
+      function () {}, { enableHighAccuracy: true, maximumAge: 20000, timeout: 30000 });
+  } catch (e) { _pf108Watch = null; }
+}
+// "Você está na Metasal. Registrar a chegada da OS 0072?" — só se a permissão
+// de localização JÁ foi dada (abrir o app nunca pede GPS sozinho).
+async function _pf108PertoDeCliente() {
+  if (!_pf108Bloco('G') || !navigator.geolocation || document.getElementById('pf108Perto')) return;
+  try {
+    if (navigator.permissions && navigator.permissions.query) {
+      var st = await navigator.permissions.query({ name: 'geolocation' });
+      if (st.state !== 'granted') return;
+    } else return;
+  } catch (e) { return; }
+  var hoje = _pf108HojeISO();
+  var cands = ((typeof _pfOsList !== 'undefined' && Array.isArray(_pfOsList)) ? _pfOsList : []).filter(function (o) {
+    var st = String(o.status || 'aberta').toLowerCase();
+    return (st === 'aberta' || st === 'em_andamento') && pfOsEhExterna(o) && (function () { try { return _pfEhMinha(o); } catch (e) { return false; } })() &&
+           String(o.data_prevista || '').slice(0, 10) === hoje && _pf108TemPonto(_pf108Destino(o)) && !_pf108PresDe(o.id_os).CHEGADA;
+  });
+  if (!cands.length) return;
+  var pos = await _pf108Gps(8000);
+  if (!pos) return;
+  var perto = cands.map(function (o) { var d = _pf108Destino(o); return { o: o, d: d, dist: _pf108Haversine(pos.coords.latitude, pos.coords.longitude, Number(d.lat), Number(d.lng)) }; })
+    .filter(function (x) { return x.dist <= (Number(x.d.raio_m) || 300) + Math.min(pos.coords.accuracy || 0, 100); })
+    .sort(function (a, b) { return a.dist - b.dist; })[0];
+  if (!perto) return;
+  var b = document.createElement('div'); b.id = 'pf108Perto'; b.className = 'pf108-perto';
+  b.innerHTML = '<div style="font-weight:800;font-size:15px">📍 Você está em ' + _pf108Esc(perto.d.nome || perto.o.cliente) + '.</div>' +
+    '<div style="font-size:13px;margin:4px 0 10px">Registrar a chegada da OS ' + _pf108Esc(perto.o.numero_os || perto.o.id_os) + '?</div>' +
+    '<div style="display:flex;gap:8px"><button type="button" class="pf108-btn ok" id="pf108PertoSim">Registrar chegada</button>' +
+    '<button type="button" class="pf108-btn" onclick="this.closest(\'#pf108Perto\').remove()">Agora não</button></div>';
+  document.body.appendChild(b);
+  document.getElementById('pf108PertoSim').onclick = function () {
+    b.remove();
+    _pf108Registrar(perto.o.id_os, 'CHEGADA', 'auto', pos).then(function (x) {
+      _pf108Toast('📍 Chegada registrada às ' + _pf108Hora(Date.now()) + ' (a ' + _pf108Dist(x.dist) + ')');
+      try { _pf108PintarCampo(); } catch (e) {}
+    });
+  };
+}
+document.addEventListener('visibilitychange', function () {
+  if (document.visibilityState === 'visible') {
+    _pf108VigiarChegada();
+    if (_pf108ACaminho().length) _pf108Gps(8000).then(_pf108ConferirPosicao);
+    setTimeout(_pf108PertoDeCliente, 1500);
+  } else { _pf108VigiarChegada(); }
+});
+window._pf108Cheguei = async function (osId, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = 'Lendo o GPS…'; }
+  var pos = await _pf108Gps(9000);
+  var x = await _pf108Registrar(osId, 'CHEGADA', 'manual', pos);
+  var o = _pf108Os(osId), d = _pf108Destino(o);
+  var raio = (d && Number(d.raio_m)) || 300;
+  var msg = x.sem_gps ? '📍 Chegada registrada às ' + _pf108Hora(Date.now()) + ' — sem GPS (fica marcado).'
+          : (x.dist === null ? '📍 Chegada registrada às ' + _pf108Hora(Date.now()) + ' — o cliente ainda não tem ponto no mapa.'
+          : '📍 Chegada registrada às ' + _pf108Hora(Date.now()) + ' — a ' + _pf108Dist(x.dist) + ' do cliente' + (x.dist > raio * 2 ? ' (longe: fica marcado)' : '') + '.');
+  _pf108Toast(msg);
+  _pf108PintarCampo();
+};
+window._pf108SaiDoCliente = async function (osId, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = 'Registrando…'; }
+  var pos = await _pf108Gps(7000);
+  await _pf108Registrar(osId, 'SAIDA_CLIENTE', 'manual', pos);
+  _pf108Toast('🚪 Saída do cliente registrada às ' + _pf108Hora(Date.now()) + '.');
+  _pf108PintarCampo();
+};
+// G-6 · a abertura do formulário é o INÍCIO (uma vez por OS por dia).
+function _pf108InicioAoAbrirForm(osId) {
+  try {
+    var o = _pf108Os(osId);
+    if (!_pf108Bloco('G') || !o || !pfOsEhExterna(o) || _pf108PresDe(osId).INICIO) return;
+    var pos = (_pf108UltimaPos && (Date.now() - _pf108UltimaPos.timestamp) < 120000) ? _pf108UltimaPos : null;
+    _pf108Registrar(osId, 'INICIO', 'auto', pos);
+  } catch (e) {}
+}
+
+
+// ── a barra "campo" no topo do pipeline de uma OS externa ───────────────────
+function _pf108PintarCampo() {
+  var cont = document.getElementById('pfPipelineConteudo');
+  var tela = document.getElementById('pfScreenPipeline');
+  if (!cont || !tela) return;
+  var box = document.getElementById('pf108Campo');
+  if (!box) { box = document.createElement('div'); box.id = 'pf108Campo'; cont.parentNode.insertBefore(box, cont); }
+  var osId = (typeof _pfOsId !== 'undefined') ? _pfOsId : null;
+  var o = osId ? _pf108Os(osId) : null;
+  if (!_pf108Bloco('G') || !o || !pfOsEhExterna(o)) { box.innerHTML = ''; return; }
+  var d = _pf108Destino(o) || {};
+  var p = _pf108PresDe(osId);
+  var linha = function (rot, e) {
+    if (!e) return '';
+    return rot + ' ' + _pf108Hora(e.ts) + (e.sem_gps ? ' (sem GPS)' : (e.dist !== null && e.dist !== undefined ? ' (a ' + _pf108Dist(e.dist) + ')' : '')) + (e.origem === 'auto' ? ' · GPS' : '');
+  };
+  var est = [linha('Saída', p.SAIDA), linha('Chegada', p.CHEGADA), linha('Início', p.INICIO), linha('Saiu', p.SAIDA_CLIENTE)].filter(Boolean).join(' · ');
+  var h = '<div class="pf108-campo">' +
+    '<div style="font-weight:800;font-size:15px">📍 ' + _pf108Esc(d.nome || o.cliente || '') + '</div>' +
+    '<div class="pf108-linha">' + _pf108Esc(d.endereco || 'sem endereço cadastrado') +
+      (_pf108TemPonto(d) ? '' : ' · <b style="color:#fbbf24">sem ponto no mapa</b>') + '</div>' +
+    (d.obs_acesso ? '<div class="pf108-linha" style="color:#fcd34d">Acesso: ' + _pf108Esc(d.obs_acesso) + '</div>' : '') +
+    (est ? '<div class="pf108-linha" style="color:#86efac">' + est + '</div>' : '') +
+    '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">' +
+      _pf108BotaoIr(o) + 
+      
+      (!p.CHEGADA ? '<button type="button" class="pf108-btn ok" onclick="_pf108Cheguei(\'' + _pf108Js(osId) + '\',this)">📍 Cheguei</button>'
+                  : (!p.SAIDA_CLIENTE ? '<button type="button" class="pf108-btn" onclick="_pf108SaiDoCliente(\'' + _pf108Js(osId) + '\',this)">🚪 Saí do cliente</button>' : '')) +
+      
+    '</div>' +
+    
+    (!_pf108TemPonto(d) && d.entidade_id ? '<button type="button" class="pf108-btn" style="width:100%;margin-top:8px" onclick="_pf108MarcarAbrir(\'' + _pf108Js(osId) + '\')">📍 Marcar o local deste cliente</button>' : '') +
+    
+    '</div>';
+  box.innerHTML = h;
+}
+
+// ── folha genérica ───────────────────────────────────────────────────────────
+function _pf108Folha(html) {
+  _pf108FecharFolha();
+  var f = document.createElement('div'); f.id = 'pf108Folha'; f.className = 'pf108-folha';
+  f.innerHTML = html;
+  document.body.appendChild(f);
+  return f;
+}
+window._pf108FecharFolha = function () {
+  var f = document.getElementById('pf108Folha');
+  if (f) { try { if (f._pf108Fim) f._pf108Fim(); } catch (e) {} f.remove(); }
+};
+
+// ── G-1 · marcar o ponto (o técnico, na 1ª visita) ──────────────────────────
+
+// Mapa sem biblioteca: azulejos do OpenStreetMap no zoom 18, pino FIXO no
+// centro, o técnico ARRASTA O MAPA até a entrada de veículos. Sem internet os
+// azulejos não vêm — aí o ponto é o do GPS (dito na tela).
+var PF108_Z = 18;
+function _pf108Lon2x(lon) { return (lon + 180) / 360 * 256 * Math.pow(2, PF108_Z); }
+function _pf108Lat2y(lat) { var s = Math.sin(lat * Math.PI / 180); return (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * 256 * Math.pow(2, PF108_Z); }
+function _pf108X2lon(x) { return x / (256 * Math.pow(2, PF108_Z)) * 360 - 180; }
+function _pf108Y2lat(y) { var n = Math.PI - 2 * Math.PI * y / (256 * Math.pow(2, PF108_Z)); return 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n))); }
+var _pf108M = null;   // { osId, gps:{lat,lng,acc}, cx, cy }
+window._pf108MarcarAbrir = function (osId) {
+  var o = _pf108Os(osId), d = _pf108Destino(o) || {};
+  var f = _pf108Folha(
+    '<h3>📍 Marcar o local de ' + _pf108Esc(d.nome || (o && o.cliente) || '') + '</h3>' +
+    '<div class="pf108-linha" style="font-size:13.5px">Faça isto <b>no cliente</b>. Arraste o mapa até o pino ficar na <b>entrada de veículos</b> — é por ali que o Maps e o Waze vão levar a equipe.</div>' +
+    '<div id="pf108Prec" style="font-size:14px;font-weight:800;margin:10px 0">⏳ Lendo o GPS…</div>' +
+    '<div class="pf108-mapa" id="pf108Mapa"><div class="pf108-pino">📍</div></div>' +
+    '<div id="pf108Mov" class="pf108-linha"></div>' +
+    '<input id="pf108Obs" placeholder="Como entrar (portaria, rua dos caminhões…)" style="width:100%;margin-top:10px;padding:12px;border-radius:10px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:15px" autocomplete="off">' +
+    '<div style="display:flex;gap:8px;margin-top:12px"><button type="button" class="pf108-btn" onclick="_pf108FecharFolha()">Cancelar</button>' +
+    '<button type="button" class="pf108-btn ok" id="pf108MarcarOk" disabled onclick="_pf108MarcarSalvar(this)">Salvar o ponto</button></div>' +
+    '<div class="pf108-linha" style="margin-top:8px">Só aceita GPS com precisão de até 50 m. Depois de marcado, só o escritório ajusta. © OpenStreetMap</div>');
+  _pf108M = { osId: osId, gps: null, cx: 0, cy: 0 };
+  var watch = null;
+  if (navigator.geolocation) {
+    try {
+      watch = navigator.geolocation.watchPosition(function (p) {
+        if (!_pf108M) return;
+        var prim = !_pf108M.gps;
+        _pf108M.gps = { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy };
+        if (prim) { _pf108M.cx = _pf108Lon2x(_pf108M.gps.lng); _pf108M.cy = _pf108Lat2y(_pf108M.gps.lat); _pf108MapaDesenhar(); }
+        _pf108MarcarEstado();
+      }, function () { var e = document.getElementById('pf108Prec'); if (e) e.textContent = '⚠ Sem GPS — permita a localização para marcar o ponto.'; },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 });
+    } catch (e) {}
+  }
+  f._pf108Fim = function () { try { if (watch !== null) navigator.geolocation.clearWatch(watch); } catch (e) {} _pf108M = null; };
+  _pf108MapaArrastar(document.getElementById('pf108Mapa'));
+};
+function _pf108MarcarEstado() {
+  if (!_pf108M || !_pf108M.gps) return;
+  var acc = Math.round(_pf108M.gps.acc);
+  var ok = acc <= 50;
+  var e = document.getElementById('pf108Prec');
+  if (e) { e.textContent = ok ? '✓ Precisão do GPS: ' + acc + ' m' : '⏳ Precisão do GPS: ' + acc + ' m — espere ficar abaixo de 50 m (céu aberto ajuda)'; e.style.color = ok ? '#86efac' : '#fbbf24'; }
+  var b = document.getElementById('pf108MarcarOk'); if (b) b.disabled = !ok;
+  var lat = _pf108Y2lat(_pf108M.cy), lng = _pf108X2lon(_pf108M.cx);
+  var mv = _pf108Haversine(_pf108M.gps.lat, _pf108M.gps.lng, lat, lng);
+  var m = document.getElementById('pf108Mov'); if (m) m.textContent = mv > 5 ? 'Pino a ' + _pf108Dist(mv) + ' de onde você está.' : 'Pino na sua posição.';
+}
+function _pf108MapaDesenhar() {
+  var el = document.getElementById('pf108Mapa'); if (!el || !_pf108M) return;
+  var w = el.clientWidth || 360, h = el.clientHeight || 300;
+  var x0 = _pf108M.cx - w / 2, y0 = _pf108M.cy - h / 2;
+  var tx0 = Math.floor(x0 / 256), ty0 = Math.floor(y0 / 256), tx1 = Math.floor((x0 + w) / 256), ty1 = Math.floor((y0 + h) / 256);
+  var vivos = {};
+  for (var tx = tx0; tx <= tx1; tx++) for (var ty = ty0; ty <= ty1; ty++) {
+    var k = PF108_Z + '/' + tx + '/' + ty; vivos[k] = 1;
+    var img = el.querySelector('img[data-k="' + k + '"]');
+    if (!img) { img = document.createElement('img'); img.setAttribute('data-k', k); img.alt = ''; img.src = 'https://tile.openstreetmap.org/' + k + '.png'; el.appendChild(img); }
+    img.style.left = Math.round(tx * 256 - x0) + 'px'; img.style.top = Math.round(ty * 256 - y0) + 'px';
+  }
+  Array.prototype.slice.call(el.querySelectorAll('img[data-k]')).forEach(function (i) { if (!vivos[i.getAttribute('data-k')]) i.remove(); });
+}
+function _pf108MapaArrastar(el) {
+  if (!el) return;
+  var ini = null;
+  el.addEventListener('pointerdown', function (e) { if (!_pf108M || !_pf108M.gps) return; ini = { x: e.clientX, y: e.clientY, cx: _pf108M.cx, cy: _pf108M.cy, okx: _pf108M.cx, oky: _pf108M.cy }; try { el.setPointerCapture(e.pointerId); } catch (x) {} });
+  el.addEventListener('pointermove', function (e) {
+    if (!ini || !_pf108M) return;
+    _pf108M.cx = ini.cx - (e.clientX - ini.x); _pf108M.cy = ini.cy - (e.clientY - ini.y);
+    // o pino não passa de 500 m da posição do GPS: arrastar é ajuste fino, não escolha de outro lugar
+    var lat = _pf108Y2lat(_pf108M.cy), lng = _pf108X2lon(_pf108M.cx);
+    if (_pf108Haversine(_pf108M.gps.lat, _pf108M.gps.lng, lat, lng) > 500) { _pf108M.cx = ini.okx; _pf108M.cy = ini.oky; return; }
+    ini.okx = _pf108M.cx; ini.oky = _pf108M.cy;
+    _pf108MapaDesenhar(); _pf108MarcarEstado();
+  });
+  var fim = function () { ini = null; };
+  el.addEventListener('pointerup', fim); el.addEventListener('pointercancel', fim);
+}
+window._pf108MarcarSalvar = async function (btn) {
+  if (!_pf108M || !_pf108M.gps) return;
+  var o = _pf108Os(_pf108M.osId), d = _pf108Destino(o) || {};
+  var lat = Number(_pf108Y2lat(_pf108M.cy).toFixed(6)), lng = Number(_pf108X2lon(_pf108M.cx).toFixed(6));
+  var mv = _pf108Haversine(_pf108M.gps.lat, _pf108M.gps.lng, lat, lng);
+  var eu = _pf108Eu();
+  var body = { tipo: d.tipo || 'CLIENTE', entidade_id: d.entidade_id, lat: lat, lng: lng, precisao_m: Math.round(_pf108M.gps.acc),
+               origem: 'PCF', fonte: mv > 15 ? 'tecnico_ajustado' : 'tecnico', obs_acesso: (document.getElementById('pf108Obs') || {}).value || '',
+               usuario: eu.nome, usuario_id: eu.id, tarefa_id: 'geo:' + _pf108Uid() };
+  if (btn) { btn.disabled = true; btn.textContent = 'Salvando…'; }
+  var r;
+  try { r = await _pf108Enviar('localClienteSalvar', body); }
+  catch (e) {
+    _pf108Toast('⚠ ' + ((e && e.message) || 'O ponto não foi salvo.'));
+    if (btn) { btn.disabled = false; btn.textContent = 'Salvar o ponto'; }
+    return;
+  }
+  if (o && o.destino) { o.destino.lat = lat; o.destino.lng = lng; o.destino.fonte = body.fonte; }
+  try { localStorage.setItem('pf_os_cache_v1', JSON.stringify({ ts: Date.now(), os: _pfOsList })); } catch (e) {}
+  _pf108FecharFolha();
+  _pf108Toast(r && r.na_fila ? '📍 Ponto guardado — sobe quando houver sinal.' : '📍 Ponto do cliente salvo. Obrigado!');
+  _pf108PintarCampo();
+};
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// BLOCO R · 🧰 CARGA DO DIA (R-4) + CONFERÊNCIA (R-5)
+// ════════════════════════════════════════════════════════════════════════════
+
+var _pf108Carga = null;   // resposta do cargaDia + marcações
+window._pf108CargaAbrir = async function (veiculoId) {
+  var f = _pf108Folha('<h3>🧰 Carga do dia</h3><div class="pf108-linha" id="pf108CargaCorpo">⏳ Montando a lista das suas OS externas de hoje…</div>');
+  var vei = veiculoId;
+  if (vei === undefined) { try { var g = JSON.parse(localStorage.getItem('pf_veiculo_v108') || 'null'); if (g && g.dia === _pf108HojeISO()) vei = g.id; } catch (e) {} }
+  var eu = _pf108Eu();
+  var r;
+  try { r = await pgpPostJson('cargaDia', { usuario: eu.id, data: _pf108HojeISO(), veiculo_id: vei || '' }, 1, null, { timeoutMs: 20000 }); }
+  catch (e) {
+    var c0 = document.getElementById('pf108CargaCorpo');
+    if (c0) c0.innerHTML = '⚠ Não consegui montar a carga: ' + _pf108Esc((e && e.message) || 'sem sinal') + '<br><br><button type="button" class="pf108-btn" onclick="_pf108FecharFolha()">Fechar</button>';
+    return;
+  }
+  _pf108Carga = { r: r, marcas: {} };
+  _pf108CargaPintar();
+};
+function _pf108CargaItens() {
+  var r = _pf108Carga.r, out = [];
+  (r.pecas || []).forEach(function (p, i) { out.push({ k: 'p' + i, tipo: 'peca', descricao: p.descricao, nome: p.descricao + ' (OS ' + p.os_numero + ')', qtde: p.qtde, grupo: 'Peças — por OS' }); });
+  (r.ferramentas || []).forEach(function (x) { out.push({ k: 'f' + x.item_id, tipo: 'item', item_id: x.item_id, nome: x.nome, qtde: x.levar, no_kit: x.no_kit_fixo, grupo: 'Ferramentas e instrumentos' }); });
+  (r.consumiveis || []).forEach(function (x) { out.push({ k: 'c' + x.item_id, tipo: 'item', item_id: x.item_id, nome: x.nome, qtde: x.levar, unidade: x.unidade, no_kit: x.no_kit_fixo, grupo: 'Consumíveis' }); });
+  return out;
+}
+function _pf108CargaPintar() {
+  var c = document.getElementById('pf108CargaCorpo'); if (!c || !_pf108Carga) return;
+  var r = _pf108Carga.r;
+  var vs = r.veiculos || [];
+  if (!r.veiculo_id) {
+    c.innerHTML = '<div style="font-size:14px;margin-bottom:10px">Qual caminhonete você vai usar hoje?</div>' +
+      (vs.length ? vs.map(function (v) { return '<button type="button" class="pf108-btn" style="width:100%;margin-bottom:8px" onclick="_pf108CargaVeiculo(\'' + _pf108Js(v.id) + '\')">🛻 ' + _pf108Esc(v.nome) + (v.placa ? ' · ' + _pf108Esc(v.placa) : '') + '</button>'; }).join('')
+                 : '⚠ Nenhuma caminhonete cadastrada — o escritório cadastra no PCM (Romaneio).') +
+      '<button type="button" class="pf108-btn" style="width:100%;margin-top:6px" onclick="_pf108FecharFolha()">Fechar</button>';
+    return;
+  }
+  var itens = _pf108CargaItens();
+  var h = '<div style="font-size:13px;color:#94a3b8;margin-bottom:8px">' + (r.os || []).length + ' OS externa(s) hoje: ' +
+          (r.os || []).map(function (o) { return _pf108Esc(o.numero_os + ' ' + o.cliente); }).join(' · ') + '</div>';
+  if (!itens.length) h += '<div style="margin:12px 0">Nada a levar além do kit fixo da caminhonete.</div>';
+  var grupo = '';
+  itens.forEach(function (it) {
+    if (it.grupo !== grupo) { grupo = it.grupo; h += '<div style="font-size:11px;letter-spacing:.12em;font-weight:800;color:#60a5fa;margin:12px 0 6px">' + grupo.toUpperCase() + '</div>'; }
+    var m = _pf108Carga.marcas[it.k];
+    h += '<label class="pf108-item"><input type="checkbox" ' + (m ? 'checked' : '') + ' onchange="_pf108Carga.marcas[\'' + it.k + '\']=this.checked">' +
+         '<span style="flex:1"><b>' + _pf108Esc(it.nome) + '</b>' + (it.qtde > 1 ? ' × ' + it.qtde + (it.unidade ? ' ' + _pf108Esc(it.unidade) : '') : '') +
+         (it.no_kit ? '<span class="pf108-linha" style="display:block">' + it.no_kit + ' já no kit fixo</span>' : '') + '</span></label>';
+  });
+  h += '<div style="display:flex;gap:8px;margin-top:14px"><button type="button" class="pf108-btn ok" onclick="_pf108CargaConferir(\'saida\',this)">✔ Conferir SAÍDA</button>' +
+       '<button type="button" class="pf108-btn" onclick="_pf108CargaConferir(\'volta\',this)">↩ Conferir VOLTA</button></div>' +
+       '<button type="button" class="pf108-btn" style="width:100%;margin-top:8px" onclick="_pf108CargaKitFixo()">Kit fixo da caminhonete (semanal)</button>' +
+       '<button type="button" class="pf108-btn" style="width:100%;margin-top:8px" onclick="_pf108FecharFolha()">Fechar</button>' +
+       '<div class="pf108-linha" style="margin-top:8px">Marque o que está na caminhonete. O que ficar sem marcar vai como <b>faltou</b> (na saída) ou <b>não voltou</b> (na volta) e avisa o escritório. Nunca impede a saída.</div>';
+  c.innerHTML = h;
+}
+window._pf108CargaVeiculo = function (id) {
+  try { localStorage.setItem('pf_veiculo_v108', JSON.stringify({ id: id, dia: _pf108HojeISO() })); } catch (e) {}
+  _pf108CargaAbrir(id);
+};
+window._pf108CargaConferir = async function (momento, btn, lista) {
+  if (!_pf108Carga) return;
+  var itens = (lista || _pf108CargaItens()).map(function (it) {
+    return { tipo: it.tipo, item_id: it.item_id || '', descricao: it.descricao || '', nome: it.nome, qtde: it.qtde, ok: !!_pf108Carga.marcas[it.k] };
+  });
+  var faltas = itens.filter(function (i) { return !i.ok; }).length;
+  if (faltas && !confirm(faltas + ' item(ns) sem marcar vão como ' + (momento === 'volta' ? 'NÃO VOLTOU' : 'FALTOU') + ' e o escritório é avisado. Confirmar?')) return;
+  var eu = _pf108Eu();
+  if (btn) { btn.disabled = true; btn.textContent = 'Enviando…'; }
+  var r;
+  try {
+    r = await _pf108Enviar('cargaConferir', { momento: momento, veiculo_id: _pf108Carga.r.veiculo_id, data: _pf108HojeISO(),
+      usuario_id: eu.id, usuario_nome: eu.nome, itens: itens, tarefa_id: 'carga:' + _pf108Uid() });
+  } catch (e) { r = null; }
+  _pf108Toast(!r ? '⚠ A conferência não foi aceita pelo servidor.' : (r.na_fila ? '🧰 Conferência guardada — sobe quando houver sinal.'
+            : '🧰 Conferência de ' + (momento === 'saida' ? 'saída' : (momento === 'volta' ? 'volta' : 'kit fixo')) + ' registrada' + (faltas ? ' — ' + faltas + ' falta(s) avisada(s) ao escritório.' : ' — tudo certo.')));
+  if (btn) { btn.disabled = false; btn.textContent = momento === 'saida' ? '✔ Conferir SAÍDA' : '↩ Conferir VOLTA'; }
+};
+window._pf108CargaKitFixo = function () {
+  var r = _pf108Carga && _pf108Carga.r; if (!r) return;
+  var kit = (r.kit_fixo || []).map(function (x) { return { k: 'k' + x.item_id, tipo: 'item', item_id: x.item_id, nome: x.nome, qtde: x.qtde }; });
+  var c = document.getElementById('pf108CargaCorpo'); if (!c) return;
+  c.innerHTML = '<div style="font-size:14px;margin-bottom:8px">Kit fixo da caminhonete — marque o que está nela.</div>' +
+    (kit.length ? kit.map(function (it) { return '<label class="pf108-item"><input type="checkbox" onchange="_pf108Carga.marcas[\'' + it.k + '\']=this.checked"><span style="flex:1"><b>' + _pf108Esc(it.nome) + '</b>' + (it.qtde > 1 ? ' × ' + it.qtde : '') + '</span></label>'; }).join('')
+                : 'Nenhum kit fixo cadastrado para esta caminhonete.') +
+    '<div style="display:flex;gap:8px;margin-top:12px"><button type="button" class="pf108-btn ok" id="pf108KitOk">✔ Conferir kit fixo</button>' +
+    '<button type="button" class="pf108-btn" onclick="_pf108CargaPintar()">← Voltar</button></div>';
+  document.getElementById('pf108KitOk').onclick = function () { _pf108CargaConferir('semanal', this, kit); };
+};
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// BLOCO L · L-6 — a máquina da Proper vinculada à OS não derruba o os_id
+// ════════════════════════════════════════════════════════════════════════════
+
+// Chamado pelo `pgpOsIdSeguro` SÓ depois de os nomes de cliente não baterem.
+// Aceita quando a máquina carregada está VINCULADA a esta OS (a máquina da
+// Proper emprestada ao cliente): o servidor (GAS v140) confere a posse de novo
+// e recusa se não for. Nunca é mais permissivo que o servidor: sem o bloco L
+// ligado lá, aqui também não.
+function _pf108MaquinaDaOS(osId) {
+  if (!_pf108Bloco('L')) return false;
+  var idx = (typeof currentMachine !== 'undefined') ? currentMachine : 0;
+  var mid = '';
+  try { mid = String(pgpDriveMaquinaId(idx) || '').trim(); } catch (e) { mid = ''; }
+  if (!mid) return false;
+  var os = window._PGP_OS_OBJ;
+  if (!os || String(os.id_os || '') !== String(osId)) os = _pf108Os(osId) || os;
+  var ids = os ? os.maquinas_vinculadas : null;
+  if (typeof ids === 'string') { try { ids = JSON.parse(ids); } catch (e) { ids = String(ids).split(','); } }
+  return Array.isArray(ids) && ids.map(function (x) { return String(x).trim(); }).indexOf(mid) >= 0;
+}
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// OS EMBRULHOS
+// ════════════════════════════════════════════════════════════════════════════
+function _pf108Embrulhar(nome, fabrica) {
+  var orig = window[nome];
+  if (typeof orig !== 'function') { try { console.warn('[PCF V108] não achei ' + nome); } catch (e) {} return false; }
+  window[nome] = fabrica(orig);
+  return true;
+}
+
+_pf108Embrulhar('pfAbrir', function (orig) {
+  return async function () {
+    _pf108Lado = '';                       // A-11: a tela das OS começa pela escolha
+    var r = orig.apply(this, arguments);
+    try { _pf108PintarLado(); } catch (e) {}
+    return r;
+  };
+});
+_pf108Embrulhar('pfSetVista', function (orig) {
+  return function () { var r = orig.apply(this, arguments); try { _pf108PintarLado(); } catch (e) {} return r; };
+});
+
+_pf108Embrulhar('pfRenderOS', function (orig) {
+  return function () {
+    var r = orig.apply(this, arguments);
+    try { if (typeof _pf108PintarLado === 'function' && document.getElementById('pf108Lado')) _pf108PintarLado(); } catch (e) {}
+    return r;
+  };
+});
+_pf108Embrulhar('pfSelecionarOS', function (orig) {
+  return async function () {
+    var r = await orig.apply(this, arguments);
+    try { _pf108PintarCampo(); } catch (e) {}
+    return r;
+  };
+});
+_pf108Embrulhar('pfVoltarOS', function (orig) {
+  return function () { var r = orig.apply(this, arguments); try { var b = document.getElementById('pf108Campo'); if (b) b.innerHTML = ''; } catch (e) {} return r; };
+});
+_pf108Embrulhar('pfAbrirForm', function (orig) {
+  return async function (tarefaId) {
+    try { if (typeof _pf108InicioAoAbrirForm === 'function') _pf108InicioAoAbrirForm(_pfOsId); } catch (e) {}
+    return orig.apply(this, arguments);
+  };
+});
+// partida: a vigia de chegada volta sozinha se o app foi reaberto "a caminho"
+setTimeout(function () {
+  try { if (typeof _pf108VigiarChegada === 'function') _pf108VigiarChegada(); } catch (e) {}
+}, 3000);
+// ████ FIM PCF V108 ████
 </script>
 
 </body>
