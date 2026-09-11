@@ -1356,8 +1356,56 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
   L-6  a maquina da Proper emprestada, vinculada a OS, nao derruba o os_id.
   Tudo de G, R e L obedece aos interruptores do servidor (BLOCO_G/R/L).
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V108</title>
-<meta name="app-build" content="PCF_V108" data-date="2026-09-09">
+<!--
+  ══════════════════════════════════════════════════════════════════════════
+  PCF PCF_V109 — o PDF da preventiva que nao chegava na Gestao de Documentos
+                                                              11/09/2026
+  O CASO: OS PGP-2026-0076 (PROPER locacao, Odin OD20 202514020), preventiva
+  concluida no celular em 10/09 18:14. OS concluida, fotos e assinaturas no
+  Drive — o PDF nao. O tecnico mandou o PDF por fora: 10,46 MB, 6 paginas.
+
+  🔴 CAUSA 1 — O PCF ERA O UNICO GERADOR DE PDF SEM `compress:true`.
+     Os 7 formularios (form_corretiva, form_emprestimo, form_locacao,
+     form_generica, form_entrega_tecnica, form_diagnostico, diag_oficina)
+     criam o jsPDF com `compress:true`; o `pgpCreateReportBuilder` nunca teve.
+     Sem ele o jsPDF grava a imagem PNG CRUA, pixel a pixel. As duas
+     assinaturas (PNG de 24 e 30 KB, na resolucao da tela, dpr ate 3) viraram
+     8,1 MB dentro do PDF — 77 % do arquivo. Medido: as mesmas duas
+     assinaturas, 8.100.512 bytes sem / 56.995 bytes com. O mesmo PDF da 0076
+     recomprimido sem perda: 10,46 MB -> 1,91 MB.
+     Serie historica no Drive: 0,5 MB (27/08, sem assinatura) -> 4,3 / 4,6 /
+     4,8 MB (27/08-01/09) -> 7,0 MB (08/09) -> 10,46 MB (10/09, perdido).
+
+  🔴 CAUSA 2 — O PDF NUNCA COUBE NA FILA OFFLINE.
+     A V77 (G3) tirou o base64 do localStorage e o pos no IndexedDB — mas o
+     `pgpEnqueueDriveUpload` so procura `body.dataBase64`, que e o nome do
+     campo das FOTOS. O PDF manda `base64` (e o nome que o GAS le em
+     `salvarPdfDrive`). Resultado: todo PDF que falhava no 1o envio ia INTEIRO
+     para o localStorage, cujo teto medido e ~5,2 milhoes de caracteres
+     (PDF de ~3,7 MB com o aparelho vazio — bem menos com os caches do app).
+     O da 0076 tinha 13,95 milhoes: `setItem` recusou, o item foi descartado e
+     registrado em "anexos perdidos" com o motivo "armazenamento local sem
+     espaco". REPRODUZIDO no arquivo real (V107, que estava no ar, e V108).
+     A prova de campo: na manha seguinte (11/09 09:17) a fila entregou a foto
+     do "Plano de manutencao" que tinha ficado para tras — e nao havia PDF
+     nenhum na fila para entregar.
+
+  C1  `new jsPDF({..., compress:true})` no construtor unico — cobre o PDF por
+      maquina E o consolidado (mesmo construtor).
+  C2  a fila reconhece os DOIS nomes de campo (`dataBase64` das fotos e
+      `base64` do PDF), guarda qual era em `b64Campo` e o reenvio devolve o
+      conteudo NO MESMO CAMPO. Item antigo, sem `b64Campo`, segue como foto
+      (`dataBase64`) — exatamente o comportamento de antes.
+      🔑 E os dois consertos sao INDEPENDENTES: so o C1 deixa PDF de 2-3 MB
+      que ainda nao cabe na fila de um aparelho com caches; so o C2 guarda o
+      PDF mas sobe 13 MB por 4G. Por isso cada um tem o seu negativo.
+
+  Zero GAS, zero SQL, zero forms. Par: sw v111.
+  Bancada: _testes/NEWFILE_T_PCF_V109_PDF.mjs  (--negativo: C1 e C2 desfeitos
+  um de cada vez; a V108 publicada reprova).
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V109</title>
+<meta name="app-build" content="PCF_V109" data-date="2026-09-11">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -4531,16 +4579,28 @@ function pgpEnqueueDriveUpload(entry){
   // anexo de PREVENTIVA. No flush o _pgpTipoVisita já pode ser outro (ou de
   // outra sessão), então o tipo tem de viajar junto com o item.
   try { if (entry && !entry.tipoVisita) entry.tipoVisita = String(_pgpTipoVisita || ''); } catch(eT) {}
-  var b64  = body.dataBase64 || '';
+  // ══════════════════════════════════════════════════════════════════════
+  // V109 (C2) — O PDF NUNCA ENTROU NO INDEXEDDB.
+  // A V77 so olhava `dataBase64` (o nome do campo das FOTOS). O PDF manda
+  // `base64` — o nome que o `salvarPdfDrive` do GAS le. Entao todo PDF que
+  // falhava no 1o envio ia INTEIRO para o localStorage (~5,2 milhoes de
+  // caracteres de teto) e o de 10 MB da OS PGP-2026-0076 foi descartado como
+  // "armazenamento local sem espaco". Agora o item guarda QUAL campo era
+  // (`b64Campo`) e o reenvio devolve o conteudo no MESMO campo.
+  // ⚠ `dataBase64` tem prioridade: e o comportamento de antes para foto.
+  // ══════════════════════════════════════════════════════════════════════
+  var b64Campo = (typeof body.dataBase64 === 'string' && body.dataBase64) ? 'dataBase64'
+               : ((typeof body.base64 === 'string' && body.base64) ? 'base64' : '');
+  var b64  = b64Campo ? body[b64Campo] : '';
   var list = pgpGetDriveQueue();
   var item;
 
   if (b64) {
     var blobKey = 'dq::' + Date.now().toString(36) + '::' + pgpUid();
     var leve = {};
-    for (var k in body) { if (Object.prototype.hasOwnProperty.call(body, k) && k !== 'dataBase64') leve[k] = body[k]; }
+    for (var k in body) { if (Object.prototype.hasOwnProperty.call(body, k) && k !== b64Campo) leve[k] = body[k]; }
     item = { kind:(entry&&entry.kind)||'', action:(entry&&entry.action)||'', body:leve,
-             blobKey:blobKey, ts:(entry&&entry.ts)||Date.now(), bytes:b64.length,
+             blobKey:blobKey, b64Campo:b64Campo, ts:(entry&&entry.ts)||Date.now(), bytes:b64.length,   // V109 (C2)
              tipoVisita:(entry&&entry.tipoVisita)||'' };   // V81
     pgpIdbSet(blobKey, b64).then(function(ok){
       if (ok) return;
@@ -4791,7 +4851,11 @@ async function flushPendingDriveUploads() {
             pgpSaveDriveQueue(failed.concat(list.slice(i + 1)));
             continue;
           }
-          _body = Object.assign({}, _body, { dataBase64: _b64 });
+          // V109 (C2) — devolve no MESMO campo em que veio. Item gravado antes
+          // da V109 nao tem `b64Campo` e sempre foi foto ⇒ 'dataBase64'.
+          var _campoB64 = (entry.b64Campo === 'base64') ? 'base64' : 'dataBase64';
+          var _reidr = {}; _reidr[_campoB64] = _b64;
+          _body = Object.assign({}, _body, _reidr);
         }
         // ══════════════════════════════════════════════════════════════════
         // V78 (A5) — RECARIMBO DO os_id.
@@ -9089,7 +9153,14 @@ function addImagemProporcional(doc, imgData, x, y, maxW, maxH, srcW, srcH) {
 // (1 doc único com índice, várias máquinas como páginas).
 function pgpCreateReportBuilder() {
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  // ══════════════════════════════════════════════════════════════════════
+  // V109 (C1) — `compress:true`, O QUE OS 7 FORMULARIOS JA TINHAM.
+  // Sem ele o jsPDF grava PNG CRU: as duas assinaturas da OS PGP-2026-0076
+  // viraram 8,1 MB (de um PDF de 10,46 MB) e o PDF nao chegou ao Drive.
+  // As fotos sao JPEG e entram como estao — so muda o que era desperdicio.
+  // ⚠ Nao tirar: e ele que mantem o PDF abaixo do que o 4G sobe em 45 s.
+  // ══════════════════════════════════════════════════════════════════════
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
   const PW = 210, PH = 297;
   const ML = 14, MR = 14, MT = 12;
   const CW = PW - ML - MR; // largura útil
