@@ -9,7 +9,7 @@
  * O activate abaixo apaga qualquer cache antigo com prefixo 'propertech-'.
  */
 const CACHE_BASE = 'propertech-';
-const CACHE = CACHE_BASE + 'v111'; // v111 (11/09/2026) — PCF_V109, o PDF da preventiva que nao chegava (compress:true + PDF na fila do IndexedDB).
+const CACHE = CACHE_BASE + 'v112'; // v111 (11/09/2026) — PCF_V109, o PDF da preventiva que nao chegava (compress:true + PDF na fila do IndexedDB).
 // (nota anterior:  // v110 (11/09/2026) — PCF_V108, a rodada Campo e Documentos (Externas/Oficina, Ir ate o cliente, presenca, carga do dia).
 // (nota anterior:  // v108 (09/09/2026) — PCF_V106, a rodada do horímetro (C1/C5–C10).
 // (nota herdada do v101, 28/08/2026 — PCF_V100: as portas que nasciam sem OS. ⚠ AQUELE BUMP É O QUE
@@ -46,6 +46,7 @@ const CACHE = CACHE_BASE + 'v111'; // v111 (11/09/2026) — PCF_V109, o PDF da p
 //        PCF_V105 ↔  propertech-v107  (a vista "Meu dia": as MINHAS OS agrupadas
 //                                      por Hoje/Amanhã/7 dias/Depois/Sem data. Zero GAS.)
 //        PCF_V108 ↔  propertech-v110  (11/09 — a rodada Campo e Documentos)
+//        PCF_V110 ↔  propertech-v112  (17/09 — os motores CFX + PWAIT, front puro)
 //        PCF_V109 ↔  propertech-v111  (11/09 — o PDF da preventiva: compress:true + PDF na fila do IndexedDB)
 //    Quem "corrigir" isto para propertech-v91 achando que alinha as versões
 //    reintroduz o pior modo de falha deste arquivo: a chave ficaria IGUAL à do
