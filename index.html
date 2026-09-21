@@ -490,25 +490,7 @@
      V91.1 (21/08/2026) — SUB-REVISÃO DO PACOTE V91 (NADA PUBLICADO AINDA).
      Entra DENTRO do pacote v107/V127/V91: a ordem de publicação não muda e o
      bump do sw.js continua sendo `propertech-v92` (nada foi servido com ele).
-     `<!--
-  ══════════════════════════════════════════════════════════════════════
-  PCF_V111 — GUARDA DE BOTÃO v2 (bloco PWAIT_V2)            21/09/2026
-  ══════════════════════════════════════════════════════════════════════
-  🔴 Fernando, 21/09: "estou tentando editar OS mas fica só processando e
-     não abre pra salvar... é toda OS". O servidor gravava (saveOS medido
-     em ~15 s); quem travava era a GUARDA DE BOTÃO do bloco PWAIT v1.
-  A guarda fotografava o botão 130 ms DEPOIS do clique — quando o
-  `_comLoadingBtn_` do app já o tinha posto em "⏳ Processando…" e
-  desabilitado. Na volta, o app devolvia "Salvar"/habilitado e a guarda
-  repunha a foto velha POR CIMA: botão morto até o F5. Como o elemento é
-  o mesmo para toda OS, virava "não consigo editar OS nenhuma".
-  ⇒ v2: foto tirada na CAPTURA do clique · botão que já tem dono não é
-    tomado · na volta só desfaz o que ela escreveu e só SOLTA o `disabled`.
-  ZERO GAS, ZERO SQL. Só o bloco muda — nenhuma linha do app foi tocada.
-  Bancada: _testes/NEWFILE_T_CFX_PWAIT.mjs
-  ══════════════════════════════════════════════════════════════════════
--->
-<title>` e carimbos NÃO mudam — é sub-revisão, não versão nova.
+     `<title>` e carimbos NÃO mudam — é sub-revisão, não versão nova.
      100% ADITIVO E FRONT-ONLY: nenhuma função, id, data-key, chave de payload
      ou action renomeada ou removida. GAS v107 INTOCADO — as três correções
      usam dados que o envelope JÁ entrega.
@@ -1435,8 +1417,64 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
   Par de service worker: propertech-v112.
   ════════════════════════════════════════════════════════════════════════
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V111</title>
-<meta name="app-build" content="PCF_V111" data-date="2026-09-17">
+<!--
+  ══════════════════════════════════════════════════════════════════════
+  PCF_V111 — GUARDA DE BOTÃO v2 (bloco PWAIT_V2)            21/09/2026
+  ══════════════════════════════════════════════════════════════════════
+  🔴 Fernando, 21/09: "estou tentando editar OS mas fica só processando e
+     não abre pra salvar... é toda OS". O servidor gravava (saveOS medido
+     em ~15 s); quem travava era a GUARDA DE BOTÃO do bloco PWAIT v1.
+  A guarda fotografava o botão 130 ms DEPOIS do clique — quando o
+  `_comLoadingBtn_` do app já o tinha posto em "⏳ Processando…" e
+  desabilitado. Na volta, o app devolvia "Salvar"/habilitado e a guarda
+  repunha a foto velha POR CIMA: botão morto até o F5. Como o elemento é
+  o mesmo para toda OS, virava "não consigo editar OS nenhuma".
+  ⇒ v2: foto tirada na CAPTURA do clique · botão que já tem dono não é
+    tomado · na volta só desfaz o que ela escreveu e só SOLTA o `disabled`.
+  ZERO GAS, ZERO SQL. Só o bloco muda — nenhuma linha do app foi tocada.
+  Bancada: _testes/NEWFILE_T_CFX_PWAIT.mjs
+  ══════════════════════════════════════════════════════════════════════
+-->
+<!--
+  ══════════════════════════════════════════════════════════════════════
+  PCF_V112 — O DOCUMENTO VOLTA A COMECAR NO DOCTYPE          21/09/2026
+  ══════════════════════════════════════════════════════════════════════
+  🔴 Achado do Fernando em 21/09, pelo TITULO DA ABA: o navegador mostrava
+     "`, o carimbo da barra lateral e a lista `allViews`…".
+  CAUSA: o build da rodada de hoje inseriu o changelog ancorando em
+     s.find da tag TITLE — a PRIMEIRA ocorrencia no TEXTO CRU. Neste
+     arquivo essa ocorrencia nao era a tag: era a palavra TITLE, entre
+     sinais de menor e maior, CITADA dentro de um changelog antigo. O bloco
+     entrou no MEIO da frase e o fechamento de comentario dele (dois tracos
+     e o sinal de maior) FECHOU o comentario antigo; a citacao virou tag de
+     verdade — a primeira do documento — e so fechou na tag de fechamento
+     real, 2.706 linhas depois.
+  🕳 Engolidos como TEXTO dentro desse titulo falso: o DOCTYPE, a abertura
+     de HTML, a de HEAD, o META de charset e o META de viewport.
+     Medido no ar antes do conserto: document.compatMode = **BackCompat**
+     (modo quirks) e o META viewport **ausente** — o celular renderizava
+     como desktop de 980 px. O META app-build sobreviveu (vem depois do
+     fechamento do titulo), por isso o carimbo NA TELA continuou certo: o
+     sintoma so aparecia na aba.
+  ⇒ CONSERTO: o comentario volta para antes da tag TITLE REAL. Nada mais.
+  🔑 A CLASSE, nao a ocorrencia: ancora em arquivo que documenta HTML dentro
+     de comentario nao pode ser busca de texto cru — o aplicador ja sabia
+     disso para o fechamento de BODY (usa rfind, porque "ha fronts com o
+     fechamento de BODY dentro de string") e ninguem generalizou. Agora existe
+     _testes/NEWFILE_HTML_ANCORA.py (pula comentario e SCRIPT) e a varredura
+     de paridade ganhou a CHECAGEM 10, que REPROVA documento cujo primeiro
+     elemento nao seja o DOCTYPE, ou sem charset/viewport no HEAD, ou cuja
+     1a tag TITLE real nao seja a do carimbo.
+  🕳 E o proprio changelog acima quase repetiu o defeito: a 1a redacao dele
+     escrevia o fechamento de comentario por extenso e fechava a si mesmo.
+     Por isso este texto nao escreve tag nenhuma entre menor e maior. O
+     build REPROVA se voltar a escrever.
+  ZERO GAS, ZERO SQL, ZERO linha de app. Diff = comentario movido + carimbo.
+  Bancada: _testes/NEWFILE_T_ESTRUTURA_DOC.mjs (Chromium de verdade)
+  ══════════════════════════════════════════════════════════════════════
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V112</title>
+<meta name="app-build" content="PCF_V112" data-date="2026-09-17">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.

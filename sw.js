@@ -9,7 +9,7 @@
  * O activate abaixo apaga qualquer cache antigo com prefixo 'propertech-'.
  */
 const CACHE_BASE = 'propertech-';
-const CACHE = CACHE_BASE + 'v113';  // 21/09/2026 — par do PCF_V111 (guarda de botão v2). Sem bump, o celular do técnico serve o V110 do cache. // v111 (11/09/2026) — PCF_V109, o PDF da preventiva que nao chegava (compress:true + PDF na fila do IndexedDB).
+const CACHE = CACHE_BASE + 'v114';  // 21/09/2026 — par do PCF_V112 (documento volta a começar no DOCTYPE). Sem bump, o celular do técnico serve o V111 quebrado do cache.  // 21/09/2026 — par do PCF_V111 (guarda de botão v2). Sem bump, o celular do técnico serve o V110 do cache. // v111 (11/09/2026) — PCF_V109, o PDF da preventiva que nao chegava (compress:true + PDF na fila do IndexedDB).
 // (nota anterior:  // v110 (11/09/2026) — PCF_V108, a rodada Campo e Documentos (Externas/Oficina, Ir ate o cliente, presenca, carga do dia).
 // (nota anterior:  // v108 (09/09/2026) — PCF_V106, a rodada do horímetro (C1/C5–C10).
 // (nota herdada do v101, 28/08/2026 — PCF_V100: as portas que nasciam sem OS. ⚠ AQUELE BUMP É O QUE
