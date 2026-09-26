@@ -1327,6 +1327,29 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<!-- V113 (E1) — SPLASH POR MODO. Roda antes de qualquer pintura: quando a URL
+     leva ao pipeline (modo=pipeline, ou nenhuma porta conhecida, pela regra V100),
+     a coleta fica escondida atrás de um splash até o pipeline abrir. Era a tela
+     da preventiva que piscava 1-2 s na volta de todo formulário. Rede de
+     segurança: o próprio módulo V113 tira o splash em no máximo 20 s. -->
+<style id="pf113BootCss">
+#pf113Splash{display:none}
+html[data-boot="pipeline"] body > *:not(#pfOverlay):not(#pf113Splash):not(script):not(style){visibility:hidden!important}
+html[data-boot="pipeline"] #pf113Splash{display:flex;position:fixed;inset:0;z-index:100060;background:#0f172a;color:#e2e8f0;align-items:center;justify-content:center;flex-direction:column;gap:14px;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;text-align:center;padding:24px}
+#pf113Splash .sp{width:34px;height:34px;border-radius:50%;border:3px solid rgba(255,255,255,.18);border-top-color:#f58220;animation:pf113Gira .8s linear infinite}
+@keyframes pf113Gira{to{transform:rotate(360deg)}}
+</style>
+<script>
+(function(){try{
+  var q=new URLSearchParams(location.search), m=String(q.get('modo')||''), os=String(q.get('os_id')||'').trim();
+  var d=null; try{ d=JSON.parse(localStorage.getItem('pgp_draft_v1')||'null'); }catch(e){}
+  var rasc=!!(d&&d.ts&&(Date.now()-Number(d.ts))<172800000);
+  var conh={preventiva:1,pistao:1,pipeline:1,inspecao:1};
+  var pipe=(m==='pipeline')||(!os&&!rasc&&!conh[m]);
+  if(pipe) document.documentElement.setAttribute('data-boot','pipeline');
+}catch(e){}})();
+</script>
+
 <!--
   ══════════════════════════════════════════════════════════════════════════
   PCF PCF_V107 — o icone que nao conhecia `condicional` nem `dispensado`
@@ -1473,8 +1496,48 @@ v33 — Resiliência de rede em campo + evitar chamadas concorrentes na
   Bancada: _testes/NEWFILE_T_ESTRUTURA_DOC.mjs (Chromium de verdade)
   ══════════════════════════════════════════════════════════════════════
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V112</title>
-<meta name="app-build" content="PCF_V112" data-date="2026-09-17">
+<!--
+  ══════════════════════════════════════════════════════════════════════
+  PCF_V113 — O PCF QUE NAO MENTE, NAO PUXA E NAO PERDE       26/09/2026
+  ══════════════════════════════════════════════════════════════════════
+  Chamado do Fernando (24/09, 11 prints). Par: GAS v148 · sw propertech-v115
+  · forms de 26/09 · PWAIT v3. Estudo: 00_EM_ABERTO/NEWFILE_ESTUDO_PCF_
+  ESTAVEL_2026-09-26.html. Documento da rodada: NEWFILE_RODADA_PCF_ESTAVEL.
+  E  splash por modo; deep link direto na OS; volta do formulario envia o
+     que ficou, nao pinta cache velho e volta ao inicio se a OS acabou;
+     rotulo honesto da fonte do dado; contadores com "carregando"; retomada
+     do 2o plano com geracao de leitura; cabecalho com numero, cliente e
+     maquina.
+  C  o pipeline de uma OS nunca mais aparece em outra: guarda no escritor,
+     no leitor e no redesenho do cache (toda tarefa traz OS_ID).
+  P  chegada herdada: a 2a OS da mesma visita herda a hora da 1a.
+  M  mapa com satelite (Leaflet em vendor/leaflet, imagem Esri).
+  D  pre-carga automatica das OS de hoje e amanha.
+  F  fila que sobrevive ao 2o plano: grava ANTES de enviar, escrita por
+     item (o laco antigo engolia o que entrava no meio), dreno da fila dos
+     formularios pelo PCF, espelho no IndexedDB para o service worker
+     enviar com o app fechado (Background Sync), tela acesa no iPhone.
+  Prioridade de boot: no modo pipeline, clientes/catalogo/fila esperam a OS.
+  Este texto nao escreve tag nenhuma entre menor e maior (regra V112).
+  ══════════════════════════════════════════════════════════════════════
+-->
+<!--
+  ══════════════════════════════════════════════════════════════════════
+  PCF_V113 — PWAIT v3: A ESPERA APARECE, MAS NÃO ATRAPALHA     26/09/2026
+  ══════════════════════════════════════════════════════════════════════
+  Fernando, 24/09 (PCF, prints 1 e 11): "mensagens PWAIT irritantes,
+  cortadas". A pílula ficava no TOPO, por cima do cabeçalho, com frase
+  longa cortada — e aparecia até para refresh de 2º plano.
+  ⇒ v3: pílula no RODAPÉ, uma linha, sem receber toque, acima da barra
+    fixa de baixo · mensagem só para a espera que alguém PEDIU (chamada
+    até 1,5 s depois de um toque) · PWAIT.silencioso(fn) · frases curtas.
+    A guarda de botão do v2 não mudou.
+  ZERO GAS, ZERO SQL neste arquivo por causa do bloco.
+  Bancada: _testes/NEWFILE_T_PWAIT_V3.mjs
+  ══════════════════════════════════════════════════════════════════════
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V113</title>
+<meta name="app-build" content="PCF_V113" data-date="2026-09-26">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -3300,6 +3363,9 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
 </style>
 </head>
 <body>
+<div id="pf113Splash" role="status" aria-live="polite"><div class="sp"></div><div id="pf113SplashTxt" style="font-size:16px;font-weight:700">Abrindo suas OS…</div><div style="font-size:12.5px;opacity:.65">ProperCare Field</div></div>
+<script>(function(){try{var q=new URLSearchParams(location.search),n=q.get('os_numero'),v=q.get('voltou_de'),t=document.getElementById('pf113SplashTxt');if(t&&(n||q.get('os_id'))){t.textContent=(v?'Atualizando a OS ':'Abrindo a OS ')+(n||'')+'…';}}catch(e){}})();</script>
+
 
 <!-- ══ V77 (F1): BARRA DO MODO OFFLINE ═══════════════════════════════════════
      Fica no RODAPÉ e com z-index acima de tudo de propósito: o <header> do app
@@ -4454,6 +4520,13 @@ function limparSessaoStorage() {
         _pfDeepLinkPronto(['pfAbrir', 'pfSelecionarOS'],
                           ['pfOverlay', 'pfScreenOS', 'pfScreenPipeline', 'pfOsLabel', 'pfPipelineConteudo'],
                           function () {
+          // V113 (E2) — com os_id na URL, a OS abre DIRETO: o pipeline é a 1ª
+          // chamada; a lista e o sino vêm depois, em 2º plano. Antes: LISTA →
+          // getOS (até 90 s) → só então a OS — e o salto atrasado arrancava o
+          // técnico de onde ele já tinha tocado.
+          if (window._PGP_OS_ID && typeof window._pf113AbrirDireto === 'function') {
+            try { window._pf113AbrirDireto(window._PGP_OS_ID); return; } catch (e113) { console.warn('[V113] abrir direto:', e113 && e113.message); }
+          }
           var _pAbrir = null;
           try { _pAbrir = pfAbrir(); } catch(ePA) { _pAbrir = null; }
           // v28: se a URL já traz os_id, pula a lista de OS e abre o pipeline direto nela
@@ -4670,9 +4743,19 @@ function pgpEnqueueDriveUpload(entry){
     for (var k in body) { if (Object.prototype.hasOwnProperty.call(body, k) && k !== b64Campo) leve[k] = body[k]; }
     item = { kind:(entry&&entry.kind)||'', action:(entry&&entry.action)||'', body:leve,
              blobKey:blobKey, b64Campo:b64Campo, ts:(entry&&entry.ts)||Date.now(), bytes:b64.length,   // V109 (C2)
-             tipoVisita:(entry&&entry.tipoVisita)||'' };   // V81
+             tipoVisita:(entry&&entry.tipoVisita)||'', qid: pgpUid() };   // V81 · V113 (F1): identidade estável
     pgpIdbSet(blobKey, b64).then(function(ok){
-      if (ok) return;
+      if (ok) {
+        // V113 (F3) — espelho no IndexedDB: o service worker não lê o localStorage.
+        // (auditoria) com o envio direto já saindo (entry.emVoo), o espelho nasce com lease 'page':
+        // sem isso o SW achava o item livre e mandava JUNTO com a página (2 arquivos no Drive).
+        try { pgpIdbSet('dqi::' + item.qid, { qid:item.qid, action:item.action, body:leve, blobKey:blobKey, b64Campo:b64Campo,
+                                               ts:item.ts, tipoVisita:item.tipoVisita, kind:item.kind,
+                                               lease_por:(entry && entry.emVoo) ? 'page' : undefined,
+                                               lease_ate:(entry && entry.emVoo) ? Date.now() + 180000 : undefined }); } catch (e113) {}
+        try { if (typeof _pf113PedirSync === 'function') _pf113PedirSync(); } catch (e113) {}
+        return;
+      }
       _pgpDriveRemoverDaFila(blobKey);
       _pgpDriveMarcarPerdido(item, 'o armazenamento do aparelho recusou o anexo');
     }).catch(function(){
@@ -4681,7 +4764,10 @@ function pgpEnqueueDriveUpload(entry){
     });
   } else {
     item = { kind:(entry&&entry.kind)||'', action:(entry&&entry.action)||'', body:body, ts:(entry&&entry.ts)||Date.now(),
-             tipoVisita:(entry&&entry.tipoVisita)||'' };   // V81
+             tipoVisita:(entry&&entry.tipoVisita)||'', qid: pgpUid() };   // V81 · V113 (F1)
+    try { pgpIdbSet('dqi::' + item.qid, { qid:item.qid, action:item.action, body:body, ts:item.ts, tipoVisita:item.tipoVisita, kind:item.kind,
+                                          lease_por:(entry && entry.emVoo) ? 'page' : undefined,
+                                          lease_ate:(entry && entry.emVoo) ? Date.now() + 180000 : undefined }); } catch (e113) {}
   }
 
   list.push(item);
@@ -4700,12 +4786,14 @@ function pgpEnqueueDriveUpload(entry){
     pgpSaveDriveQueue(list);
     try { if (item && item.blobKey) pgpIdbDel(item.blobKey); } catch(e){}
     _pgpDriveMarcarPerdido(item, 'armazenamento local sem espaço');
-    return;
+    try { if (item && item.qid) pgpIdbDel('dqi::' + item.qid); } catch(e){}   // V113
+    return null;
   }
   if (list.length === DRIVE_QUEUE_WARN) {
     try { showNotification('⚠️ ' + list.length + ' anexos guardados no aparelho aguardando envio. Sincronize quando puder.'); } catch(e){}
   }
   try { pgpUpdatePendingBadge(); } catch(e){}
+  return item;   // V113 (F1): o envio direto precisa saber QUAL item tirar da fila ao dar certo
 }
 
 function _pgpDriveRemoverDaFila(blobKey){
@@ -16054,8 +16142,22 @@ async function pgpEnviarPreventiva(midx=currentMachine, opts){
     return;
   }
 
+  // V113 (F1) — PERSIST-FIRST. Até a V112 a preventiva só ia para a fila no
+  // `catch`: com o app congelado no 2º plano no meio do POST, ela não existia
+  // em lugar nenhum além da memória. Agora entra na fila (marcada "em voo",
+  // para o reenvio automático não disputar com este envio) e sai dela quando
+  // o servidor confirmar. O `visit_id` estável faz o resto (dedupe no GAS).
+  var _pf113Sig = null;
+  try {
+    var _q113 = pgpQueuePreventiva(payload);
+    if (_q113 && _q113.saved) {
+      _pf113Sig = payload.visit_id || ('savePreventiva|' + (payload.machine_id||'') + '|' + (payload.visitDate||''));
+      if (typeof _pf113PendEmVoo === 'function') _pf113PendEmVoo(_pf113Sig, true);
+    }
+  } catch (e113) { _pf113Sig = null; }
   try{
     const d = await pgpPostJson('savePreventiva', payload);
+    try { if (_pf113Sig && (d.duplicate || d.status === 'ok') && typeof _pf113PendRemover === 'function') _pf113PendRemover(_pf113Sig); } catch (e113) {}
     if(d.duplicate){
       // V68 — F-18a: o servidor JÁ tem esta preventiva ⇒ espelhar é correto.
       pgpUpdateAdminLocal(payload, { deferSave: _deferAdm });   // V88 (A5)
@@ -17510,11 +17612,11 @@ async function _pgpFetchComRetry_(url, options, maxRetries, onRetry) {
   throw lastErr;
 }
 
-async function pfGet(action, params, retries, onRetry) { // V76 (F3b): retries/onRetry opcionais — chamadas antigas seguem idênticas
+async function pfGet(action, params, retries, onRetry, opts) { // V76 (F3b): retries/onRetry opcionais — chamadas antigas seguem idênticas · V113: opts.timeoutMs
   if (!_pgpGsUrl) throw new Error('URL do servidor não configurada. Acesse Configurações no ProperTech.');
   params = params || {};
   const qs = new URLSearchParams(Object.assign({ action, key: _AUTH_HASH }, params));
-  const d = await _pgpFetchComRetry_(_pgpGsUrl + '?' + qs.toString() + gcParam(), { method: 'GET' }, retries, onRetry);
+  const d = await _pgpFetchComRetry_(_pgpGsUrl + '?' + qs.toString() + gcParam(), Object.assign({ method: 'GET' }, (opts && opts.timeoutMs) ? { __timeoutMs: opts.timeoutMs } : {}), retries, onRetry);
   if (!d || d.status !== 'ok') throw new Error(d?.error || 'Erro GAS');
   return d;
 }
@@ -17999,9 +18101,11 @@ async function pfLoadOS() {
       statusEl.textContent = '↻ Atualizando lista (' + pfCacheHora(_warmOS.ts) + ')…';
       statusEl.style.display = 'block';
       _warmPintou = true;
+      try { _pf113ListaCarregando(true, _warmOS.ts); } catch (e113) {}   // V113 (E5)
     }
   } catch(eW) {}
   if (!_warmPintou) {
+    try { _pf113ListaCarregando(false, 0); } catch (e113) {}   // V113 (E5)
     statusEl.textContent = 'Carregando ordens de serviço…';
     statusEl.style.display = 'block';
     listaEl.innerHTML = '';
@@ -18031,7 +18135,7 @@ async function pfLoadOS() {
     var r = await pfGet('getOS', params, 1, function(){
       // V76 (F3b): retry deixa de ser silencioso — o técnico vê que está tentando
       try { statusEl.textContent = '📶 Sinal fraco — tentando de novo…'; statusEl.style.display='block'; } catch(eR) {}
-    });
+    }, { timeoutMs: 30000 });   // V113 (E7): 30 s por tentativa (era 45 s × 2 herdados do POST de coleta)
     window._pfOsIncluiuFechadas = (params.includeClosed === 'true');
     _pfOsList = (r.os || []).filter(function(o) {
       var st = String(o.status || '').toLowerCase();
@@ -18041,6 +18145,7 @@ async function pfLoadOS() {
     try { if (r && r.blocos && typeof _pf108GravarBlocos === 'function') _pf108GravarBlocos(r.blocos); } catch (eB108) {}   // V108
     // O1.2 (V61): guarda a lista para leitura offline
     try { localStorage.setItem('pf_os_cache_v1', JSON.stringify({ ts: Date.now(), os: _pfOsList })); } catch(eC) {}
+    try { _pf113ListaOk(r); } catch (e113) {}   // V113 (E5): antes do render — o repaint já sai como "servidor"
     pfRenderOS();
   } catch(e) {
     if (e.message && e.message.includes('AUTH_GOOGLE')) { pfHubLogout(); return; }
@@ -18050,12 +18155,14 @@ async function pfLoadOS() {
     if (_cacheOS && _cacheOS.os && _cacheOS.os.length) {
       _pfOsList = _cacheOS.os;
       _pfGsConnected = false;
+      try { _pf113ListaFalhou(e, _cacheOS.ts); } catch (e113) {}   // V113 (E5)
       pfRenderOS();
       statusEl.textContent = '📴 Offline — lista de ' + pfCacheHora(_cacheOS.ts) +
         '. Pode haver mudanças no servidor; sincroniza sozinho quando houver sinal.';
       statusEl.style.display = 'block';
       return;
     }
+    try { _pf113ListaFalhou(e, 0); } catch (e113) {}   // V113 (E5)
     statusEl.textContent = '⚠ Não foi possível carregar as OS: ' + pgpMsgErro(e); // V77
   }
 }
@@ -19086,9 +19193,10 @@ async function pfLoadPipeline(opts) {
   // sem rede (opts._warmData reusa o MESMO caminho de render), 2º passe soft
   // busca a rede por trás e re-renderiza sem apagar a tela. Regra V67 mantida:
   // cache VAZIO nunca é servido.
-  if (!opts.soft && !opts._warmData && !opts._retentou) {
+  if (!opts.soft && !opts._warmData && !opts._retentou && !(typeof _pf113SemMorno !== 'undefined' && _pf113SemMorno[_osReq])) {   // V113 (E3)
     try {
       var _wp = JSON.parse(localStorage.getItem('pf_pipeline_cache_v1') || '{}')[_osReq] || null;
+      if (_wp && typeof _pf113TarefasDaOS === 'function' && !_pf113TarefasDaOS(_wp.tarefas, _osReq)) _wp = null;   // V113 (C3)
       if (_wp && (_wp.tarefas || []).length) {
         await pfLoadPipeline({ _warmData: _wp });
         return pfLoadPipeline({ soft: true });
@@ -19096,7 +19204,8 @@ async function pfLoadPipeline(opts) {
     } catch(eW) {}
   }
   if (!opts.soft) {
-    conteudo.innerHTML = '<div style="text-align:center;padding:24px;color:#64748b;font-size:13px">Carregando pipeline…</div>';
+    conteudo.innerHTML = '<div style="text-align:center;padding:24px;color:#64748b;font-size:13px">' +
+      ((typeof _pf113SemMorno !== 'undefined' && _pf113SemMorno[_osReq]) ? 'Atualizando a OS depois do formulário…' : 'Carregando pipeline…') + '</div>';   // V113 (E3)
     progLabel.textContent = '';
     progBar.style.width = '0%';
   }
@@ -19107,6 +19216,8 @@ async function pfLoadPipeline(opts) {
     if (opts._warmData) {
       // V76 (F2b): 1º passe — dado do cache, ZERO rede aqui.
       r = { tarefas: opts._warmData.tarefas || [] };
+      // V113 (C4) — redesenho do estado local só se ele for DESTA OS.
+      if (typeof _pf113TarefasDaOS === 'function' && !_pf113TarefasDaOS(r.tarefas, _osReq)) { console.warn('[V113] redesenho de outra OS descartado'); return; }
     } else try {
       // O1.2 (V61): sem conexão E sem rede do navegador, nem tenta (fila de
       // retries demoraria); vai direto pro cache. Com sinal fraco, tenta normal.
@@ -19128,6 +19239,11 @@ async function pfLoadPipeline(opts) {
         console.warn('[V89] envelope de OUTRA OS descartado —', r.os_id, '≠', _osReq);
         return;
       }
+      // V113 (E7) — existe leitura MAIS NOVA desta OS (releitura na volta do 2º plano): esta não pinta.
+      if (typeof _pf113GenValida === 'function' && !_pf113GenValida(opts, _osReq)) { console.info('[V113] leitura antiga do pipeline descartada'); return; }
+      // V113 (C3) — o envelope diz esta OS, mas as TAREFAS também têm de dizer.
+      if (typeof _pf113TarefasDaOS === 'function' && !_pf113TarefasDaOS(r.tarefas, _osReq)) { console.warn('[V113] tarefas de outra OS no envelope — descartado'); return; }
+      try { if (typeof _pf113SemMorno !== 'undefined') delete _pf113SemMorno[_osReq]; } catch (e113) {}
       // Sucesso → guarda para leitura offline (mantém as 12 OS mais recentes)
       // V67: lista VAZIA não entra no cache — um cache de "0 tarefas" gravado
       // antes do pipeline ser instanciado fazia o modo offline mostrar
@@ -19137,9 +19253,15 @@ async function pfLoadPipeline(opts) {
       if (eNet.message && eNet.message.includes('AUTH_GOOGLE')) throw eNet;
       var _pc = null;
       try { _pc = JSON.parse(localStorage.getItem('pf_pipeline_cache_v1') || '{}')[_osReq] || null; } catch(eC2) {}
+      // V113 (auditoria) — as MESMAS guardas do caminho de sucesso: a falha de uma
+      // leitura antiga (outra OS, ou já superada por uma mais nova) não pinta cache.
+      if (String(_pfOsId || '') !== String(_osReq || '')) { console.info('[V113] falha de leitura de outra OS ignorada'); return; }
+      if (typeof _pf113GenValida === 'function' && !_pf113GenValida(opts, _osReq)) { console.info('[V113] falha de leitura antiga ignorada'); return; }
+      if (_pc && typeof _pf113TarefasDaOS === 'function' && !_pf113TarefasDaOS(_pc.tarefas, _osReq)) _pc = null;   // V113 (C3)
       if (!_pc) throw eNet;
       r = { tarefas: _pc.tarefas || [] };
       window._pfPipelineOfflineTs = _pc.ts;
+      try { window._pf113MotivoCache = _pf113MotivoFalha(eNet); } catch (e113) { window._pf113MotivoCache = null; }   // V113 (E4)
     }
     _pfTarefas = r.tarefas || [];
 
@@ -19180,7 +19302,10 @@ async function pfLoadPipeline(opts) {
     progBar.style.width   = pct + '%';
     // O1.2 (V61): sinaliza quando o pipeline mostrado veio do cache offline
     if (window._pfPipelineOfflineTs) {
-      progLabel.textContent += ' · 📴 offline (' + pfCacheHora(window._pfPipelineOfflineTs) + ')';
+      // V113 (E4) — "offline" só quando é offline. Servidor lento, erro do
+      // servidor e sem internet são três coisas diferentes para o técnico.
+      try { progLabel.textContent += _pf113RotuloCache(window._pfPipelineOfflineTs, window._pf113MotivoCache, _osReq); }
+      catch (e113) { progLabel.textContent += ' · 📴 offline (' + pfCacheHora(window._pfPipelineOfflineTs) + ')'; }
     }
     if (opts._warmData) {
       progLabel.textContent += ' · ↻ atualizando…'; // V76 (F2b): selo do passe morno
@@ -19524,7 +19649,7 @@ function pfLockLocalOffline(tarefaId, usuario) {
   if (t) t.Lock_Por = usuario;
   try {
     var pc = JSON.parse(localStorage.getItem('pf_pipeline_cache_v1') || '{}');
-    if (pc[_pfOsId]) { pc[_pfOsId].tarefas = _pfTarefas; localStorage.setItem('pf_pipeline_cache_v1', JSON.stringify(pc)); }
+    if (pc[_pfOsId] && (typeof _pf113TarefasDaOS !== 'function' || _pf113TarefasDaOS(_pfTarefas, _pfOsId))) { pc[_pfOsId].tarefas = _pfTarefas; localStorage.setItem('pf_pipeline_cache_v1', JSON.stringify(pc)); }   // V113 (C2)
   } catch(e) {}
 }
 
@@ -21303,7 +21428,7 @@ if(window._PGP_OS_ID && (function(){ try { return localStorage.getItem('proper_p
   <div id="pfHeader" style="background:#1a3a6b;padding:12px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.4)">
     <button onclick="pfFechar()" style="background:rgba(255,255,255,.15);border:none;color:white;font-size:18px;padding:6px 10px;border-radius:8px;cursor:pointer;line-height:1;flex-shrink:0">‹</button>
     <div style="flex:1;min-width:0">
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;color:white;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">🔧 Pipeline</div>
+      <div id="pfTitulo" style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;color:white;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">🔧 Pipeline</div>
       <div id="pfOsLabel" style="font-size:11px;color:rgba(255,255,255,.65);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</div>
     </div>
     <!-- Badge de notificações no header do overlay -->
@@ -21410,7 +21535,11 @@ if(window._PGP_OS_ID && (function(){ try { return localStorage.getItem('proper_p
       </div>
     </div>
     <!-- Botão voltar para seleção de OS -->
-    <button onclick="pfVoltarOS()" style="margin-bottom:16px;background:transparent;border:1px solid #334155;color:#94a3b8;padding:7px 14px;border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:.04em">‹ Trocar OS</button>
+    <!-- V113 (E7): o ↻ que faltava — antes, "puxar a tela" (recarregar o app inteiro) era o único jeito. -->
+    <div class="pf113-barra">
+    <button onclick="pfVoltarOS()" style="background:transparent;border:1px solid #334155;color:#94a3b8;padding:7px 14px;border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:.04em">‹ Trocar OS</button>
+    <button type="button" id="pf113BtnAtualizar" onclick="_pf113Atualizar(this)" style="margin-left:auto">↻ Atualizar</button>
+    </div>
     <!-- Cards de fases e tarefas -->
     <div id="pfPipelineConteudo"></div>
   </div>
@@ -22330,6 +22459,1374 @@ setTimeout(function () {
 // ████ FIM PCF V108 ████
 </script>
 
+<script>
+// ════════════════════════════════════════════════════════════════════════════
+// ████ PCF V113 · O PCF QUE NÃO MENTE, NÃO PUXA E NÃO PERDE (26/09/2026) ████
+// Par: GAS v148 · sw propertech-v115 · forms de 26/09. Estudo e prompt:
+//   00_EM_ABERTO/NEWFILE_ESTUDO_PCF_ESTAVEL_2026-09-26.html
+// Chamado do Fernando (24/09, 11 prints): contadores que diziam "nenhuma sua"
+// com duas OS dele, telas que piscavam e puxavam para outra OS, tarefa ✅ que
+// não estava feita, relatório que não subia com o app em 2º plano, chegada às
+// 17:10 numa visita que começou às 8h, mapa em que não dava para achar a
+// entrada. Seis doenças, não onze bugs — ver o estudo.
+//
+//   E  ESTADOS HONESTOS E NAVEGAÇÃO QUE NÃO PUXA
+//      E1 splash por modo (a coleta não pisca antes do pipeline)
+//      E2 deep link direto na OS (pipeline primeiro; lista e sino depois)
+//      E3 volta do formulário: envia o que ficou, não pinta cache velho, e se a
+//         OS acabou volta para o início
+//      E4 rótulo da fonte do dado (servidor / cache HH:MM / sem resposta / offline)
+//      E5 contadores da tela inicial com "carregando" e data robusta
+//      E7 retomada ao voltar do 2º plano (leitura reemitida, com geração)
+//      E8 cabeçalho da OS: número, cliente e máquina sempre à vista
+//   C  O PIPELINE DE UMA OS NUNCA MAIS APARECE EM OUTRA (guarda no escritor,
+//      no leitor e no redesenho do cache)
+//   P  CHEGADA HERDADA — a 2ª OS da mesma visita herda a hora da 1ª
+//   M  MAPA COM SATÉLITE (Leaflet no próprio repo, imagem Esri)
+//   D  PRÉ-CARGA AUTOMÁTICA das OS de hoje e amanhã
+//   F  FILA QUE SOBREVIVE AO 2º PLANO: grava ANTES de enviar, dreno da fila dos
+//      formulários pelo PCF, espelho no IndexedDB para o service worker enviar
+//      com o app fechado (Background Sync), tela acesa no iPhone
+// ⚠ Módulo ADITIVO, no mesmo estilo do V108: prefixo _pf113; as funções antigas
+//   são EMBRULHADAS ou reescritas por atribuição global (nenhum nome some); as
+//   poucas trocas no corpo antigo estão ancoradas e comentadas com "V113".
+// ════════════════════════════════════════════════════════════════════════════
+
+var PF113 = { versao: 'PCF_V113' };
+function _pf113Log() { try { console.info.apply(console, ['[PCF V113]'].concat([].slice.call(arguments))); } catch (e) {} }
+function _pf113Esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+function _pf113Js(s) { return String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
+function _pf113Hora(ts) { var d = new Date(ts); return isNaN(d.getTime()) ? '—' : ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
+function _pf113Q() { try { return new URLSearchParams(location.search); } catch (e) { return { get: function () { return null; } }; } }
+function _pf113Silencioso(fn) {
+  // PWAIT v3: chamada de 2º plano não ganha balão de "aguardando" — só a barra.
+  try { if (window.PWAIT && typeof window.PWAIT.silencioso === 'function') return window.PWAIT.silencioso(fn); } catch (e) {}
+  return fn();
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// E1 · SPLASH — o fim dele. O começo mora no <head> (antes de qualquer pintura).
+// ════════════════════════════════════════════════════════════════════════════
+function _pf113SplashTexto(t) {
+  try { var e = document.getElementById('pf113SplashTxt'); if (e && t) e.textContent = t; } catch (x) {}
+}
+function _pf113SplashFim() {
+  try {
+    if (document.documentElement.getAttribute('data-boot') !== 'pipeline') return;
+    document.documentElement.removeAttribute('data-boot');
+    var s = document.getElementById('pf113Splash'); if (s) s.style.display = 'none';
+  } catch (e) {}
+}
+// Rede de segurança: nenhum caminho deixa o app escondido atrás do splash.
+setTimeout(_pf113SplashFim, 20000);
+
+// ════════════════════════════════════════════════════════════════════════════
+// PRIORIDADE DE BOOT — no modo pipeline, a OS vem antes do resto.
+// 🕳 Achado da leitura: o ping verde dispara `pgpEnsureClientsCache`,
+//    `pgpEnsureCatalogCache` e `pgpFlushPending` JUNTOS, e eles disputam o
+//    Apps Script com a lista de OS e o pipeline — que é o que o técnico está
+//    esperando. Aqui eles esperam a OS aparecer (teto de 25 s).
+// ════════════════════════════════════════════════════════════════════════════
+var _pf113Prio = { ativa: false, ate: 0, fila: [] };
+(function () {
+  try {
+    if (document.documentElement.getAttribute('data-boot') === 'pipeline') {
+      _pf113Prio.ativa = true; _pf113Prio.ate = Date.now() + 25000;
+    }
+  } catch (e) {}
+})();
+function _pf113PrioAtiva() { return _pf113Prio.ativa && Date.now() < _pf113Prio.ate; }
+function _pf113PrioSolta(motivo) {
+  if (!_pf113Prio.ativa) return;
+  _pf113Prio.ativa = false;
+  _pf113Log('prioridade de boot solta:', motivo || '');
+  var f = _pf113Prio.fila.splice(0);
+  f.forEach(function (fn, i) { setTimeout(function () { try { fn(); } catch (e) {} }, 400 * i); });
+}
+setTimeout(function () { _pf113PrioSolta('teto de 25 s'); }, 25500);
+function _pf113DepoisDaPrio(fn) {
+  if (_pf113PrioAtiva()) { _pf113Prio.fila.push(fn); return true; }
+  return false;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// C · IDENTIDADE DO CACHE DO PIPELINE
+// Toda linha de PIPELINE_TAREFAS traz OS_ID. Uma lista cujas tarefas dizem
+// outra OS NÃO é desta OS — venha de onde vier (patch depois de um await,
+// lock otimista, cache antigo contaminado).
+// ════════════════════════════════════════════════════════════════════════════
+function _pf113TarefasDaOS(tarefas, osId) {
+  var alvo = String(osId == null ? '' : osId).trim();
+  if (!alvo || !Array.isArray(tarefas)) return true;
+  for (var i = 0; i < tarefas.length; i++) {
+    var t = tarefas[i]; if (!t) continue;
+    var o = String(t.OS_ID == null ? '' : t.OS_ID).trim();
+    if (o && o !== alvo) return false;
+  }
+  return true;
+}
+
+(function () {
+  var ant = window.pfCacheGravarPipeline;
+  if (typeof ant !== 'function') return;
+  window.pfCacheGravarPipeline = function (osId, tarefas) {
+    if (!_pf113TarefasDaOS(tarefas, osId)) {
+      _pf113Log('C2: recusei gravar no cache da OS ' + osId + ' uma lista de tarefas de outra OS');
+      return false;
+    }
+    return ant.apply(this, arguments);
+  };
+})();
+
+// ════════════════════════════════════════════════════════════════════════════
+// E4 · DE ONDE VEIO O QUE ESTÁ NA TELA
+// ════════════════════════════════════════════════════════════════════════════
+function _pf113MotivoFalha(e) {
+  try {
+    if (typeof pgpRedeBloqueada === 'function' && pgpRedeBloqueada()) return { tipo: 'modo_offline' };
+    if (navigator.onLine === false) return { tipo: 'offline' };
+    if (e && (e.permanent || e.serverStatus)) return { tipo: 'servidor', msg: String((e && e.message) || '') };
+    var m = String((e && e.message) || '');
+    if (/tempo esgotado|timeout|aborted|timed? ?out/i.test(m) || (e && (e.name === 'TimeoutError' || e.name === 'AbortError'))) return { tipo: 'lento' };
+    return { tipo: 'sem_resposta', msg: m };
+  } catch (x) { return { tipo: 'sem_resposta' }; }
+}
+function _pf113RotuloCache(ts, motivo, osId) {
+  var h = pfCacheHora(ts);
+  var t = (motivo && motivo.tipo) || 'sem_resposta';
+  var txt;
+  if (t === 'modo_offline') txt = ' · 📴 modo offline — última leitura ' + h;
+  else if (t === 'offline') txt = ' · 📴 sem internet — última leitura ' + h;
+  else if (t === 'servidor') txt = ' · ⚠ o servidor respondeu erro' + (motivo.msg ? ' ("' + String(motivo.msg).slice(0, 60) + '")' : '') + ' — mostrando a leitura de ' + h;
+  else if (t === 'lento') txt = ' · 📶 o servidor não respondeu a tempo — mostrando a leitura de ' + h;
+  else txt = ' · 📶 sem resposta do servidor — mostrando a leitura de ' + h;
+  try { if (osId && _pf113Voltou && _pf113Voltou.os === String(osId)) txt += ' · a tarefa que você acabou de concluir pode ainda não aparecer'; } catch (e) {}
+  return txt + ' · toque em ↻';
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// E7 · LEITURAS COM GERAÇÃO — pfLoadPipeline e pfLoadOS
+// ════════════════════════════════════════════════════════════════════════════
+var _pf113PipeGen = 0;
+var _pf113PipeGenAtual = {};    // os_id -> última geração pedida
+var _pf113PipeReq = {};         // os_id -> {t0, fim, pendente}
+var _pf113SemMorno = {};        // os_id -> true: a próxima abertura NÃO pinta o cache
+var _pf113Voltou = null;        // {os, tarefa} quando o app abriu vindo de um formulário
+var _pf113Lista = { fonte: 'vazia', ts: 0, carregando: false, ok: false, motivo: null };
+var _pf113ListaIniciada = false;
+
+_pf108Embrulhar('pfLoadPipeline', function (orig) {
+  return async function (opts) {
+    opts = opts || {};
+    var os = String((typeof _pfOsId !== 'undefined' && _pfOsId) || '');
+    var rede = !opts._warmData;
+    if (rede) {
+      opts.__gen = ++_pf113PipeGen;
+      if (os) _pf113PipeGenAtual[os] = opts.__gen;
+      if (os) _pf113PipeReq[os] = { t0: Date.now(), fim: (_pf113PipeReq[os] || {}).fim || 0, pendente: true };
+    }
+    try {
+      return await orig.call(this, opts);
+    } finally {
+      if (rede && os && _pf113PipeReq[os] && _pf113PipeGenAtual[os] === opts.__gen) {
+        _pf113PipeReq[os].pendente = false; _pf113PipeReq[os].fim = Date.now();
+      }
+      if (rede) { try { _pf113AposPipeline(os, opts); } catch (e) {} }
+    }
+  };
+});
+function _pf113GenValida(opts, osReq) {
+  if (!opts || !opts.__gen) return true;
+  return _pf113PipeGenAtual[String(osReq || '')] === opts.__gen;
+}
+
+// Depois de CADA leitura de rede do pipeline: solta a prioridade de boot,
+// trata a volta do formulário (E3) e repinta o cabeçalho (E8).
+function _pf113AposPipeline(os, opts) {
+  _pf113PrioSolta('pipeline respondeu');
+  _pf113Cabecalho();
+  if (!_pf113Voltou || _pf113Voltou.os !== os || _pf113Voltou.decidido) return;
+  if (window._pfPipelineOfflineTs) return;           // leitura veio do cache: não decide nada
+  var ts = (typeof _pfTarefas !== 'undefined' && Array.isArray(_pfTarefas)) ? _pfTarefas : [];
+  if (!ts.length || !_pf113TarefasDaOS(ts, os)) return;
+  _pf113Voltou.decidido = true;
+  var abertas = ts.filter(function (t) {
+    var st = String(t.Status || '').trim();
+    return st !== 'completo' && st !== 'dispensado';
+  });
+  var aTarefa = ts.filter(function (t) { return String(t.Tarefa_ID || '') === String(_pf113Voltou.tarefa || ''); })[0];
+  var aTarefaFeita = !aTarefa || String(aTarefa.Status || '') === 'completo';
+  var num = _pf113NumeroOS(os);
+  if (!abertas.length) {
+    try { pfToast('✅ OS ' + num + ': todas as tarefas concluídas. Voltando para o início.'); } catch (e) {}
+    setTimeout(function () {
+      try {
+        if (String(_pfOsId || '') !== os) return;       // o técnico já foi para outro lugar
+        pfVoltarOS();
+      } catch (e) {}
+    }, 1600);
+    return;
+  }
+  if (!aTarefaFeita) {
+    _pf113ContarForms().then(function (n) {
+      try {
+        pfToast(n ? ('⏳ O formulário ainda está subindo (📤 ' + n + ' pendente). A tarefa aparece concluída quando chegar ao servidor.')
+                  : '⚠ O servidor ainda não registrou esta tarefa como concluída. Toque em ↻ em alguns segundos.');
+      } catch (e) {}
+    });
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// E8 · CABEÇALHO DA OS — número, cliente e máquina, sempre
+// ════════════════════════════════════════════════════════════════════════════
+function _pf113OsObj(osId) {
+  var id = String(osId || '');
+  var l = (typeof _pfOsList !== 'undefined' && Array.isArray(_pfOsList)) ? _pfOsList : [];
+  for (var i = 0; i < l.length; i++) if (String(l[i].id_os || '') === id) return l[i];
+  try {
+    var c = JSON.parse(localStorage.getItem('pf_os_cache_v1') || 'null');
+    var lc = (c && c.os) || [];
+    for (var j = 0; j < lc.length; j++) if (String(lc[j].id_os || '') === id) return lc[j];
+  } catch (e) {}
+  return null;
+}
+function _pf113NumeroOS(osId) {
+  var o = _pf113OsObj(osId);
+  if (o && o.numero_os) return String(o.numero_os);
+  var q = _pf113Q();
+  if (String(q.get('os_id') || '') === String(osId) && q.get('os_numero')) return String(q.get('os_numero'));
+  try { var m = JSON.parse(localStorage.getItem('pf_maqos_cache_v1') || '{}')[osId]; if (m && m.os && m.os.numero_os) return String(m.os.numero_os); } catch (e) {}
+  return String(osId || '—');
+}
+function _pf113MaquinasTxt(osId, o) {
+  var r = (o && Array.isArray(o.maquinas_rotulos)) ? o.maquinas_rotulos.filter(function (x) { return x && (x.rotulo || x.id); }) : [];
+  if (r.length) return r.slice(0, 2).map(function (x) { return String(x.rotulo || x.id); }).join(' + ') + (r.length > 2 ? ' (+' + (r.length - 2) + ')' : '');
+  try {
+    var m = JSON.parse(localStorage.getItem('pf_maqos_cache_v1') || '{}')[osId];
+    var ms = (m && m.machines) || [];
+    if (ms.length) {
+      return ms.slice(0, 2).map(function (x) {
+        var nome = [x.brand || x.marca, x.model || x.modelo].filter(Boolean).join(' ');
+        var id = x.tag || x.TAG || x.serial || x.serie || '';
+        return (nome || 'máquina') + (id ? ' · ' + id : '');
+      }).join(' + ') + (ms.length > 2 ? ' (+' + (ms.length - 2) + ')' : '');
+    }
+  } catch (e) {}
+  var v = o && o.maquinas_vinculadas;
+  if (Array.isArray(v) && v.length) return v.slice(0, 2).join(' + ');
+  return '';
+}
+function _pf113Cabecalho() {
+  try {
+    var tit = document.getElementById('pfTitulo');
+    var lab = document.getElementById('pfOsLabel');
+    var pip = document.getElementById('pfScreenPipeline');
+    if (!lab) return;
+    var noPipe = pip && pip.style.display !== 'none' && typeof _pfOsId !== 'undefined' && _pfOsId;
+    if (!noPipe) { if (tit) tit.textContent = '🔧 Pipeline'; return; }
+    var os = String(_pfOsId);
+    var o = _pf113OsObj(os);
+    var q = _pf113Q();
+    var cli = (o && o.cliente) || (typeof _pfOsCliente !== 'undefined' && _pfOsCliente) ||
+              (String(q.get('os_id') || '') === os ? (q.get('cliente') || '') : '');
+    var maq = _pf113MaquinasTxt(os, o);
+    var tipo = o ? String(o.tipo_os_nome || o.tipo_os || '') : '';
+    if (tit) tit.textContent = '🔧 ' + _pf113NumeroOS(os) + (tipo ? ' · ' + tipo : '');
+    var partes = [];
+    if (cli) partes.push(cli);
+    // ausência de dado não é fato: sem a lista ainda, "carregando", nunca "não informada"
+    partes.push(maq ? '🔧 ' + maq : (o ? '🔧 máquina não informada' : '🔧 carregando os dados da OS…'));
+    if (!o && maq) partes.push('atualizando…');
+    lab.textContent = partes.join(' · ');
+    lab.title = lab.textContent;
+  } catch (e) {}
+}
+(function () {
+  try {
+    var st = document.createElement('style'); st.id = 'pf113Css';
+    st.textContent =
+      '#pfOsLabel{white-space:normal!important;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:12px!important;line-height:1.3;color:rgba(255,255,255,.82)!important}' +
+      '.pf113-barra{display:flex;gap:8px;align-items:center;margin-bottom:16px}' +
+      '.pf113-barra button{background:transparent;border:1px solid #334155;color:#94a3b8;padding:7px 14px;border-radius:8px;font-family:"Barlow Condensed",sans-serif;font-size:13px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:.04em}' +
+      '.pf113-estado{font-size:12.5px;color:#94a3b8;margin:-4px 0 12px;line-height:1.4}' +
+      '.pf113-estado button{background:transparent;border:1px solid #334155;color:#cbd5e1;border-radius:999px;padding:3px 10px;font-size:12px;margin-left:6px;cursor:pointer}' +
+      '.pf113-snack{position:fixed;left:12px;right:12px;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:100040;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:12px;padding:11px 12px;display:flex;align-items:center;gap:10px;font-size:13.5px;box-shadow:0 8px 26px rgba(0,0,0,.45)}' +
+      '.pf113-snack button{margin-left:auto;background:#334155;color:#fff;border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer}' +
+      '#pf113FormsChip,#pf113FormsChipOv{display:none;background:#0ea5e9;color:#fff;font-size:10px;font-weight:700;padding:3px 8px;border-radius:12px;cursor:pointer;white-space:nowrap;font-family:"Barlow Condensed",sans-serif}' +
+      '.pf113-map-bar{display:flex;gap:8px;margin:8px 0}' +
+      '.pf113-map-bar button{flex:1;min-height:42px;border-radius:10px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;font-weight:800;font-size:14px;cursor:pointer}' +
+      '.pf113-map-bar button.on{background:#1d4ed8;border-color:#1d4ed8}' +
+      '#pf113Mapa{position:relative;height:58vh;min-height:300px;border-radius:14px;border:1px solid #334155;overflow:hidden;background:#1e293b}' +
+      '#pf113Mapa .pf113-pino{position:absolute;left:50%;top:50%;transform:translate(-50%,-100%);font-size:40px;z-index:800;pointer-events:none;filter:drop-shadow(0 2px 3px rgba(0,0,0,.7))}' +
+      '#pf113Mapa .pf113-mira{position:absolute;left:50%;top:50%;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 2px #000;z-index:799;pointer-events:none}';
+    document.head.appendChild(st);
+  } catch (e) {}
+})();
+
+// ════════════════════════════════════════════════════════════════════════════
+// C1 · TROCAR DE OS ZERA O QUE ERA DA OS ANTERIOR (antes de qualquer await)
+// ════════════════════════════════════════════════════════════════════════════
+function _pf113LimparPipelineSeOutraOS(novaOs) {
+  try {
+    if (String(novaOs || '') === String((typeof _pfOsId !== 'undefined' && _pfOsId) || '')) return;
+    _pfTarefas = [];
+    var c = document.getElementById('pfPipelineConteudo');
+    if (c) {
+      if (window.PWAIT && typeof window.PWAIT.esqueleto === 'function') window.PWAIT.esqueleto(c, 5);
+      else c.innerHTML = '';
+    }
+    var pl = document.getElementById('pfProgressLabel'); if (pl) pl.textContent = '';
+    var pb = document.getElementById('pfProgressBar'); if (pb) pb.style.width = '0%';
+  } catch (e) {}
+}
+var _pf113Nav = 0;   // qualquer navegação do técnico incrementa: o que estava atrasado morre
+_pf108Embrulhar('pfSelecionarOS', function (orig) {
+  return async function (osId) {
+    _pf113Nav++;
+    _pf113LimparPipelineSeOutraOS(osId);
+    var r = await orig.apply(this, arguments);
+    _pf113Cabecalho();
+    return r;
+  };
+});
+_pf108Embrulhar('pfOnNotifClick', function (orig) {
+  return async function (notifId, osId) {
+    _pf113Nav++;
+    if (osId) _pf113LimparPipelineSeOutraOS(osId);
+    var r = await orig.apply(this, arguments);
+    _pf113Cabecalho();
+    return r;
+  };
+});
+_pf108Embrulhar('pfVoltarOS', function (orig) {
+  return function () {
+    _pf113Nav++;
+    var r = orig.apply(this, arguments);
+    _pf113Voltou = null;
+    _pf113Cabecalho();
+    _pf113GarantirListaIniciada();
+    return r;
+  };
+});
+_pf108Embrulhar('pfAbrir', function (orig) {
+  return async function () {
+    _pf113Nav++;
+    _pf113ListaIniciada = true;
+    var p = orig.apply(this, arguments);
+    _pf113SplashFim();
+    try { return await p; } finally { _pf113Cabecalho(); }
+  };
+});
+_pf108Embrulhar('pfFechar', function (orig) {
+  return function () { _pf113Nav++; return orig.apply(this, arguments); };
+});
+// Quem entrou direto numa OS (E2) nunca passou pelo pfAbrir: a lista nasce aqui,
+// quando o técnico toca em "Trocar OS".
+function _pf113GarantirListaIniciada() {
+  if (_pf113ListaIniciada) { try { _pf108PintarLado(); } catch (e) {} return; }
+  _pf113ListaIniciada = true;
+  try {
+    _pfOsFilter = 'todas'; _pfOsStatusFilter = 'ativas'; _pfOsDesignFilter = 'todas';
+    _pf108Lado = '';
+    pfSetVista(_pfVista);
+    pfRenderOS();
+  } catch (e) {}
+  if (!_pf113Lista.ok && !_pf113Lista.carregando) { try { pfLoadOS(); } catch (e) {} }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// E2 + E3 · ABRIR A OS DIRETO (deep link e volta do formulário)
+// ════════════════════════════════════════════════════════════════════════════
+window._pf113AbrirDireto = async function (osId) {
+  osId = String(osId || '');
+  var navAntes = ++_pf113Nav;
+  var q = _pf113Q();
+  var voltouDe = q.get('voltou_de');
+  if (voltouDe) { _pf113Voltou = { os: osId, tarefa: String(voltouDe), decidido: false }; _pf113SemMorno[osId] = true; }
+  _pf113SplashTexto(voltouDe ? 'Enviando o formulário e atualizando a OS ' + (q.get('os_numero') || '') + '…'
+                             : 'Abrindo a OS ' + (q.get('os_numero') || '') + '…');
+  // A lista do aparelho serve para o cabeçalho e para o nome canônico do cliente.
+  try {
+    if (!_pfOsList || !_pfOsList.length) {
+      var c = JSON.parse(localStorage.getItem('pf_os_cache_v1') || 'null');
+      if (c && Array.isArray(c.os) && c.os.length) { _pfOsList = c.os; _pf113Lista.fonte = 'cache'; _pf113Lista.ts = c.ts || 0; }
+    }
+  } catch (e) {}
+  // E3 · o formulário que ficou na fila sobe ANTES de ler a OS: é ele que conclui a tarefa.
+  if (voltouDe) {
+    try { await Promise.race([_pf113DrenarForms({ prioridade: true, tetoMs: 25000 }), new Promise(function (r) { setTimeout(r, 25000); })]); } catch (e) {}   // o dreno segue por trás
+    if (navAntes !== _pf113Nav) return;   // o técnico tocou em outra coisa enquanto isso
+  }
+  var ov = document.getElementById('pfOverlay');
+  if (ov) ov.style.display = 'flex';
+  var so = document.getElementById('pfScreenOS'); if (so) so.style.display = 'none';
+  var sp = document.getElementById('pfScreenPipeline'); if (sp) sp.style.display = 'block';
+  _pf113SplashFim();
+  try { await pfSelecionarOS(osId, ''); } catch (e) { _pf113Log('abrir direto falhou:', e && e.message); }
+  // Lista e sino DEPOIS, em 2º plano, sem balão de espera.
+  var depois = function () {
+    try {
+      if (!_pfNotifInterval) { _pfNotifInterval = setInterval(pollPfNotificacoes, 60000); }
+      setTimeout(function () { try { pollPfNotificacoes(); } catch (e) {} }, 1500);
+    } catch (e) {}
+    _pf113Silencioso(function () { try { return pfLoadOS(); } catch (e) {} });
+  };
+  if (!_pf113DepoisDaPrio(depois)) depois();
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+// E5 · A TELA INICIAL (Externas / Oficina) COM ESTADO E CONTAGEM ROBUSTA
+// ════════════════════════════════════════════════════════════════════════════
+function _pf113Ymd(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+function _pf113DiaOS(o) {
+  // Data da OS no fuso do aparelho. O GAS v148 manda `data_prevista_ymd` já
+  // resolvido no fuso de São Paulo; sem ele, a célula pode vir como data pura,
+  // como ISO UTC (Date do Sheets serializado) ou como dd/mm/aaaa digitado.
+  if (!o) return '';
+  var y = String(o.data_prevista_ymd || '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(y)) return y;
+  var s = String(o.data_prevista == null ? '' : o.data_prevista).trim();
+  if (!s) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  var br = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if (br) return br[3] + '-' + ('0' + br[2]).slice(-2) + '-' + ('0' + br[1]).slice(-2);
+  var d = new Date(s);
+  if (!isNaN(d.getTime())) return _pf113Ymd(d);
+  var m = s.match(/(\d{4})-(\d{2})-(\d{2})/);
+  return m ? m[0] : '';
+}
+function _pf113FeitaHoje(o) {
+  // v148: a OS continua "minha" (sou o responsável), mas as MINHAS tarefas
+  // acabaram hoje. Sem os campos (GAS antigo), comportamento de antes.
+  return !!(o && typeof o.minhas_abertas === 'number' && o.minhas_abertas === 0 && Number(o.minhas_concluidas_hoje || 0) > 0);
+}
+window._pf108Contagens = function () {
+  var l = ((typeof _pfOsList !== 'undefined' && Array.isArray(_pfOsList)) ? _pfOsList : []).filter(function (o) {
+    var st = String(o.status || 'aberta').toLowerCase(); return st === 'aberta' || st === 'em_andamento';
+  });
+  var hoje = _pf113Ymd(new Date());
+  var minha = function (o) { try { return _pfEhMinha(o) || _pfEuExecuto(o); } catch (e) { return false; } };
+  var sem = l.filter(function (o) { return pfOsSemLocal(o); });
+  var ext = l.filter(function (o) { return pfOsEhExterna(o) || pfOsSemLocal(o); });
+  var ofi = l.filter(function (o) { return !pfOsEhExterna(o) || pfOsSemLocal(o); });
+  var extMinhas = ext.filter(minha);
+  var vivas = extMinhas.filter(function (o) { return !_pf113FeitaHoje(o); });
+  var fila = 0;
+  try { fila = _pfClassificar().sugestao.length; } catch (e) {}
+  var prontas = 0, doDia = 0;
+  vivas.forEach(function (o) {
+    var d = _pf113DiaOS(o);
+    if (d === hoje) { doDia++; if (pfOsTemCache(o.id_os)) prontas++; }
+  });
+  return {
+    sem: sem.length, total: l.length,
+    ext_hoje: vivas.filter(function (o) { return _pf113DiaOS(o) === hoje; }).length,
+    ext_atras: vivas.filter(function (o) { var d = _pf113DiaOS(o); return d && d < hoje; }).length,
+    ext_sem_data: vivas.filter(function (o) { return !_pf113DiaOS(o); }).length,
+    ext_feitas: extMinhas.filter(_pf113FeitaHoje).length,
+    ext_minhas: extMinhas.length, ext_prontas: prontas, ext_do_dia: doDia,
+    ofi_minhas: ofi.filter(minha).length, fila: fila
+  };
+};
+function _pf113EstadoListaHtml() {
+  var L = _pf113Lista, h = '';
+  if (L.carregando && L.fonte === 'vazia') h = '⏳ Carregando suas OS…';
+  else if (L.carregando) h = '↻ Atualizando — mostrando a lista de ' + pfCacheHora(L.ts) + '…';
+  else if (L.ok && L.fonte === 'servidor') h = '✓ Atualizado às ' + _pf113Hora(L.ts);
+  else if (L.fonte === 'cache') {
+    var m = (L.motivo && L.motivo.tipo) || '';
+    h = (m === 'offline' || m === 'modo_offline' ? '📴 Sem internet' : (m === 'servidor' ? '⚠ O servidor respondeu erro' : '📶 Sem resposta do servidor')) +
+        ' — lista de ' + pfCacheHora(L.ts);
+  } else if (L.fonte === 'erro') h = '⚠ Não consegui carregar as OS.';
+  if (!h) return '';
+  return '<div class="pf113-estado" id="pf113EstadoLista">' + h +
+         (L.carregando ? '' : ' <button type="button" onclick="_pf113AtualizarLista(this)">↻ Atualizar</button>') + '</div>';
+}
+window._pf113AtualizarLista = function (btn) {
+  if (btn) { btn.disabled = true; btn.textContent = '↻ Atualizando…'; }
+  try { pfLoadOS(); } catch (e) {}
+};
+window._pf108PintarLado = function () {
+  var tela = document.getElementById('pfScreenOS');
+  if (!tela) return;
+  var box = document.getElementById('pf108Lado');
+  if (!box) { box = document.createElement('div'); box.id = 'pf108Lado'; tela.insertBefore(box, tela.firstChild); }
+  var escolhendo = !_pf108Lado;
+  ['pfVezPainel', 'pfDiaPainel', 'pfFilaBloco'].forEach(function (id) {
+    var e = document.getElementById(id);
+    if (!e) return;
+    if (escolhendo) { if (!e.dataset.pf108) { e.dataset.pf108 = e.style.display || '-'; } e.style.display = 'none'; }
+  });
+  var vista = tela.querySelector('.pf-vista');
+  if (vista) vista.style.display = escolhendo ? 'none' : '';
+  var chipsLocal = tela.querySelector('[aria-label="Filtro de local de atendimento"]');
+  if (chipsLocal) chipsLocal.style.display = (_pf108Lado && _pf108Lado !== 'todas') ? 'none' : '';
+  var estado = _pf113EstadoListaHtml();
+  if (escolhendo) {
+    var L = _pf113Lista;
+    var semDado = (L.fonte === 'vazia');            // nunca houve lista: não afirmo número nenhum
+    var c = _pf108Contagens();
+    var ext, ofi;
+    if (semDado) {
+      ext = '⏳ carregando…'; ofi = '⏳ carregando…';
+    } else {
+      var partes = [];
+      partes.push(c.ext_hoje ? c.ext_hoje + ' sua' + (c.ext_hoje > 1 ? 's' : '') + ' hoje' : 'nenhuma sua hoje');
+      if (c.ext_atras) partes.push('<b style="color:#fca5a5">' + c.ext_atras + ' atrasada' + (c.ext_atras > 1 ? 's' : '') + '</b>');
+      if (c.ext_sem_data) partes.push(c.ext_sem_data + ' sem data');
+      if (c.ext_feitas) partes.push('<span style="color:#86efac">✓ ' + c.ext_feitas + ' feita' + (c.ext_feitas > 1 ? 's' : '') + ' hoje</span>');
+      ext = partes.join(' · ');
+      ofi = (c.ofi_minhas ? c.ofi_minhas + ' sua' + (c.ofi_minhas > 1 ? 's' : '') : 'nenhuma sua') + ' · ' + c.fila + ' na fila';
+      if (L.fonte === 'cache') { ext += ' <span style="opacity:.7">(lista de ' + pfCacheHora(L.ts) + ')</span>'; }
+    }
+    var semTxt = c.sem ? '<div class="pf108-aviso">⚠ ' + c.sem + ' OS sem local definido — aparecem nos dois lados. Corrigir no PCM (Campo → Local das OS abertas).</div>' : '';
+    var offTxt = (!semDado && c.ext_do_dia) ? '<div class="pf113-estado">📥 ' + c.ext_prontas + ' de ' + c.ext_do_dia + ' OS de hoje prontas para usar sem sinal.</div>' : '';
+    box.innerHTML = estado +
+      '<div class="pf108-lado">' +
+        '<button type="button" onclick="_pf108Escolher(\'ext\')"><span class="t">🚗 Externas</span><span class="s">' + ext + '</span></button>' +
+        '<button type="button" class="ofi" onclick="_pf108Escolher(\'ofi\')"><span class="t">🏭 Oficina</span><span class="s">' + ofi + '</span></button>' +
+      '</div>' + semTxt + offTxt +
+      (_pf108Bloco('R') ? '<button type="button" class="pf108-btn" style="width:100%;margin-top:10px" onclick="_pf108CargaAbrir()">🧰 Carga do dia</button>' : '') +
+      '<div style="text-align:center;margin-top:12px"><a href="#" style="color:#64748b;font-size:13px" onclick="_pf108Escolher(\'todas\');return false">ver todas as OS</a></div>';
+    return;
+  }
+  var nome = { ext: '🚗 Externas', ofi: '🏭 Oficina', todas: 'Todas as OS' }[_pf108Lado];
+  box.innerHTML = '<div class="pf108-barra"><button type="button" onclick="_pf108Escolher(\'\')">← Externas / Oficina</button><b style="color:#e2e8f0">' + nome + '</b>' +
+    (_pf108Lado === 'ext' && _pf108Bloco('R') ? '<button type="button" style="margin-left:auto" onclick="_pf108CargaAbrir()">🧰 Carga</button>' : '') + '</div>' + estado;
+};
+
+// A lista: estado explícito em cada passo (pfLoadOS tem as marcas "V113" no corpo).
+function _pf113ListaCarregando(temCache, ts) {
+  _pf113Lista.carregando = true;
+  if (temCache && _pf113Lista.fonte !== 'servidor') { _pf113Lista.fonte = 'cache'; _pf113Lista.ts = ts || _pf113Lista.ts; }
+  try { _pf108PintarLado(); } catch (e) {}
+}
+function _pf113ListaOk(r) {
+  _pf113Lista = { fonte: 'servidor', ts: Date.now(), carregando: false, ok: true, motivo: null };
+  try {
+    if (r && r.mapa && typeof r.mapa === 'object') localStorage.setItem('pf_mapa_cfg_v113', JSON.stringify(r.mapa));
+  } catch (e) {}
+  // o cliente canônico da OS aberta pode ter chegado agora
+  try {
+    if (_pfOsId && !_pfOsCliente) { var o = _pf113OsObj(_pfOsId); if (o && o.cliente) _pfOsCliente = String(o.cliente); }
+  } catch (e) {}
+  _pf113Cabecalho();
+  try { _pf108PintarLado(); } catch (e) {}
+  // quem entrou direto na OS (E2) pintou a barra de campo antes de a lista (com o
+  // destino, o ponto e o endereço) chegar — repinta agora.
+  try {
+    var pip = document.getElementById('pfScreenPipeline');
+    if (pip && pip.style.display !== 'none' && _pfOsId) _pf108PintarCampo();
+  } catch (e) {}
+  setTimeout(_pf113PreCarga, 4000);
+}
+function _pf113ListaFalhou(e, tsCache) {
+  _pf113Lista.carregando = false;
+  _pf113Lista.motivo = _pf113MotivoFalha(e);
+  if (tsCache) { _pf113Lista.fonte = 'cache'; _pf113Lista.ts = tsCache; }
+  else if (_pf113Lista.fonte === 'vazia') _pf113Lista.fonte = 'erro';
+  try { _pf108PintarLado(); } catch (x) {}
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// E7 · VOLTAR DO 2º PLANO: a tela confere se o que mostra ainda vale
+// ════════════════════════════════════════════════════════════════════════════
+function _pf113AoVoltar() {
+  try {
+    var ov = document.getElementById('pfOverlay');
+    if (!ov || ov.style.display === 'none') return;
+    // Chrome Android às vezes não recompõe um fixed alterado enquanto oculto.
+    ov.classList.toggle('pf113-rep'); void ov.offsetHeight;
+    var pip = document.getElementById('pfScreenPipeline');
+    var agora = Date.now();
+    if (pip && pip.style.display !== 'none' && _pfOsId) {
+      var st = _pf113PipeReq[String(_pfOsId)];
+      var travada = st && st.pendente && (agora - st.t0) > 8000;
+      var velha = !st || (!st.pendente && (agora - (st.fim || 0)) > 300000);
+      var vazia = !(Array.isArray(_pfTarefas) && _pfTarefas.length);
+      if (travada || velha || vazia) {
+        _pf113Log('volta do 2º plano: releitura do pipeline', { travada: travada, velha: velha, vazia: vazia });
+        pfLoadPipeline(vazia ? {} : { soft: true });
+      }
+    } else if (!_pf113Lista.carregando && (agora - (_pf113Lista.ts || 0)) > 600000) {
+      _pf113Silencioso(function () { return pfLoadOS(); });
+    }
+  } catch (e) {}
+}
+document.addEventListener('visibilitychange', function () {
+  if (document.visibilityState === 'visible') setTimeout(_pf113AoVoltar, 350);
+});
+window.addEventListener('pageshow', function (ev) { if (ev && ev.persisted) setTimeout(_pf113AoVoltar, 350); });
+window._pf113Atualizar = function (btn) {
+  if (btn) { btn.disabled = true; btn.textContent = '↻ Atualizando…'; }
+  var p;
+  try { p = pfLoadPipeline(Array.isArray(_pfTarefas) && _pfTarefas.length ? { soft: true } : {}); } catch (e) { p = null; }
+  Promise.resolve(p).catch(function () {}).then(function () { if (btn) { btn.disabled = false; btn.textContent = '↻ Atualizar'; } });
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+// P · CHEGADA HERDADA — a 2ª OS da mesma visita herda a hora da 1ª
+// Regra: outra OS com CHEGADA HOJE neste aparelho, no MESMO destino (mesmo
+// cliente/unidade, ou ponto a ≤ 150 m, ou mesmo nome de cliente) e SEM "Saí do
+// cliente" depois dela ⇒ é a mesma visita. A chegada NÃO é "agora".
+// ════════════════════════════════════════════════════════════════════════════
+function _pf113NormCli(s) { try { return normalizeEntityName(s); } catch (e) { return String(s || '').toLowerCase().trim(); } }
+function _pf113MesmoDestino(oa, ob) {
+  if (!oa || !ob) return false;
+  var da = _pf108Destino(oa) || {}, db = _pf108Destino(ob) || {};
+  if (da.entidade_id && db.entidade_id && String(da.entidade_id) === String(db.entidade_id) && String(da.tipo || '') === String(db.tipo || '')) return true;
+  if (_pf108TemPonto(da) && _pf108TemPonto(db) &&
+      _pf108Haversine(Number(da.lat), Number(da.lng), Number(db.lat), Number(db.lng)) <= 150) return true;
+  var ca = _pf113NormCli(oa.cliente), cb = _pf113NormCli(ob.cliente);
+  return !!(ca && ca === cb);
+}
+function _pf113VisitaAberta(osId) {
+  var alvo = _pf108Os(osId); if (!alvo) return null;
+  var pres = _pf108PresLer(), hoje = _pf113Ymd(new Date()), melhor = null;
+  Object.keys(pres).forEach(function (k) {
+    if (String(k) === String(osId)) return;
+    var p = pres[k] || {}, ch = p.CHEGADA;
+    if (!ch || !ch.ts || _pf113Ymd(new Date(ch.ts)) !== hoje) return;
+    if (p.SAIDA_CLIENTE && p.SAIDA_CLIENTE.ts > ch.ts) return;       // a visita já terminou
+    if (!_pf113MesmoDestino(alvo, _pf108Os(k))) return;
+    if (!melhor || ch.ts < melhor.ts) melhor = { os: k, ts: ch.ts, dist: ch.dist, sem_gps: ch.sem_gps };
+  });
+  return melhor;
+}
+async function _pf113RegistrarHerdada(osId, base) {
+  var eu = _pf108Eu();
+  var uid = _pf108Uid();
+  var body = {
+    os_id: osId, tipo: 'CHEGADA', origem: 'herdada', client_uid: uid, tarefa_id: 'presenca:' + uid,
+    herdada_de: base.os, hora_evento: new Date(base.ts).toISOString(),
+    lat: '', lng: '', precisao_m: '', hora_aparelho: new Date().toISOString(), hora_gps: '',
+    usuario_id: eu.id, usuario_nome: eu.nome, obs: 'mesma visita da OS ' + _pf113NumeroOS(base.os)
+  };
+  _pf108PresGravar(osId, 'CHEGADA', { ts: base.ts, origem: 'herdada', dist: base.dist, sem_gps: base.sem_gps, herdada_de: base.os });
+  try { await _pf108Enviar('presencaRegistrar', body); } catch (e) { _pf113Log('herdada recusada:', e && e.message); }
+  try { pfToast('📍 Chegada da OS ' + _pf113NumeroOS(osId) + ' = ' + _pf113Hora(base.ts) + ' — mesma visita da OS ' + _pf113NumeroOS(base.os) + '.'); } catch (e) {}
+  try { _pf108PintarCampo(); } catch (e) {}
+  return { r: { status: 'ok' }, dist: base.dist, sem_gps: !!base.sem_gps, herdada: true };
+}
+_pf108Embrulhar('_pf108Registrar', function (orig) {
+  return async function (osId, tipo, origem, pos, obs) {
+    if (String(tipo) === 'CHEGADA' && !_pf108PresDe(osId).CHEGADA) {
+      var base = _pf113VisitaAberta(osId);
+      if (base) return _pf113RegistrarHerdada(osId, base);
+    }
+    return orig.apply(this, arguments);
+  };
+});
+// Antes de oferecer "Você está no cliente X — registrar chegada?", as OS da
+// mesma visita já herdam em silêncio (com aviso), e o banner não aparece para elas.
+_pf108Embrulhar('_pf108PertoDeCliente', function (orig) {
+  return async function () {
+    try {
+      var hoje = _pf113Ymd(new Date());
+      var l = (typeof _pfOsList !== 'undefined' && Array.isArray(_pfOsList)) ? _pfOsList : [];
+      for (var i = 0; i < l.length; i++) {
+        var o = l[i];
+        if (!pfOsEhAtiva(o) || !pfOsEhExterna(o) || _pf113DiaOS(o) !== hoje) continue;
+        if (!(function () { try { return _pfEhMinha(o); } catch (e) { return false; } })()) continue;
+        if (_pf108PresDe(o.id_os).CHEGADA) continue;
+        var base = _pf113VisitaAberta(o.id_os);
+        if (base) await _pf113RegistrarHerdada(String(o.id_os), base);
+      }
+    } catch (e) {}
+    return orig.apply(this, arguments);
+  };
+});
+// A comparação de "hoje" do banner passa a usar a data robusta.
+(function () {
+  try {
+    var _ant = window._pf108HojeISO;
+    window._pf108HojeISO = function () { return _pf113Ymd(new Date()); };
+    if (typeof _ant !== 'function') _pf113Log('sem _pf108HojeISO original');
+  } catch (e) {}
+})();
+
+// ════════════════════════════════════════════════════════════════════════════
+// M · MARCAR O PONTO COM SATÉLITE
+// Leaflet mora no próprio repo (vendor/leaflet) e entra no cache do app; só é
+// carregado quando esta tela abre. Imagem: Esri World Imagery — com a chave da
+// Propriedade ESRI_KEY do GAS quando existir; sem ela, o serviço público da
+// Esri com atribuição. Sem internet: sem imagem, o ponto é o do GPS.
+// ════════════════════════════════════════════════════════════════════════════
+var _pf113LeafletP = null;
+function _pf113CarregarLeaflet() {
+  if (window.L && window.L.map) return Promise.resolve(window.L);
+  if (_pf113LeafletP) return _pf113LeafletP;
+  _pf113LeafletP = new Promise(function (res, rej) {
+    try {
+      var css = document.createElement('link'); css.rel = 'stylesheet'; css.href = 'vendor/leaflet/leaflet.css';
+      document.head.appendChild(css);
+      var s = document.createElement('script'); s.src = 'vendor/leaflet/leaflet.js'; s.async = true;
+      var t = setTimeout(function () { rej(new Error('Leaflet demorou')); }, 12000);
+      s.onload = function () { clearTimeout(t); window.L && window.L.map ? res(window.L) : rej(new Error('Leaflet sem L')); };
+      s.onerror = function () { clearTimeout(t); rej(new Error('Leaflet não carregou')); };
+      document.head.appendChild(s);
+    } catch (e) { rej(e); }
+  });
+  _pf113LeafletP.catch(function () { _pf113LeafletP = null; });
+  return _pf113LeafletP;
+}
+function _pf113MapaCfg() { try { return JSON.parse(localStorage.getItem('pf_mapa_cfg_v113') || '{}') || {}; } catch (e) { return {}; } }
+var _pf113MarcarOriginal = window._pf108MarcarAbrir;
+var _pf113Mk = null;   // {osId, map, gps:{lat,lng,acc}, camada, satelite, forcar}
+window._pf108MarcarAbrir = function (osId) {
+  var o = _pf108Os(osId), d = _pf108Destino(o) || {};
+  var f = _pf108Folha(
+    '<h3>📍 Marcar a entrada de ' + _pf108Esc(d.nome || (o && o.cliente) || 'o cliente') + '</h3>' +
+    '<div class="pf108-linha" style="font-size:13.5px">Arraste o mapa até o <b>pino</b> ficar em cima da <b>entrada de veículos</b>. Use dois dedos para aproximar. No satélite dá para ver o portão.</div>' +
+    '<div id="pf113Prec" style="font-size:14px;font-weight:800;margin:8px 0">⏳ Lendo o GPS…</div>' +
+    '<div class="pf113-map-bar"><button type="button" id="pf113BtSat" class="on" onclick="_pf113Camada(true)">🛰 Satélite</button>' +
+    '<button type="button" id="pf113BtMapa" onclick="_pf113Camada(false)">🗺 Mapa</button>' +
+    '<button type="button" onclick="_pf113Centralizar()">◎ Onde estou</button></div>' +
+    '<div id="pf113Mapa"><div class="pf113-pino">📍</div><div class="pf113-mira"></div></div>' +
+    '<div id="pf113Mov" class="pf108-linha"></div>' +
+    '<label id="pf113ForcarLbl" style="display:none;font-size:13px;margin-top:6px;align-items:center;gap:8px"><input type="checkbox" id="pf113Forcar" onchange="_pf113MkEstado()" style="width:22px;height:22px"> Salvar mesmo assim — o pino foi posto no satélite (fica marcado para o escritório conferir)</label>' +
+    '<input id="pf108Obs" placeholder="Como entrar (portaria, rua dos caminhões…)" style="width:100%;margin-top:10px;padding:12px;border-radius:10px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:15px" autocomplete="off">' +
+    '<div style="display:flex;gap:8px;margin-top:12px"><button type="button" class="pf108-btn" onclick="_pf108FecharFolha()">Cancelar</button>' +
+    '<button type="button" class="pf108-btn ok" id="pf108MarcarOk" disabled onclick="_pf113MkSalvar(this)">Salvar o ponto</button></div>' +
+    '<div class="pf108-linha" id="pf113Atrib" style="margin-top:8px">Imagem © Esri · Mapa © OpenStreetMap. Depois de marcado, só o escritório ajusta.</div>');
+  _pf113Mk = { osId: osId, map: null, gps: null, camada: null, satelite: true, forcar: false, movido: false, watch: null };
+  var mk = _pf113Mk;
+  f._pf108Fim = function () {
+    try { if (mk.watch !== null && mk.watch !== undefined) navigator.geolocation.clearWatch(mk.watch); } catch (e) {}
+    try { if (mk.map) mk.map.remove(); } catch (e) {}
+    if (_pf113Mk === mk) _pf113Mk = null;
+  };
+  _pf113CarregarLeaflet().then(function (L) {
+    if (_pf113Mk !== mk) return;
+    var ini = (_pf108TemPonto(d) ? [Number(d.lat), Number(d.lng)] : null) ||
+              (_pf108UltimaPos ? [_pf108UltimaPos.coords.latitude, _pf108UltimaPos.coords.longitude] : [-19.9, -44.0]);
+    mk.map = L.map('pf113Mapa', { zoomControl: true, attributionControl: false, minZoom: 5, maxZoom: 21, tap: true })
+      .setView(ini, _pf108TemPonto(d) || _pf108UltimaPos ? 18 : 6);
+    _pf113Camada(true);
+    mk.map.on('movestart', function () { mk.movido = true; });
+    mk.map.on('move', _pf113MkEstado);
+    setTimeout(function () { try { mk.map.invalidateSize(); } catch (e) {} }, 250);
+  }).catch(function (e) {
+    _pf113Log('Leaflet indisponível — volta para o mapa antigo:', e && e.message);
+    _pf108FecharFolha();
+    if (typeof _pf113MarcarOriginal === 'function') _pf113MarcarOriginal(osId);
+  });
+  if (navigator.geolocation) {
+    try {
+      mk.watch = navigator.geolocation.watchPosition(function (p) {
+        if (_pf113Mk !== mk) return;
+        var prim = !mk.gps;
+        mk.gps = { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy };
+        if (prim && mk.map && !mk.movido && !_pf108TemPonto(d)) mk.map.setView([mk.gps.lat, mk.gps.lng], 19);
+        _pf113MkEstado();
+      }, function () {
+        var e = document.getElementById('pf113Prec');
+        if (e) { e.textContent = '⚠ Sem GPS — dá para marcar pelo satélite mesmo assim.'; e.style.color = '#fbbf24'; }
+        var lb = document.getElementById('pf113ForcarLbl'); if (lb) lb.style.display = 'flex';
+      }, { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 });
+    } catch (e) {}
+  }
+  return f;
+};
+window._pf113Camada = function (sat) {
+  var mk = _pf113Mk; if (!mk || !mk.map || !window.L) return;
+  mk.satelite = !!sat;
+  try { if (mk.camada) mk.map.removeLayer(mk.camada); } catch (e) {}
+  var cfg = _pf113MapaCfg();
+  var url;
+  if (sat) {
+    url = cfg.esri_key
+      ? 'https://ibasemaps-api.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?token=' + encodeURIComponent(cfg.esri_key)
+      : 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+  } else {
+    url = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+  }
+  mk.camada = window.L.tileLayer(url, { maxNativeZoom: sat ? 19 : 19, maxZoom: 21, crossOrigin: false }).addTo(mk.map);
+  var bs = document.getElementById('pf113BtSat'), bm = document.getElementById('pf113BtMapa');
+  if (bs) bs.classList.toggle('on', !!sat); if (bm) bm.classList.toggle('on', !sat);
+  var at = document.getElementById('pf113Atrib');
+  if (at) at.textContent = (sat ? 'Imagem © Esri, Maxar, Earthstar Geographics' : 'Mapa © OpenStreetMap') + '. Depois de marcado, só o escritório ajusta.';
+};
+window._pf113Centralizar = function () {
+  var mk = _pf113Mk; if (!mk || !mk.map) return;
+  if (mk.gps) mk.map.setView([mk.gps.lat, mk.gps.lng], Math.max(mk.map.getZoom(), 18));
+  else pfToast('⏳ Ainda sem posição do GPS.');
+};
+window._pf113MkEstado = function () {
+  var mk = _pf113Mk; if (!mk || !mk.map) return;
+  var c = mk.map.getCenter();
+  var acc = mk.gps ? Math.round(mk.gps.acc) : null;
+  var bom = acc !== null && acc <= 50;
+  var e = document.getElementById('pf113Prec');
+  if (e && mk.gps) {
+    e.textContent = bom ? '✓ Precisão do GPS: ' + acc + ' m' : '⏳ Precisão do GPS: ' + acc + ' m — espere baixar de 50 m, ou marque pelo satélite';
+    e.style.color = bom ? '#86efac' : '#fbbf24';
+  }
+  var lb = document.getElementById('pf113ForcarLbl'); if (lb) lb.style.display = bom ? 'none' : 'flex';
+  var fz = document.getElementById('pf113Forcar'); mk.forcar = !!(fz && fz.checked);
+  var mv = mk.gps ? _pf108Haversine(mk.gps.lat, mk.gps.lng, c.lat, c.lng) : null;
+  var m = document.getElementById('pf113Mov');
+  if (m) {
+    if (mv === null) m.textContent = 'Pino no centro do mapa.';
+    else if (mv > 2000) m.innerHTML = '<b style="color:#fca5a5">Pino a ' + _pf108Dist(mv) + ' de você — longe demais. Aproxime-se do cliente.</b>';
+    else if (mv > 300) m.innerHTML = '<b style="color:#fbbf24">Pino a ' + _pf108Dist(mv) + ' de onde você está — confira se é a entrada certa.</b>';
+    else m.textContent = mv > 5 ? 'Pino a ' + _pf108Dist(mv) + ' de onde você está.' : 'Pino na sua posição.';
+  }
+  var b = document.getElementById('pf108MarcarOk');
+  var podeDist = (mv === null) || mv <= 2000;
+  if (b) b.disabled = !((bom || (mk.forcar && mk.satelite)) && podeDist);
+};
+window._pf113MkSalvar = async function (btn) {
+  var mk = _pf113Mk; if (!mk || !mk.map) return;
+  var o = _pf108Os(mk.osId), d = _pf108Destino(o) || {};
+  var c = mk.map.getCenter();
+  var lat = Number(c.lat.toFixed(6)), lng = Number(c.lng.toFixed(6));
+  var mv = mk.gps ? _pf108Haversine(mk.gps.lat, mk.gps.lng, lat, lng) : null;
+  var bom = mk.gps && mk.gps.acc <= 50;
+  var fonte = !bom ? 'tecnico_satelite' : (mk.satelite && mv !== null && mv > 15 ? 'tecnico_satelite' : (mv !== null && mv > 15 ? 'tecnico_ajustado' : 'tecnico'));
+  var eu = _pf108Eu();
+  var body = { tipo: d.tipo || 'CLIENTE', entidade_id: d.entidade_id, lat: lat, lng: lng,
+               precisao_m: mk.gps ? Math.round(mk.gps.acc) : '', distancia_gps_m: mv === null ? '' : mv,
+               origem: 'PCF', fonte: fonte, obs_acesso: (document.getElementById('pf108Obs') || {}).value || '',
+               usuario: eu.nome, usuario_id: eu.id, tarefa_id: 'geo:' + _pf108Uid() };
+  if (!body.entidade_id) { pfToast('⚠ Esta OS não tem cliente vinculado — o escritório precisa completar o cadastro.'); return; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Salvando…'; }
+  var r;
+  try { r = await _pf108Enviar('localClienteSalvar', body); }
+  catch (e) {
+    pfToast('⚠ ' + ((e && e.message) || 'O ponto não foi salvo.'));
+    if (btn) { btn.disabled = false; btn.textContent = 'Salvar o ponto'; }
+    return;
+  }
+  if (o && o.destino) { o.destino.lat = lat; o.destino.lng = lng; o.destino.fonte = fonte; }
+  try { localStorage.setItem('pf_os_cache_v1', JSON.stringify({ ts: Date.now(), os: _pfOsList })); } catch (e) {}
+  _pf108FecharFolha();
+  pfToast(r && r.na_fila ? '📍 Ponto guardado — sobe quando houver sinal.' : '📍 Ponto da entrada salvo. Obrigado!');
+  try { _pf108PintarCampo(); } catch (e) {}
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+// D · PRÉ-CARGA AUTOMÁTICA — as OS de hoje e amanhã ficam prontas sem sinal
+// Tira do técnico a obrigação de "lembrar de baixar". Em 2º plano, uma chamada
+// por vez, sem balão de espera, nunca antes da leitura que o técnico pediu.
+// ════════════════════════════════════════════════════════════════════════════
+var _pf113PreCargaBusy = false, _pf113PreCargaUlt = 0;
+async function _pf113PreCarga() {
+  if (_pf113PreCargaBusy) return;
+  if (Date.now() - _pf113PreCargaUlt < 30 * 60000) return;
+  try { if (typeof pgpRedeBloqueada === 'function' && pgpRedeBloqueada()) return; } catch (e) {}
+  try { if (navigator.connection && navigator.connection.saveData) return; } catch (e) {}
+  if (navigator.onLine === false) return;
+  var hoje = _pf113Ymd(new Date()), am = new Date(); am.setDate(am.getDate() + 1); var amanha = _pf113Ymd(am);
+  var l = (typeof _pfOsList !== 'undefined' && Array.isArray(_pfOsList)) ? _pfOsList : [];
+  var velho = function (osId) {
+    try {
+      var p = JSON.parse(localStorage.getItem('pf_pipeline_cache_v1') || '{}')[osId];
+      var m = JSON.parse(localStorage.getItem('pf_maqos_cache_v1') || '{}')[osId];
+      var lim = Date.now() - 6 * 3600000;
+      return !(p && p.ts > lim && m && m.ts > lim);
+    } catch (e) { return true; }
+  };
+  var alvo = l.filter(function (o) {
+    if (!pfOsEhAtiva(o) || !pfOsEhExterna(o)) return false;
+    var minha = false; try { minha = _pfEhMinha(o) || _pfEuExecuto(o); } catch (e) {}
+    if (!minha) return false;
+    var d = _pf113DiaOS(o);
+    return (d === hoje || d === amanha) && velho(String(o.id_os || ''));
+  }).slice(0, 8);
+  if (!alvo.length) { _pf113PreCargaUlt = Date.now(); return; }
+  _pf113PreCargaBusy = true;
+  var ok = 0;
+  try {
+    for (var i = 0; i < alvo.length; i++) {
+      // o que o técnico pediu passa na frente
+      var espera = 0;
+      while (_pfOsId && _pf113PipeReq[String(_pfOsId)] && _pf113PipeReq[String(_pfOsId)].pendente && espera < 30) {
+        await new Promise(function (r) { setTimeout(r, 1000); }); espera++;
+      }
+      if (document.visibilityState !== 'visible') break;
+      var osId = String(alvo[i].id_os || '');
+      try {
+        var rp = await _pf113Silencioso(function () { return pgpPostJson('getPipelineByOS', { os_id: osId }, 0, null, { timeoutMs: 20000 }); });
+        if (rp && _pf113TarefasDaOS(rp.tarefas || [], osId)) pfCacheGravarPipeline(osId, rp.tarefas || []);
+        var rm = await _pf113Silencioso(function () { return pfGet('getMaquinasByOS', { id_os: osId }, 0); });
+        pfCacheGravarMaqOS(osId, (rm && rm.machines) || [], (rm && rm.os) || null);
+        ok++;
+      } catch (e) {
+        if (e && e.message && e.message.indexOf('AUTH_GOOGLE') >= 0) { pfHubLogout(); return; }
+        if (!(e && e.permanent)) break;   // rede ruim: para e tenta na próxima janela
+      }
+    }
+  } finally {
+    _pf113PreCargaBusy = false;
+    _pf113PreCargaUlt = Date.now();
+    if (ok) { _pf113Log('pré-carga: ' + ok + ' OS prontas para offline'); try { _pf108PintarLado(); pfRenderOS(); } catch (e) {} }
+  }
+}
+// No cartão da OS: pronta para usar sem sinal, ou não.
+(function () {
+  var _antLinha = window._pf108LinhaCard;
+  if (typeof _antLinha !== 'function') return;
+  window._pf108LinhaCard = function (o) {
+    var h = _antLinha.apply(this, arguments);
+    try {
+      if (o && pfOsEhExterna(o) && pfOsEhAtiva(o)) {
+        var pronta = pfOsTemCache(o.id_os);
+        var minha = false; try { minha = _pfEhMinha(o); } catch (e) {}
+        if (pronta || minha) {
+          h += '<div class="pf108-linha">' + (pronta ? '📥 pronta para usar sem sinal' : '⚠ ainda não baixada para uso sem sinal') + '</div>';
+        }
+      }
+    } catch (e) {}
+    return h;
+  };
+})();
+
+// ════════════════════════════════════════════════════════════════════════════
+// F · A FILA QUE SOBREVIVE AO 2º PLANO
+// ════════════════════════════════════════════════════════════════════════════
+// F0 · o service worker precisa da URL e da chave para enviar sozinho. Elas já
+//      são públicas (moram neste arquivo); aqui só vão para o IndexedDB, onde o
+//      SW consegue ler. Nenhum literal novo.
+function _pf113GravarCfgSw() {
+  try { if (typeof pgpIdbSet === 'function') pgpIdbSet('cfg::gas', { url: _pgpGsUrl, key: _AUTH_HASH, ts: Date.now() }); } catch (e) {}
+}
+setTimeout(_pf113GravarCfgSw, 2500);
+
+function _pf113PedirSync() {
+  try {
+    if (!('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.ready.then(function (reg) {
+      if (reg && reg.sync && typeof reg.sync.register === 'function') return reg.sync.register('proper-outbox');
+    }).catch(function () {});
+  } catch (e) {}
+}
+function _pf113TemSync() { try { return !!(window.SyncManager && 'serviceWorker' in navigator); } catch (e) { return false; } }
+// fn(true) = rodando COM a trava (ninguém mais está enviando esta fila agora);
+// fn(false) = navegador sem Web Locks (aí o `lease_ate` é a única proteção).
+function _pf113ComLock(nome, fn) {
+  try {
+    if (navigator.locks && typeof navigator.locks.request === 'function') {
+      return navigator.locks.request(nome, { ifAvailable: true }, function (lk) { return lk ? fn(true) : null; });
+    }
+  } catch (e) {}
+  return fn(false);
+}
+
+// ── F1 · ANEXOS (foto/PDF): identidade estável e escrita por item ──────────
+function _pf113DqId(e) {
+  if (!e) return '';
+  if (e.qid) return 'q:' + e.qid;
+  if (e.blobKey) return 'b:' + e.blobKey;
+  var b = e.body || {};
+  return 't:' + (e.ts || '') + '|' + (e.action || '') + '|' + (b.fileName || b.pdf_uid || '');
+}
+function _pf113DqMudar(id, fn) {
+  // leitura-modificação-escrita do índice ATUAL (nunca de uma foto antiga dele):
+  // o laço antigo regravava a lista que tinha lido no começo e engolia o que
+  // entrasse no meio da passada.
+  var l = pgpGetDriveQueue(), out = [], achou = null;
+  for (var i = 0; i < l.length; i++) {
+    if (_pf113DqId(l[i]) === id) { achou = l[i]; var n = fn(l[i]); if (n) out.push(n); }
+    else out.push(l[i]);
+  }
+  if (achou) pgpSaveDriveQueue(out);
+  return achou;
+}
+function _pf113DqAinda(id) { var l = pgpGetDriveQueue(); for (var i = 0; i < l.length; i++) if (_pf113DqId(l[i]) === id) return l[i]; return null; }
+function _pf113DqLimparBlob(e) {
+  try { if (e && e.blobKey) pgpIdbDel(e.blobKey); } catch (x) {}
+  try { if (e && e.qid) pgpIdbDel('dqi::' + e.qid); } catch (x) {}
+}
+
+// Persist-first: o anexo entra na fila ANTES do primeiro envio. Congelou ou
+// fechou no meio do POST? Ele está no aparelho e sobe depois — antes, o
+// payload só existia na memória até o `catch`.
+window.pgpSendOrQueueDrive = async function (kind, action, body, ui) {
+  var item = null;
+  try { item = pgpEnqueueDriveUpload({ kind: kind, action: action, body: body, ts: Date.now(), emVoo: true }); } catch (e) { item = null; }   // emVoo: o espelho dqi nasce com lease 'page'
+  if (ui && ui.fotoObj) { ui.fotoObj.driveStatus = 'pending'; try { renderPhotoThumbs(ui.midx, ui.photoKey); } catch (e) {} }
+  _pf113PedirSync();
+  if (!_pgpGsConnected || (typeof pgpRedeBloqueada === 'function' && pgpRedeBloqueada())) return;
+  if (!item) {                                        // nem a fila aceitou: tenta direto, como antes
+    try { await pgpPostJson(action, body); if (ui && ui.fotoObj) { ui.fotoObj.driveStatus = 'ok'; renderPhotoThumbs(ui.midx, ui.photoKey); } } catch (e) {}
+    return;
+  }
+  var id = _pf113DqId(item);
+  _pf113DqMudar(id, function (e) { e.emVoo = Date.now(); return e; });
+  try {
+    await pgpPostJson(action, body);
+    var saiu = _pf113DqMudar(id, function () { return null; });
+    _pf113DqLimparBlob(saiu || item);
+    if (ui && ui.fotoObj) { ui.fotoObj.driveStatus = 'ok'; try { renderPhotoThumbs(ui.midx, ui.photoKey); } catch (e) {} }
+  } catch (e) {
+    _pf113DqMudar(id, function (x) { delete x.emVoo; return x; });
+    try { if (item.qid) { var d2 = await pgpIdbGet('dqi::' + item.qid); if (d2) { delete d2.lease_por; delete d2.lease_ate; pgpIdbSet('dqi::' + item.qid, d2); } } } catch (x) {}
+  }
+  try { pgpUpdatePendingBadge(); } catch (e) {}
+};
+
+// O reenvio dos anexos, com escrita por item e respeitando quem já está
+// enviando (o próprio envio direto, ou o service worker com o app fechado).
+window.flushPendingDriveUploads = async function () {
+  if (!_pgpGsConnected) return;
+  if (typeof pgpRedeBloqueada === 'function' && pgpRedeBloqueada()) return;
+  if (_pgpDriveFlushBusy) return;
+  _pgpDriveFlushBusy = true;
+  try {
+    await _pf113ComLock('proper-dq', async function () {
+      var snap = pgpGetDriveQueue();
+      for (var i = 0; i < snap.length; i++) {
+        var entry0 = snap[i], id = _pf113DqId(entry0);
+        var entry = _pf113DqAinda(id);
+        if (!entry) continue;                                         // já saiu (envio direto ou SW)
+        if (entry.emVoo && Date.now() - entry.emVoo < 180000) continue;
+        if (entry.qid) {                                              // o service worker já enviou este?
+          var _feito0 = null; try { _feito0 = await pgpIdbGet('dqd::' + entry.qid); } catch (e) {}
+          if (_feito0) { _pf113DqMudar(id, function () { return null; }); try { pgpIdbDel('dqd::' + entry.qid); } catch (e) {} _pf113DqLimparBlob(entry); continue; }
+        }
+        var dqi = null;
+        if (entry.qid) { try { dqi = await pgpIdbGet('dqi::' + entry.qid); } catch (e) {} }
+        if (dqi && dqi.lease_por === 'sw' && dqi.lease_ate > Date.now()) continue;
+        var _body = Object.assign({}, entry.body || {});
+        if (entry.blobKey) {
+          var b64 = await pgpIdbGet(entry.blobKey);
+          if (!b64) {
+            var feito = entry.qid ? await pgpIdbGet('dqd::' + entry.qid) : null;
+            _pf113DqMudar(id, function () { return null; });
+            if (feito) { try { pgpIdbDel('dqd::' + entry.qid); } catch (e) {} _pf113Log('anexo já enviado pelo service worker:', id); }
+            else _pgpDriveMarcarPerdido(entry, 'o anexo não está mais no armazenamento do aparelho');
+            continue;
+          }
+          _body[(entry.b64Campo === 'base64') ? 'base64' : 'dataBase64'] = b64;
+        }
+        // V78 (A5) + V81 — recarimbo do os_id, igual ao laço antigo.
+        var _tipoEntry = String((_body.tipo_visita || _body.tipoVisita || entry.tipoVisita || '')).toLowerCase();
+        var _podeAbrirINS = !_tipoEntry || _tipoEntry.indexOf('inspecao') >= 0 || _tipoEntry.indexOf('inspeção') >= 0;
+        if (!_body.os_id && _podeAbrirINS && (_body.clientName || _body.cliente)) {
+          try {
+            var _rOS = await pgpPostJson('abrirOSInspecao', {
+              cliente: _body.clientName || _body.cliente || '', machine_id: _body.maquina_id || '',
+              data_ref: new Date(entry.ts || Date.now()).toISOString(), usuario: _body.createdBy || ''
+            });
+            if (_rOS && _rOS.status === 'ok' && _rOS.id_os) _body.os_id = _rOS.id_os;
+          } catch (eR) {}
+        }
+        if (dqi) { dqi.lease_por = 'page'; dqi.lease_ate = Date.now() + 180000; try { await pgpIdbSet('dqi::' + entry.qid, dqi); } catch (e) {} }
+        try {
+          await pgpPostJson(entry.action, _body);
+          var saiu = _pf113DqMudar(id, function () { return null; });
+          _pf113DqLimparBlob(saiu || entry);
+        } catch (e) {
+          var tries = (entry.tries || 0) + 1, err = String((e && e.message) || e).slice(0, 160);
+          if ((e && e.permanent) || tries >= PGP_MAX_TRIES) {
+            try {
+              var _dd = pgpGetDead();
+              _dd.push({ action: entry.action || 'salvarPdfDrive', body: (entry.body || {}), ts: entry.ts || Date.now(), tries: tries,
+                         deadReason: 'anexo recusado pelo servidor: ' + err });
+              pgpSaveDead(_dd);
+            } catch (eDL) {}
+            var saiu2 = _pf113DqMudar(id, function () { return null; });
+            _pf113DqLimparBlob(saiu2 || entry);
+          } else {
+            _pf113DqMudar(id, function (x) { x.tries = tries; x.lastError = err; return x; });
+            if (dqi) { try { delete dqi.lease_por; delete dqi.lease_ate; await pgpIdbSet('dqi::' + entry.qid, dqi); } catch (x) {} }
+          }
+          if (!(e && e.permanent) && !_pgpGsConnected) break;           // rede caiu: para a passada
+        }
+      }
+    });
+  } finally {
+    _pgpDriveFlushBusy = false;
+    try { pgpUpdatePendingBadge(); } catch (eB) {}
+  }
+};
+
+// ── F1 · FILA DE DADOS (pgp_pending_sync): escrita por item + "em voo" ──────
+function _pf113PendId(it) { return it ? String(it.signature || (it.action + '|' + (it.ts || ''))) : ''; }
+function _pf113PendMudar(id, fn) {
+  var l = pgpGetPending(), out = [], achou = null;
+  for (var i = 0; i < l.length; i++) {
+    if (_pf113PendId(l[i]) === id) { achou = l[i]; var n = fn(l[i]); if (n) out.push(n); }
+    else out.push(l[i]);
+  }
+  if (achou) { try { localStorage.setItem(PENDING_KEY, JSON.stringify(out)); } catch (e) {} pgpInvalidarFilaContagens(); }
+  return achou;
+}
+window._pf113PendEmVoo = function (sig, sim) { _pf113PendMudar(String(sig || ''), function (x) { if (sim) x.emVoo = Date.now(); else delete x.emVoo; return x; }); };
+window._pf113PendRemover = function (sig) { _pf113PendMudar(String(sig || ''), function () { return null; }); try { pgpUpdatePendingBadge(); } catch (e) {} };
+
+var _pf113FlushAgendado = false;
+window.pgpFlushPending = async function () {
+  if (!_pgpGsConnected || !_pgpGsUrl) return;
+  if (typeof pgpRedeBloqueada === 'function' && pgpRedeBloqueada()) return;
+  if (_pf113PrioAtiva()) {                                               // modo pipeline: a OS primeiro
+    if (!_pf113FlushAgendado) { _pf113FlushAgendado = true; _pf113Prio.fila.push(function () { _pf113FlushAgendado = false; pgpFlushPending(); }); }
+    return;
+  }
+  flushPendingDriveUploads();
+  try { _pf113DrenarForms(); } catch (e) {}
+  if (_pgpSyncFlushBusy) return;
+  _pgpSyncFlushBusy = true;
+  try {
+    var snap = pgpGetPending();
+    if (!snap.length) return;
+    var sent = 0, deadNew = 0;
+    for (var i = 0; i < snap.length; i++) {
+      var id = _pf113PendId(snap[i]);
+      var item = null; var atual = pgpGetPending();
+      for (var k = 0; k < atual.length; k++) if (_pf113PendId(atual[k]) === id) { item = atual[k]; break; }
+      if (!item) continue;
+      if (item.emVoo && Date.now() - item.emVoo < 180000) continue;     // o envio direto está cuidando dele
+      try {
+        await pgpPostJson(item.action, item.body || {}, 1, null, { timeoutMs: 30000 });
+        sent++;
+        // (auditoria 26/09) se, durante o envio, o pgpQueueRequest trocou este item
+        // por uma versão MAIS NOVA (mesma assinatura, outro ts), a nova fica na fila.
+        _pf113PendMudar(id, function (x) { return (x.ts === item.ts) ? null : x; });
+        try { if (item.action === 'savePreventiva' || item.action === 'saveVisit') pgpRegistroPorVisitId((item.body && item.body.visit_id) || '', 'ok'); } catch (eReg) {}
+      } catch (e) {
+        var tries = (item.tries || 0) + 1;
+        var lastError = String((e && e.message) || e || 'falha');
+        if ((e && e.permanent) || tries >= PGP_MAX_TRIES) {
+          var morto = _pf113PendMudar(id, function () { return null; }) || item;
+          morto.tries = tries; morto.lastError = lastError; morto.lastTs = Date.now();
+          morto.deadReason = (e && e.serverStatus) ? ('servidor: ' + e.serverStatus) : ('sem sucesso após ' + tries + ' tentativa(s)');
+          var dead = pgpGetDead(); dead.push(morto); pgpSaveDead(dead); deadNew++;
+        } else {
+          _pf113PendMudar(id, function (x) { x.tries = tries; x.lastError = lastError; x.lastTs = Date.now(); return x; });
+        }
+        if (!(e && e.permanent) && !_pgpGsConnected) break;               // V77 (G2c)
+      }
+    }
+    pgpUpdatePendingBadge();
+    if (sent > 0) {
+      showNotification('✅ ' + sent + ' envio' + (sent > 1 ? 's' : '') + ' pendente' + (sent > 1 ? 's' : '') + ' reenviado' + (sent > 1 ? 's' : '') + '!');
+      var statusMainEl = document.getElementById('pgpSendStatusMain');
+      if (statusMainEl) statusMainEl.innerHTML = '<span style="color:var(--green,#16a34a)">✅ Fila reenviada — ' + sent + ' item(ns) subiram agora.</span>';
+      var statusEl = document.getElementById('pgpSendStatus');
+      if (statusEl && statusEl.textContent !== '') statusEl.innerHTML = '<span style="color:var(--blue,#3b82f6)">🔄 Reenviado — ' + sent + ' item(ns) da fila processado(s) com sucesso.</span>';
+    }
+    if (deadNew > 0) showNotification('⚠ ' + deadNew + ' envio' + (deadNew > 1 ? 's' : '') + ' não aceito' + (deadNew > 1 ? 's' : '') + ' pelo servidor — toque no ⏳ para revisar.');
+  } finally { _pgpSyncFlushBusy = false; }
+};
+
+// Presença, ponto no mapa e carga do dia: também grava antes de enviar.
+window._pf108Enviar = async function (action, body) {
+  var online = false;
+  try { online = !!_pgpGsConnected && !(typeof pgpRedeBloqueada === 'function' && pgpRedeBloqueada()); } catch (e) {}
+  var q = null;
+  try { q = pgpQueueRequest(action, body); } catch (e) { q = null; }
+  var sig = null, tsFila = null;
+  if (q && q.saved) {
+    var l = pgpGetPending(); for (var i = l.length - 1; i >= 0; i--) { if (l[i].action === action && l[i].body && l[i].body.tarefa_id === body.tarefa_id) { sig = _pf113PendId(l[i]); tsFila = l[i].ts; break; } }
+  }
+  if (!online) return { status: 'ok', na_fila: true };
+  if (sig) _pf113PendEmVoo(sig, true);
+  try {
+    var r = await pgpPostJson(action, body, 1, null, { timeoutMs: 20000 });
+    if (sig) { _pf113PendMudar(sig, function (x) { return (tsFila === null || x.ts === tsFila) ? null : x; }); try { pgpUpdatePendingBadge(); } catch (e) {} }
+    return r;
+  } catch (e) {
+    if (e && e.permanent) { if (sig) _pf113PendRemover(sig); throw e; }   // veredito do servidor: não adianta a fila
+    if (sig) _pf113PendEmVoo(sig, false);
+    return { status: 'ok', na_fila: true };
+  }
+};
+
+// ── F2 · A FILA DOS FORMULÁRIOS (IndexedDB `properSafe`) DRENADA PELO PCF ──
+// 🕳 O outbox dos formulários é durável, mas só andava com a PÁGINA do
+//    formulário aberta. "Concluir e voltar ao pipeline" com um envio pendente
+//    deixava o PDF e o registro parados até alguém reabrir aquele formulário.
+function _pf113AbrirPS() {
+  return new Promise(function (res) {
+    try {
+      if (!('indexedDB' in window)) return res(null);
+      var criou = false;
+      var rq = indexedDB.open('properSafe');
+      rq.onupgradeneeded = function (e) { criou = true; try { e.target.transaction.abort(); } catch (x) {} };
+      rq.onsuccess = function (e) { var db = e.target.result; if (criou || !db.objectStoreNames.contains('outbox')) { try { db.close(); } catch (x) {} return res(null); } res(db); };
+      rq.onerror = function () { res(null); };
+      rq.onblocked = function () { res(null); };
+    } catch (e) { res(null); }
+  });
+}
+function _pf113Req(r) { return new Promise(function (res, rej) { r.onsuccess = function () { res(r.result); }; r.onerror = function () { rej(r.error); }; }); }
+async function _pf113ContarForms() {
+  var db = await _pf113AbrirPS(); if (!db) return 0;
+  try {
+    var all = await _pf113Req(db.transaction('outbox', 'readonly').objectStore('outbox').getAll());
+    return all.filter(function (j) { return j && j.status === 'pending'; }).length;
+  } catch (e) { return 0; } finally { try { db.close(); } catch (e) {} }
+}
+async function _pf113FotosJson(db, job) {
+  var congelado = (job.body && job.body.fotos_json) || [];
+  try {
+    if (!db.objectStoreNames.contains('photos')) return congelado;
+    var ps = await _pf113Req(db.transaction('photos', 'readonly').objectStore('photos').getAll());
+    ps = (ps || []).filter(function (p) { return p && p.draftId === job.draftId; }).sort(function (a, b) { return (a.photoId || 0) - (b.photoId || 0); });
+    if (!ps.length) return congelado;
+    var legenda = {}; (Array.isArray(congelado) ? congelado : []).forEach(function (c) { if (c && c.foto_uid) legenda[c.foto_uid] = c.caption; });
+    var fu = String((job.body && job.body.form_uid) || '');
+    return ps.map(function (p) {
+      var uid = p.fotoUid || ('f_' + fu + '_' + p.photoId);
+      return { url: p.uploadUrl || null, fileName: p.fileName, secao: p.pointKey, caption: (legenda[uid] || p.caption || ''),
+               status: (p.uploadStatus === 'ok' ? 'ok' : 'pending'), foto_uid: uid, client_ts: p.clientTs || 0 };
+    });
+  } catch (e) { return congelado; }
+}
+var _pf113FormsBusy = false;
+async function _pf113DrenarForms(opt) {
+  opt = opt || {};
+  if (_pf113FormsBusy) return 0;
+  if (navigator.onLine === false) return 0;
+  try { if (typeof pgpRedeBloqueada === 'function' && pgpRedeBloqueada()) return 0; } catch (e) {}
+  _pf113FormsBusy = true;
+  var enviados = 0, t0 = Date.now();
+  try {
+    await _pf113ComLock('proper-forms-outbox', async function (temLock) {
+      // 🔑 (auditoria 26/09) Com a trava na mão, NENHUM outro contexto está enviando
+      //    esta fila (o form e o SW também só enviam com ela): um lease vivo aqui é
+      //    de uma aba/SW que MORREU no meio. Respeitá-lo seguraria justamente o
+      //    envio que a volta do formulário está esperando.
+      var db = await _pf113AbrirPS(); if (!db) return;
+      try {
+        var jobs = await _pf113Req(db.transaction('outbox', 'readonly').objectStore('outbox').getAll());
+        var pend = (jobs || []).filter(function (j) { return j && j.status === 'pending' && j.url && j.body; })
+          .sort(function (a, b) { return (a.createdAt || 0) - (b.createdAt || 0); });
+        for (var i = 0; i < pend.length; i++) {
+          if (opt.tetoMs && Date.now() - t0 > opt.tetoMs) break;
+          var j = pend[i];
+          if (!opt.prioridade && j.nextRetryAt && j.nextRetryAt > Date.now()) continue;
+          if (!temLock && j.lease_ate && j.lease_ate > Date.now()) continue;     // sem trava: o lease é a única proteção
+          // pega o "arrendamento" (leitura + escrita na mesma transação)
+          var tx = db.transaction('outbox', 'readwrite'), st = tx.objectStore('outbox');
+          var cur = await _pf113Req(st.get(j.jobId));
+          if (!cur || cur.status !== 'pending' || (!temLock && cur.lease_ate && cur.lease_ate > Date.now())) continue;
+          cur.lease_ate = Date.now() + 150000; cur.lease_por = 'pcf';
+          await _pf113Req(st.put(cur));
+          var corpo = Object.assign({}, cur.body);
+          if (cur.kind === 'saveFormulario') corpo.fotos_json = await _pf113FotosJson(db, cur);
+          corpo.key = _AUTH_HASH;
+          var ok = false, erro = '', d = null, http = 0;
+          try {
+            var r = await fetch(cur.url, { method: 'POST', body: JSON.stringify(corpo),
+                                           signal: (window.AbortSignal && AbortSignal.timeout) ? AbortSignal.timeout(cur.kind === 'salvarPdfDrive' ? 120000 : 60000) : undefined });
+            http = r.status;
+            var txt = await r.text(); try { d = JSON.parse(txt); } catch (e) { d = null; }
+            ok = !!(d && (d.status === 'ok' || d.ok === true));
+            if (!ok) erro = (d && (d.message || d.error)) || ('resposta ' + http);
+          } catch (e) { erro = (e && e.message) || 'sem conexão'; }
+          var tx2 = db.transaction(['outbox'].concat(db.objectStoreNames.contains('photos') ? ['photos'] : []), 'readwrite');
+          var st2 = tx2.objectStore('outbox');
+          var now = await _pf113Req(st2.get(cur.jobId));
+          if (!now) continue;                                                    // descartado no meio
+          delete now.lease_ate; delete now.lease_por;
+          now.tries = (now.tries || 0) + 1; now.updatedAt = Date.now();
+          if (ok) {
+            now.status = 'done'; now.lastError = ''; now.nextRetryAt = 0; now.result = d; now.enviado_por = 'pcf';
+            if (now.kind !== 'saveFormulario') now.body = null;                  // libera o espaço do base64
+            enviados++;
+            if (now.kind === 'salvarFotoForm' && now.photoId != null && db.objectStoreNames.contains('photos')) {
+              try {
+                var sp = tx2.objectStore('photos'); var p = await _pf113Req(sp.get(now.photoId));
+                if (p) { p.uploadStatus = 'ok'; p.uploadUrl = (d && d.url) || p.uploadUrl || ''; await _pf113Req(sp.put(p)); }
+              } catch (e) {}
+            }
+          } else {
+            now.lastError = erro;
+            now.status = (now.tries >= 6) ? 'dead' : 'pending';
+            now.nextRetryAt = now.status === 'pending' ? Date.now() + Math.min(Math.pow(2, now.tries) * 5000, 600000) : 0;
+          }
+          await _pf113Req(st2.put(now));
+          if (!ok && navigator.onLine === false) break;
+        }
+      } finally { try { db.close(); } catch (e) {} }
+    });
+  } catch (e) { _pf113Log('dreno dos formulários:', e && e.message); }
+  finally { _pf113FormsBusy = false; }
+  if (enviados) _pf113Log('formulários enviados pelo PCF: ' + enviados);
+  _pf113PintarChipForms();
+  return enviados;
+}
+async function _pf113PintarChipForms() {
+  var n = 0; try { n = await _pf113ContarForms(); } catch (e) {}
+  try {
+    var c = document.getElementById('pf113FormsChip');
+    if (!c) {
+      var row = document.querySelector('.pcf-chiprow');
+      if (!row) return;
+      c = document.createElement('span'); c.id = 'pf113FormsChip'; c.title = 'Formulários guardados no aparelho, subindo para o servidor';
+      c.onclick = function () { _pf113DrenarForms({ prioridade: true }); pfToast('📤 Enviando os formulários guardados…'); };
+      row.appendChild(c);
+    }
+    c.textContent = '📤 ' + n + ' formulário' + (n > 1 ? 's' : '');
+    c.style.display = n ? 'inline-flex' : 'none';
+    var hd = document.getElementById('pfHeader'), bell = document.getElementById('pfNotifBtn');
+    if (hd && bell) {
+      var c2 = document.getElementById('pf113FormsChipOv');
+      if (!c2) { c2 = c.cloneNode(false); c2.id = 'pf113FormsChipOv'; c2.onclick = c.onclick; hd.insertBefore(c2, bell); }
+      c2.textContent = '📤 ' + n; c2.style.display = n ? 'inline-flex' : 'none';
+    }
+  } catch (e) {}
+  _pf113TelaAcesa(n > 0);
+}
+// iPhone não tem Background Sync: enquanto há envio pendente e o app está na
+// frente, a tela fica acesa (o envio morre quando a tela apaga no iOS).
+var _pf113Wake = null;
+function _pf113TelaAcesa(precisa) {
+  try {
+    if (_pf113TemSync()) return;
+    if (!('wakeLock' in navigator)) return;
+    var dq = 0; try { dq = pgpGetDriveQueue().length + pgpGetPending().length; } catch (e) {}
+    var quer = (precisa || dq > 0) && document.visibilityState === 'visible';
+    if (quer && !_pf113Wake) {
+      navigator.wakeLock.request('screen').then(function (w) { _pf113Wake = w; w.addEventListener('release', function () { _pf113Wake = null; }); }).catch(function () {});
+    } else if (!quer && _pf113Wake) { try { _pf113Wake.release(); } catch (e) {} _pf113Wake = null; }
+  } catch (e) {}
+}
+setTimeout(function () { _pf113DrenarForms(); }, 8000);
+setInterval(function () {
+  if (document.visibilityState !== 'visible') return;
+  _pf113DrenarForms();
+  _pf113TelaAcesa(false);
+}, 90000);
+window.addEventListener('online', function () { setTimeout(function () { _pf113DrenarForms(); }, 1500); _pf113PedirSync(); });
+document.addEventListener('visibilitychange', function () {
+  if (document.visibilityState === 'hidden') { _pf113PedirSync(); if (_pf113Wake) { try { _pf113Wake.release(); } catch (e) {} _pf113Wake = null; } }
+  else setTimeout(function () { _pf113DrenarForms(); }, 1200);
+});
+// O service worker avisa quando mandou algo com o app aberto em 2º plano.
+try {
+  if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', function (ev) {
+    var d = ev && ev.data; if (!d || d.tipo !== 'proper-outbox-enviado') return;
+    _pf113Log('service worker enviou:', d.n, 'item(ns)');
+    try { flushPendingDriveUploads(); } catch (e) {}
+    _pf113PintarChipForms();
+  });
+} catch (e) {}
+
+// ── Prioridade de boot: aquecedores esperam a OS ────────────────────────────
+['pgpEnsureClientsCache', 'pgpEnsureCatalogCache'].forEach(function (nome) {
+  _pf108Embrulhar(nome, function (orig) {
+    return function () {
+      var self = this, args = arguments;
+      if (_pf113PrioAtiva()) {
+        return new Promise(function (res) {
+          _pf113Prio.fila.push(function () { Promise.resolve().then(function () { return orig.apply(self, args); }).then(res, function () { res(); }); });
+        });
+      }
+      return orig.apply(self, args);
+    };
+  });
+});
+
+PF113.ok = true;
+// ████ FIM PCF V113 ████
+
+</script>
+
 <!-- ████ INICIO BLOCOS PADRAO UX (PWAIT + CFX) ████ -->
 <!-- ═══════════════════════════════════════════════════════════════════════════
      PWAIT v1 — A ESPERA FICA VISÍVEL, SEMPRE (+ GUARDA DE BOTÃO)
@@ -22385,6 +23882,24 @@ setTimeout(function () {
                 escreveu, e `disabled` só é SOLTO (nunca reposto em true).
      ⚠ Dois mecanismos mexendo no mesmo atributo precisam de dono único. Isto
        não é "esquisitice do PCM": qualquer front com trava própria cairia.
+     ── v3 · 26/09/2026 · A ESPERA APARECE, MAS NÃO ATRAPALHA ────────────────
+     Fernando, 24/09 (prints 1 e 11 do PCF): "carregamento longo e mensagens
+     PWAIT irritantes, cortadas". A pílula ficava NO TOPO, por cima do cabeçalho
+     (justo onde estão o número da OS e o botão de voltar), com uma frase longa
+     cortada em duas linhas — e aparecia até para o refresh de 2º plano que
+     ninguém pediu.
+     v3: (a) a pílula desce para o RODAPÉ, uma linha só (reticências), sem
+             receber toque (`pointer-events:none`), acima da barra fixa de baixo
+             quando houver (`--pw-bottom` no :root, ou `data-pw-dock` / #dock /
+             .dock detectados sozinhos);
+         (b) mensagem SÓ para a espera que alguém PEDIU: a chamada que começa
+             até 1,5 s depois de um toque/tecla. Refresh de 2º plano fica só na
+             barra fina do topo — que continua dizendo "tem rede em andamento";
+         (c) `PWAIT.silencioso(fn)`: o que fn dispara de forma síncrona não conta
+             nem para a barra (pré-carga do PCF, pings);
+         (d) frases curtas: "aguardando o servidor…" (3,5 s) e "servidor lento —
+             aguarde, não feche" (9 s).
+     A guarda de botão NÃO mudou (regras do v2 intactas).
      ⚠ BLOCO ÚNICO: copiado BYTE A BYTE nos fronts; a varredura reprova divergência.
      ═══════════════════════════════════════════════════════════════════════════ -->
 <style>
@@ -22392,10 +23907,12 @@ setTimeout(function () {
   background:linear-gradient(90deg,var(--pw-a),var(--pw-b));box-shadow:0 0 8px var(--pw-a);
   transition:width .22s ease,opacity .3s ease;opacity:0;border-radius:0 3px 3px 0}
 #pwBar.pw-on{opacity:1}
-#pwMsg{position:fixed;z-index:99501;left:50%;transform:translateX(-50%);top:10px;max-width:calc(100vw - 24px);
+#pwMsg{position:fixed;z-index:99501;left:50%;transform:translateX(-50%);top:auto;
+  bottom:calc(var(--pw-bottom,14px) + env(safe-area-inset-bottom,0px));max-width:calc(100vw - 32px);
   background:var(--pw-bg);color:var(--pw-fg);border:1px solid var(--pw-line);border-radius:999px;
-  padding:7px 15px;font-size:12.5px;font-family:inherit;box-shadow:0 8px 26px rgba(0,0,0,.3);
-  display:none;align-items:center;gap:9px;line-height:1.35}
+  padding:5px 12px;font-size:12px;font-family:inherit;box-shadow:0 6px 18px rgba(0,0,0,.28);
+  display:none;align-items:center;gap:8px;line-height:1.3;pointer-events:none;opacity:.94;white-space:nowrap}
+#pwMsg [data-pw-txt]{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 #pwMsg.pw-on{display:flex}
 #pwMsg .pw-sp{width:13px;height:13px;flex:none;border-radius:50%;border:2px solid var(--pw-line);
   border-top-color:var(--pw-a);animation:pwSpin .8s linear infinite}
@@ -22423,10 +23940,11 @@ button[data-pw-busy="1"]{opacity:.72;cursor:progress}
 'use strict';
 try{
   if(window.PWAIT) return;
-  var VER='PWAIT_V2';
-  var T_AVISO=3500;      // a espera deixa de ser invisível
-  var T_EXPLICA=9000;    // a espera passa a ser explicada
-  var voo=0, t0=0, bar=null, msg=null, ov=null, tA=null, tE=null, raf=null, prog=0;
+  var VER='PWAIT_V3';
+  var T_AVISO=3500;      // a espera PEDIDA deixa de ser invisível
+  var T_EXPLICA=9000;    // a espera PEDIDA passa a ser explicada
+  var T_GESTO=1500;      // v3: chamada que nasce até 1,5 s depois de um toque = alguém está esperando por ela
+  var voo=0, vooG=0, mudo=0, gesto=0, t0=0, bar=null, msg=null, ov=null, tA=null, tE=null, raf=null, prog=0;
 
   function tokens(){
     try{
@@ -22468,38 +23986,69 @@ try{
       setTimeout(function(){ if(voo===0){ bar.classList.remove('pw-on'); bar.style.width='0'; prog=0; } },240);
     }
   }
+  // v3 — a pílula fica ACIMA da barra fixa de baixo, se houver. O front pode
+  // mandar (--pw-bottom no :root); se não mandar, procura a barra sozinho.
+  function rodape(){
+    try{
+      var r=document.documentElement;
+      if(String(getComputedStyle(r).getPropertyValue('--pw-bottom')||'').trim()) return;
+      var d=document.querySelector('[data-pw-dock],#dock,.dock');
+      var h=0;
+      if(d && d.getClientRects().length){                 // (offsetParent é null em position:fixed)
+        var cs=getComputedStyle(d), bb=d.getBoundingClientRect();
+        if((cs.position==='fixed'||cs.position==='sticky') && bb.bottom>=window.innerHeight-4) h=Math.round(bb.height);
+      }
+      if(msg) msg.style.bottom = h ? ('calc(' + (h+10) + 'px + env(safe-area-inset-bottom,0px))') : '';
+    }catch(e){}
+  }
   function aviso(txt){
     if(!msg) return;
     var s=msg.querySelector('[data-pw-txt]'); if(s) s.textContent=txt;
+    rodape();
     msg.classList.add('pw-on');
   }
   function some(){ if(msg) msg.classList.remove('pw-on'); }
 
+  // v3 — sobe() devolve se a chamada é PEDIDA (nasceu logo depois de um gesto);
+  // quem chama guarda e devolve o mesmo valor ao desce(). Só as pedidas falam.
+  function agendarAvisos(){
+    clearTimeout(tA); clearTimeout(tE);
+    tA=setTimeout(function(){ if(vooG>0) aviso('aguardando o servidor…'); },T_AVISO);
+    tE=setTimeout(function(){ if(vooG>0) aviso('servidor lento — aguarde, não feche'); },T_EXPLICA);
+  }
   function sobe(){
+    var pedida = (Date.now()-gesto) <= T_GESTO;
     voo++;
     if(voo===1){
       t0=Date.now(); prog=2;
       if(!bar) montar();
       cancelAnimationFrame(raf); raf=requestAnimationFrame(pinta);
-      clearTimeout(tA); clearTimeout(tE);
-      tA=setTimeout(function(){ if(voo>0) aviso('aguardando o servidor…'); },T_AVISO);
-      tE=setTimeout(function(){ if(voo>0) aviso('ainda aguardando — o Google Sheets às vezes leva alguns segundos. Não feche a tela.'); },T_EXPLICA);
     }
+    if(pedida){ vooG++; if(vooG===1) agendarAvisos(); }
+    return pedida;
   }
-  function desce(){
+  function desce(pedida){
     voo=Math.max(0,voo-1);
-    if(voo===0){ clearTimeout(tA); clearTimeout(tE); some(); pinta(); }
+    if(pedida){ vooG=Math.max(0,vooG-1); if(vooG===0){ clearTimeout(tA); clearTimeout(tE); some(); } }
+    if(voo===0){ clearTimeout(tA); clearTimeout(tE); vooG=0; some(); pinta(); }
   }
+  // o gesto que torna a próxima chamada "pedida" (captura: antes do app)
+  try{
+    ['pointerdown','keydown','submit'].forEach(function(tp){
+      document.addEventListener(tp,function(){ gesto=Date.now(); },true);
+    });
+  }catch(e){}
 
   // ── 1) fetch ──
   try{
     if(window.fetch && !window.fetch.__pw){
       var f0=window.fetch.bind(window);
       var f1=function(){
-        sobe();
+        if(mudo>0) return f0.apply(null,arguments);          // v3: PWAIT.silencioso
+        var pd=sobe();
         var p;
-        try{ p=f0.apply(null,arguments); }catch(e){ desce(); throw e; }
-        return p.then(function(r){ desce(); return r; }, function(e){ desce(); throw e; });
+        try{ p=f0.apply(null,arguments); }catch(e){ desce(pd); throw e; }
+        return p.then(function(r){ desce(pd); return r; }, function(e){ desce(pd); throw e; });
       };
       f1.__pw=1; window.fetch=f1;
     }
@@ -22511,10 +24060,11 @@ try{
     if(XP && !XP.__pw){
       var s0=XP.send;
       XP.send=function(){
-        var fim=false, self=this;
-        function ok(){ if(!fim){ fim=true; desce(); } }
+        var fim=false, self=this, pd=false;
+        if(mudo>0) return s0.apply(self,arguments);          // v3: PWAIT.silencioso
+        function ok(){ if(!fim){ fim=true; desce(pd); } }
         try{
-          sobe();
+          pd=sobe();
           self.addEventListener('loadend',ok);
         }catch(e){ ok(); }
         try{ return s0.apply(self,arguments); }catch(e){ ok(); throw e; }
@@ -22535,9 +24085,11 @@ try{
           var n=ns[j];
           if(!n||n.tagName!=='SCRIPT'||!n.src||n.__pw) continue;
           if(!/script\.google\.com|googleusercontent|supabase/.test(n.src)) continue;
-          n.__pw=1; sobe();
+          n.__pw=1;
+          if(mudo>0) continue;                                  // v3: PWAIT.silencioso
+          var pd=sobe();
           var fim=false;
-          var pronto=function(){ if(!fim){ fim=true; desce(); } };
+          var pronto=(function(pd0){ return function(){ if(!fim){ fim=true; desce(pd0); } }; })(pd);
           n.addEventListener('load',pronto); n.addEventListener('error',pronto);
           setTimeout(pronto,120000);          // rede que nunca responde não deixa a barra presa
         }
@@ -22610,7 +24162,8 @@ try{
       var b=el.closest('button,input[type=submit]'); if(!b) return;
       if(b.dataset.pwBusy==='1'){                                  // 2º clique: engolido aqui
         ev.preventDefault(); ev.stopImmediatePropagation();
-        aviso('esse botão já está processando — aguarde a resposta do servidor.');
+        aviso('já está processando — aguarde');
+        setTimeout(function(){ if(vooG===0) some(); },2500);   // v3: não fica pendurado por causa de refresh de 2º plano
         return;
       }
       if(podeGuardar(b)) vigiar(b);
@@ -22631,6 +24184,16 @@ try{
     guarda:function(){ try{ document.addEventListener('click',noClique,true); document.addEventListener('submit',noSubmit,true); }catch(e){} },
     podeGuardar:podeGuardar,
     emVoo:function(){ return voo; },
+    // v3 — o que fn dispara de forma SÍNCRONA não conta (nem barra, nem aviso):
+    // pré-carga, ping, refresh que o usuário não pediu. Continuações assíncronas
+    // (um fetch dentro de um .then) NÃO herdam o silêncio — embrulhe-as também.
+    // ⚠ O JSONP (<script> dos formulários) também não: quem o conta é um
+    //   MutationObserver, que roda depois de fn já ter voltado.
+    silencioso:function(fn){
+      mudo++;
+      try{ return fn(); } finally{ mudo=Math.max(0,mudo-1); }
+    },
+    emVooPedidas:function(){ return vooG; },
     // espera com mensagem própria, para trecho que NÃO é chamada de rede
     // (gerar PDF, desenhar canvas, montar 2.000 linhas)
     tela:function(titulo,sub){

@@ -32,10 +32,18 @@
   function ligarAtualizacao(reg) {
     if (!reg) return;
     var recarregando = false;
+    // V113 (26/09) — A VERSÃO NOVA NÃO RECARREGA NA CARA DO TÉCNICO.
+    // O sw.js chama skipWaiting() no install: a versão nova assume o controle
+    // sozinha e este listener RECARREGAVA a página na hora — no meio de uma
+    // coleta, de um pipeline, de um envio. Era uma das "telas que piscam" em
+    // dia de publicação. Agora só recarrega quem tocou em "Atualizar"; os
+    // outros veem a faixa e atualizam quando terminarem (ou na próxima
+    // abertura, que já vem da versão nova).
+    window._pcfPediuAtualizar = false;
     navigator.serviceWorker.addEventListener('controllerchange', function () {
       if (recarregando) return;
-      recarregando = true;
-      location.reload();
+      if (window._pcfPediuAtualizar) { recarregando = true; location.reload(); return; }
+      faixa(null, true);
     });
     reg.addEventListener('updatefound', function () {
       var novo = reg.installing;
@@ -53,7 +61,7 @@
     });
   }
 
-  function faixa(sw) {
+  function faixa(sw, jaAtiva) {
     if (document.getElementById('pcfAtualiza')) return;
     var d = document.createElement('div');
     d.id = 'pcfAtualiza';
@@ -65,7 +73,7 @@
       'align-items:center;gap:10px;font:14px/1.35 Inter,system-ui,sans-serif');
     d.innerHTML =
       '<span style="flex:1">Versão nova disponível.<br>' +
-        '<small style="color:#64748b">Atualiza em 2 segundos, sem perder o que está preenchido.</small></span>' +
+        '<small style="color:#64748b">' + (jaAtiva ? 'Toque em Atualizar quando terminar o que está fazendo.' : 'Atualiza em 2 segundos, sem perder o que está preenchido.') + '</small></span>' +
       '<button type="button" id="pcfAtualizaNao" style="min-height:44px;padding:0 10px;background:none;' +
         'border:0;color:#64748b;font:13px Inter,system-ui,sans-serif;cursor:pointer">Agora não</button>' +
       '<button type="button" id="pcfAtualizaSim" style="min-height:44px;padding:0 14px;border:0;' +
@@ -75,7 +83,13 @@
     document.getElementById('pcfAtualizaNao').addEventListener('click', function () { d.remove(); });
     document.getElementById('pcfAtualizaSim').addEventListener('click', function () {
       d.remove();
-      try { sw.postMessage('SKIP_WAITING'); } catch (e) { location.reload(); }
+      window._pcfPediuAtualizar = true;
+      try { if (typeof pgpSaveDraftAgora === 'function') pgpSaveDraftAgora(); } catch (e) {}
+      if (jaAtiva || !sw) { location.reload(); return; }
+      try { sw.postMessage('SKIP_WAITING'); } catch (e) {}
+      // o install já pode ter ativado a versão nova sozinho (skipWaiting): aí não
+      // haverá outro controllerchange e o reload tem de sair daqui.
+      setTimeout(function () { location.reload(); }, 1500);
     });
   }
 
