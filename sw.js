@@ -9,7 +9,8 @@
  * O activate abaixo apaga qualquer cache antigo com prefixo 'propertech-'.
  */
 const CACHE_BASE = 'propertech-';
-const CACHE = CACHE_BASE + 'v115';  // 26/09/2026 — par do PCF_V113 (PCF estável: splash, fila persist-first, Background Sync, mapa com satélite). Sem bump, o celular serve o V112 do cache.
+const CACHE = CACHE_BASE + 'v116';  // 27/09/2026 — par do PCF_V114 (PWAIT v4: a guarda só protege o que o usuário vê).
+// antes: 'v115'  // 26/09/2026 — par do PCF_V113 (PCF estável: splash, fila persist-first, Background Sync, mapa com satélite). Sem bump, o celular serve o V112 do cache.
 // (nota anterior: v114 — 21/09/2026 — par do PCF_V112)  // 21/09/2026 — par do PCF_V112 (documento volta a começar no DOCTYPE). Sem bump, o celular do técnico serve o V111 quebrado do cache.  // 21/09/2026 — par do PCF_V111 (guarda de botão v2). Sem bump, o celular do técnico serve o V110 do cache. // v111 (11/09/2026) — PCF_V109, o PDF da preventiva que nao chegava (compress:true + PDF na fila do IndexedDB).
 // (nota anterior:  // v110 (11/09/2026) — PCF_V108, a rodada Campo e Documentos (Externas/Oficina, Ir ate o cliente, presenca, carga do dia).
 // (nota anterior:  // v108 (09/09/2026) — PCF_V106, a rodada do horímetro (C1/C5–C10).
@@ -51,6 +52,7 @@ const CACHE = CACHE_BASE + 'v115';  // 26/09/2026 — par do PCF_V113 (PCF está
 //        PCF_V109 ↔  propertech-v111  (11/09 — o PDF da preventiva: compress:true + PDF na fila do IndexedDB)
 //        PCF_V112 ↔  propertech-v114  (21/09 — o documento volta a começar no DOCTYPE)
 //        PCF_V113 ↔  propertech-v115  (26/09 — PCF estável + Background Sync + Leaflet no shell)
+//        PCF_V114 ↔  propertech-v116  (27/09 — PWAIT v4: botão de janela fechada não fica preso)
 //    Quem "corrigir" isto para propertech-v91 achando que alinha as versões
 //    reintroduz o pior modo de falha deste arquivo: a chave ficaria IGUAL à do
 //    deploy anterior, o activate não apagaria nada, e o técnico continuaria
