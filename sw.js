@@ -9,7 +9,8 @@
  * O activate abaixo apaga qualquer cache antigo com prefixo 'propertech-'.
  */
 const CACHE_BASE = 'propertech-';
-const CACHE = CACHE_BASE + 'v118';  // 29/09/2026 — par do PCF_V116 (campo simples). Sem bump, o celular serve o V115 do cache.
+const CACHE = CACHE_BASE + 'v119';  // 29/09/2026 — par do PCF_V117 (＋ Adicionar item). Sem bump, o celular serve o V116 do cache.
+// antes: 'v118'  // 29/09/2026 — par do PCF_V116 (campo simples). Sem bump, o celular serve o V115 do cache.
 // antes: 'v117' (28/09 — par do PCF_V115, TURBO)
 // antes: 'v116'  // 27/09/2026 — par do PCF_V114 (PWAIT v4: a guarda só protege o que o usuário vê).
 // antes: 'v115'  // 26/09/2026 — par do PCF_V113 (PCF estável: splash, fila persist-first, Background Sync, mapa com satélite). Sem bump, o celular serve o V112 do cache.
@@ -57,6 +58,7 @@ const CACHE = CACHE_BASE + 'v118';  // 29/09/2026 — par do PCF_V116 (campo sim
 //        PCF_V114 ↔  propertech-v116  (27/09 — PWAIT v4: botão de janela fechada não fica preso)
 //        PCF_V115 ↔  propertech-v117  (28/09 — TURBO: as leituras vêm do Postgres)
 //        PCF_V116 ↔  propertech-v118  (29/09 — campo simples: rodapé único, marca de troca de peça)
+//        PCF_V117 ↔  propertech-v119  (29/09 — ＋ Adicionar item na inspeção e na preventiva)
 //    Quem "corrigir" isto para propertech-v91 achando que alinha as versões
 //    reintroduz o pior modo de falha deste arquivo: a chave ficaria IGUAL à do
 //    deploy anterior, o activate não apagaria nada, e o técnico continuaria

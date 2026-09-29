@@ -1572,8 +1572,16 @@ html[data-boot="pipeline"] #pf113Splash{display:flex;position:fixed;inset:0;z-in
   no card da tarefa, concluir tarefa com resposta imediata, aviso com a cor da gravidade.
   SQL SUBST_PECAS e GAS v153 ANTES deste arquivo (sem eles a marca viaja e é ignorada).
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V116</title>
-<meta name="app-build" content="PCF_V116" data-date="2026-09-29">
+<!--
+  PCF_V117 · ADICIONAR ITEM · 29/09/2026 · feito SOBRE o PCF_V116 (campo simples) · par sw propertech-v119.
+  Cada máquina ganha a seção 7 Itens adicionais: nome, Ok/NOK/Trocada/N.A., medição, observação e
+  foto, para o que o checklist padrão não tem (inspeção e preventiva). Vai no relatório (seção 5.1)
+  e no sistema (payload itens_extras e itens_extras_removidos, gravado pelo GAS v157 em
+  itens_extras_campo; o mais novo vence, nada some por ausência). Assinaturas opcionais também na
+  inspeção (sobem só as colhidas nesta coleta). SQL ITENS_EXTRAS e GAS v157 ANTES deste arquivo.
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V117</title>
+<meta name="app-build" content="PCF_V117" data-date="2026-09-29">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -9889,6 +9897,32 @@ function pgpCreateReportBuilder() {
       y += 3;
     }
 
+    // ── PCF_V117 · SEÇÃO 5.1: ITENS ADICIONAIS (o que o checklist padrão não tem) ──
+    const _ext117 = (d.itensExtras || []).filter(function (x) { return x && String(x.nome || '').trim(); });
+    if (_ext117.length) {
+      y = checkY(y, 14);
+      y = sectionTitle(y, '[+]', '5.1 Itens Adicionais (fora do checklist)');
+      _ext117.forEach(function (it, k) {
+        const est117 = ({ ok: 'OK', nok: 'NOK', trocada: 'Trocada', na: 'N/A' })[it.estado] || '-';
+        const cor117 = it.estado === 'nok' ? [200, 30, 30] : it.estado === 'ok' ? [22, 130, 60] : it.estado === 'trocada' ? [190, 100, 10] : DARK;
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(7);
+        const obsL117 = it.obs ? doc.splitTextToSize(limparTextoPDF('Obs.: ' + it.obs), CW - 6) : [];
+        const h117 = 7 + (obsL117.length ? obsL117.length * 3.6 + 1 : 0);
+        y = checkY(y, h117);
+        if (k % 2 === 0) { doc.setFillColor(248, 249, 252); doc.rect(ML, y, CW, h117, 'F'); }
+        doc.setDrawColor(...MGRAY); doc.setLineWidth(0.15); doc.rect(ML, y, CW, h117, 'S');
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(...BLACK);
+        doc.text(doc.splitTextToSize(limparTextoPDF(it.nome), CW * 0.55)[0], ML + 2, y + 4.6);
+        doc.setTextColor(...cor117); doc.text(limparTextoPDF(est117), ML + CW * 0.58, y + 4.6);
+        doc.setFont('helvetica', 'normal'); doc.setTextColor(...DARK);
+        const med117 = (it.medicao ? 'Medição: ' + it.medicao : '') + (it.fotos ? (it.medicao ? ' - ' : '') + it.fotos + ' foto(s)' : '');
+        if (med117) doc.text(doc.splitTextToSize(limparTextoPDF(med117), CW * 0.29)[0], ML + CW * 0.70, y + 4.6);
+        if (obsL117.length) { doc.setFontSize(7); doc.text(obsL117, ML + 3, y + 8.3); }
+        y += h117;
+      });
+      y += 4;
+    }
+
     // ── SEÇÃO 6: STATUS FOTOGRÁFICO ───────────────────
     y = checkY(y, 12);
     y = sectionTitle(y, '[F]', '6. Registro Fotográfico – Status');
@@ -17188,6 +17222,7 @@ async function pgpEnviarGS(srcBtn){
     } else {
       queued++;
       pgpRegistroGravar(payload, 'fila', 'inspecao');   // V102 (item 6a)
+      try { if (typeof window.pcf117SubirAssinaturas === 'function') window.pcf117SubirAssinaturas(pgpBuildVisitRequest(payload), i); } catch (e117) {}   // PCF_V117
       // v55: antes era sucesso silencioso (só queued++); agora avisa visivelmente
       // que caiu na fila offline em vez de ter sido enviado.
       setSendStatus('<span style="color:var(--orange)">🔴 Sem conexão — salvo na fila, reenvio automático</span>');
@@ -17201,6 +17236,7 @@ async function pgpEnviarGS(srcBtn){
 
   try{
     const d1 = await pgpPostJson('saveVisit', visitBody);
+    try { if (typeof window.pcf117SubirAssinaturas === 'function') window.pcf117SubirAssinaturas(visitBody, i); } catch (e117) {}   // PCF_V117: só as colhidas NESTA coleta
     const resolvedMachineId = payload.machine_id || d1.machineId || d1.machine_id || '';
 
     let partsWarn = '';
@@ -30775,7 +30811,7 @@ try{
 
   window.pcf116AbrirMais = function () {
     var itens = [];
-    if (ehPrev()) itens.push(['assin', '✍️', 'Coletar assinaturas', 'técnico e responsável do cliente — entram no PDF']);
+    itens.push(['assin', '✍️', 'Coletar assinaturas', 'técnico e responsável do cliente — entram no PDF' + (ehPrev() ? '' : ' (opcional na inspeção)')]);   // PCF_V117: também na inspeção
     itens.push(['resumo', '💬', 'Resumo em texto', 'para mandar por WhatsApp']);
     itens.push(['copia', '💾', 'Guardar uma cópia desta coleta', 'aparece em ☰ → Coletas guardadas']);
     itens.push(['limpar', '↺', 'Limpar esta máquina', 'apaga o que foi preenchido na máquina aberta (pede confirmação)']);
@@ -31137,6 +31173,426 @@ try{
     setTimeout(atualizar, 1500);
     setInterval(function () { if (document.visibilityState === 'visible') pintarSalvo(); }, 30000);
   }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
+})();
+</script>
+
+<!-- ████ PCF_V117 (ADICIONAR ITEM) ████ -->
+<style id="pcf117Estilo">
+/* PCF_V117 (29/09/2026) — "＋ Adicionar item" (inspeção e preventiva) + assinaturas opcionais na inspeção */
+.pcf117-dica{font-size:12.5px;color:#94a3b8;line-height:1.45;margin:2px 0 10px}
+.pcf117-item{border:1px solid #334155;border-radius:12px;background:#111a2e;padding:10px;margin:0 0 10px}
+.pcf117-item.sem-nome{border-color:#b45309}
+.pcf117-l1{display:flex;gap:8px;align-items:center}
+.pcf117-nome{flex:1;min-width:0;min-height:44px;font-size:15px;font-weight:700}
+.pcf117-del{flex:none;min-width:44px;min-height:44px;border-radius:10px;border:1px solid #7f1d1d;background:#1f1215;color:#fca5a5;font-size:18px;cursor:pointer}
+.pcf117-est{display:flex;gap:6px;margin:8px 0}
+.pcf117-e{flex:1;min-height:42px;border-radius:8px;border:2px solid #334155;background:#1e293b;color:#e2e8f0;font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;cursor:pointer}
+.pcf117-e.on[data-v="ok"]{border-color:#22c55e;background:#123024;color:#bbf7d0}
+.pcf117-e.on[data-v="nok"]{border-color:#ef4444;background:#3b1212;color:#fecaca}
+.pcf117-e.on[data-v="trocada"]{border-color:#f59e0b;background:#3a2a15;color:#fde68a}
+.pcf117-e.on[data-v="na"]{border-color:#64748b;background:#1e293b;color:#cbd5e1}
+.pcf117-med{width:100%;min-height:42px;margin-bottom:6px}
+.pcf117-obs{width:100%;min-height:56px}
+.pcf117-foto{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px}
+.pcf117-foto .btn-foto-inline{min-height:40px}
+.pcf117-aviso{font-size:12px;color:#fbbf24;margin-top:4px}
+.pcf117-acoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.pcf117-add,.pcf117-assin{flex:1 1 150px;min-height:50px;border-radius:12px;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;cursor:pointer}
+.pcf117-add{background:#f58220;color:#111827;border:2px solid #f58220}
+.pcf117-assin{background:#1e293b;color:#e2e8f0;border:2px solid #475569}
+.pcf117-assin-st{font-size:12.5px;color:#94a3b8;margin-top:8px;line-height:1.45}
+.pcf117-assin-st b{color:#86efac}
+</style>
+<script>
+// ════════════════════════════════════════════════════════════════════════════
+// PCF_V117 — 29/09/2026 — "＋ ADICIONAR ITEM" NA INSPEÇÃO E NA PREVENTIVA
+// Pedido do Fernando: o PCF não contempla todas as peças do plano de manutenção que podem ser
+// alvo de preventiva ou inspeção — o botão é o "de emergência"; e as assinaturas também na
+// inspeção, quando for viável. Cada máquina ganha a seção "7. Itens adicionais":
+//   · item = nome + Ok/NOK/Trocada/N.A. + medição + observação + foto (o desenho de 17/09);
+//   · o estado mora num hidden `m<i>_itens_extras` (JSON) — viaja no rascunho, nas coletas
+//     guardadas e no "tem dados" sem nada novo; a foto usa o photoStore de sempre (chave
+//     `extra_<uid>`, legenda "Item adicional: <nome>") e sobe ao Drive pelo mesmo canal;
+//   · payload: `itens_extras` (os itens com nome, cada um com `ts` = hora da última edição) e
+//     `itens_extras_removidos` (os que o técnico tirou no 🗑, que mora no hidden
+//     `m<i>_itens_extras_rem`), na inspeção (pgpBuildPayload → pgpBuildVisitRequest, que é
+//     uma WHITELIST) e na preventiva. As DUAS vazias ⇒ as chaves NÃO vão (= "não sei"):
+//     🔴 auditoria 29/09 — uma coleta restaurada do servidor volta sem os itens, e uma lista
+//     vazia NÃO pode apagar o que já está no banco. O banco faz "o mais novo (ts) vence";
+//   · o GAS v157 grava em itens_extras_campo (SQL ITENS_EXTRAS) — sem eles, é ignorado;
+//   · PDF: seção "5.1 Itens adicionais"; as fotos entram na galeria com a legenda do item;
+//   · ✍️ Assinaturas (técnico + responsável do cliente) OPCIONAIS também na inspeção — a coleta
+//     e o PDF já existiam (só a preventiva oferecia). Na inspeção só SOBEM como anexo da visita
+//     se foram colhidas NESTA coleta (hidden `m<i>_assin_coletada`, marcado quando a coleta de
+//     assinaturas termina com assinatura nova) — nunca as de uma visita anterior da mesma OS.
+// Só ADITIVO: envolve por window[nome] (as funções do app são declarações globais).
+// ════════════════════════════════════════════════════════════════════════════
+(function () {
+  'use strict';
+  var MAX_ITENS = 30;
+  var ESTADOS = [['ok', 'Ok'], ['nok', 'NOK'], ['trocada', 'Trocada'], ['na', 'N.A.']];
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
+  function hid(i) { return document.querySelector('[data-key="m' + i + '_itens_extras"]'); }
+  function hidRem(i) { return document.querySelector('[data-key="m' + i + '_itens_extras_rem"]'); }
+  function hidAssin(i) { return document.querySelector('[data-key="m' + i + '_assin_coletada"]'); }
+  function lerJson(h) {
+    if (!h || !h.value) return [];
+    try { var a = JSON.parse(h.value); return Array.isArray(a) ? a.filter(function (o) { return o && typeof o === 'object' && o.uid; }) : []; } catch (e) { return []; }
+  }
+  function ler(i) { return lerJson(hid(i)); }
+  function lerRem(i) { return lerJson(hidRem(i)); }
+  // Os sufixos novos são COLETA: recarregar a mesma máquina (pgpLoadMachine) entra em MODO MERGE
+  // e não apaga os itens; e o "tem dados" os conta. O array é const, mas mutável.
+  try { ['_itens_extras', '_itens_extras_rem'].forEach(function (x) { if (PGP_SUFIXOS_COLETA.indexOf(x) < 0) PGP_SUFIXOS_COLETA.push(x); }); } catch (e) {}
+  function chaveFoto(uid) { return 'extra_' + uid; }
+  function rotuloFoto(nome) { return 'Item adicional: ' + (String(nome || '').trim() || 'sem nome'); }
+  function nFotos(i, uid) {
+    try { var l = (photoStore[i] || {})[chaveFoto(uid)]; return Array.isArray(l) ? l.filter(function (p) { return p && p.dataUrl; }).length : 0; } catch (e) { return 0; }
+  }
+  function registrarRotulo(i, it) {
+    try { PART_PHOTO_LABELS[chaveFoto(it.uid)] = rotuloFoto(it.nome); } catch (e) {}
+    try { ((photoStore[i] || {})[chaveFoto(it.uid)] || []).forEach(function (p) { if (p) p.label = rotuloFoto(it.nome); }); } catch (e) {}
+  }
+  function gravar(i, lista, semRedesenho) {
+    var h = hid(i); if (!h) return;
+    h.value = lista.length ? JSON.stringify(lista) : '';
+    try { pgpSaveDraftBreve(); } catch (e) {}
+    if (!semRedesenho) pintar(i); else pintarBadge(i);
+  }
+  function novoUid() { return 'x' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  var _ultTs = 0;
+  function agora() { var t = Date.now(); if (t <= _ultTs) t = _ultTs + 1; _ultTs = t; return t; }   // estritamente crescente
+  function gravarRem(i, lista) {
+    var h = hidRem(i); if (!h) return;
+    h.value = lista.length ? JSON.stringify(lista.slice(-60)) : '';
+  }
+
+  // ── a seção de cada máquina ─────────────────────────────────────────────
+  function secaoHtml(i) {
+    return '<div class="section pcf117-sec" id="pcf117Sec' + i + '">' +
+      '<div class="section-header" onclick="toggleSection(this)"><span class="icon">➕</span><span class="title">7. Itens adicionais</span>' +
+      '<span class="badge" id="pcf117Badge' + i + '">0</span><span class="chevron">▼</span></div>' +
+      '<div class="section-body">' +
+      '<div class="pcf117-dica">Para o que o checklist não tem — uma peça do plano de manutenção, um ponto a verificar. Entra no relatório e no sistema.</div>' +
+      '<input type="hidden" id="m' + i + '_itens_extras" data-key="m' + i + '_itens_extras" value="">' +
+      '<input type="hidden" id="m' + i + '_itens_extras_rem" data-key="m' + i + '_itens_extras_rem" value="">' +
+      '<input type="hidden" id="m' + i + '_assin_coletada" data-key="m' + i + '_assin_coletada" value="">' +
+      '<div id="pcf117Lista' + i + '"></div>' +
+      '<div class="pcf117-acoes">' +
+      '<button type="button" class="pcf117-add" data-pcf117="add" data-i="' + i + '">＋ Adicionar item</button>' +
+      '<button type="button" class="pcf117-assin" data-pcf117="assin" data-i="' + i + '">✍️ Assinaturas (opcional)</button>' +
+      '</div><div class="pcf117-assin-st" id="pcf117AssinSt' + i + '"></div>' +
+      '</div></div>';
+  }
+  function anexarSecao(i) {
+    var panel = $('panel-' + i);
+    if (!panel || panel.querySelector('#pcf117Sec' + i)) return;
+    panel.insertAdjacentHTML('beforeend', secaoHtml(i));
+    // máquina acrescentada DEPOIS da coleta de assinaturas herda a marca do dia (o contexto
+    // OS/cliente continua sendo conferido na hora de subir, por pgpSubirAssinaturasDaVisita)
+    try {
+      for (var k = 0; k < machines.length; k++) {
+        if (k === i) continue;
+        var mk = lerMarca(k), h = hidAssin(i);
+        if (mk && mk.dia === hojeLocal() && h && !h.value) { h.value = JSON.stringify(mk); break; }
+      }
+    } catch (e) {}
+    pintar(i);
+  }
+  function itemHtml(i, it) {
+    var k = chaveFoto(it.uid), semNome = !String(it.nome || '').trim();
+    return '<div class="pcf117-item' + (semNome ? ' sem-nome' : '') + '" data-uid="' + esc(it.uid) + '">' +
+      '<div class="pcf117-l1"><input type="text" class="pcf117-nome" data-f="nome" maxlength="200" placeholder="Nome do item (ex.: Válvula termostática)" value="' + esc(it.nome || '') + '" list="pcf117Nomes" autocomplete="off">' +
+      '<button type="button" class="pcf117-del" data-pcf117="del" title="Tirar este item">🗑</button></div>' +
+      '<div class="pcf117-est">' + ESTADOS.map(function (e) {
+        return '<button type="button" class="pcf117-e' + (it.estado === e[0] ? ' on' : '') + '" data-pcf117="est" data-v="' + e[0] + '">' + e[1] + '</button>';
+      }).join('') + '</div>' +
+      '<input type="text" class="pcf117-med" data-f="medicao" maxlength="120" placeholder="Medição (opcional) — ex.: 78 °C · 7,2 bar · 3 mm" value="' + esc(it.medicao || '') + '">' +
+      '<textarea class="pcf117-obs" data-f="obs" maxlength="2000" placeholder="Observação (opcional)">' + esc(it.obs || '') + '</textarea>' +
+      '<div class="pcf117-foto"><button type="button" class="btn-foto-inline" data-photokey="' + esc(k) + '" data-orig-label="📷 Foto" data-done-label="✅ Foto" ' +
+      'onclick="event.stopPropagation();abrirFotoPicker(this,\'linked\',' + i + ',\'' + esc(k) + '\')">📷 Foto</button>' +
+      '<div class="photo-thumbs-mini" data-midx="' + i + '" data-pkey="' + esc(k) + '"></div></div>' +
+      (semNome ? '<div class="pcf117-aviso">⚠ Sem nome o item não entra no relatório nem no sistema.</div>' : '') +
+      '</div>';
+  }
+  function pintarBadge(i) {
+    var b = $('pcf117Badge' + i); if (!b) return;
+    var n = ler(i).filter(function (it) { return String(it.nome || '').trim(); }).length;
+    b.textContent = String(n);
+  }
+  function pintarAssin(i) {
+    var st = $('pcf117AssinSt' + i); if (!st) return;
+    var a = window._PGP_ASSINATURAS || {}, ok = false;
+    try { ok = pgpAssinaturasContextoOk(i); } catch (e) { ok = false; }
+    var t = ok && a.tecnico && a.tecnico.dataUrl, r = ok && a.responsavel && a.responsavel.dataUrl;
+    st.innerHTML = (t || r)
+      ? 'Assinaturas desta visita: ' + (t ? '<b>✓ técnico</b> (' + esc(a.tecnico.nome || '') + ')' : 'técnico não assinou') + ' · ' +
+        (r ? '<b>✓ cliente</b> (' + esc(a.responsavel.nome || '') + ')' : 'cliente não assinou') + ' — entram no PDF.'
+      : 'Quando der para colher, as assinaturas entram no final do PDF. Não é obrigatório.';
+  }
+  function pintar(i) {
+    var box = $('pcf117Lista' + i); if (!box) return;
+    var lista = ler(i);
+    lista.forEach(function (it) { registrarRotulo(i, it); });
+    box.innerHTML = lista.map(function (it) { return itemHtml(i, it); }).join('');
+    lista.forEach(function (it) {
+      try { renderPhotoThumbs(i, chaveFoto(it.uid)); } catch (e) {}
+      try { syncDoneButtonsForKey(i, chaveFoto(it.uid)); } catch (e) {}
+    });
+    pintarBadge(i); pintarAssin(i); pintarSugestoes();
+  }
+  function pintarTodos() { try { for (var i = 0; i < machines.length; i++) { anexarSecao(i); pintar(i); } } catch (e) {} }
+  window.pcf117Pintar = pintar;
+  window.pcf117PintarTodos = pintarTodos;
+  window.pcf117Ler = ler;
+
+  // nomes já usados neste aparelho (sugestão ao digitar)
+  var NOMES_KEY = 'pcf117_nomes_v1';
+  function nomesUsados() { try { var a = JSON.parse(localStorage.getItem(NOMES_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+  function lembrarNome(n) {
+    n = String(n || '').trim(); if (n.length < 3) return;
+    try {
+      var a = nomesUsados().filter(function (x) { return String(x).toLowerCase() !== n.toLowerCase(); });
+      a.unshift(n); localStorage.setItem(NOMES_KEY, JSON.stringify(a.slice(0, 60)));
+    } catch (e) {}
+  }
+  function pintarSugestoes() {
+    var dl = $('pcf117Nomes');
+    if (!dl) { dl = document.createElement('datalist'); dl.id = 'pcf117Nomes'; document.body.appendChild(dl); }
+    dl.innerHTML = nomesUsados().map(function (n) { return '<option value="' + esc(n) + '">'; }).join('');
+  }
+
+  // ── ações ────────────────────────────────────────────────────────────────
+  function mudar(i, uid, fn, semRedesenho) {
+    var lista = ler(i), k = lista.findIndex(function (x) { return x.uid === uid; });
+    if (k < 0) return;
+    fn(lista[k], lista, k);
+    // a hora da ÚLTIMA edição: no banco, o mais novo vence. Sempre MAIOR que a anterior do próprio
+    // item, mesmo se o relógio do aparelho voltar (NTP, bateria zerada, data acertada à mão)
+    lista[k].ts = Math.max(agora(), (Number(lista[k].ts) || 0) + 1);
+    if (String(lista[k].nome || '').trim()) lista[k].teveNome = true;   // já pode ter subido
+    gravar(i, lista, semRedesenho);
+  }
+  window.pcf117Adicionar = function (i) {
+    var lista = ler(i);
+    if (lista.length >= MAX_ITENS) { try { showNotification('⚠ Máximo de ' + MAX_ITENS + ' itens adicionais por máquina.'); } catch (e) {} return; }
+    var it = { uid: novoUid(), nome: '', estado: '', medicao: '', obs: '', ts: agora() };
+    lista.push(it); gravar(i, lista);
+    try {
+      var el = document.querySelector('#pcf117Lista' + i + ' .pcf117-item[data-uid="' + it.uid + '"] .pcf117-nome');
+      if (el) { el.scrollIntoView({ block: 'center' }); el.focus(); }
+    } catch (e) {}
+  };
+  window.pcf117Remover = async function (i, uid) {
+    var it = ler(i).find(function (x) { return x.uid === uid; }); if (!it) return;
+    var temAlgo = String(it.nome || '').trim() || it.estado || it.medicao || it.obs || nFotos(i, uid);
+    if (temAlgo) {
+      var ok = true;
+      try { ok = await AppDialog.confirm('Tirar o item "' + (it.nome || 'sem nome') + '" desta máquina?' + (nFotos(i, uid) ? '\n\nAs fotos dele saem do relatório (as que já subiram ficam no Drive da OS).' : ''),
+        { title: 'Tirar item', okLabel: 'Tirar', danger: true }); } catch (e) { ok = true; }
+      if (!ok) return;
+    }
+    try { if (photoStore[i]) delete photoStore[i][chaveFoto(uid)]; } catch (e) {}
+    // a remoção é EXPLÍCITA (o banco só desativa o que vem em removidos) — com a hora dela
+    // item que NUNCA teve nome nunca subiu: tirar não precisa ir ao banco
+    if (it.teveNome || String(it.nome || '').trim()) {
+      var rem = lerRem(i).filter(function (x) { return x.uid !== uid; });
+      rem.push({ uid: uid, nome: String(it.nome || '').trim().slice(0, 200), ts: Math.max(agora(), (Number(it.ts) || 0) + 1) });
+      gravarRem(i, rem);
+    }
+    gravar(i, ler(i).filter(function (x) { return x.uid !== uid; }));
+  };
+  window.pcf117Assinar = async function (i) {
+    try { if (typeof currentMachine === 'number' && currentMachine !== i) switchMachine(i); } catch (e) {}
+    try { await pgpColetarAssinaturasPreventiva(); } catch (e) {}
+    pintarAssin(i);
+  };
+  // As assinaturas são UM conjunto global do aparelho (window._PGP_ASSINATURAS), com carimbo de
+  // contexto (OS/cliente) — e o carimbo PRESERVA as de dias anteriores da mesma OS. Na inspeção, só
+  // sobe como anexo da visita a assinatura colhida NESTA coleta, PAPEL POR PAPEL: quando a coleta
+  // pelo ✍️ termina, cada papel (técnico / cliente) cuja assinatura MUDOU tem a impressão gravada no
+  // hidden `m<k>_assin_coletada` (JSON {t, r, dia}) das máquinas do mesmo contexto. Na hora de subir,
+  // vai só o papel cuja assinatura atual ainda bate com a impressão, e só no mesmo dia ou no seguinte
+  // (a coleta guardada e reaberta dias depois não sobe nada). O hidden morre com a coleta.
+  // (auditoria 2, 29/09: técnico assina de novo e cancela o cliente ⇒ o cliente de ONTEM não sobe)
+  function fpPapel(sig) { return (sig && sig.dataUrl) ? String(sig.dataUrl).length + ':' + String(sig.dataUrl).slice(-48) + ':' + (sig.ts || sig.quando || '') : ''; }
+  function fpAtual() { var a = window._PGP_ASSINATURAS || {}; return { t: fpPapel(a.tecnico), r: fpPapel(a.responsavel) }; }
+  function diaLocal(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function hojeLocal() { return diaLocal(new Date()); }
+  function ontemLocal() { var d = new Date(); d.setDate(d.getDate() - 1); return diaLocal(d); }
+  function lerMarca(i) {
+    var h = hidAssin(i); if (!h || !h.value) return null;
+    try { var o = JSON.parse(h.value); return (o && typeof o === 'object') ? o : null; } catch (e) { return null; }
+  }
+  // papéis que PODEM subir agora nesta máquina: {tecnico:bool, responsavel:bool}
+  function papeisDaColeta(i) {
+    var m = lerMarca(i), a = fpAtual();
+    // hoje ou ontem: assinou às 23h55 e enviou às 00h05 continua valendo; a coleta reaberta dias depois, não
+    if (!m || (m.dia !== hojeLocal() && m.dia !== ontemLocal())) return { tecnico: false, responsavel: false };
+    return { tecnico: !!(m.t && m.t === a.t), responsavel: !!(m.r && m.r === a.r) };
+  }
+  window.pcf117AssinDaColeta = function (i) { var p = papeisDaColeta(i); return p.tecnico || p.responsavel; };
+  window.pcf117PapeisDaColeta = papeisDaColeta;
+  // Sobe SÓ os papéis colhidos nesta coleta (o resto do conjunto global fica de fora nesta chamada).
+  window.pcf117SubirAssinaturas = function (body, i) {
+    var p = papeisDaColeta(i); if (!p.tecnico && !p.responsavel) return false;
+    var orig = window._PGP_ASSINATURAS;
+    try {
+      window._PGP_ASSINATURAS = Object.assign({}, orig, { tecnico: p.tecnico ? orig.tecnico : null, responsavel: p.responsavel ? orig.responsavel : null });
+      pgpSubirAssinaturasDaVisita(body, i);   // síncrona: lê o conjunto logo no começo e enfileira
+    } finally { window._PGP_ASSINATURAS = orig; }
+    return true;
+  };
+  function marcarPapeis(novos) {
+    var dia = hojeLocal();
+    for (var k = 0; k < machines.length; k++) {
+      var ok = false; try { ok = pgpAssinaturasContextoOk(k); } catch (e) { ok = false; }
+      var h = hidAssin(k); if (!ok || !h) continue;
+      var m = lerMarca(k); if (!m || m.dia !== dia) m = { t: '', r: '', dia: dia };
+      if (novos.t) m.t = novos.t;
+      if (novos.r) m.r = novos.r;
+      h.value = JSON.stringify(m);
+    }
+    try { pgpSaveDraftBreve(); } catch (e) {}
+  }
+  try {
+    var _cap = window.pgpColetarAssinaturasPreventiva;
+    if (typeof _cap === 'function') {
+      window.pgpColetarAssinaturasPreventiva = async function () {
+        var antes = fpAtual();
+        var r = await _cap.apply(this, arguments);
+        try {
+          var dep = fpAtual(), novos = { t: (dep.t && dep.t !== antes.t) ? dep.t : '', r: (dep.r && dep.r !== antes.r) ? dep.r : '' };
+          if (novos.t || novos.r) marcarPapeis(novos);
+          for (var m = 0; m < machines.length; m++) pintarAssin(m);
+        } catch (e) {}
+        return r;
+      };
+    }
+  } catch (e) {}
+  document.addEventListener('click', function (ev) {
+    var b = ev.target && ev.target.closest && ev.target.closest('[data-pcf117]'); if (!b) return;
+    var sec = b.closest('.pcf117-sec'); if (!sec) return;
+    var i = parseInt(String(sec.id).replace('pcf117Sec', ''), 10);
+    var a = b.getAttribute('data-pcf117');
+    var card = b.closest('.pcf117-item'), uid = card ? card.getAttribute('data-uid') : '';
+    ev.stopPropagation();
+    if (a === 'add') return window.pcf117Adicionar(i);
+    if (a === 'assin') return window.pcf117Assinar(i);
+    if (a === 'del') return window.pcf117Remover(i, uid);
+    if (a === 'est') {
+      var v = b.getAttribute('data-v');
+      mudar(i, uid, function (it) { it.estado = (it.estado === v) ? '' : v; }, true);
+      card.querySelectorAll('.pcf117-e').forEach(function (x) { x.classList.toggle('on', x.getAttribute('data-v') === (ler(i).find(function (y) { return y.uid === uid; }) || {}).estado); });
+    }
+  }, false);
+  document.addEventListener('input', function (ev) {
+    var el = ev.target; if (!el || !el.getAttribute) return;
+    var f = el.getAttribute('data-f'); if (!f) return;
+    var sec = el.closest('.pcf117-sec'), card = el.closest('.pcf117-item'); if (!sec || !card) return;
+    var i = parseInt(String(sec.id).replace('pcf117Sec', ''), 10), uid = card.getAttribute('data-uid');
+    mudar(i, uid, function (it) { it[f] = String(el.value || ''); if (f === 'nome') registrarRotulo(i, it); }, true);
+    if (f === 'nome') {
+      var semNome = !String(el.value || '').trim();
+      card.classList.toggle('sem-nome', semNome);
+      var av = card.querySelector('.pcf117-aviso');
+      if (semNome && !av) card.insertAdjacentHTML('beforeend', '<div class="pcf117-aviso">⚠ Sem nome o item não entra no relatório nem no sistema.</div>');
+      if (!semNome && av) av.remove();
+    }
+  }, false);
+  document.addEventListener('change', function (ev) {
+    var el = ev.target; if (el && el.getAttribute && el.getAttribute('data-f') === 'nome' && el.closest('.pcf117-sec')) lembrarNome(el.value);
+  }, false);
+
+  // ── payload: os itens com nome (cada um com o seu ts) + os removidos ────
+  function listaPayload(i) {
+    return ler(i).filter(function (it) { return String(it.nome || '').trim(); }).map(function (it) {
+      return { uid: String(it.uid), nome: String(it.nome).trim().slice(0, 200), estado: String(it.estado || ''),
+               medicao: String(it.medicao || '').slice(0, 120), obs: String(it.obs || '').slice(0, 2000), fotos: nFotos(i, it.uid),
+               ts: Number(it.ts) || 0 };
+    });
+  }
+  // removidos = os tirados no 🗑 + os que PERDERAM o nome (tiveram nome: podem ter subido antes)
+  function remPayload(i) {
+    var out = lerRem(i).map(function (r) { return { uid: String(r.uid), nome: String(r.nome || '').slice(0, 200), ts: Number(r.ts) || 0 }; });
+    ler(i).forEach(function (it) { if (it.teveNome && !String(it.nome || '').trim()) out.push({ uid: String(it.uid), nome: '', ts: Number(it.ts) || 0 }); });
+    return out;
+  }
+  // As duas vazias ⇒ as chaves NÃO vão (o GAS entende "não sei" e não mexe no banco).
+  function aplicarPayload(r, i) {
+    if (!r) return;
+    var itens = listaPayload(i), rem = remPayload(i);
+    if (itens.length || rem.length) { r.itens_extras = itens; r.itens_extras_removidos = rem; }
+    else { delete r.itens_extras; delete r.itens_extras_removidos; }
+  }
+  window.pcf117ListaPayload = listaPayload;
+  window.pcf117RemPayload = remPayload;
+  function idxDe(args) { var m = args.length ? args[0] : currentMachine; try { return pgpGetMachineIndex(m); } catch (e) { return m || 0; } }
+  try {
+    var _bp = window.pgpBuildPayload;
+    window.pgpBuildPayload = function () { var r = _bp.apply(this, arguments); try { aplicarPayload(r, idxDe(arguments)); } catch (e) {} return r; };
+    var _bpp = window.pgpBuildPreventivaPayload;
+    window.pgpBuildPreventivaPayload = function () { var r = _bpp.apply(this, arguments); try { aplicarPayload(r, idxDe(arguments)); } catch (e) {} return r; };
+    // pgpBuildVisitRequest é uma WHITELIST (V73): sem isto a chave morre no caminho da inspeção
+    var _bvr = window.pgpBuildVisitRequest;
+    window.pgpBuildVisitRequest = function (payload) {
+      var r = _bvr.apply(this, arguments);
+      try {
+        if (r && payload && Array.isArray(payload.itens_extras)) r.itens_extras = payload.itens_extras;
+        if (r && payload && Array.isArray(payload.itens_extras_removidos)) r.itens_extras_removidos = payload.itens_extras_removidos;
+      } catch (e) {}
+      return r;
+    };
+  } catch (e) {}
+
+  // ── PDF: os itens entram nos dados do relatório (a seção é desenhada no renderPreventivaPdf) ──
+  try {
+    var _cdp = window.pgpColetarDadosPdf;
+    window.pgpColetarDadosPdf = function (midx) {
+      var d = _cdp.apply(this, arguments);
+      try { if (d) d.itensExtras = listaPayload(midx); } catch (e) {}
+      return d;
+    };
+  } catch (e) {}
+
+  // ── ganchos de ciclo de vida ────────────────────────────────────────────
+  function depois(nomeFn, fn) {
+    try {
+      var orig = window[nomeFn]; if (typeof orig !== 'function') return;
+      window[nomeFn] = function () {
+        var args = arguments, r = orig.apply(this, args);
+        try { if (r && typeof r.then === 'function') r.then(function () { try { fn.apply(null, args); } catch (e) {} }, function () {}); else fn.apply(null, args); } catch (e) {}
+        return r;
+      };
+    } catch (e) {}
+  }
+  depois('createPanel', function (idx) { anexarSecao(idx); });
+  depois('restoreState', function () { pintarTodos(); });
+  depois('restorePhotoStore', function () { pintarTodos(); });
+  depois('resetCurrent', function () { try { pintar(currentMachine); } catch (e) {} });
+  depois('switchMachine', function (idx) { try { pintarAssin(idx); } catch (e) {} });
+  // 🔴 auditoria 29/09: trocar a máquina do painel (pgpLoadMachine fora do MODO MERGE) e o
+  // "limpar máquina" zeram TODOS os data-key m<i>_* — os hidden daqui inclusive. Sem redesenhar,
+  // a tela mostrava cartões de itens que não existiam mais (e editar um deles não gravava nada).
+  // As fotos de item que ficaram sem dono saem do photoStore (senão subiriam soltas).
+  function aposLimpeza(i) {
+    try {
+      var vivos = {}; ler(i).forEach(function (it) { vivos[chaveFoto(it.uid)] = 1; });
+      var ps = photoStore[i] || {};
+      Object.keys(ps).forEach(function (k) { if (k.indexOf('extra_') === 0 && !vivos[k]) delete ps[k]; });
+    } catch (e) {}
+    pintar(i);
+  }
+  depois('pgpLoadMachine', function (eq, localDb, midx) {
+    var i; try { i = pgpGetMachineIndex(midx === undefined ? currentMachine : midx); } catch (e) { i = currentMachine; }
+    aposLimpeza(i);
+  });
+  depois('pgpClearMachine', function () { var i; try { i = pgpGetMachineIndex(currentMachine); } catch (e) { i = currentMachine; } aposLimpeza(i); });
+  depois('syncDoneButtonsForKey', function (midx, k) { if (String(k || '').indexOf('extra_') === 0) { try { var h = hid(midx); if (h) { pintarBadge(midx); try { pgpSaveDraftBreve(); } catch (e) {} } } catch (e) {} } });
+
+  function iniciar() { pintarTodos(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
 })();
 </script>
