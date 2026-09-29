@@ -1563,8 +1563,17 @@ html[data-boot="pipeline"] #pf113Splash{display:flex;position:fixed;inset:0;z-in
   Token do Postgres: SÓ o da sessão do Hub v29 (supa_token do login com PIN, do MESMO usuário);
   sem ele o motor não atende e tudo segue no GAS como no V114. Kill-switch: pc_fonte='gas'.
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V115</title>
-<meta name="app-build" content="PCF_V115" data-date="2026-09-28">
+<!--
+  PCF_V116 · O CAMPO FICA SIMPLES · 29/09/2026 · feito SOBRE o PCF_V115 no ar · par sw propertech-v118.
+  Rodapé único (Enviar ou Registrar e gerar PDF · Só o PDF · Mais opções), salvamento automático
+  que diz quando salvou, próxima máquina no fim da tela, janela de envio que lista TODAS as
+  máquinas, um só número de progresso, topo com três botões, marca de troca de peça (campo
+  substituir, gravado pelo GAS v153 no Postgres e mostrado pelo PCM V204), nome no lugar do ID
+  no card da tarefa, concluir tarefa com resposta imediata, aviso com a cor da gravidade.
+  SQL SUBST_PECAS e GAS v153 ANTES deste arquivo (sem eles a marca viaja e é ignorada).
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V116</title>
+<meta name="app-build" content="PCF_V116" data-date="2026-09-29">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -3450,18 +3459,18 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
         <div class="gs-pill-pgp" id="gsPill" onclick="abrirConfig()">
           <div style="display:flex;align-items:center;gap:4px;cursor:pointer" onclick="event.stopPropagation();pgpTestGs(true)" title="Toque para reconectar">
             <div class="gs-dot-pgp off" id="gsDotPgp"></div>
-            <span id="gsTextPgp">Sheets</span>
+            <span id="gsTextPgp">Servidor</span>
           </div>
         </div>
         <span id="pgpPendingBadge" style="display:none;background:#f97316;color:white;font-size:10px;font-weight:700;padding:3px 8px;border-radius:12px;cursor:pointer;white-space:nowrap;font-family:'Barlow Condensed',sans-serif" onclick="pgpAbrirFilaPanel()" title="Toque para ver a fila de envios">⏳</span>
       </div>
       <div class="pcf-iconbar">
         <!-- V77 (F1): modo offline deliberado -->
-        <button class="btn-sessions-header" id="btnModoOffline" onclick="pgpToggleModoOffline(this)" title="Ligar modo offline (o app para de procurar rede)">📴</button>
+        <button class="btn-sessions-header pcf116-oculto" id="btnModoOffline" onclick="pgpToggleModoOffline(this)" title="Ligar modo offline (o app para de procurar rede)">📴</button>
         <button class="btn-sessions-header" id="btnCatalogLookup" onclick="pgpToggleCatalogPanel()" title="Consulta de peças">🔍</button>
-        <button class="btn-sessions-header" onclick="salvarColeta(this)" title="Salvar coleta">💾</button>
-        <button class="btn-sessions-header" onclick="novaColeta()" title="Iniciar nova coleta">➕</button>
-        <button class="btn-sessions-header" onclick="abrirSessoes()" title="Coletas salvas">📂</button>
+        <button class="btn-sessions-header pcf116-oculto" onclick="salvarColeta(this)" title="Salvar coleta">💾</button>
+        <button class="btn-sessions-header pcf116-oculto" onclick="novaColeta()" title="Iniciar nova coleta">➕</button>
+        <button class="btn-sessions-header pcf116-oculto" onclick="abrirSessoes()" title="Coletas salvas">📂</button>
         <!-- Sprint 4E-D: botão pipeline -->
         <button class="btn-sessions-header" id="btnPipeline" onclick="pfAbrir()" title="Pipeline de OS" style="position:relative">
           🔧
@@ -3473,6 +3482,8 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
                DIZ o que é (title) e o toque leva direto à lista. -->
           <span id="pfNotifBadge" onclick="event.stopPropagation();pfAbrir();setTimeout(function(){try{pfToggleNotif();}catch(e){}},450)" title="Avisos do escritório sobre suas OSs — toque para ler" style="display:none;position:absolute;top:-4px;right:-4px;background:#ef4444;color:white;font-size:9px;font-weight:700;padding:1px 4px;border-radius:10px;min-width:14px;text-align:center;line-height:1.4;cursor:pointer"></span>
         </button>
+        <!-- PCF_V116: menu (modo offline, fila, coletas guardadas, nova coleta, conexão) -->
+        <button class="btn-sessions-header" id="pcf116BtnMenu" onclick="pcf116AbrirMenu()" title="Menu: modo offline, fila de envios, coletas guardadas">☰</button>
       </div>
     </div>
   </div>
@@ -3691,7 +3702,19 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
      antigos CONTINUAM existindo, com os mesmos ids e as mesmas funções, dentro
      de "Ações avançadas" — nada renomeado, nada removido (invariante).
      ══════════════════════════════════════════════════════════════════════ -->
-<div class="actions" style="padding-top:6px">
+<!-- PCF_V116: rodapé único. Os botões antigos continuam logo abaixo, escondidos (mesmos ids). -->
+<section id="pcf116Rodape" class="pcf116-rodape" aria-label="Fechamento da coleta">
+  <div id="pcf116Salvo" class="pcf116-salvo">💾 Tudo o que você preenche fica salvo no aparelho sozinho.</div>
+  <div id="pcf116Maquinas" class="pcf116-maqs" style="display:none"></div>
+  <button type="button" id="pcf116BtnProxima" class="pcf116-btn pcf116-prox" style="display:none" onclick="pcf116IrProxima(this)"></button>
+  <button type="button" id="pcf116BtnEnviar" class="pcf116-btn pcf116-enviar" onclick="pcf116Enviar(this)">📤 Enviar inspeção e gerar PDF</button>
+  <div class="pcf116-linha2">
+    <button type="button" id="pcf116BtnPdf" class="pcf116-btn pcf116-sec" onclick="pcf116SoPdf(this)">📄 Só o PDF</button>
+    <button type="button" id="pcf116BtnMais" class="pcf116-btn pcf116-sec" onclick="pcf116AbrirMais()">⋯ Mais opções</button>
+  </div>
+  <div id="pcf116Explica" class="pcf116-explica"></div>
+</section>
+<div class="actions" id="pcf116ConcluirAntigo" style="display:none;padding-top:6px">
   <button class="btn" id="btnConcluirVisita" onclick="pgpConcluirVisita(this)"
           style="flex:1;background:var(--green,#16a34a);color:#fff;border-color:var(--green,#16a34a);font-size:15px;font-weight:700;padding:14px">
     ✅ Concluir visita
@@ -3700,7 +3723,7 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
 <div id="pgpEtapasStatus" style="font-size:12px;margin:4px 2px 0;line-height:1.5"></div>
 <div id="pgpRegistroLinha" style="display:none"></div>
 
-<details id="pgpAcoesAvancadas" style="margin-top:8px">
+<details id="pgpAcoesAvancadas" style="display:none;margin-top:8px">
   <summary style="cursor:pointer;font-size:12.5px;color:var(--text-light);padding:6px 2px">▸ Ações avançadas (salvar, PDF, registrar separado)</summary>
 <div class="actions">
   <button class="btn btn-reset" onclick="resetCurrent()">↺ Limpar</button>
@@ -5910,6 +5933,7 @@ function buildPartsTable(p, midx, scenario) {
                entao sem ele a acao da peca (conferida/trocada) morria em todo
                salvar-e-reabrir e o percentual voltava 0% com a tela cheia. -->
           <input type="hidden" id="${pk}_acao" data-key="${pk}_acao" value="">
+          ${typeof pcf116SubstHtml === 'function' ? pcf116SubstHtml(pk) : ''}
           <div class="pgp-acao-wrap" style="display:${_pgpTipoVisita==='preventiva'?'':'none'}">
             <label class="pgp-acao-label">Ação desta peça</label>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -7014,13 +7038,16 @@ function pgpHerdarDaPrimeira(midx){
 
 function showNotification(msg) {
   const notif = document.createElement('div');
-  notif.style.cssText = 'position:fixed;top:20px;right:20px;background:var(--green);color:white;padding:12px 16px;border-radius:8px;font-size:13px;font-weight:600;z-index:500;animation:slideIn .3s ease;';
+  // PCF_V116 — verde só para sucesso: ⚠ é âmbar, erro é vermelho, e aviso longo fica o tempo de ler.
+  const _c116 = (typeof pcf116CorAviso === 'function') ? pcf116CorAviso(msg) : { bg: 'var(--green)', ms: 2500 };
+  notif.style.cssText = 'position:fixed;top:20px;right:20px;max-width:min(92vw,520px);background:' + _c116.bg + ';color:white;padding:12px 16px;border-radius:8px;font-size:13px;font-weight:600;line-height:1.4;z-index:100004;animation:slideIn .3s ease;cursor:pointer;';
   notif.textContent = msg;
+  notif.onclick = () => { try { notif.remove(); } catch (e) {} };
   document.body.appendChild(notif);
   setTimeout(() => {
     notif.style.animation = 'slideOut .3s ease';
     setTimeout(() => notif.remove(), 300);
-  }, 2500);
+  }, _c116.ms);
 }
 
 function copyClientData() {
@@ -10086,6 +10113,11 @@ function pgpColetarDadosPdf(midx) {
     const ptObsEl = document.getElementById(pk + '_obs');
     const ptObsV = ptObsEl ? String(ptObsEl.value || '').trim() : '';
     if (ptObsV) pecasObs.push(pt.label + ': ' + ptObsV);
+    // PCF_V116 — a recomendação de troca do técnico entra no relatório (texto sem emoji: o PDF usa fonte padrão)
+    try {
+      const _sb116 = String((document.getElementById(pk + '_subst') || {}).value || '');
+      if (_sb116 === 'urgente' || _sb116 === 'proxima') pecasObs.push(pt.label + ': TROCA RECOMENDADA - ' + (_sb116 === 'urgente' ? 'URGENTE' : 'na próxima visita'));
+    } catch (e116) {}
 
     const acaoEl = document.getElementById(pk + '_acao');
     const acao = acaoEl ? String(acaoEl.value || '') : '';
@@ -10361,7 +10393,7 @@ async function _gerarPDF_(btnEl) {
   }
 
   // FIX perda de dados (aditivo) - gerar o PDF NAO registra a preventiva.
-  if (count > 0 && _pgpTipoVisita === 'preventiva') {
+  if (count > 0 && _pgpTipoVisita === 'preventiva' && !window._pcf116PosRegistro) {   // PCF_V116: não pergunta logo depois de registrar
     let _algumaPronta = false;
     for (let _mi = 0; _mi < machines.length; _mi++) {
       try { if (pgpMaquinaPronta(_mi).pronta) { _algumaPronta = true; break; } } catch (_e) {}
@@ -11891,6 +11923,7 @@ function buildPartsTablePistao(p, midx){
     +   '</div>'
     +   '<div class="photo-thumbs-mini" data-midx="'+midx+'" data-pkey="'+fotoKey+'"></div>') : '')
     +   '<input type="hidden" id="'+pk+'_acao" data-key="'+pk+'_acao" value="">'
+    +   (typeof pcf116SubstHtml === 'function' ? pcf116SubstHtml(pk) : '')   // PCF_V116
     +   '<div class="pgp-acao-wrap" style="display:'+(_pgpTipoVisita==='preventiva'?'':'none')+'">'
     +     '<label class="pgp-acao-label">Ação executada</label>'
     +     '<div style="display:flex;gap:8px;flex-wrap:wrap">'
@@ -12139,7 +12172,7 @@ function pgpSetGsStatus(state){
   dot.style.background='';
   if(state==='ok'){
     dot.className='gs-dot-pgp';
-    txt.textContent='Sheets ✓';
+    txt.textContent='Online ✓';   // PCF_V116: o técnico não precisa saber que é uma planilha
     _pgpGsConnected=true;
     // v26: se o cache de clientes foi montado antes de conectar (ou nunca foi montado),
     // força recarregar agora que o Sheets está disponível
@@ -12162,7 +12195,7 @@ function pgpSetGsStatus(state){
     txt.textContent='Conectando...';
   } else {
     dot.className='gs-dot-pgp off';
-    txt.textContent = pgpModoOfflineAtivo() ? '📴 Offline' : 'Sheets';
+    txt.textContent = pgpModoOfflineAtivo() ? '📴 Offline' : 'Servidor';   // PCF_V116
     _pgpGsConnected=false;
   }
   // V81 (04/08) — FONTE ÚNICA DE VERDADE. O chip do topo e o "Status:" do rodapé
@@ -16888,9 +16921,9 @@ function pgpAbrirSeletorRegistro(){
       '</label>';
     }).join('');
     ov.innerHTML =
-      '<div style="background:#fff;width:100%;max-width:520px;border-radius:16px 16px 0 0;max-height:86vh;display:flex;flex-direction:column;box-shadow:0 -4px 24px rgba(0,0,0,.28);font-family:inherit">' +
+      '<div style="background:#fff;color:#0f172a;width:100%;max-width:520px;border-radius:16px 16px 0 0;max-height:86vh;display:flex;flex-direction:column;box-shadow:0 -4px 24px rgba(0,0,0,.28);font-family:inherit">' +
         '<div style="padding:16px 18px 4px;font-weight:700;font-size:17px">Registrar preventiva</div>' +
-        '<div style="padding:0 18px 10px;font-size:12px;color:#666">Marque quais máquinas registrar agora. A máquina aberta já vem marcada — desmarque para enviar individualmente.</div>' +
+        '<div style="padding:0 18px 10px;font-size:12.5px;color:#334155">Marque quais máquinas registrar agora. A máquina aberta já vem marcada — desmarque para enviar individualmente.</div>' +
         '<div style="overflow:auto;padding:0 18px;-webkit-overflow-scrolling:touch">' + linhas + '</div>' +
         '<div style="display:flex;gap:10px;padding:12px 18px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));border-top:1px solid #eee">' +
           '<button type="button" class="pgp-reg-cancel" style="flex:1;padding:14px;border-radius:10px;border:1px solid #ccc;background:#fff;font-weight:600;font-size:15px;cursor:pointer">Cancelar</button>' +
@@ -19603,10 +19636,15 @@ function pfBuildCard(t) {
   var pfUser = (window.PROPER_SESSION && window.PROPER_SESSION.tecnico)
     ? (window.PROPER_SESSION.tecnico.id || window.PROPER_SESSION.tecnico.nome || '') : '';
   var lockPor       = t.Lock_Por || '';
-  var lockedByOther = lockPor && lockPor !== pfUser;
-  var lockedByMe    = lockPor && lockPor === pfUser;
+  // PCF_V116 — mesmo dono por id OU nome (lock gravado com nome aparecia 'em execução por' o próprio dono)
+  var _pf116Eu       = (typeof pcf116EhEu === 'function') ? pcf116EhEu(lockPor) : false;
+  var lockedByOther = lockPor && lockPor !== pfUser && !_pf116Eu;
+  var lockedByMe    = lockPor && (lockPor === pfUser || _pf116Eu);
   var perfil        = t.Perfil_Responsavel || '';
-  var perfilHtml    = perfil ? '<div class="pf-card-meta">👤 Perfil: ' + perfil + '</div>' : '';
+  // PCF_V116 — o card diz QUEM (designado ou responsável da OS); o perfil do modelo só sem pessoa nenhuma
+  var perfilHtml    = (typeof pcf116LinhaDono === 'function') ? pcf116LinhaDono(t, perfil)
+                    : (perfil ? '<div class="pf-card-meta">👤 Perfil: ' + perfil + '</div>' : '');
+  var _pf116Nm      = function (v) { return (typeof pcf116Nome === 'function') ? pcf116Nome(v) : v; };
   // ── V78 (ADM/F1) — tarefa de ADMINISTRAÇÃO: visível, porém não executável ──
   // Lê o Executor CARIMBADO na tarefa, nunca o NOME do perfil: o carimbo viaja
   // com o pipeline (offline-safe) e renomear o perfil não reescreve o que já
@@ -19626,7 +19664,9 @@ function pfBuildCard(t) {
 
   var metaHtml = '';
   if (st === 'completo' && (conclBy || conclAt)) {
-    metaHtml = '<div class="pf-card-meta">✓ ' + (conclBy ? conclBy : '') + (conclAt ? ' · ' + conclAt : '') + '</div>';
+    metaHtml = '<div class="pf-card-meta">✓ ' + (conclBy ? _pf116Nm(conclBy) : '') + (conclAt ? ' · ' + conclAt : '') +
+               (t._pf116Confirmando ? ' · <span style="color:#fbbf24">⏳ confirmando com o servidor…</span>' : '') +
+               (t._pf116Fila ? ' · <span style="color:#fbbf24">📴 na fila do aparelho — sobe ao conectar</span>' : '') + '</div>';
   }
   // V107 (Z1) — a explicacao entra no MESMO slot, so para os dois status que
   // nao tinham nenhuma. Nao mexe no caminho de `completo`.
@@ -19709,10 +19749,10 @@ function pfBuildCard(t) {
       var _v108D = _v108Venc.toDateString() === new Date().toDateString() ? '' : ' de ' + ('0' + _v108Venc.getDate()).slice(-2) + '/' + ('0' + (_v108Venc.getMonth() + 1)).slice(-2);
       lockHtml = lockedByMe
         ? '<div class="pf-card-meta" style="color:#f59e0b">⏰ Sua execução venceu às ' + _v108H + _v108D + ' — toque para retomar</div>'
-        : '<div class="pf-card-meta" style="color:#f59e0b">🔓 A execução de ' + lockPor + ' venceu às ' + _v108H + _v108D + ' — a tarefa está livre</div>';
+        : '<div class="pf-card-meta" style="color:#f59e0b">🔓 A execução de ' + _pf116Nm(lockPor) + ' venceu às ' + _v108H + _v108D + ' — a tarefa está livre</div>';
       acaoHtml = '<div style="margin-top:10px"><button class="pf-btn pf-btn-concluir" onclick="pfAssumirTarefa(\'' + tidSafe + '\',this)">' + (lockedByMe ? '🔒 Retomar a tarefa' : '🔒 Assumir tarefa') + '</button></div>';
     } else if (lockedByOther) {
-      lockHtml = '<div class="pf-card-meta" style="color:#f59e0b">🔒 Em execução por ' + lockPor + '</div>';
+      lockHtml = '<div class="pf-card-meta" style="color:#f59e0b">🔒 Em execução por ' + _pf116Nm(lockPor) + '</div>';
       acaoHtml = ''; // outro técnico detém o lock — sem ações
     } else if (!lockPor && (st === 'pendente' || st === 'em_andamento')) {
       lockHtml = '';
@@ -20548,6 +20588,9 @@ async function pfConfirmarTarefa(tarefaId) {
     return;
   }
 
+  // PCF_V116 — o card vira ✓ "confirmando…" NA HORA; o servidor confirma atrás. Recusa ⇒ a
+  // releitura (soft) traz a verdade de volta; falha de rede ⇒ fila, como sempre.
+  try { if (typeof pcf116ConclusaoOtimista === 'function') pcf116ConclusaoOtimista(tarefaId, usuario); } catch (e116) {}
   var _rConf = null;   // V78 (F2) — envelope da resposta, para a tela contar a verdade
   try {
     _rConf = await pgpPostJson('updateTarefaStatus', {
@@ -20577,6 +20620,7 @@ async function pfConfirmarTarefa(tarefaId) {
         var _ci = (_pfTarefas || []).findIndex(function (x) { return String(x.Tarefa_ID) === String(tarefaId); });
         if (_ci >= 0) {
           _pfTarefas[_ci] = Object.assign({}, _pfTarefas[_ci], _rConf.tarefa);
+          try { delete _pfTarefas[_ci]._pf116Confirmando; } catch (e116) {}   // PCF_V116
           if (typeof pfCacheGravarPipeline === 'function') pfCacheGravarPipeline(_pfOsId, _pfTarefas);
           await pfLoadPipeline({ _warmData: { tarefas: _pfTarefas } });
         }
@@ -30271,5 +30315,831 @@ try{
 </script>
 
 <!-- ████ FIM BLOCOS PADRAO UX ████ -->
+<!-- ████ PCF_V116 (CAMPO SIMPLES) ████ -->
+<style id="pcf116Estilo">
+/* PCF_V116 (29/09/2026) — rodapé único, topo enxuto, marca de troca de peça, toast por gravidade */
+.pcf116-rodape{margin:14px 0 4px;padding:14px 12px 12px;border-radius:14px;background:#111a2e;border:1px solid #334155;display:flex;flex-direction:column;gap:10px}
+.pcf116-salvo{font-size:12.5px;color:#94a3b8;line-height:1.4}
+.pcf116-salvo b{color:#e2e8f0;font-weight:700}
+.pcf116-salvo .pcf116-fila{color:#fbbf24;font-weight:700}
+.pcf116-maqs{display:flex;gap:8px;flex-wrap:wrap}
+.pcf116-maq{flex:1 1 140px;min-height:52px;text-align:left;border-radius:10px;border:2px solid #334155;background:#1e293b;color:#f1f5f9;padding:8px 10px;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;cursor:pointer;line-height:1.2}
+.pcf116-maq small{display:block;font-family:'Barlow',sans-serif;font-weight:500;font-size:11.5px;color:#cbd5e1;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pcf116-maq .pcf116-bar{display:block;height:5px;background:#334155;border-radius:4px;margin-top:5px;overflow:hidden}
+.pcf116-maq .pcf116-bar i{display:block;height:100%}
+.pcf116-maq.ativa{border-color:#f58220;background:#243349}
+.pcf116-maq.ok{border-color:#22c55e}
+.pcf116-btn{width:100%;min-height:52px;border-radius:12px;font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:800;letter-spacing:.2px;cursor:pointer;border:2px solid transparent;padding:10px 12px;line-height:1.15}
+.pcf116-prox{background:#f58220;color:#111827;border-color:#f58220}
+.pcf116-enviar{background:#16a34a;color:#fff;border-color:#16a34a}
+.pcf116-enviar.secundario{background:transparent;color:#86efac;border-color:#16a34a;font-size:15px}
+.pcf116-linha2{display:flex;gap:8px}
+.pcf116-sec{background:#1e293b;color:#e2e8f0;border-color:#475569;font-size:15px;min-height:48px}
+.pcf116-explica{font-size:12px;color:#94a3b8;line-height:1.45}
+.pcf116-btn:disabled,.pcf116-btn.is-busy{opacity:.6;cursor:wait}
+/* janela de baixo (confirmar envio, mais opções, menu do topo) — fundo branco, texto ESCURO sempre */
+.pcf116-ov{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100003;display:flex;align-items:flex-end;justify-content:center}
+.pcf116-sheet{background:#fff;color:#0f172a;width:100%;max-width:560px;border-radius:16px 16px 0 0;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 -4px 24px rgba(0,0,0,.3);font-family:'Barlow',sans-serif}
+.pcf116-sheet h3{font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:800;color:#0f172a;padding:16px 18px 2px}
+.pcf116-sheet .pcf116-sub{padding:0 18px 10px;font-size:13px;color:#334155;line-height:1.45}
+.pcf116-sheet .pcf116-corpo{overflow:auto;padding:0 18px;-webkit-overflow-scrolling:touch}
+.pcf116-sheet .pcf116-pe{display:flex;gap:10px;padding:12px 18px calc(16px + env(safe-area-inset-bottom,0px));border-top:1px solid #e2e8f0}
+.pcf116-sheet .pcf116-pe button{flex:1;min-height:52px;border-radius:10px;font-weight:700;font-size:15px;cursor:pointer;font-family:'Barlow Condensed',sans-serif}
+.pcf116-sheet .pcf116-cancel{border:1px solid #94a3b8;background:#fff;color:#0f172a}
+.pcf116-sheet .pcf116-ok{flex:2!important;border:none;background:#16a34a;color:#fff}
+.pcf116-sheet .pcf116-ok.aviso{background:#b45309}
+.pcf116-linha-maq{display:flex;align-items:center;gap:12px;padding:12px 2px;border-bottom:1px solid #e2e8f0;cursor:pointer}
+.pcf116-linha-maq input{width:24px;height:24px;flex:none;accent-color:#16a34a}
+.pcf116-linha-maq .n{font-weight:700;font-size:15px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pcf116-linha-maq .s{font-size:12.5px;color:#334155;margin-top:2px}
+.pcf116-linha-maq .falta{font-size:12.5px;color:#b45309;font-weight:600;margin-top:3px}
+.pcf116-linha-maq .ja{font-size:12.5px;color:#15803d;font-weight:600;margin-top:3px}
+.pcf116-linha-maq .pct{font-weight:800;font-size:15px;flex:none;min-width:44px;text-align:right}
+.pcf116-item{display:flex;align-items:center;gap:12px;width:100%;min-height:54px;padding:10px 4px;border:0;border-bottom:1px solid #e2e8f0;background:#fff;color:#0f172a;font-size:15.5px;font-weight:600;text-align:left;cursor:pointer;font-family:'Barlow',sans-serif}
+.pcf116-item .ic{font-size:20px;width:28px;text-align:center;flex:none}
+.pcf116-item small{display:block;font-weight:400;font-size:12px;color:#475569;margin-top:1px}
+.pcf116-item.perigo{color:#b91c1c}
+.pcf116-item:disabled{opacity:.45;cursor:not-allowed}
+/* marca "precisa trocar" na peça */
+.pcf116-subst{margin-top:10px;padding-top:8px;border-top:1px dashed #334155}
+.pcf116-subst-pills{display:flex;gap:8px;flex-wrap:wrap}
+.pcf116-sp{flex:1;min-height:44px;padding:8px 6px;border:2px solid #334155;border-radius:8px;background:#111a2e;color:#e2e8f0;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;cursor:pointer}
+.pcf116-sp.on[data-v="nao"]{border-color:#64748b;background:#1e293b}
+.pcf116-sp.on[data-v="proxima"]{border-color:#f59e0b;background:#3a2a15;color:#fde68a}
+.pcf116-sp.on[data-v="urgente"]{border-color:#ef4444;background:#3b1212;color:#fecaca}
+.pt-quick-box.pcf116-marcada-proxima{box-shadow:inset 4px 0 0 #f59e0b}
+.pt-quick-box.pcf116-marcada-urgente{box-shadow:inset 4px 0 0 #ef4444}
+/* topo enxuto: o número da máquina já está nas abas logo abaixo */
+#machineCounter{display:none!important}
+.btn-sessions-header.pcf116-oculto{display:none!important}
+</style>
+<script>
+// ════════════════════════════════════════════════════════════════════════════
+// PCF_V116 — 29/09/2026 — O CAMPO FICA SIMPLES (pedido do Fernando com 6 prints)
+//  1. Rodapé único: "Enviar inspeção (ou Registrar preventiva) e gerar PDF", "Só o PDF",
+//     "Mais opções". O salvamento é automático e a tela DIZ quando salvou. Os botões antigos
+//     continuam no DOM (mesmos ids e funções), escondidos — nada renomeado, nada removido.
+//  2. "Próxima máquina" no fim da tela, com o progresso de cada uma — sem rolar até o topo.
+//  3. O envio nunca é ambíguo: a janela lista TODAS as máquinas da coleta, marca as que têm
+//     dado e ainda não foram enviadas, e diz quanto falta em cada uma. Sem janela só quando é
+//     1 máquina completa.
+//  4. UM número de progresso (campos + fotos + ação da peça na preventiva) no topo, nas abas,
+//     no rodapé e na janela de registro — antes eram duas contas diferentes (o 43% dos prints).
+//  5. Topo: 🔍 peças · 🔧 minhas OS · ☰ menu (offline, fila, coletas guardadas, nova coleta…).
+//  6. Peça: "Precisa trocar? Não · Próxima visita · Urgente" — viaja no envio (campo
+//     `substituir`), o GAS v153 grava no Postgres e o PCM V204 mostra em "🔁 Peças a trocar".
+//  7. Card da tarefa: mostra QUEM (designado ou responsável da OS), nunca o ID cru (TEC-001);
+//     o perfil do modelo só aparece quando não há pessoa nenhuma.
+//  8. Concluir tarefa responde na hora (o card vira ✓ "confirmando…"); o servidor confirma
+//     atrás. Recusa do servidor desfaz (a releitura traz a verdade); falta de rede vai para a
+//     fila como sempre.
+//  9. Aviso na tela com a cor da gravidade (⚠ âmbar, ✗/erro vermelho) e tempo para ler.
+// ════════════════════════════════════════════════════════════════════════════
+(function () {
+  'use strict';
+  function $(id) { return document.getElementById(id); }
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function hhmm(d) { d = d || new Date(); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+  function ehPrev() { try { return _pgpTipoVisita === 'preventiva'; } catch (e) { return false; } }
+  function nMaq() { try { return (machines && machines.length) || 0; } catch (e) { return 0; } }
+  function atual() { try { return currentMachine || 0; } catch (e) { return 0; } }
+  function campo(i, k) {
+    var el = document.querySelector('[data-key="m' + i + '_' + k + '"]');
+    return el ? String(el.value || '').trim() : '';
+  }
+
+  // ── 4 · PROGRESSO ÚNICO ─────────────────────────────────────────────────
+  // Campos + fotos do painel da máquina (a mesma conta do "Faltam N" do topo) e, na
+  // preventiva, as peças sem ação (Conferida/Trocada/N/A) — sem ação o GAS recusa a peça.
+  function progresso(i) {
+    var out = { total: 0, done: 0, falta: 0, pct: 0, semAcao: 0 };
+    try {
+      var panel = $('panel-' + i);
+      if (panel) {
+        out.total = panel.querySelectorAll('.field-item').length + panel.querySelectorAll('.photo-item').length;
+        out.done = panel.querySelectorAll('.field-item.checked').length +
+                   panel.querySelectorAll('.photo-item.photo-checked').length +
+                   panel.querySelectorAll('.photo-item.photo-nd').length;
+      }
+      if (ehPrev()) {
+        var parts = [];
+        try { parts = pgpPartsDe(i) || []; } catch (e) { parts = []; }
+        parts.forEach(function (pt) {
+          var pk = 'm' + i + '_' + pt.k;
+          var na = $(pk + '_na'), ac = $(pk + '_acao');
+          if (!na && !ac) return;   // tabela de peças ainda não aberta: não conta
+          out.total++;
+          if ((na && na.classList.contains('active')) || (ac && ac.value)) out.done++;
+          else out.semAcao++;
+        });
+      }
+      out.falta = Math.max(0, out.total - out.done);
+      out.pct = out.total > 0 ? Math.min(100, Math.round(out.done / out.total * 100)) : 0;
+    } catch (e) {}
+    return out;
+  }
+  window.pcf116Progresso = progresso;
+
+  function nomeMaq(i) {
+    var mod = campo(i, 'modelo') || campo(i, 'marca');
+    var ns = campo(i, 'ns'), tag = campo(i, 'tag');
+    var id = ns ? ('série ' + ns) : (tag ? ('TAG ' + tag) : '');
+    return { titulo: 'Máq. ' + (i + 1) + (mod ? ' — ' + mod : ''), sub: id };
+  }
+  // A CHAVE do registro tem de ser a MESMA do payload (pgpBuildPayload): máquina carregada do
+  // banco e compatível com a tela ⇒ o id dela; senão ⇒ pgpMachineKey(razão, marca, modelo, série).
+  // 🔴 O V102 procurava por id OU pela série crua: máquina que não veio do banco era gravada com a
+  //    chave montada e procurada pela série ⇒ "✗ não confirmado" com a visita gravada.
+  function chavesDe(i) {
+    var ks = [];
+    try {
+      var eq = pgpGetLoadedMachineForIndex(i);
+      var ck = function (x) { try { return compactKey(String(x || '')); } catch (e) { return String(x || '').toLowerCase(); } };
+      var compat = function (a, b) { var ka = ck(a), kb = ck(b); return !ka || !kb || ka === kb; };
+      if (eq && eq.id && compat(eq.brand, campo(i, 'marca')) && compat(eq.model, campo(i, 'modelo')) && compat(eq.serial, campo(i, 'ns'))) ks.push(eq.id);
+      try { ks.push(pgpMachineKey(campo(i, 'razao_social'), campo(i, 'marca'), campo(i, 'modelo'), campo(i, 'ns'))); } catch (e) {}
+      if (eq && (eq.id || eq.machine_id)) ks.push(eq.id || eq.machine_id);
+      var ns = ''; try { ns = pgpFieldVal(i, 'ns'); } catch (e) {}
+      if (ns) ks.push(ns);
+    } catch (e) {}
+    return ks.filter(function (k, j) { return k && ks.indexOf(k) === j; });
+  }
+  // 🔴 tipo EXPLÍCITO: fora de OS o pgpEnviarTodasPreventivas volta a tela para 'inspecao' ao
+  //    registrar — procurar pelo tipo ATUAL da tela achava '…|inspecao' com o registro em '…|preventiva'.
+  function registroDe(i, tipo) {
+    try {
+      var todos = pgpRegistroTudo(), melhor = null, tp = tipo || _pgpTipoVisita;
+      chavesDe(i).forEach(function (k) {
+        var r = todos[pgpRegistroChave(k, tp)];
+        if (r && (!melhor || (r.quando || 0) > (melhor.quando || 0))) melhor = r;
+      });
+      return melhor;
+    } catch (e) { return null; }
+  }
+  window.pcf116RegistroDe = registroDe;
+  // "já enviada" só vale para registro de HOJE: o registro da preventiva do mês passado da mesma
+  // máquina não pode desmarcar a coleta de hoje na janela de envio.
+  function registroHoje(i, tipo) {
+    var r = registroDe(i, tipo);
+    if (!r || !r.quando) return null;
+    return (new Date(r.quando)).toDateString() === (new Date()).toDateString() ? r : null;
+  }
+  // a linha "✅ Inspeção registrada …" da máquina aberta passa a achar o registro certo
+  try { window.pgpRegistroDaMaquinaAtiva = function () { return registroDe(atual()); }; } catch (e) {}
+  function temDado(i) { try { return pgpHasMachineData(i); } catch (e) { return false; } }
+  function corPct(p) { return p >= 100 ? '#22c55e' : (p >= 50 ? '#f59e0b' : '#ef4444'); }
+
+  // a janela antiga de registro passa a usar o MESMO número
+  try { window.pgpMaquinaPercent = function (midx) { var i = 0; try { i = pgpGetMachineIndex(midx); } catch (e) { i = midx || 0; } return progresso(i).pct; }; } catch (e) {}
+
+  // ── 1 · RODAPÉ ──────────────────────────────────────────────────────────
+  var _ultSalvo = null, _falhaSalvar = false;
+  function pintarSalvo() {
+    var el = $('pcf116Salvo'); if (!el) return;
+    var t = _falhaSalvar ? '<span style="color:#fca5a5;font-weight:700">⚠ Não consegui salvar no aparelho (memória cheia?). Envie agora ou use ☰ → Coletas guardadas para liberar espaço.</span>'
+          : _ultSalvo ? ('💾 Salvo no aparelho às <b>' + hhmm(_ultSalvo) + '</b> — pode fechar o app sem perder nada.')
+                      : '💾 Tudo o que você preenche fica salvo no aparelho sozinho.';
+    try {
+      var c = pgpFilaContagens();
+      var ag = (c.sync || 0) + (c.drive || 0), cf = (c.dead || 0) + (c.perdidos || 0);
+      if (ag) t += ' <span class="pcf116-fila">⏳ ' + ag + ' envio(s) esperando sinal — saem sozinhos.</span>';
+      if (cf) t += ' <span class="pcf116-fila" style="color:#fca5a5">⚠ ' + cf + ' para conferir (☰ → Fila de envios).</span>';
+    } catch (e) {}
+    el.innerHTML = t;
+  }
+  function proximaDe(cur) {
+    var n = nMaq(); if (n < 2) return -1;
+    for (var k = 1; k < n; k++) {
+      var j = (cur + k) % n;
+      var r = registroHoje(j);
+      if (r && r.estado !== 'fila' && progresso(j).pct >= 100) continue;   // já enviada e completa
+      if (progresso(j).pct < 100 || !r) return j;
+    }
+    return -1;
+  }
+  function atualizar() {
+    var box = $('pcf116Rodape'); if (!box) return;
+    var n = nMaq(), cur = atual();
+    // máquinas
+    var maqs = $('pcf116Maquinas');
+    if (maqs) {
+      if (n > 1) {
+        var h = '';
+        for (var i = 0; i < n; i++) {
+          var pr = progresso(i), nm = nomeMaq(i), rg = registroHoje(i);
+          var est = rg ? (rg.estado === 'fila' ? ' · ⏳ na fila' : ' · ✅ enviada') : '';
+          h += '<button type="button" class="pcf116-maq' + (i === cur ? ' ativa' : '') + (pr.pct >= 100 ? ' ok' : '') + '" onclick="pcf116IrMaquina(' + i + ')">' +
+               esc('Máq. ' + (i + 1)) + ' · ' + pr.pct + '%' + (pr.pct >= 100 ? ' ✓' : '') + esc(est) +
+               '<small>' + esc((nm.titulo.split(' — ')[1] || '') + (nm.sub ? ' · ' + nm.sub : '')) + '</small>' +
+               '<span class="pcf116-bar"><i style="width:' + pr.pct + '%;background:' + corPct(pr.pct) + '"></i></span></button>';
+        }
+        maqs.innerHTML = h; maqs.style.display = '';
+      } else { maqs.innerHTML = ''; maqs.style.display = 'none'; }
+    }
+    // próxima
+    var bp = $('pcf116BtnProxima'), prox = proximaDe(cur);
+    if (bp) {
+      if (prox >= 0) {
+        var nmp = nomeMaq(prox), prp = progresso(prox);
+        bp.innerHTML = esc('Próxima: ' + nmp.titulo) + (nmp.sub ? '<br><span style="font-size:13px;font-weight:600">' + esc(nmp.sub) + ' · ' + prp.pct + '% preenchida</span>' : '') + ' →';
+        bp.dataset.idx = String(prox); bp.style.display = '';
+      } else { bp.style.display = 'none'; bp.dataset.idx = ''; }
+    }
+    // enviar
+    var be = $('pcf116BtnEnviar');
+    if (be && !be.classList.contains('is-busy')) {
+      var comDado = 0; for (var j = 0; j < n; j++) if (temDado(j)) comDado++;
+      var verbo = ehPrev() ? '🔧 Registrar preventiva' : '📤 Enviar inspeção';
+      be.textContent = verbo + (comDado > 1 ? ' das ' + comDado + ' máquinas' : '') + ' e gerar PDF';
+      be.classList.toggle('secundario', prox >= 0);
+    }
+    var ex = $('pcf116Explica');
+    if (ex) {
+      ex.textContent = (prox >= 0 ? 'Ainda falta preencher outra máquina desta coleta. ' : '') +
+        (ehPrev() ? 'Registrar grava a preventiva no sistema e já gera o PDF (com assinaturas). '
+                  : 'Enviar grava a inspeção no sistema e já gera o PDF. ') +
+        'Antes de enviar, você confere a lista de máquinas.';
+    }
+    pintarSalvo();
+    try { repintarSubst(); } catch (e) {}
+    try { for (var w = 0; w < n; w++) updateTabName(w); } catch (e) {}
+  }
+  window.pcf116Atualizar = atualizar;
+
+  window.pcf116IrMaquina = function (i) {
+    try { switchMachine(i); } catch (e) {}
+    try {
+      var tabs = $('machineTabs') || $('panel-' + i);
+      if (tabs && tabs.scrollIntoView) tabs.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      else window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (e) { try { window.scrollTo(0, 0); } catch (e2) {} }
+    setTimeout(atualizar, 60);
+  };
+  window.pcf116IrProxima = function (btn) {
+    var i = parseInt((btn && btn.dataset.idx) || '', 10);
+    if (isNaN(i)) return;
+    try { pgpFlushDraftPendente(); } catch (e) {}
+    window.pcf116IrMaquina(i);
+  };
+
+  // ── janelas de baixo (sem alert/confirm nativos) ────────────────────────
+  function abrirSheet(html, aoMontar) {
+    var ov = document.createElement('div');
+    ov.className = 'pcf116-ov';
+    ov.innerHTML = '<div class="pcf116-sheet" role="dialog" aria-modal="true">' + html + '</div>';
+    document.body.appendChild(ov);
+    var fechado = false;
+    function fechar() { if (fechado) return; fechado = true; try { document.body.removeChild(ov); } catch (e) {} }
+    ov.addEventListener('click', function (e) { if (e.target === ov) fechar(); });
+    if (aoMontar) aoMontar(ov, fechar);
+    return fechar;
+  }
+
+  // ── 3 · ENVIAR (a janela que acaba com a ambiguidade) ───────────────────
+  function confirmarMaquinas() {
+    return new Promise(function (resolve) {
+      var n = nMaq(), linhas = '', algumaMarcada = false;
+      for (var i = 0; i < n; i++) {
+        var pr = progresso(i), nm = nomeMaq(i), rg = registroHoje(i), td = temDado(i);
+        var marcar = td && !(rg && rg.estado !== 'fila');
+        if (marcar) algumaMarcada = true;
+        var info = '';
+        if (!td) info = '<div class="falta">Sem dados — não será enviada</div>';
+        else if (rg) info = '<div class="ja">' + (rg.estado === 'fila' ? '⏳ Já está na fila (sai ao conectar)' : '✅ Já enviada às ' + hhmm(new Date(rg.quando || Date.now()))) + '</div>';
+        if (td && pr.falta > 0) info += '<div class="falta">⚠ Faltam ' + pr.falta + ' item(ns)' + (pr.semAcao ? ' · ' + pr.semAcao + ' peça(s) sem ação (Conferida/Trocada/N/A) — sem ação a preventiva desta máquina é recusada' : '') + '</div>';
+        linhas += '<label class="pcf116-linha-maq"><input type="checkbox" class="pcf116-cb" data-idx="' + i + '"' + (marcar ? ' checked' : '') + (td ? '' : ' disabled') + '>' +
+          '<div style="flex:1;min-width:0"><div class="n">' + esc(nm.titulo) + '</div>' + (nm.sub ? '<div class="s">' + esc(nm.sub) + '</div>' : '') + info + '</div>' +
+          '<div class="pct" style="color:' + (pr.pct >= 100 ? '#15803d' : (pr.pct >= 50 ? '#b45309' : '#b91c1c')) + '">' + pr.pct + '%</div></label>';
+      }
+      var titulo = ehPrev() ? 'Registrar preventiva' : 'Enviar inspeção';
+      abrirSheet('<h3>' + titulo + '</h3><div class="pcf116-sub">Confira as máquinas que vão agora. Depois do envio o PDF é gerado. O que você desmarcar continua salvo no aparelho para enviar depois.</div>' +
+        '<div class="pcf116-corpo">' + linhas + '</div>' +
+        '<div class="pcf116-pe"><button type="button" class="pcf116-cancel">Voltar</button><button type="button" class="pcf116-ok"></button></div>',
+        function (ov, fechar) {
+          var ok = ov.querySelector('.pcf116-ok');
+          function rot() {
+            var sel = [].slice.call(ov.querySelectorAll('.pcf116-cb')).filter(function (c) { return c.checked; });
+            var incompleta = sel.some(function (c) { return progresso(parseInt(c.dataset.idx, 10)).falta > 0; });
+            ok.disabled = !sel.length;
+            ok.classList.toggle('aviso', incompleta);
+            ok.textContent = !sel.length ? 'Marque ao menos uma' : ((ehPrev() ? '🔧 Registrar ' : '📤 Enviar ') + sel.length + (sel.length > 1 ? ' máquinas' : ' máquina') + (incompleta ? ' mesmo incompleta' : '') + ' e gerar PDF');
+          }
+          ov.querySelectorAll('.pcf116-cb').forEach(function (c) { c.addEventListener('change', rot); });
+          rot();
+          ov.querySelector('.pcf116-cancel').onclick = function () { fechar(); resolve(null); };
+          ov.addEventListener('click', function (e) { if (e.target === ov) resolve(null); });
+          ok.onclick = function () {
+            var idx = [].slice.call(ov.querySelectorAll('.pcf116-cb')).filter(function (c) { return c.checked; }).map(function (c) { return parseInt(c.dataset.idx, 10); });
+            fechar(); resolve(idx);
+          };
+          if (!algumaMarcada) ok.textContent = 'Marque ao menos uma';
+        });
+    });
+  }
+
+  // pgpEnviarGS / pgpEnviarTodasPreventivas abrem o seletor antigo com 2+ máquinas; aqui ele
+  // recebe a escolha já feita (uma vez só) em vez de perguntar de novo.
+  window._pcf116Sel = null;
+  try {
+    var _selOrig = window.pgpAbrirSeletorRegistro;
+    window.pgpAbrirSeletorRegistro = function () {
+      if (Array.isArray(window._pcf116Sel)) { var s = window._pcf116Sel.slice(); window._pcf116Sel = null; return Promise.resolve(s); }
+      return _selOrig.apply(this, arguments);
+    };
+  } catch (e) {}
+
+  var _enviando = false;
+  window.pcf116Enviar = async function (btn) {
+    if (_enviando) return;
+    try { pgpFlushDraftPendente(); } catch (e) {}
+    var n = nMaq(), comDado = [];
+    for (var i = 0; i < n; i++) if (temDado(i)) comDado.push(i);
+    if (!comDado.length) { try { showNotification('⚠ Preencha ao menos uma máquina antes de enviar.'); } catch (e) {} return; }
+    var sel;
+    var unicaCompleta = (n === 1 && progresso(0).falta === 0 && !registroHoje(0));
+    if (unicaCompleta) sel = [0];
+    else {
+      sel = await confirmarMaquinas();
+      if (!sel || !sel.length) return;
+    }
+    _enviando = true;
+    var eraPrev = ehPrev();
+    if (btn) { btn.disabled = true; btn.classList.add('is-busy'); btn.textContent = '⏳ Enviando… não feche a tela'; }
+    var etapas = [
+      { rot: 'Salvar no aparelho', st: 'indo' },
+      { rot: (ehPrev() ? 'Registrar a preventiva' : 'Enviar a inspeção') + (sel.length > 1 ? ' (' + sel.length + ' máquinas)' : ''), st: '' },
+      { rot: 'Gerar o PDF' + (ehPrev() ? ' (com assinaturas)' : ''), st: '' }
+    ];
+    var pintar = function () { try { pgpEtapaPintar(etapas); } catch (e) {} };
+    var falhou = false, resumo = { fila: 0, faltou: 0, semPdf: false };
+    try {
+      pintar();
+      try {
+        var sv = await saveCurrentSession();
+        if (sv === false) { etapas[0].st = 'erro'; etapas[0].msg = 'você cancelou'; falhou = true; }
+        else { etapas[0].st = 'ok'; _ultSalvo = new Date(); }
+      } catch (e) { etapas[0].st = 'erro'; etapas[0].msg = (function () { try { return pgpMsgErro(e); } catch (x) { return String(e && e.message || e); } })(); falhou = true; }
+      pintar();
+      if (falhou) return;
+
+      etapas[1].st = 'indo'; pintar();
+      var tipoEnvio = eraPrev ? 'preventiva' : 'inspecao';
+      var antes = sel.map(function (i) { var r = registroDe(i, tipoEnvio); return r ? r.quando : 0; });
+      var voltaMaq = atual();
+      window._pcf116Sel = sel.slice();
+      try {
+        if (ehPrev()) {
+          if (n <= 1) { await pgpEnviarTodasPreventivas(); }
+          else await pgpEnviarTodasPreventivas();
+        } else {
+          await pgpEnviarGS(null);
+        }
+      } catch (e) { etapas[1].msg = (function () { try { return pgpMsgErro(e); } catch (x) { return String(e && e.message || e); } })(); }
+      finally { window._pcf116Sel = null; }
+      var okN = 0, filaN = 0, faltou = [], okIdx = [];
+      sel.forEach(function (i, k) {
+        var r = registroDe(i, tipoEnvio);
+        if (r && r.quando && r.quando !== antes[k]) { okN++; okIdx.push(i); if (r.estado === 'fila') filaN++; }
+        else faltou.push(i + 1);
+      });
+      resumo.fila = filaN; resumo.faltou = faltou.length;
+      if (okN && !faltou.length) {
+        etapas[1].st = 'ok';
+        etapas[1].msg = filaN ? (filaN + ' na fila — sobe(m) sozinha(s) ao conectar') : '';
+      } else {
+        etapas[1].st = 'erro';
+        etapas[1].msg = (faltou.length ? 'não confirmada: Máq. ' + faltou.join(', ') + ' — ' : '') + (etapas[1].msg || 'veja o aviso na tela');
+        falhou = !okN;
+      }
+      pintar();
+      if (!okN) return;
+
+      // PDF só de máquina com conteúdo (peça com ação/N/A ou foto) — a MESMA regra do gerarPDF.
+      // Sem nenhuma, dizer isso na etapa (antes o gerarPDF abria um aviso e a etapa dizia ✓).
+      var comConteudo = 0;
+      okIdx.forEach(function (q) { try { if (pgpMaquinaTemConteudo(q)) comConteudo++; } catch (e) {} });
+      if (!comConteudo) {
+        etapas[2].st = ''; etapas[2].msg = 'não gerado: nenhuma foto nem peça marcada. Depois de fotografar, use 📄 Só o PDF';
+        resumo.semPdf = true;
+        pintar();
+      } else {
+        etapas[2].st = 'indo'; pintar();
+        window._pcf116PosRegistro = true;   // o gerarPDF não pergunta "falta registrar" logo depois de registrar
+        window._pcf116PdfSel = okIdx.slice();   // PDF SÓ das máquinas registradas agora (a desmarcada não sobe para a OS)
+        // fora de OS o pgpEnviarTodasPreventivas volta a tela para 'inspecao' quando registra tudo:
+        // o PDF desta visita é da PREVENTIVA (categoria, título, ações) — volta só para gerá-lo.
+        var tipoDepois = null;
+        try { if (eraPrev && _pgpTipoVisita !== 'preventiva') { tipoDepois = _pgpTipoVisita; pgpSetTipoVisita('preventiva'); } } catch (e) {}
+        try { await gerarPDF(null); etapas[2].st = 'ok'; if (comConteudo < okIdx.length) etapas[2].msg = comConteudo + ' de ' + okIdx.length + ' (máquina sem foto nem peça marcada fica sem PDF)'; }
+        catch (e) { etapas[2].st = 'erro'; etapas[2].msg = (function () { try { return pgpMsgErro(e); } catch (x) { return String(e && e.message || e); } })(); falhou = true; }
+        // a tela FICA em preventiva: voltar para 'inspecao' (o v56 fazia isso fora de OS) transformava um
+        // 2º toque no botão numa INSPEÇÃO da mesma máquina (auditoria 29/09, achado 1).
+        finally { window._pcf116PosRegistro = false; window._pcf116PdfSel = null; }
+        pintar();
+      }
+      try { if (atual() !== voltaMaq && voltaMaq < nMaq()) switchMachine(voltaMaq); } catch (e) {}
+    } finally {
+      _enviando = false;
+      if (btn) { btn.disabled = false; btn.classList.remove('is-busy'); }
+      try { pgpRegistroPintar(); } catch (e) {}
+      atualizar();
+      if (!falhou) {
+        var fim = resumo.faltou ? '⚠ Parte das máquinas NÃO foi confirmada — veja as etapas abaixo do botão.'
+                : resumo.fila ? '⏳ Guardado na fila do aparelho — sobe sozinho quando tiver sinal.' + (resumo.semPdf ? ' PDF não gerado (sem foto nem peça marcada).' : ' PDF gerado.')
+                : resumo.semPdf ? '✅ Enviado. ⚠ PDF não gerado: nenhuma foto nem peça marcada.'
+                : '✅ Pronto — enviado e PDF gerado.';
+        try { showNotification(fim); } catch (e) {}
+        try { if (window._PGP_OS_ID) pgpMostrarVoltarParaOS(); } catch (e) {}
+      }
+    }
+  };
+
+  window.pcf116SoPdf = async function (btn) {
+    try { pgpFlushDraftPendente(); } catch (e) {}
+    if (nMaq() > 1) {
+      var escolha = await new Promise(function (resolve) {
+        abrirSheet('<h3>Gerar PDF</h3><div class="pcf116-sub">Só gera o relatório — nada é enviado ao sistema.</div><div class="pcf116-corpo">' +
+          '<button type="button" class="pcf116-item" data-o="cada"><span class="ic">📄</span><span>Um PDF para cada máquina<small>o de sempre</small></span></button>' +
+          '<button type="button" class="pcf116-item" data-o="unico"><span class="ic">📚</span><span>Um PDF único com todas<small>com índice</small></span></button>' +
+          '</div><div class="pcf116-pe"><button type="button" class="pcf116-cancel">Voltar</button></div>', function (ov, fechar) {
+            ov.querySelectorAll('.pcf116-item').forEach(function (b) { b.onclick = function () { fechar(); resolve(b.dataset.o); }; });
+            ov.querySelector('.pcf116-cancel').onclick = function () { fechar(); resolve(null); };
+            ov.addEventListener('click', function (e) { if (e.target === ov) resolve(null); });
+          });
+      });
+      if (!escolha) return;
+      if (escolha === 'unico') { try { await gerarPDFConsolidado(btn); } catch (e) {} return; }
+    }
+    try { await gerarPDF(btn); } catch (e) {}
+  };
+
+  window.pcf116AbrirMais = function () {
+    var itens = [];
+    if (ehPrev()) itens.push(['assin', '✍️', 'Coletar assinaturas', 'técnico e responsável do cliente — entram no PDF']);
+    itens.push(['resumo', '💬', 'Resumo em texto', 'para mandar por WhatsApp']);
+    itens.push(['copia', '💾', 'Guardar uma cópia desta coleta', 'aparece em ☰ → Coletas guardadas']);
+    itens.push(['limpar', '↺', 'Limpar esta máquina', 'apaga o que foi preenchido na máquina aberta (pede confirmação)']);
+    abrirSheet('<h3>Mais opções</h3><div class="pcf116-corpo">' + itens.map(function (it) {
+      return '<button type="button" class="pcf116-item' + (it[0] === 'limpar' ? ' perigo' : '') + '" data-o="' + it[0] + '"><span class="ic">' + it[1] + '</span><span>' + esc(it[2]) + '<small>' + esc(it[3]) + '</small></span></button>';
+    }).join('') + '</div><div class="pcf116-pe"><button type="button" class="pcf116-cancel">Fechar</button></div>', function (ov, fechar) {
+      ov.querySelector('.pcf116-cancel').onclick = fechar;
+      ov.querySelectorAll('.pcf116-item').forEach(function (b) {
+        b.onclick = function () {
+          fechar();
+          var o = b.dataset.o;
+          try {
+            if (o === 'assin') pgpColetarAssinaturasPreventiva();
+            else if (o === 'resumo') gerarResumo();
+            else if (o === 'copia') salvarColeta(null);
+            else if (o === 'limpar') Promise.resolve(resetCurrent()).then(function () { setTimeout(atualizar, 50); });
+          } catch (e) {}
+        };
+      });
+    });
+  };
+
+  // ── 5 · MENU DO TOPO ────────────────────────────────────────────────────
+  window.pcf116AbrirMenu = function () {
+    var off = false; try { off = !!pgpModoOfflineAtivo(); } catch (e) {}
+    var naOS = !!window._PGP_OS_ID;
+    var itens = [
+      ['fila', '⏳', 'Fila de envios', 'o que está esperando sinal ou precisa de conferência'],
+      ['offline', '📴', off ? 'Desligar o modo offline' : 'Ligar o modo offline', off ? 'o app volta a procurar rede e envia o que ficou' : 'para lugares sem sinal: nada é perdido, tudo fica na fila'],
+      ['sessoes', '📂', 'Coletas guardadas', 'cópias salvas neste aparelho'],
+      ['copia', '💾', 'Guardar uma cópia agora', 'o salvamento automático já acontece; isto cria uma cópia com nome'],
+      ['nova', '➕', 'Nova coleta avulsa', naOS ? 'fora de OS — dentro de uma OS use as máquinas da OS' : 'começa uma coleta em branco (pergunta antes)'],
+      ['conexao', '📶', 'Testar a conexão', 'confere se o servidor responde']
+    ];
+    abrirSheet('<h3>Menu</h3><div class="pcf116-corpo">' + itens.map(function (it) {
+      var dis = (it[0] === 'nova' && naOS);
+      return '<button type="button" class="pcf116-item" data-o="' + it[0] + '"' + (dis ? ' disabled' : '') + '><span class="ic">' + it[1] + '</span><span>' + esc(it[2]) + '<small>' + esc(it[3]) + '</small></span></button>';
+    }).join('') + '</div><div class="pcf116-pe"><button type="button" class="pcf116-cancel">Fechar</button></div>', function (ov, fechar) {
+      ov.querySelector('.pcf116-cancel').onclick = fechar;
+      ov.querySelectorAll('.pcf116-item').forEach(function (b) {
+        b.onclick = function () {
+          if (b.disabled) return;
+          fechar();
+          var o = b.dataset.o;
+          try {
+            if (o === 'fila') pgpAbrirFilaPanel();
+            else if (o === 'offline') pgpToggleModoOffline($('btnModoOffline'));
+            else if (o === 'sessoes') abrirSessoes();
+            else if (o === 'copia') salvarColeta(null);
+            else if (o === 'nova') novaColeta();
+            else if (o === 'conexao') pgpTestGs(true);
+          } catch (e) {}
+        };
+      });
+    });
+  };
+
+  // ── 6 · "PRECISA TROCAR?" NA PEÇA ───────────────────────────────────────
+  window.pcf116SubstHtml = function (pk) {
+    // valor do campo em TRI-ESTADO: '' = não sei (coleta reaberta do servidor, antes de tocar) ·
+    // 'nao' = o técnico escolheu Não · 'proxima' | 'urgente'. Só o que a tela SABE viaja.
+    var b = function (v, rot) {
+      return '<button type="button" class="pcf116-sp' + (v === 'nao' ? ' on' : '') + '" data-v="' + v + '" onclick="event.stopPropagation();pcf116SetSubst(\'' + pk + '\',\'' + v + '\')">' + rot + '</button>';
+    };
+    return '<div class="pcf116-subst" data-subst-pk="' + pk + '">' +
+      '<label class="pgp-acao-label">Precisa trocar esta peça?</label>' +
+      '<div class="pcf116-subst-pills">' + b('nao', 'Não') + b('proxima', '🟠 Na próxima visita') + b('urgente', '🔴 Urgente') + '</div>' +
+      '<input type="hidden" id="' + pk + '_subst" data-key="' + pk + '_subst" value="">' +
+      '</div>';
+  };
+  function pintarUmaSubst(box) {
+    var pk = box.getAttribute('data-subst-pk');
+    var inp = $(pk + '_subst'); var v = inp ? String(inp.value || '') : '';
+    var vis = (v === 'proxima' || v === 'urgente') ? v : 'nao';
+    box.querySelectorAll('.pcf116-sp').forEach(function (x) { x.classList.toggle('on', (x.getAttribute('data-v') || '') === vis); });
+    var qb = box.closest('.pt-quick-box');
+    if (qb) { qb.classList.toggle('pcf116-marcada-proxima', v === 'proxima'); qb.classList.toggle('pcf116-marcada-urgente', v === 'urgente'); }
+  }
+  function repintarSubst() { document.querySelectorAll('[data-subst-pk]').forEach(pintarUmaSubst); }
+  window.pcf116RepintarSubst = repintarSubst;
+  window.pcf116SetSubst = function (pk, v) {
+    var inp = $(pk + '_subst'); if (!inp) return;
+    inp.value = (v === 'proxima' || v === 'urgente' || v === 'nao') ? v : '';
+    var box = document.querySelector('[data-subst-pk="' + pk + '"]'); if (box) pintarUmaSubst(box);
+    try { inp.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) {}
+    try { pgpSaveDraftBreve(); } catch (e) {}
+    if (v === 'urgente') { try { showNotification('✅ Marcada como troca URGENTE — o escritório vê em destaque.'); } catch (e) {} }
+  };
+  function anexarSubst(r, idx) {
+    if (!r || !r.parts) return r;
+    var parts = [];
+    try { parts = pgpPartsDe(idx) || []; } catch (e) { parts = []; }
+    var mapa = {}; try { mapa = pgpPartIdMapDe(idx) || {}; } catch (e) { mapa = {}; }
+    parts.forEach(function (pt) {
+      var aid = mapa[pt.k]; if (!aid || !r.parts[aid]) return;
+      var el = $('m' + idx + '_' + pt.k + '_subst');
+      var v = el ? String(el.value || '') : '';
+      if (v === 'proxima' || v === 'urgente') r.parts[aid].substituir = v;
+      else if (v === 'nao') r.parts[aid].substituir = '';          // o técnico disse NÃO: tira a marca desta visita
+      else delete r.parts[aid].substituir;                        // não sei: ausente = o servidor preserva
+    });
+    return r;
+  }
+  window.pcf116AnexarSubst = anexarSubst;
+  try {
+    var _bp = window.pgpBuildPayload;
+    window.pgpBuildPayload = function (midx) {
+      var r = _bp.apply(this, arguments);
+      try { var i = pgpGetMachineIndex(arguments.length ? midx : currentMachine); anexarSubst(r, i); } catch (e) {}
+      return r;
+    };
+    var _bpp = window.pgpBuildPreventivaPayload;
+    window.pgpBuildPreventivaPayload = function (midx) {
+      var r = _bpp.apply(this, arguments);
+      try { var i = pgpGetMachineIndex(arguments.length ? midx : currentMachine); anexarSubst(r, i); } catch (e) {}
+      return r;
+    };
+  } catch (e) {}
+
+  // ── 7 · NOMES NO CARD DA TAREFA ─────────────────────────────────────────
+  var _nomes = {};
+  function lembrar(id, nome) {
+    id = String(id || '').trim(); nome = String(nome || '').trim();
+    if (id && nome && id !== nome) _nomes[id.toLowerCase()] = nome;
+  }
+  function colherNomes() {
+    try {
+      var s = window.PROPER_SESSION || {};
+      if (s.tecnico) lembrar(s.tecnico.id, s.tecnico.nome);
+      lembrar(s.id_tecnico, s.nome_tecnico);
+    } catch (e) {}
+    try {
+      (_pfOsList || []).forEach(function (o) {
+        lembrar(o.responsavel_id, o.responsavel_nome);
+        lembrar(o.usuario_atual, o.responsavel_nome);
+        var ids = o.designados_ids || [], nms = o.designados_nomes || [];
+        for (var k = 0; k < ids.length; k++) lembrar(ids[k], nms[k]);
+        (o.em_execucao || []).forEach(function (x) { lembrar(x.por, x.por_nome); });
+      });
+    } catch (e) {}
+  }
+  var _usuPedido = false;
+  function pedirUsuarios() {
+    if (_usuPedido) return; _usuPedido = true;
+    try {
+      if (typeof PCL === 'undefined' || typeof _pcfPcConfigurar !== 'function' || !_pcfPcConfigurar()) return;
+      if (typeof pgpRedeBloqueada === 'function' && pgpRedeBloqueada()) return;
+      Promise.resolve(PCL.ler('GET', 'getUsuarios', { action: 'getUsuarios' }, { prazoMs: 6000 })).then(function (r) {
+        var lista = r && (r.tecnicos || r.usuarios || r.data || r.lista);
+        if (Array.isArray(lista)) lista.forEach(function (u) { lembrar(u.id, u.nome); });
+        else setTimeout(function () { _usuPedido = false; }, 300000);
+      }).catch(function () { setTimeout(function () { _usuPedido = false; }, 300000); });
+    } catch (e) {}
+  }
+  function nome(v) {
+    var s = String(v || '').trim(); if (!s) return '';
+    var n = _nomes[s.toLowerCase()];
+    if (!n) { colherNomes(); n = _nomes[s.toLowerCase()]; }
+    if (!n) pedirUsuarios();
+    return n || s;
+  }
+  window.pcf116Nome = function (v) { return esc(nome(v)); };
+  window.pcf116EhEu = function (v) {
+    var s = String(v || '').trim().toLowerCase(); if (!s) return false;
+    var t = (window.PROPER_SESSION && window.PROPER_SESSION.tecnico) || {};
+    var id = String(t.id || '').trim().toLowerCase(), nm = String(t.nome || '').trim().toLowerCase();
+    return (id && s === id) || (nm && s === nm);
+  };
+  window.pcf116LinhaDono = function (t, perfil) {
+    try {
+      var des = String((t && t.Usuario_Designado) || '').trim();
+      if (des) return '<div class="pf-card-meta">👤 Designada a <b>' + esc(nome(des)) + '</b></div>';
+      var os = null;
+      try { os = (_pfOsList || []).find(function (o) { return String(o.id_os) === String(_pfOsId); }) || null; } catch (e) {}
+      var resp = os && String(os.responsavel_nome || '').trim();
+      if (resp) return '<div class="pf-card-meta">👤 Responsável da OS: <b>' + esc(resp) + '</b></div>';
+    } catch (e) {}
+    return perfil ? '<div class="pf-card-meta" style="opacity:.75">👤 Perfil sugerido no modelo: ' + esc(perfil) + '</div>' : '';
+  };
+
+  // ── 8 · CONCLUIR TAREFA RESPONDE NA HORA ────────────────────────────────
+  var _otim = {};   // Tarefa_ID -> a tarefa ANTES do ✓ otimista
+  window.pcf116ConclusaoOtimista = function (tarefaId, usuario) {
+    try {
+      var i = (_pfTarefas || []).findIndex(function (x) { return String(x.Tarefa_ID) === String(tarefaId); });
+      if (i < 0) return null;
+      var antes = Object.assign({}, _pfTarefas[i]);
+      _otim[String(tarefaId)] = antes;
+      _pfTarefas[i] = Object.assign({}, _pfTarefas[i], { Status: 'completo', Concluido_por: usuario || '', Data_conclusao: new Date().toISOString(), _pf116Confirmando: true, Lock_Por: '' });
+      // redesenho do estado LOCAL (o caminho _warmData não grava cache nem vai à rede)
+      Promise.resolve(pfLoadPipeline({ _warmData: { tarefas: _pfTarefas } })).catch(function () {});
+      return antes;
+    } catch (e) { return null; }
+  };
+
+  // o cache offline NUNCA guarda o ✓ otimista (outro gravador de cache grava _pfTarefas inteiro)
+  try {
+    var _cgp = window.pfCacheGravarPipeline;
+    window.pfCacheGravarPipeline = function (osId, tarefas) {
+      var lista = tarefas;
+      try {
+        var temOtim = false;
+        lista = (tarefas || []).map(function (t) {
+          if (t && (t._pf116Confirmando || t._pf116Fila)) { temOtim = true; return _otim[String(t.Tarefa_ID)] || Object.assign({}, t, { Status: 'em_andamento', _pf116Confirmando: undefined, _pf116Fila: undefined }); }
+          return t;
+        });
+        if (!temOtim) (tarefas || []).forEach(function (t) { if (t && _otim[String(t.Tarefa_ID)]) delete _otim[String(t.Tarefa_ID)]; });   // leitura do servidor: fim do otimista
+      } catch (e) { lista = tarefas; }
+      return _cgp.call(this, osId, lista);
+    };
+  } catch (e) {}
+  // Outros gravadores escrevem _pfTarefas INTEIRO no cache direto (pfLockLocalOffline, V61):
+  // depois deles, o cache é saneado — nenhuma tarefa otimista fica guardada como concluída.
+  function sanearCache() {
+    try {
+      var c = JSON.parse(localStorage.getItem('pf_pipeline_cache_v1') || '{}'), mudou = false;
+      Object.keys(c).forEach(function (os) {
+        var e = c[os]; if (!e || !Array.isArray(e.tarefas)) return;
+        e.tarefas = e.tarefas.map(function (t) {
+          if (t && (t._pf116Confirmando || t._pf116Fila)) {
+            mudou = true;
+            var a = _otim[String(t.Tarefa_ID)];
+            if (a) return a;
+            var x = Object.assign({}, t, { Status: 'em_andamento' }); delete x._pf116Confirmando; delete x._pf116Fila; return x;
+          }
+          return t;
+        });
+      });
+      if (mudou) localStorage.setItem('pf_pipeline_cache_v1', JSON.stringify(c));
+    } catch (e) {}
+  }
+  window.pcf116SanearCache = sanearCache;
+  try {
+    var _llo = window.pfLockLocalOffline;
+    if (typeof _llo === 'function') window.pfLockLocalOffline = function () { var r = _llo.apply(this, arguments); sanearCache(); return r; };
+  } catch (e) {}
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') sanearCache(); });
+  window.addEventListener('pagehide', sanearCache);
+  // sem rede, a conclusão vai para a FILA: o card diz isso em vez de "confirmando" para sempre
+  try {
+    var _pqr = window.pgpQueueRequest;
+    window.pgpQueueRequest = function (action, body) {
+      var r = _pqr.apply(this, arguments);
+      try {
+        if (action === 'updateTarefaStatus' && body && String(body.status) === 'completo') {
+          var id = String(body.tarefa_id || '');
+          var k = (_pfTarefas || []).findIndex(function (x) { return String(x.Tarefa_ID) === id && x._pf116Confirmando; });
+          if (k >= 0) {
+            _pfTarefas[k] = Object.assign({}, _pfTarefas[k], { _pf116Fila: true }); delete _pfTarefas[k]._pf116Confirmando;
+            Promise.resolve(pfLoadPipeline({ _warmData: { tarefas: _pfTarefas } })).catch(function () {});
+          }
+          sanearCache();
+        }
+      } catch (e) {}
+      return r;
+    };
+  } catch (e) {}
+  // recusa do servidor: desfaz AQUI, sem depender da releitura (que pode falhar sem rede)
+  try {
+    var _mv = window.pfMostrarVeredicto_;
+    window.pfMostrarVeredicto_ = function () {
+      try {
+        var mudou = false;
+        Object.keys(_otim).forEach(function (id) {
+          var k = (_pfTarefas || []).findIndex(function (x) { return String(x.Tarefa_ID) === id && x._pf116Confirmando; });
+          if (k >= 0) { _pfTarefas[k] = _otim[id]; mudou = true; }
+          delete _otim[id];
+        });
+        if (mudou) Promise.resolve(pfLoadPipeline({ _warmData: { tarefas: _pfTarefas } })).catch(function () {});
+      } catch (e) {}
+      return _mv.apply(this, arguments);
+    };
+  } catch (e) {}
+
+  // ── 9 · AVISO COM A COR DA GRAVIDADE ────────────────────────────────────
+  window.pcf116CorAviso = function (msg) {
+    var s = String(msg || '').trim();
+    if (/^(✗|❌|🔴|⛔|🚫)/.test(s) || /nada foi salvo|n[ãa]o foi gravad|n[ãa]o foi salv|n[ãa]o foram? enfileirad|^erro|falhou/i.test(s)) return { bg: '#b91c1c', ms: 8000 };
+    if (/^(⚠|📴|⏳|📶)/.test(s) || /^(nenhum|nenhuma|fa[çc]a|preencha|selecione|informe|marque)\b/i.test(s) || /falha|n[ãa]o foi|n[ãa]o subiu|na fila|n[ãa]o confirmad/i.test(s)) return { bg: '#b45309', ms: s.length > 80 ? 8000 : 4500 };
+    return { bg: 'var(--green)', ms: s.length > 90 ? 5000 : 2500 };
+  };
+
+  try {
+    var _mtc = window.pgpMaquinaTemConteudo;
+    window.pgpMaquinaTemConteudo = function (midx) {
+      try {
+        if (Array.isArray(window._pcf116PdfSel)) {
+          var ix = midx; try { ix = pgpGetMachineIndex(midx); } catch (e) {}
+          if (window._pcf116PdfSel.indexOf(ix) < 0) return false;
+        }
+      } catch (e) {}
+      return _mtc.apply(this, arguments);
+    };
+  } catch (e) {}
+
+  // ── ganchos (envolvem sem trocar o comportamento de quem já existia) ────
+  function envolver(nomeFn, depois) {
+    try {
+      var orig = window[nomeFn];
+      if (typeof orig !== 'function') return;
+      window[nomeFn] = function () {
+        var r = orig.apply(this, arguments);
+        try { if (r && typeof r.then === 'function') r.then(function () { try { depois(); } catch (e) {} }, function () { try { depois(); } catch (e) {} }); else depois(); } catch (e) {}
+        return r;
+      };
+    } catch (e) {}
+  }
+  var _agenda = null;
+  function agendar() { if (_agenda) return; _agenda = setTimeout(function () { _agenda = null; atualizar(); }, 120); }
+  envolver('updateProgress', function () {
+    try {
+      var pr = progresso(atual());
+      var pill = $('progressPill');
+      if (pill) pill.textContent = pr.falta ? ('Faltam ' + pr.falta) : ('✓ ' + pr.done + '/' + pr.total);
+      var bar = $('progressBar'); if (bar) bar.style.width = pr.pct + '%';
+    } catch (e) {}
+    agendar();
+  });
+  envolver('switchMachine', agendar);
+  // abas: duas máquinas do MESMO modelo tinham abas idênticas ("GA30VSD+FF380V" duas vezes)
+  try {
+    var _utn = window.updateTabName;
+    window.updateTabName = function (midx) {
+      var r = _utn.apply(this, arguments);
+      try {
+        var t = $('tab-' + midx);
+        if (t) { var mod = campo(midx, 'modelo'); t.textContent = (midx + 1) + ' · ' + (mod || 'Máquina') + (progresso(midx).pct >= 100 ? ' ✓' : ''); }
+      } catch (e) {}
+      return r;
+    };
+  } catch (e) {}
+  envolver('renderTabs', function () {
+    try { for (var i = 0; i < nMaq(); i++) updateTabName(i); } catch (e) {}
+    agendar();
+  });
+  envolver('pgpSetTipoVisita', agendar);
+  envolver('pgpSetAcao', agendar);
+  envolver('restoreDraft', function () { setTimeout(atualizar, 200); });
+  // "Salvo" só com PROVA: o saveDraftStateSafely engole QuotaExceeded. Depois de cada gravação, o que
+  // está no aparelho tem de ser EXATAMENTE o estado mandado gravar; senão o rodapé diz em vermelho.
+  try {
+    var _sdss = window.saveDraftStateSafely;
+    window.saveDraftStateSafely = function (state) {
+      var r = _sdss.apply(this, arguments);
+      try {
+        var depois = localStorage.getItem(DRAFT_KEY);
+        var ok = !!depois && (depois === JSON.stringify(Object.assign({}, state, { photoStore: {} })) || depois === JSON.stringify(state));
+        if (ok) { _ultSalvo = new Date(); _falhaSalvar = false; } else _falhaSalvar = true;
+      } catch (e) { _falhaSalvar = true; }
+      pintarSalvo();
+      return r;
+    };
+  } catch (e) {}
+  envolver('pgpUpdatePendingBadge', pintarSalvo);
+  envolver('pgpRegistroPintar', agendar);
+
+  function iniciar() {
+    atualizar();
+    setTimeout(atualizar, 1500);
+    setInterval(function () { if (document.visibilityState === 'visible') pintarSalvo(); }, 30000);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
+})();
+</script>
+
 </body>
 </html>
