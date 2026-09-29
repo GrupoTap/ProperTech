@@ -1580,8 +1580,16 @@ html[data-boot="pipeline"] #pf113Splash{display:flex;position:fixed;inset:0;z-in
   itens_extras_campo; o mais novo vence, nada some por ausência). Assinaturas opcionais também na
   inspeção (sobem só as colhidas nesta coleta). SQL ITENS_EXTRAS e GAS v157 ANTES deste arquivo.
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V117</title>
-<meta name="app-build" content="PCF_V117" data-date="2026-09-29">
+<!--
+  PCF_V118 · REABERTURA ROBUSTA · 29/09/2026 · feito SOBRE o PCF_V117 (no ar) · par sw propertech-v120.
+  Chamado da PGP-2026-0094: o formulário do Geovani dizia concluída com a tarefa aberta.
+  O formulário do ProperForms passa a abrir com tstatus (o status da tarefa) na URL; o card
+  da tarefa aberta ganha uma linha quando este aparelho tem envio para ela (na fila, chegou
+  e o servidor NÃO concluiu, ou enviado e a tarefa segue aberta); o aviso da volta do
+  formulário diz o motivo que o servidor devolveu. Par: GAS v159 e os 7 formulários REAB_V1.
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V118</title>
+<meta name="app-build" content="PCF_V118" data-date="2026-09-29">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -31594,6 +31602,202 @@ try{
 
   function iniciar() { pintarTodos(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
+})();
+</script>
+
+<!-- ████ PCF_V118 (REABERTURA ROBUSTA) ████ -->
+<script>
+/* ════════════════════════════════════════════════════════════════════════════
+   PCF_V118 (29/09/2026) — REABERTURA ROBUSTA · o card diz a verdade sobre o formulário enviado
+   Par: GAS v159 · formulários com REAB_V1 · PCM V212.
+   Chamado da PGP-2026-0094 (Geovani): no PCM a tarefa "em andamento"; no celular o formulário
+   dizia "concluída, voltando ao pipeline". O PCF não tinha como saber que o formulário SAIU e a
+   tarefa NÃO fechou — e ao voltar só dizia "toque em ↻ em alguns segundos" (para sempre).
+     T  ao abrir um formulário do ProperForms, a URL leva `tstatus=<status da tarefa>`: o formulário
+        decide sem rede se o envio que ele guarda está valendo (tarefa aberta ⇒ ✏ Corrigir).
+     C  o card da tarefa aberta ganha UMA linha quando este aparelho tem envio para ela:
+        na fila ("a tarefa conclui quando chegar"), chegou mas o servidor NÃO concluiu (com o motivo
+        que o GAS v159 devolve), ou enviado e a tarefa segue aberta ("abra para corrigir").
+     A  o aviso da volta do formulário ("⚠ O servidor ainda não registrou…") troca pela frase certa
+        quando a resposta do servidor já disse que NÃO concluiu.
+   Lê o banco `properSafe` dos formulários (mesma origem) SÓ PARA LEITURA; não escreve nada nele.
+   ⚠ Aditivo, prefixo _pf118; nenhuma função antiga é renomeada.
+   ════════════════════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+  var PF118 = { versao: 'PCF_V118', envios: {} };   // envios[os][tarefa] = { em, estado, motivo }
+  window.PF118 = PF118;
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function hora(ms) { var d = new Date(ms || 0); if (isNaN(d.getTime()) || !ms) return ''; var p = function (n) { return (n < 10 ? '0' : '') + n; };
+    var hoje = new Date(); return (d.toDateString() === hoje.toDateString() ? '' : p(d.getDate()) + '/' + p(d.getMonth() + 1) + ' ') + p(d.getHours()) + ':' + p(d.getMinutes()); }
+  function osAtual() { try { return String(_pfOsId || ''); } catch (e) { return ''; } }
+  function tarefas() { try { return Array.isArray(_pfTarefas) ? _pfTarefas : []; } catch (e) { return []; } }
+
+  // ── T · tstatus na URL do formulário ──────────────────────────────────────
+  _pf108Embrulhar('pfAbrirForm', function (orig) {
+    return async function (tarefaId, formUrl) {
+      var a = [].slice.call(arguments);
+      try {
+        if (typeof formUrl === 'string' && formUrl.indexOf('/ProperForms/') >= 0 && !/[?&]tstatus=/.test(formUrl)) {
+          var t = tarefas().filter(function (x) { return String(x.Tarefa_ID) === String(tarefaId); })[0];
+          var st = t ? String(t.Status || '').trim() : '';
+          if (st) a[1] = formUrl + (formUrl.indexOf('?') >= 0 ? '&' : '?') + 'tstatus=' + encodeURIComponent(st);
+        }
+      } catch (e) {}
+      return orig.apply(this, a);
+    };
+  });
+
+  // ── leitura do que ESTE aparelho enviou (banco dos formulários) ─────────────
+  // Auditoria 29/09 (A3): "🔄 Trocar pipeline" reusa T01, T02… — envio de um pipeline anterior não fala da
+  // tarefa atual. 2ª auditoria (N2): quem decide é o SERVIDOR (formEstadoTarefa com o form_uid, horários DELE);
+  // o relógio do celular pode estar errado. Veja daInstancia() abaixo.
+  async function lerEnvios(os) {
+    var out = {};
+    if (!os || typeof _pf113AbrirPS !== 'function') return out;
+    var db = await _pf113AbrirPS(); if (!db) return out;
+    try {
+      var jobs = await _pf113Req(db.transaction('outbox', 'readonly').objectStore('outbox').getAll());
+      (jobs || []).forEach(function (j) {
+        if (!j || j.kind !== 'saveFormulario' || !j.body || String(j.body.os_id || '') !== os) return;
+        var tid = String(j.body.tarefa_id || ''); if (!tid) return;
+        var em = j.updatedAt || j.createdAt || 0, ant = out[tid];
+        if (ant && ant.em > em) return;
+        var tr = j.result && j.result.tarefa;
+        var adm = !!(tr && (tr.motivo === 'tarefa_adm' || tr.codigo === 'tarefa_adm'));
+        out[tid] = { em: em, form_uid: String(j.body.form_uid || ''), estado: j.status === 'done' ? (adm ? 'adm' : (tr && tr.concluida === false ? 'nao_concluiu' : (tr && tr.concluida ? 'concluiu' : 'chegou'))) : (j.status === 'dead' ? 'travado' : 'fila'),
+                     motivo: tr ? String(tr.motivo_txt || tr.motivo || '') : '' };
+      });
+      if (db.objectStoreNames.contains('drafts')) {
+        var ds = await _pf113Req(db.transaction('drafts', 'readonly').objectStore('drafts').getAll());
+        (ds || []).forEach(function (d) {
+          if (!d || String(d.osId || '') !== os || d.status !== 'sending') return;
+          var tid = String(d.tarefaId || ''); if (!tid || out[tid]) return;
+          var arq = null; try { arq = JSON.parse(localStorage.getItem('reab::arq::' + d.draftId) || 'null'); } catch (e) {}
+          if (!arq) return;
+          var emA = arq.enviado_em || arq.em || 0;
+          var tr = arq.tarefa;
+          var adm = !!(tr && (tr.motivo === 'tarefa_adm' || tr.codigo === 'tarefa_adm'));
+          out[tid] = { em: emA, form_uid: String(arq.form_uid || ''), estado: adm ? 'adm' : (tr && tr.concluida === false ? 'nao_concluiu' : (tr && tr.concluida ? 'concluiu' : 'chegou')),
+                       motivo: tr ? String(tr.motivo_txt || tr.motivo || '') : '' };
+        });
+      }
+    } catch (e) {} finally { try { db.close(); } catch (e) {} }
+    // A3/N2: envio que CHEGOU, de uma tarefa ABERTA com data de criação — o servidor diz se é desta instância.
+    // 3ª auditoria (P2): só as tarefas que o card mostra (abertas), todas em PARALELO, com a resposta guardada
+    // na sessão (sobrevive à volta do formulário) e sem insistir com GAS que não conhece a consulta.
+    var abertas = {};
+    tarefas().forEach(function (t) { var st = String(t.Status || ''); if (['completo', 'dispensado', 'incompleto'].indexOf(st) < 0) abertas[String(t.Tarefa_ID || '')] = 1; });
+    await Promise.all(Object.keys(out).map(function (tid) {
+      var e = out[tid];
+      if (!abertas[tid] || e.estado === 'fila' || e.estado === 'travado' || !e.form_uid) return null;   // na fila: ainda não é de ninguém
+      return daInstancia(os, tid, e.form_uid).then(function (v) { if (!v) delete out[tid]; }, function () {});
+    }));
+    return out;
+  }
+  var CK = 'pf118:inst:', CK_SEM = 'pf118:sem_consulta_ate';
+  function cacheLer(k) { try { var v = sessionStorage.getItem(CK + k); return v === null ? undefined : v === '1'; } catch (e) { return undefined; } }
+  function cacheGravar(k, v) { try { sessionStorage.setItem(CK + k, v ? '1' : '0'); } catch (e) {} }
+  function semConsulta() { try { return Date.now() < Number(sessionStorage.getItem(CK_SEM) || 0); } catch (e) { return false; } }
+  async function daInstancia(os, tid, fu) {
+    var t = tarefas().filter(function (x) { return String(x.Tarefa_ID) === tid; })[0];
+    var criada = t ? String(t.Created_At || '') : '';
+    if (!criada) return true;                       // sem data de criação não há "instância anterior"
+    var k = [os, tid, criada, fu].join('|');
+    var c0 = cacheLer(k); if (c0 !== undefined) return c0;
+    if (semConsulta()) return true;
+    try {
+      var r = await _pf113Silencioso(function () { return pgpPostJson('formEstadoTarefa', { os_id: os, tarefa_id: tid, form_uid: fu }, 0, null, { timeoutMs: 15000 }); });
+      var c = r && r.status === 'ok' ? r.consulta : null;
+      if (c && c.form_uid === fu) { var v = !(c.achado && !c.da_instancia); cacheGravar(k, v); return v; }
+      // GAS sem a consulta (anterior ao v159 ou "Ação desconhecida"): não pergunta de novo por 10 min
+      if (r && (r.status !== 'ok' || !('consulta' in r))) { try { sessionStorage.setItem(CK_SEM, String(Date.now() + 600000)); } catch (e) {} }
+    } catch (e) {
+      if (/desconhecida|unknown/i.test(String((e && e.message) || e))) { try { sessionStorage.setItem(CK_SEM, String(Date.now() + 600000)); } catch (x) {} }
+    }
+    return true;                                    // sem resposta: mostra (o formulário confere com o servidor ao abrir)
+  }
+  function linha(t) {
+    var st = String((t && t.Status) || 'pendente');
+    if (st === 'completo' || st === 'dispensado' || st === 'incompleto') return '';
+    var os = osAtual(), e = PF118.envios[os] && PF118.envios[os][String(t.Tarefa_ID || '')];
+    if (!e || e.estado === 'concluiu' && st === 'completo') return '';
+    var h = hora(e.em), txt, cor = '#fbbf24';
+    if (e.estado === 'fila') txt = '📤 Formulário na fila deste aparelho' + (h ? ' (' + h + ')' : '') + ' — a tarefa conclui quando ele chegar ao servidor.';
+    else if (e.estado === 'travado') { txt = '⚠ O envio do formulário travou neste aparelho — abra o formulário e toque em “Ver envios”.'; cor = '#f87171'; }
+    else if (e.estado === 'adm') { txt = '🏢 Formulário' + (h ? ' enviado às ' + h : '') + ' salvo — é tarefa do escritório: o escritório confere e conclui.'; cor = '#38bdf8'; }
+    else if (e.estado === 'nao_concluiu') { txt = '⚠ O formulário' + (h ? ' enviado às ' + h : '') + ' CHEGOU, mas o servidor NÃO concluiu a tarefa' + (e.motivo ? ' (' + e.motivo + ')' : '') + '. Abra o formulário para corrigir e reenviar — o escritório foi avisado.'; cor = '#f87171'; }
+    else txt = '📤 Você enviou o formulário' + (h ? ' às ' + h : '') + ', mas a tarefa continua aberta no servidor. Abra o formulário para corrigir e reenviar.';
+    return '<div class="pf-card-meta pf118-envio" style="color:' + cor + '">' + esc(txt) + '</div>';
+  }
+
+  // ── C · a linha no card (no redesenho E depois da leitura) ────────────────
+  var _build = window.pfBuildCard;
+  if (typeof _build === 'function') window.pfBuildCard = function (t) {
+    var html = _build.apply(this, arguments);
+    try {
+      var l = linha(t);
+      if (l && html.slice(-6) === '</div>') html = html.slice(0, -6) + l + '</div>';
+    } catch (e) {}
+    return html;
+  };
+  function decorar() {
+    tarefas().forEach(function (t) {
+      try {
+        var el = document.getElementById('pfCard-' + t.Tarefa_ID); if (!el) return;
+        var velho = el.querySelector('.pf118-envio'), l = linha(t);
+        if (velho) velho.remove();
+        if (l) el.insertAdjacentHTML('beforeend', l);
+      } catch (e) {}
+    });
+  }
+  // B5 (auditoria): ler o outbox inteiro custa (os corpos levam base64). Só quando a OS tem tarefa ABERTA
+  // de formulário do ProperForms, e no máximo a cada 15 s por OS (o aviso da volta força).
+  var _ult = {};
+  function precisa() {
+    return tarefas().some(function (t) {
+      var st = String(t.Status || '');
+      return st !== 'completo' && st !== 'dispensado' && String(t.Tipo || '').indexOf('auto:') === 0 && String(t.Form_URL || '').indexOf('/ProperForms/') >= 0;
+    });
+  }
+  async function atualizar(forcar) {
+    var os = osAtual(); if (!os) return;
+    if (!forcar) {
+      if (!precisa()) { PF118.envios[os] = {}; decorar(); return; }
+      if (_ult[os] && Date.now() - _ult[os] < 15000) { decorar(); return; }
+    }
+    _ult[os] = Date.now();
+    try { PF118.envios[os] = await lerEnvios(os); } catch (e) {}
+    if (osAtual() === os) decorar();
+  }
+  PF118.atualizar = atualizar;
+  _pf108Embrulhar('pfLoadPipeline', function (orig) {
+    return async function () {
+      var r = await orig.apply(this, arguments);
+      try { await atualizar(); } catch (e) {}
+      return r;
+    };
+  });
+
+  // ── A · o aviso da volta do formulário diz o que o servidor respondeu ──────
+  var _toast = window.pfToast;
+  if (typeof _toast === 'function') window.pfToast = function (msg) {
+    var a = arguments, self = this;
+    if (typeof msg === 'string' && msg.indexOf('⚠ O servidor ainda não registrou esta tarefa como concluída') === 0) {
+      var os = osAtual(), tid = '';
+      try { tid = String((_pf113Voltou && _pf113Voltou.tarefa) || ''); } catch (e) {}
+      lerEnvios(os).then(function (m) {
+        PF118.envios[os] = m;
+        var e = m[tid];
+        if (e && e.estado === 'nao_concluiu') {
+          _toast.call(self, '⚠ O formulário chegou, mas o servidor NÃO concluiu a tarefa' + (e.motivo ? ' (' + e.motivo + ')' : '') + '. O escritório foi avisado — ou abra o formulário para corrigir.', 'warning');
+        } else _toast.apply(self, a);
+        decorar();
+      }, function () { _toast.apply(self, a); });
+      return;
+    }
+    return _toast.apply(this, arguments);
+  };
 })();
 </script>
 
