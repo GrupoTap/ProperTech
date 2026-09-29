@@ -9,7 +9,8 @@
  * O activate abaixo apaga qualquer cache antigo com prefixo 'propertech-'.
  */
 const CACHE_BASE = 'propertech-';
-const CACHE = CACHE_BASE + 'v116';  // 27/09/2026 — par do PCF_V114 (PWAIT v4: a guarda só protege o que o usuário vê).
+const CACHE = CACHE_BASE + 'v117';  // 28/09/2026 — par do PCF_V115 (TURBO: leituras do Postgres). Sem bump, o celular serve o V114 do cache.
+// antes: 'v116'  // 27/09/2026 — par do PCF_V114 (PWAIT v4: a guarda só protege o que o usuário vê).
 // antes: 'v115'  // 26/09/2026 — par do PCF_V113 (PCF estável: splash, fila persist-first, Background Sync, mapa com satélite). Sem bump, o celular serve o V112 do cache.
 // (nota anterior: v114 — 21/09/2026 — par do PCF_V112)  // 21/09/2026 — par do PCF_V112 (documento volta a começar no DOCTYPE). Sem bump, o celular do técnico serve o V111 quebrado do cache.  // 21/09/2026 — par do PCF_V111 (guarda de botão v2). Sem bump, o celular do técnico serve o V110 do cache. // v111 (11/09/2026) — PCF_V109, o PDF da preventiva que nao chegava (compress:true + PDF na fila do IndexedDB).
 // (nota anterior:  // v110 (11/09/2026) — PCF_V108, a rodada Campo e Documentos (Externas/Oficina, Ir ate o cliente, presenca, carga do dia).
@@ -53,6 +54,7 @@ const CACHE = CACHE_BASE + 'v116';  // 27/09/2026 — par do PCF_V114 (PWAIT v4:
 //        PCF_V112 ↔  propertech-v114  (21/09 — o documento volta a começar no DOCTYPE)
 //        PCF_V113 ↔  propertech-v115  (26/09 — PCF estável + Background Sync + Leaflet no shell)
 //        PCF_V114 ↔  propertech-v116  (27/09 — PWAIT v4: botão de janela fechada não fica preso)
+//        PCF_V115 ↔  propertech-v117  (28/09 — TURBO: as leituras vêm do Postgres)
 //    Quem "corrigir" isto para propertech-v91 achando que alinha as versões
 //    reintroduz o pior modo de falha deste arquivo: a chave ficaria IGUAL à do
 //    deploy anterior, o activate não apagaria nada, e o técnico continuaria
@@ -249,11 +251,17 @@ function comLock(nome, fn) {
   } catch (e) {}
   return fn(false);
 }
+let _v117SemEspelho = false;   // PCF_V115 (TURBO): alguma escrita drenada voltou sem espelho.ok
 async function postarGas(url, corpo, tetoMs) {
   const ctl = (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(tetoMs) : undefined;
   const r = await fetch(url, { method: 'POST', body: JSON.stringify(corpo), signal: ctl });
   const txt = await r.text();
   let d = null; try { d = JSON.parse(txt); } catch (e) {}
+  if (d && d.status === 'ok' && !(d.espelho && d.espelho.ok === true)) {
+    _v117SemEspelho = true;
+    // o worker morre ocioso em ~30 s: o aviso também fica guardado (a página lê ao abrir)
+    try { await (await caches.open('pc-turbo-sinal')).put('/__pc_janela__', new Response(String(Date.now() + 20 * 60000))); } catch (e) {}
+  }
   return { ok: !!(d && (d.status === 'ok' || d.ok === true)), d, http: r.status };
 }
 
@@ -390,7 +398,9 @@ async function drenarTudo() {
   if (placar.n) {
     try {
       const cs = await self.clients.matchAll({ includeUncontrolled: true, type: 'window' });
-      cs.forEach((c) => { try { c.postMessage({ tipo: 'proper-outbox-enviado', n: placar.n }); } catch (e) {} });
+      const semEsp = _v117SemEspelho;
+      if (cs.some((c) => /\/ProperTech\//.test(c.url || ''))) _v117SemEspelho = false;   // só o PCF age no aviso
+      cs.forEach((c) => { try { c.postMessage({ tipo: 'proper-outbox-enviado', n: placar.n, semEspelho: semEsp }); } catch (e) {} });
     } catch (e) {}
   }
   return placar;
