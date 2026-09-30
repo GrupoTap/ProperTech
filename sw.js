@@ -9,7 +9,7 @@
  * O activate abaixo apaga qualquer cache antigo com prefixo 'propertech-'.
  */
 const CACHE_BASE = 'propertech-';
-const CACHE = CACHE_BASE + 'v120';  // 29/09/2026 — par do PCF_V118 (reabertura robusta). Sem bump, o celular serve o V117 do cache.
+const CACHE = CACHE_BASE + 'v121';  // 30/09/2026 — par do PCF_V119 (crachá renovável). Sem bump, o celular serve o V118 do cache.
 // antes: 'v119' — par do PCF_V117 (＋ Adicionar item)
 // antes: 'v118'  // 29/09/2026 — par do PCF_V116 (campo simples). Sem bump, o celular serve o V115 do cache.
 // antes: 'v117' (28/09 — par do PCF_V115, TURBO)
@@ -61,6 +61,7 @@ const CACHE = CACHE_BASE + 'v120';  // 29/09/2026 — par do PCF_V118 (reabertur
 //        PCF_V116 ↔  propertech-v118  (29/09 — campo simples: rodapé único, marca de troca de peça)
 //        PCF_V117 ↔  propertech-v119  (29/09 — ＋ Adicionar item na inspeção e na preventiva)
 //        PCF_V118 ↔  propertech-v120  (29/09 — reabertura robusta: tstatus no formulário, linha do envio no card)
+//        PCF_V119 ↔  propertech-v121  (30/09 — crachá renovável: o modo rápido não desliga sozinho em 12 h)
 //    Quem "corrigir" isto para propertech-v91 achando que alinha as versões
 //    reintroduz o pior modo de falha deste arquivo: a chave ficaria IGUAL à do
 //    deploy anterior, o activate não apagaria nada, e o técnico continuaria

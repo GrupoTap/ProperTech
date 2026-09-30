@@ -1588,8 +1588,14 @@ html[data-boot="pipeline"] #pf113Splash{display:flex;position:fixed;inset:0;z-in
   e o servidor NÃO concluiu, ou enviado e a tarefa segue aberta); o aviso da volta do
   formulário diz o motivo que o servidor devolveu. Par: GAS v159 e os 7 formulários REAB_V1.
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V118</title>
-<meta name="app-build" content="PCF_V118" data-date="2026-09-29">
+<!--
+  PCF_V119 · CRACHÁ RENOVÁVEL · 30/09/2026 · feito SOBRE o PCF_V118 (no ar) · par sw propertech-v121 · GAS v163.
+  O crachá do banco (12 h) se renova sozinho (GAS renovarCracha); recusado ⇒ faixa "Modo rápido desligado — entre
+  pelo Hub com o PIN". A janela de 20 min de Apps Script depois de uma escrita com espelho falho fecha no próximo push.
+  Com o GAS v162: degrada para o comportamento do V118 sem erro.
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V119</title>
+<meta name="app-build" content="PCF_V119" data-date="2026-09-30">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -17624,6 +17630,8 @@ function _pcfJwt(t) { try { return JSON.parse(atob(String(t).split('.')[1].repla
 // SÓ o token da sessão (login com PIN no Hub v29), do MESMO usuário, com > 5 min de vida.
 // Nada de buscar no GAS nem de cópia solta em localStorage (auditoria 28/09).
 async function _pcfSupaToken() {
+  // PCF_V119 — crachá renovável (fresco da sessão; renova antes de vencer; vencido espera a renovação até 12 s)
+  try { if (window.CRACHA_V1 && !(typeof pgpRedeBloqueada === 'function' && pgpRedeBloqueada())) return await window.CRACHA_V1.token(300, 12000); } catch (e119) {}
   try {
     var s = JSON.parse(localStorage.getItem('proper_session') || sessionStorage.getItem('proper_session') || 'null');
     var uid = s && (s.id_tecnico || (s.tecnico && s.tecnico.id));
@@ -28799,7 +28807,7 @@ function __pcPOST(action, body) {
 (function (G) {
   'use strict';
   if (G.PCL) return;
-  var BUILD = 'PC_LEITURA_V1 · v152 · 0cec2d74e3';
+  var BUILD = 'PC_LEITURA_V1 · v152 · 0cec2d74e3 · PCF_V119';
   var M = {
   abas: {"MODELOS":{"tabela":"modelos","pk":"id"},"PARTS_MASTER":{"tabela":"parts_master","pk":"part_id"},"PART_SIMILARITIES":{"tabela":"part_similarities","pk":"sim_id"},"SUBSISTEMAS_LIB":{"tabela":"subsistemas_lib","pk":"sub_lib_id"},"SUBSISTEMA_LIB_PARTS":{"tabela":"subsistema_lib_parts","pk":"part_id"},"MODELO_SUBSISTEMA_LIB":{"tabela":"modelo_subsistema_lib","pk":"link_id"},"CLIENTES":{"tabela":"clientes","pk":"id"},"MAQUINAS":{"tabela":"maquinas","pk":"id"},"MACHINE_PARTS":{"tabela":"machine_parts","pk":"machine_id,part_id"},"PIPELINE_TEMPLATES":{"tabela":"pipeline_templates","pk":"template_id"},"ORDENS_SERVICO":{"tabela":"ordens_servico","pk":"id_os"},"PIPELINE_TAREFAS":{"tabela":"pipeline_tarefas","pk":"os_id,tarefa_id"},"AGENDA_DEMANDAS":{"tabela":"agenda_demandas","pk":"demanda_id"},"OS_MAQUINAS":{"tabela":"os_maquinas","pk":"id_link"},"TECH_ATTACHMENTS":{"tabela":"tech_attachments","pk":"attachment_id"},"UNIDADES":{"tabela":"unidades","pk":"id"},"CAT_TIPOS_OS":{"tabela":"cat_tipos_os","pk":"tipo_id"},"CUSTODIA_FROTA":{"tabela":"frota_custodia","pk":"custodia_id"},"CAT_PERFIS":{"tabela":"cat_perfis","pk":"id_perfil"},"PARAMETROS_TURNO":{"tabela":"parametros_turno","pk":"id"},"CAT_USUARIOS":{"tabela":"usuarios_publico","pk":"id"},"FORMULARIOS":{"tabela":"formularios","pk":"id"},"VISITAS":{"tabela":"visitas","pk":"id"},"PIPELINE_NOTIF":{"tabela":"pipeline_notif","pk":"notif_id"},"HORIMETRO_CALIB":{"tabela":"horimetro_calib","pk":"machine_id"},"HORIMETRO_HIST":{"tabela":"horimetro_hist","pk":"id"},"PRESENCA_OS":{"tabela":"presenca_os","pk":"evento_id"},"GEO_LOCAIS":{"tabela":"geo_locais","pk":"geo_id"},"SOLICITACOES_CADASTRO":{"tabela":"solicitacoes_cadastro","pk":"solic_id"},"CAT_TIPOS_MEDIDA":{"tabela":"cat_tipos_medida","pk":"tipo_id"}},
   override: {"OS_MAQUINAS":{"machineKey":"machine_key"}},
@@ -28814,6 +28822,50 @@ function __pcPOST(action, body) {
 };
   var PARADA = { __pcParada: true };
   var JANELA_MS = 20 * 60000;
+  // ── V217 · A JANELA QUE FECHA SOZINHA ──────────────────────────────────────────────────────────────
+  // Antes: escrita cujo espelho falhou (acionador de 5 min segurando o espelho, rede) ⇒ 20 min FIXOS de GAS em
+  // TODAS as leituras do aparelho (medido 30/09 07:52 → 08:12). Agora a janela guarda (a) a HORA DO SERVIDOR em que
+  // a escrita terminou (GAS v163: espelho.em) e (b) as ABAS que ela escreveu (espelho.abas). Só essas abas esperam,
+  // e cada uma volta ao Postgres assim que o carimbo dela mostra uma FOTO tirada depois da escrita (GAS v163:
+  // pushed_at = hora da foto) — em geral o repush do próprio acionador, < 1 min. As outras abas nem esperam.
+  // Sem a hora (GAS ≤ v162, fila do service worker, TURBO off) ⇒ os 20 min fixos de sempre, em tudo.
+  // localStorage 'pc_janela_desde' = JSON {d, a, abas}: só vale se `a` for o MESMO 'pc_janela_ate' (outra aba com
+  // código antigo que abrir janela nova sem hora ⇒ fixa: o caminho seguro vence).
+  function janelaInfo() {
+    var t = agora(), memAte = Number(ESTADO.janelaAte) || 0, lsAte = Number(ls('pc_janela_ate') || 0);
+    var partes = [];
+    if (memAte > t) partes.push(Number(ESTADO.janelaDesde) > 0 ? { desde: Number(ESTADO.janelaDesde), abas: ESTADO.janelaAbas || null } : { fixa: true });
+    if (lsAte > t) {
+      var j = null; try { j = JSON.parse(ls('pc_janela_desde') || 'null'); } catch (e) { j = null; }
+      partes.push(j && Number(j.a) === lsAte && Number(j.d) > 0 ? { desde: Number(j.d), abas: Array.isArray(j.abas) ? j.abas : null } : { fixa: true });
+    }
+    if (!partes.length) return null;
+    if (partes.some(function (x) { return x.fixa; })) return { fixa: true };
+    var desde = 0, abas = [];
+    partes.forEach(function (x) { desde = Math.max(desde, x.desde); if (abas && x.abas) x.abas.forEach(function (a) { if (abas.indexOf(a) < 0) abas.push(a); }); else abas = null; });
+    return { desde: desde, abas: abas };
+  }
+  function janelaDesde() { var j = janelaInfo(); return !j ? 0 : (j.fixa ? -1 : j.desde); }   // 0 sem · -1 fixa · >0 hora
+  function janelaAnotar(o) { try { if (typeof anotar === 'function') anotar(o); } catch (e) {} }
+  function naJanela(j, aba) { return !j.abas || j.abas.indexOf(String(aba).split('#')[0]) >= 0; }
+  // aba lida DEPOIS de uma escrita que a tocou: só serve se o carimbo dela é de uma foto posterior à escrita
+  function posJanela(aba, e) {
+    var j = janelaInfo();
+    if (j && !j.fixa && naJanela(j, aba) && e && e.fonte !== 'postgres' && !(Date.parse(e.pushed_at) > j.desde))
+      throw new Error(aba + ': janela depois de escrita (o espelho ainda não tem push posterior à escrita)');
+  }
+  // as abas da escrita empurradas depois dela ⇒ a janela acaba (nesta aba e no aparelho)
+  function fecharJanelaSe(m) {
+    var j = janelaInfo();
+    if (!j || j.fixa || !m) return false;
+    for (var a in m) { var e = m[a]; if (!e || e.fonte === 'postgres' || !naJanela(j, a)) continue; if (!(Date.parse(e.pushed_at) > j.desde)) return false; }
+    if (j.abas) for (var k = 0; k < j.abas.length; k++) if (!m[j.abas[k]]) return false;   // aba da escrita fora do carimbo: não conclui
+    ESTADO.janelaAte = 0; ESTADO.janelaDesde = 0; ESTADO.janelaAbas = null;
+    var lj = null; try { lj = JSON.parse(ls('pc_janela_desde') || 'null'); } catch (e2) { lj = null; }
+    if (lj && Number(lj.a) === Number(ls('pc_janela_ate') || 0) && Number(lj.d) > 0 && Number(lj.d) <= j.desde) { ls('pc_janela_ate', null); ls('pc_janela_desde', null); }
+    janelaAnotar({ a: 'janela', f: 'postgres', m: 'janela fechada: o espelho já tem push posterior à escrita' });
+    return true;
+  }
   var ESTADO = {
     url: '', anon: '', tokenFn: null, fetchFn: null, gasFn: null,
     esp: null, espAt: 0, espVoo: null, espVooEp: -1, cfg: null, cfgAt: 0, cfgVoo: null,
@@ -29057,6 +29109,7 @@ function __pcPOST(action, body) {
       var m = {};
       r.json.forEach(function (x) { if (x && x.aba) m[x.aba] = x; });
       if (ep === ESTADO.epoca) { ESTADO.esp = m; ESTADO.espAt = agora(); }
+      try { fecharJanelaSe(m); } catch (eJ) {}   // V217
       return m;
     })();
     try { return await meuVoo; } finally { if (ESTADO.espVoo === meuVoo) ESTADO.espVoo = null; }
@@ -29144,7 +29197,7 @@ function __pcPOST(action, body) {
   function rebaixada(action) {
     try {
       var r = JSON.parse(ls('pc_rebaixada_' + action) || 'null');
-      if (r && r.ate > agora()) return r;
+      if (r && r.ate > agora() && (!r.build || r.build === BUILD)) return r;   // V217: rebaixa vale para o MESMO motor
     } catch (e) {}
     return null;
   }
@@ -29155,7 +29208,7 @@ function __pcPOST(action, body) {
     if (M.condicao[action] && !M.condicao[action](params || {})) return '';
     if (ls('pc_fonte') === 'gas') return 'kill-switch global';
     if (ls('pc_fonte_' + action) === 'gas') return 'kill-switch da action';
-    if (ESTADO.janelaAte > agora() || Number(ls('pc_janela_ate') || 0) > agora()) return 'janela depois de escrita';
+    if (janelaDesde() < 0) return 'janela depois de escrita';   // V217: janela COM hora ⇒ decide cada aba (posJanela)
     if (rebaixada(action)) return 'rebaixada pela sentinela';
     if (!tzOk()) return 'fuso do aparelho';
     return 'ok';
@@ -29176,12 +29229,14 @@ function __pcPOST(action, body) {
       var e = esp[aba];
       var v = velha(e);
       if (v) throw new Error(aba + ': ' + v);
+      posJanela(aba, e);   // V217
       var m = await carregarAba(aba, e);
       // PIPELINE_TAREFAS = geração viva + ARQUIVADAS, na ordem física da planilha (pc_linha)
       var extra = M.juntar[aba];
       if (extra) {
         var ex = esp[extra], v2 = velha(ex);
         if (v2) throw new Error(extra + ': ' + v2);
+        posJanela(extra, ex);   // V217
         var m2 = await carregarAba(extra, ex);
         if (m2.length > 1) {
           var todas = [];
@@ -29225,6 +29280,7 @@ function __pcPOST(action, body) {
       return o;
     }
     if (typeof v === 'string' && /^[\[{]/.test(v)) { try { return normalizar(JSON.parse(v), ign); } catch (e) {} }
+    if (typeof v === 'string' && /^[A-Z][a-z]{2} [A-Z][a-z]{2} \d{2} \d{4} \d{2}:\d{2}:\d{2} GMT[+-]\d{4} \([^)]*\)$/.test(v)) return v.replace(/ \([^)]*\)$/, '');   // V217
     if (typeof v === 'number' || typeof v === 'boolean') return String(v);
     return v === null || v === undefined ? '' : v;
   }
@@ -29251,7 +29307,7 @@ function __pcPOST(action, body) {
   }
   function sentinelaDevida(action) {
     if (ls('pc_sentinela') === 'off') return false;
-    try { var s = JSON.parse(ls('pc_sentinela_' + action) || 'null'); return !s || (agora() - s.quando) > 24 * 3600000; }
+    try { var s = JSON.parse(ls('pc_sentinela_' + action) || 'null'); return !s || (s.ok === false && s.build !== BUILD) || (agora() - s.quando) > 24 * 3600000; }   // V217: julgamento RUIM de outro motor é refeito (o bom não: PCM e PCF dividem a chave — auditoria 30/09)
     catch (e) { return true; }
   }
   async function sentinela(verbo, action, params, tentativa) {
@@ -29291,7 +29347,7 @@ function __pcPOST(action, body) {
     // Leitura direta que não passa pelo motor (o sino do portal): mesmas travas gerais.
     disponivel: function () {
       if (!ESTADO.url || !ESTADO.tokenFn || ls('pc_fonte') === 'gas' || !tzOk()) return false;
-      if (ESTADO.janelaAte > agora() || Number(ls('pc_janela_ate') || 0) > agora()) return false;
+      if (janelaDesde() < 0) return false;   // V217
       if (ESTADO.cfg && String(ESTADO.cfg.TURBO || '').toLowerCase() !== 'on') return false;
       return true;
     },
@@ -29327,9 +29383,24 @@ function __pcPOST(action, body) {
       if (!json || json.status !== 'ok') return;           // escrita recusada não mudou nada
       var esp = json && json.espelho;
       if (!esp || esp.ok !== true) {
+        // V217 — com espelho.em (GAS v163) a janela fecha sozinha no próximo push; sem ele, 20 min fixos.
+        //   Janela fixa já aberta continua fixa (o caminho seguro vence); duas escritas ⇒ vale a mais nova.
+        var jAnt = janelaInfo(), jEm = esp && esp.em ? Date.parse(esp.em) : NaN;
+        var jNovasAbas = (esp && Array.isArray(esp.abas) && esp.abas.length) ? esp.abas.map(String) : null;
+        var jDesde = -1, jAbas = null;
+        if (isFinite(jEm) && jEm > 0 && !(jAnt && jAnt.fixa)) {
+          jDesde = jAnt ? Math.max(jEm, jAnt.desde) : jEm;
+          jAbas = (jAnt && !jAnt.abas) ? null : jNovasAbas;
+          if (jAbas && jAnt && jAnt.abas) jAnt.abas.forEach(function (a) { if (jAbas.indexOf(a) < 0) jAbas.push(a); });
+        }
         ESTADO.janelaAte = agora() + JANELA_MS;
+        ESTADO.janelaDesde = jDesde;
+        ESTADO.janelaAbas = jAbas;
         ls('pc_janela_ate', String(ESTADO.janelaAte));     // vale para as OUTRAS abas/apps do aparelho também
-        log('janela GAS aberta por 20 min depois de', action, esp ? 'espelho falhou' : 'sem espelho (GAS antigo ou TURBO off)');
+        ls('pc_janela_desde', jDesde > 0 ? JSON.stringify({ d: jDesde, a: ESTADO.janelaAte, abas: jAbas }) : null);
+        log('janela GAS aberta depois de', action, esp ? 'espelho falhou' : 'sem espelho (GAS antigo ou TURBO off)', jDesde > 0 ? '(fecha no próximo push)' : '(20 min)');
+        janelaAnotar({ a: action, f: 'janela', m: (jDesde > 0 ? 'janela até o próximo push: ' : 'janela de 20 min: ') +
+          String(esp ? (esp.motivo || esp.erro || 'o espelho não confirmou') : 'resposta sem espelho (GAS antigo ou TURBO off)').slice(0, 120) });
       }
     },
     aoMudar: function (fn) { ESTADO.ouvintes.push(fn); },
@@ -31801,5 +31872,263 @@ try{
 })();
 </script>
 
+<!-- ████ PCF_V119 · CRACHÁ RENOVÁVEL (30/09/2026) ████ -->
+<script>
+/* ════════════════════════════════════════════════════════════════════════════════════════════════
+   CRACHA_V1 — o crachá do banco se renova sozinho (30/09/2026). Par do GAS v163 (action renovarCracha).
+   ────────────────────────────────────────────────────────────────────────────────────────────────
+   POR QUE EXISTE (medido no Chrome do Fernando, 30/09 06:49–07:42): o crachá (supa_token) do login com PIN vale
+   12 h; a sessão do PCM/PCF vale dias. Vencido o crachá, o motor TURBO recusava ("sem token do Postgres") e TODA
+   leitura voltava ao Apps Script — 120 de 120, getOS 35 s. Parecia regressão de rodada; era o relógio.
+   O QUE FAZ:
+     · token(minSeg, esperarMs): o crachá da sessão (fresco do localStorage — o Hub pode ter acabado de gravar outro),
+       do MESMO usuário desta página, com PIN. Faltando < 2 h: renova em 2º plano. Vencido: espera a renovação
+       (uma só por vez, entre abas também) até esperarMs — melhor 4 s de espera do que 35 s de Apps Script.
+     · vigia: a cada 5 min e ao voltar para a aba (PC que dormiu), renova o que está para vencer.
+     · recusa ('pin' | 'usuario' | 'assinatura' | 'formato'): não insiste com o MESMO crachá; avisa quem ouve
+       (o PCM mostra a faixa "Modo rápido desligado — digitar PIN"). Falha de rede/GAS antigo: tenta de novo em 5 min.
+   NUNCA: renova crachá sem PIN; grava crachá de outro usuário; ressuscita sessão de quem já saiu (sem proper_session
+   do mesmo usuário no aparelho, não renova); escreve o crachá em log.
+   ════════════════════════════════════════════════════════════════════════════════════════════════ */
+(function (G) {
+  if (G.CRACHA_V1) return;
+  var RENOVAR_ANTES_SEG = 2 * 3600;        // o GAS recusa ('cedo') com mais de 3 h de vida
+  var FALHA_ESPERA_MS = 5 * 60000;
+  var CEDO_ESPERA_MS = 15 * 60000;       // 'cedo' = relógio do aparelho adiantado: não repergunta a cada leitura
+  var DESCONHECIDA_ESPERA_MS = 6 * 3600000;   // GAS anterior ao v163 ("Ação desconhecida")
+  var PRAZO_RENOVAR_MS = 20000;         // a renovação tem prazo PRÓPRIO: pendurada não prende leitura nenhuma além dele
+  var E = { voo: null, recusado: '', motivo: '', falhaAte: 0, ultima: null, ouvintes: [], cfg: { gas: null, ativo: null } };
+  function agoraS() { return Date.now() / 1000; }
+  function jwt(t) { try { return JSON.parse(atob(String(t).split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))) || {}; } catch (e) { return {}; } }
+  function idDe(s) { return s ? String(s.id_tecnico || (s.tecnico && s.tecnico.id) || '') : ''; }
+  function lerDe(st) { try { return JSON.parse(st.getItem('proper_session') || 'null'); } catch (e) { return null; } }
+  function sessoes() {
+    var out = [];
+    try { var a = lerDe(G.localStorage); if (a) out.push(a); } catch (e) {}
+    try { var b = lerDe(G.sessionStorage); if (b) out.push(b); } catch (e) {}
+    return out;
+  }
+  // O usuário DESTA página é o da foto do boot (PROPER_SESSION); sem ela, o da sessão guardada.
+  function uidPagina() {
+    var p = G.PROPER_SESSION && idDe(G.PROPER_SESSION);
+    if (p) return p;
+    var s = sessoes()[0];
+    return idDe(s);
+  }
+  function comPin(tok, uid) { var c = jwt(tok); return !!tok && c.pc_pin === '1' && String(c.sub) === String(uid); }
+  function resta(tok) { return (jwt(tok).exp || 0) - agoraS(); }
+  // O melhor crachá com PIN do usuário da página entre as cópias (localStorage, sessionStorage, memória).
+  function atual() {
+    var uid = uidPagina(), melhor = '';
+    if (!uid) return { uid: '', tok: '', sessao: false };
+    var sess = sessoes().filter(function (s) { return idDe(s) === uid; });
+    var cands = sess.map(function (s) { return s.supa_token; });
+    // "ainda logado" = a sessão do localStorage (a que o Sair do Hub e do PCM apagam). A cópia do sessionStorage
+    // sobrevive ao Sair feito em outra aba — ela serve o crachá que já vale, mas não autoriza RENOVAR (auditoria 30/09).
+    var noLocal = false; try { var sl = lerDe(G.localStorage); noLocal = !!sl && idDe(sl) === uid; } catch (e) {}
+    if (G.PROPER_SESSION && idDe(G.PROPER_SESSION) === uid) cands.push(G.PROPER_SESSION.supa_token);
+    cands.forEach(function (t) { if (comPin(t, uid) && (!melhor || resta(t) > resta(melhor))) melhor = t; });
+    return { uid: uid, tok: melhor, sessao: noLocal };
+  }
+  function gravar(uid, novo, marcarLogin) {
+    var cn = jwt(novo);
+    [G.localStorage, G.sessionStorage].forEach(function (st) {
+      try {
+        var o = lerDe(st);
+        if (!o || idDe(o) !== uid) return;                         // outra pessoa entrou neste aparelho: não mexe
+        if (o.supa_token && comPin(o.supa_token, uid) && (jwt(o.supa_token).exp || 0) >= (cn.exp || 0)) return;   // já tem um melhor
+        o.supa_token = novo;
+        if (marcarLogin) o.token_at = new Date().toISOString();
+        st.setItem('proper_session', JSON.stringify(o));
+      } catch (e) {}
+    });
+    try {
+      if (G.PROPER_SESSION && idDe(G.PROPER_SESSION) === uid) {
+        G.PROPER_SESSION.supa_token = novo;
+        if (marcarLogin) G.PROPER_SESSION.token_at = new Date().toISOString();
+      }
+    } catch (e) {}
+  }
+  function anotar(o) {
+    try {
+      var l = JSON.parse(G.localStorage.getItem('pc_log') || '[]');
+      if (!Array.isArray(l)) l = [];
+      o.q = Date.now(); l.push(o);
+      if (l.length > 120) l = l.slice(l.length - 120);
+      G.localStorage.setItem('pc_log', JSON.stringify(l));
+    } catch (e) {}
+  }
+  function avisar() {
+    var est = estado();
+    E.ouvintes.forEach(function (f) { try { f(est); } catch (e) {} });
+  }
+  function estado() {
+    var a = atual();
+    return { uid: a.uid, tem: !!a.tok, resta_min: a.tok ? Math.round(resta(a.tok) / 60) : null, motivo: E.motivo,
+             desligado: !a.tok || resta(a.tok) <= 300, ultima: E.ultima, em_voo: !!E.voo };
+  }
+  function dormir(ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); }
+  function corrida(p, ms) { return Promise.race([p, dormir(ms).then(function () { return null; })]); }
+
+  function renovar(porque) {
+    if (E.voo) return E.voo;
+    var a = atual();
+    if (!a.uid || !a.tok || !a.sessao || !E.cfg.gas) return Promise.resolve(null);
+    try { if (E.cfg.ativo && !E.cfg.ativo()) return Promise.resolve(null); } catch (e) {}   // PCF em modo offline: nem tenta, nem anota
+    if (E.recusado && E.recusado === a.tok) return Promise.resolve(null);
+    if (Date.now() < E.falhaAte) return Promise.resolve(null);
+    E.voo = (async function () {
+      // outra aba/app deste aparelho já está renovando? espera o resultado dela (até 8 s) antes de pedir outro
+      try {
+        var tr = JSON.parse(G.localStorage.getItem('pc_cracha_voo') || 'null');
+        if (tr && tr.uid === a.uid && Date.now() - tr.t < 15000) {
+          for (var i = 0; i < 16; i++) {
+            await dormir(500);
+            var b = atual();
+            if (b.tok && b.tok !== a.tok && resta(b.tok) > resta(a.tok) + 60) return b.tok;
+          }
+        }
+      } catch (e) {}
+      try { G.localStorage.setItem('pc_cracha_voo', JSON.stringify({ uid: a.uid, t: Date.now() })); } catch (e) {}
+      var t0 = Date.now(), r = null, erro = '';
+      try {
+        r = await corrida(E.cfg.gas({ action: 'renovarCracha', cracha: a.tok }), PRAZO_RENOVAR_MS);
+        if (r === null) erro = 'sem resposta em ' + (PRAZO_RENOVAR_MS / 1000) + ' s';
+      } catch (e) { erro = (e && e.message) || String(e); }
+      try { G.localStorage.removeItem('pc_cracha_voo'); } catch (e) {}
+      var ms = Date.now() - t0;
+      // aceito pelo relógio do SERVIDOR (exp − iat), não pelo do aparelho: PC com relógio errado também renova
+      var cn = r && r.supa_token ? jwt(r.supa_token) : {};
+      if (r && r.status === 'ok' && r.renovado === true && r.supa_token && comPin(r.supa_token, a.uid) && (cn.exp - cn.iat) >= 11 * 3600) {
+        gravar(a.uid, r.supa_token, false);
+        E.motivo = ''; E.recusado = ''; E.falhaAte = 0; E.ultima = { quando: Date.now(), ms: ms, ok: true, porque: porque };
+        anotar({ a: 'renovarCracha', f: 'cracha', ms: ms, m: 'crachá renovado (' + porque + ')' });
+        avisar();
+        return r.supa_token;
+      }
+      if (r && r.status === 'ok' && r.renovado === false) {
+        if (r.motivo === 'cedo') { E.falhaAte = Date.now() + CEDO_ESPERA_MS; return a.tok; }   // ainda tem vida (relógio do aparelho adiantado?)
+        E.recusado = a.tok; E.motivo = String(r.motivo || 'recusado');
+        E.ultima = { quando: Date.now(), ms: ms, ok: false, motivo: E.motivo };
+        anotar({ a: 'renovarCracha', f: 'cracha', ms: ms, m: 'renovação recusada: ' + E.motivo });
+        avisar();
+        return null;
+      }
+      // GAS anterior ao v163 ("ação desconhecida"), rede, 5xx, erro de script: tenta de novo daqui a 5 min
+      var desconhecida = /desconhecid/i.test(String((r && (r.error || r.erro)) || ''));
+      E.falhaAte = Date.now() + (desconhecida ? DESCONHECIDA_ESPERA_MS : FALHA_ESPERA_MS);
+      E.motivo = 'falha';
+      E.ultima = { quando: Date.now(), ms: ms, ok: false, motivo: 'falha: ' + String(erro || (r && (r.error || r.erro)) || 'sem resposta').slice(0, 120) };
+      anotar({ a: 'renovarCracha', f: 'cracha', ms: ms, m: E.ultima.motivo });
+      avisar();
+      return null;
+    })();
+    var p = E.voo;
+    p.then(function () { if (E.voo === p) E.voo = null; }, function () { if (E.voo === p) E.voo = null; });
+    return p;
+  }
+
+  async function token(minSeg, esperarMs) {
+    minSeg = minSeg || 300;
+    var a = atual();
+    if (!a.uid) return null;
+    if (a.tok && resta(a.tok) > minSeg) {
+      if (resta(a.tok) < RENOVAR_ANTES_SEG) renovar('antes de vencer').catch(function () {});
+      return a.tok;
+    }
+    var novo = null;
+    try { novo = await corrida(renovar('vencido'), esperarMs === undefined ? 12000 : esperarMs); } catch (e) { novo = null; }
+    var b = atual();                                              // a renovação (desta ou de outra aba) grava na sessão
+    if (b.tok && resta(b.tok) > minSeg) return b.tok;
+    return (novo && comPin(novo, a.uid) && resta(novo) > minSeg) ? novo : null;
+  }
+  // Síncrono: o crachá que JÁ vale (para quem não pode esperar). Não renova.
+  function tokenJa(minSeg) { var a = atual(); return (a.tok && resta(a.tok) > (minSeg || 300)) ? a.tok : null; }
+
+  function vigiar() {
+    var a = atual();
+    if (!a.tok) { if (a.uid && a.sessao && !E.motivo) { E.motivo = 'sem_cracha'; avisar(); } return; }
+    if (resta(a.tok) < RENOVAR_ANTES_SEG) renovar(resta(a.tok) > 0 ? 'vigia' : 'vencido').catch(function () {});
+  }
+  // o login novo (Hub, em outra aba) apaga a recusa: o crachá mudou
+  function aoMudarSessao() {
+    var a = atual();
+    if (a.tok && a.tok !== E.recusado && resta(a.tok) > 300 && (E.motivo === 'pin' || E.motivo === 'usuario' || E.motivo === 'sem_cracha' || E.motivo === 'assinatura' || E.motivo === 'formato')) {
+      E.motivo = ''; E.recusado = ''; avisar();
+    }
+  }
+
+  G.CRACHA_V1 = {
+    configurar: function (o) { if (o && typeof o.gas === 'function') E.cfg.gas = o.gas; if (o && typeof o.ativo === 'function') E.cfg.ativo = o.ativo; },
+    token: token, tokenJa: tokenJa, renovar: renovar, estado: estado, gravar: gravar,
+    aoMudar: function (f) { if (typeof f === 'function') E.ouvintes.push(f); },
+    _t: { E: E, atual: atual, jwt: jwt, vigiar: vigiar, uidPagina: uidPagina }
+  };
+  try { setInterval(vigiar, 5 * 60000); } catch (e) {}
+  try { G.document.addEventListener('visibilitychange', function () { if (G.document.visibilityState === 'visible') vigiar(); }); } catch (e) {}
+  try { G.addEventListener('storage', function (ev) { if (!ev || ev.key === 'proper_session') aoMudarSessao(); }); } catch (e) {}
+})(typeof window !== 'undefined' ? window : this);
+
+</script>
+<script>
+/* ════════════════════════════════════════════════════════════════════════════════════════════════
+   PCF_V119 — 30/09/2026 — o crachá do banco se renova sozinho também no celular. Par: GAS v163 (renovarCracha).
+   O técnico abre o PCF pelo ícone e fica dias sem passar pelo Hub: vencido o crachá (12 h), toda leitura ia ao
+   Apps Script em silêncio. Agora renova sozinho; recusado (PIN de mais de 7 dias, usuário inativo) ⇒ faixa
+   "Modo rápido desligado — entre pelo Hub com o PIN". + a janela depois de escrita fecha no próximo push (motor).
+   Modo offline deliberado: nada disso roda (a rede está bloqueada de propósito).
+   ════════════════════════════════════════════════════════════════════════════════════════════════ */
+(function () {
+  if (!window.CRACHA_V1) return;
+  CRACHA_V1.configurar({
+    // modo offline deliberado: o crachá nem tenta (e não enche o registro de lentidão — auditoria 30/09)
+    ativo: function () { return !(typeof pgpRedeBloqueada === 'function' && pgpRedeBloqueada()); },
+    // direto ao /exec com prazo próprio de 15 s (o transporte de escrita espera 45 s × tentativas)
+    gas: async function (corpo) {
+      var ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+      var tmo = ctl ? setTimeout(function () { try { ctl.abort(); } catch (e) {} }, 15000) : 0;
+      try {
+        var r = await fetch(_pgpGsUrl, { method: 'POST', body: gcBody(Object.assign({ action: corpo.action, key: _AUTH_HASH }, corpo)), signal: ctl ? ctl.signal : undefined });
+        var txt = await r.text();
+        if (String(txt).trim().charAt(0) === '<') throw new Error('o Apps Script respondeu HTML');
+        return JSON.parse(txt);
+      } finally { if (tmo) clearTimeout(tmo); }
+    }
+  });
+  var TXT = {
+    pin: 'faz mais de uma semana que você digitou o PIN, ou ele foi trocado.',
+    sem_cracha: 'esta sessão não tem o acesso rápido ao banco.',
+    assinatura: 'o acesso ao banco desta sessão não foi reconhecido.',
+    formato: 'o acesso ao banco desta sessão não foi reconhecido.',
+    usuario: 'seu usuário não está ativo no cadastro.'
+  };
+  function pintar(est) {
+    try {
+      var motivo = est && est.motivo, f = document.getElementById('pcf119Faixa');
+      var mostrar = !!(motivo && TXT[motivo]) && est.desligado && sessionStorage.getItem('pcf119_faixa_fechada') !== motivo;
+      if (!mostrar) { if (f) f.remove(); return; }
+      if (!f) {
+        f = document.createElement('div');
+        f.id = 'pcf119Faixa'; f.setAttribute('role', 'status');
+        f.style.cssText = 'position:fixed;left:12px;right:12px;top:calc(8px + env(safe-area-inset-top,0px));z-index:9000;display:flex;gap:8px;align-items:center;' +
+          'padding:9px 10px 9px 12px;border-radius:10px;background:#FFF4E5;color:#5A3200;border:1px solid #F3C38B;box-shadow:0 6px 18px rgba(0,0,0,.12);font:500 13px/1.35 system-ui,sans-serif';
+        document.body.appendChild(f);
+      }
+      f.innerHTML = '<span style="flex:1">⚡ <b>Modo rápido desligado:</b> ' + TXT[motivo] +
+        (motivo !== 'usuario' ? ' <a href="../ProperHub/index.html" style="color:#5A3200;font-weight:700">Entrar pelo Hub com o PIN</a>' : '') + '</span>' +
+        '<button type="button" aria-label="Fechar aviso" style="border:0;background:transparent;color:#5A3200;font-size:20px;line-height:1;padding:4px 6px">×</button>';
+      f.querySelector('button').onclick = function () { try { sessionStorage.setItem('pcf119_faixa_fechada', motivo); } catch (e) {} f.remove(); };
+    } catch (e) {}
+  }
+  CRACHA_V1.aoMudar(pintar);
+  function ligar() {
+    try { if (!(typeof pgpRedeBloqueada === 'function' && pgpRedeBloqueada())) CRACHA_V1._t.vigiar(); } catch (e) {}
+    try { pintar(CRACHA_V1.estado()); } catch (e) {}
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ligar); else ligar();
+})();
+
+</script>
+<!-- ████ FIM PCF_V119 ████ -->
 </body>
 </html>
