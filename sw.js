@@ -9,7 +9,8 @@
  * O activate abaixo apaga qualquer cache antigo com prefixo 'propertech-'.
  */
 const CACHE_BASE = 'propertech-';
-const CACHE = CACHE_BASE + 'v121';  // 30/09/2026 — par do PCF_V119 (crachá renovável). Sem bump, o celular serve o V118 do cache.
+const CACHE = CACHE_BASE + 'v123';  // 02/10/2026 — par do PCF_V121 (campo 11 pontos). Sem bump, o celular serve o V119 do cache.
+// antes: 'v121'  // 30/09/2026 — par do PCF_V119 (crachá renovável). Sem bump, o celular serve o V118 do cache.
 // antes: 'v119' — par do PCF_V117 (＋ Adicionar item)
 // antes: 'v118'  // 29/09/2026 — par do PCF_V116 (campo simples). Sem bump, o celular serve o V115 do cache.
 // antes: 'v117' (28/09 — par do PCF_V115, TURBO)
@@ -62,6 +63,7 @@ const CACHE = CACHE_BASE + 'v121';  // 30/09/2026 — par do PCF_V119 (crachá r
 //        PCF_V117 ↔  propertech-v119  (29/09 — ＋ Adicionar item na inspeção e na preventiva)
 //        PCF_V118 ↔  propertech-v120  (29/09 — reabertura robusta: tstatus no formulário, linha do envio no card)
 //        PCF_V119 ↔  propertech-v121  (30/09 — crachá renovável: o modo rápido não desliga sozinho em 12 h)
+//        PCF_V121 ↔  propertech-v123  (02/10 — campo 11 pontos: a fila de DADOS também sobe com o app fechado)
 //    Quem "corrigir" isto para propertech-v91 achando que alinha as versões
 //    reintroduz o pior modo de falha deste arquivo: a chave ficaria IGUAL à do
 //    deploy anterior, o activate não apagaria nada, e o técnico continuaria
@@ -389,6 +391,71 @@ async function drenarForms(cfg, t0, placar, temLock) {
   } finally { try { db.close(); } catch (e) {} }
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// PCF_V121 / propertech-v123 (02/10/2026) — A FILA DE DADOS TAMBÉM SOBE COM O APP FECHADO.
+// 🕳 Fernando, 02/10: "demorando muito pra enviar e ainda continua exigindo que a tela esteja aberta".
+//    Até a v121 o service worker só drenava formulários e anexos; a visita, as peças e a preventiva
+//    (fila `pgp_pending_sync`, no localStorage — que o SW não lê) só andavam com a TELA viva.
+// O PCF V121 espelha essa fila no IndexedDB (`sqi::<h>`, mesmo banco dos anexos). Aqui ela sobe em
+// ORDEM ESTRITA (para no 1º que falhar: a peça nunca passa à frente da visita dela), com a trava
+// 'proper-sq' (a tela usa a mesma) e respeitando o envio direto que a tela esteja fazendo (emVoo).
+// Feito ⇒ grava `sqd::<h>` {id, ts} e a tela tira o item da fila dela (só se for a MESMA versão).
+// Recusa do servidor (status ≠ ok): até 3 tentativas (uma por rodada); depois fica para a tela decidir (Conferir).
+// A recusa trava SÓ os itens da MESMA máquina (a peça não passa à frente da visita dela); as outras máquinas
+// seguem (auditoria 02/10: uma recusa não pode prender a fila inteira). Rede caída ou HTTP sem JSON param tudo.
+// ════════════════════════════════════════════════════════════════════════════
+async function drenarDados(cfg, t0, placar) {
+  const db = await idbAbrir('proper_pcf_idb', 'photos');
+  if (!db) return;
+  try {
+    const chaves = await rq(db.transaction('photos', 'readonly').objectStore('photos')
+      .getAllKeys(IDBKeyRange.bound('sqi::', 'sqi::￿')));
+    const recs = [];
+    for (const k of chaves) {
+      const r = await rq(db.transaction('photos', 'readonly').objectStore('photos').get(k));
+      if (r) recs.push([k, r]);
+    }
+    const travados = {};
+    const grupo = (r) => { const b = r.body || {}, m = b.machine || {};
+      return String(b.machine_id || m.id || b.serial || m.serial || b.tag || m.tag || b.os_id || '*'); };
+    recs.sort((a, b) => ((a[1].ordem || 0) - (b[1].ordem || 0)) || ((a[1].ts || 0) - (b[1].ts || 0)));
+    for (const [k, r0] of recs) {
+      if (Date.now() - t0 > ORCAMENTO_MS) { placar.sobrou = true; break; }
+      const g = grupo(r0);
+      if (travados['*'] || travados[g]) continue;
+      let st = db.transaction('photos', 'readwrite').objectStore('photos');
+      const rec = await rq(st.get(k));
+      if (!rec) continue;
+      if (rec.emVoo && Date.now() - rec.emVoo < 180000) { placar.adiado = true; break; }   // a tela está enviando este agora
+      if (rec.lease_ate && rec.lease_ate > Date.now()) { placar.adiado = true; break; }
+      if (rec.sw_recusado) { travados[g] = 1; if (g === '*') break; continue; }              // recusado 3×: a tela decide (Conferir)
+      rec.lease_por = 'sw'; rec.lease_ate = Date.now() + LEASE_MS;
+      await rq(st.put(rec, k));
+      let res = null;
+      try { res = await postarGas(cfg.url, Object.assign({}, rec.body || {}, { action: rec.action, key: cfg.key }), 60000); }
+      catch (e) { placar.falhaRede = true; }
+      st = db.transaction('photos', 'readwrite').objectStore('photos');
+      if (res && res.ok) {
+        await rq(st.put({ id: rec.id, ts: rec.ts, action: rec.action, quando: Date.now() }, 'sqd::' + rec.h));
+        await rq(st.delete(k));
+        placar.n++;
+      } else {
+        const atual = await rq(st.get(k));
+        if (atual) {
+          delete atual.lease_por; delete atual.lease_ate;
+          atual.sw_erro = res ? String((res.d && (res.d.error || res.d.message)) || ('HTTP ' + res.http)).slice(0, 160) : 'rede';
+          const recusa = !!(res && res.d && res.d.status && res.d.status !== 'ok');
+          if (recusa) { atual.sw_tentativas = (atual.sw_tentativas || 0) + 1; if (atual.sw_tentativas >= 3) atual.sw_recusado = true; }
+          await rq(st.put(atual, k));
+        }
+        const recusou = !!(res && res.d && res.d.status && res.d.status !== 'ok');
+        if (!recusou || g === '*') break;                        // rede/HTTP: para tudo · recusa sem máquina conhecida: para tudo
+        travados[g] = 1;                                         // recusa: só a mesma máquina espera; as outras seguem
+      }
+    }
+  } finally { try { db.close(); } catch (e) {} }
+}
+
 async function drenarTudo() {
   const t0 = Date.now();
   const placar = { n: 0, falhaRede: false, sobrou: false, adiado: false };
@@ -398,6 +465,8 @@ async function drenarTudo() {
   try { cfg = await rq(dbc.transaction('photos', 'readonly').objectStore('photos').get('cfg::gas')); }
   finally { try { dbc.close(); } catch (e) {} }
   if (!cfg || !cfg.url || !cfg.key) return placar;     // a página ainda não abriu nesta versão
+  const sq = await comLock('proper-sq', () => drenarDados(cfg, t0, placar));   // PCF_V121: visita/peças/preventiva primeiro
+  if (sq && sq.pulou) placar.adiado = true;
   const a = await comLock('proper-forms-outbox', (tl) => drenarForms(cfg, t0, placar, tl));
   if (a && a.pulou) placar.adiado = true;
   const b = await comLock('proper-dq', () => drenarPcf(cfg, t0, placar));

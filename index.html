@@ -1594,8 +1594,17 @@ html[data-boot="pipeline"] #pf113Splash{display:flex;position:fixed;inset:0;z-in
   pelo Hub com o PIN". A janela de 20 min de Apps Script depois de uma escrita com espelho falho fecha no próximo push.
   Com o GAS v162: degrada para o comportamento do V118 sem erro.
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V119</title>
-<meta name="app-build" content="PCF_V119" data-date="2026-09-30">
+<!--
+  PCF_V121 · CAMPO 11 PONTOS · 02/10/2026 · feito SOBRE o PCF_V119 no ar · par sw propertech-v123.
+  Os prints do Fernando em campo: Nao do Precisa trocar que nao respondia, aba de maquina sem como fechar,
+  hora e data sem teclado e com icone apagado, contador da peca com estimado e real lado a lado (ritmo da
+  peca aprendido do historico), envio em segundo plano (fila no aparelho drenada pela tela e pelo service
+  worker), guia do Adicionar item, Incluir outra maquina tambem fora de OS, foto da visita anterior certa
+  com Usar no relatorio, referencia sugerida pelo mesmo modelo e conexao mais robusta.
+  O SQL PCF_CAMPO_V121 roda ANTES deste arquivo (sem ele as tres leituras novas caem no caminho antigo).
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V121</title>
+<meta name="app-build" content="PCF_V121" data-date="2026-10-02">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -12243,7 +12252,7 @@ function pgpSetGsStatus(state){
     txt.textContent='Conectando...';
   } else {
     dot.className='gs-dot-pgp off';
-    txt.textContent = pgpModoOfflineAtivo() ? '📴 Offline' : 'Servidor';   // PCF_V116
+    txt.textContent = pgpModoOfflineAtivo() ? '📴 Offline' : (navigator.onLine === false ? 'Sem internet' : 'Reconectando…');   // PCF_V116 · PCF_V121: diz o que acontece
     _pgpGsConnected=false;
   }
   // V81 (04/08) — FONTE ÚNICA DE VERDADE. O chip do topo e o "Status:" do rodapé
@@ -12295,7 +12304,7 @@ async function pgpTestGs(manual){
     // tentava reconectar sem recarregar — com o pill preso em "Conectando...".
     // fetchMachineHistory já usava AbortSignal.timeout(8000); aqui faltava.
     const r=await fetch(_pgpGsUrl+'?action=ping'+gcParam(),{method:'GET',
-      signal:(typeof AbortSignal!=='undefined'&&AbortSignal.timeout)?AbortSignal.timeout(12000):undefined});
+      signal:(typeof AbortSignal!=='undefined'&&AbortSignal.timeout)?AbortSignal.timeout(20000):undefined});   // PCF_V121: 12 s derrubava o Apps Script frio (cold start + fila)
     const txt=await r.text();
     // Apps Script mal configurado retorna HTML de login — detectar antes de parsear
     if(txt.trim().startsWith('<')){
@@ -16224,7 +16233,7 @@ async function pgpEnviarPreventiva(midx=currentMachine, opts){
   if(btn){btn.disabled=true;btn.classList.add('is-busy');btn.textContent='Enviando preventiva…';}   // V88 (D8): faltava o .is-busy (era só troca de texto, sem spinner)
   if(!silent) _slow = setTimeout(function(){ if(btn) btn.textContent = 'Ainda enviando. Não feche a tela.'; }, 8000);
 
-  if(!_pgpGsConnected){
+  if(!_pgpGsConnected || window._pcf121FilaPrimeiro){   // PCF_V121: envio em 2º plano = fila primeiro
     // V82 (item 2) — guarda removida (ver savePendingQueue): a preventiva do
     // técnico não pode ser recusada por contagem de itens.
     // V68 — F-06: enfileira COM dedupe por visit_id (antes: list.push cru).
@@ -17224,7 +17233,7 @@ async function pgpEnviarGS(srcBtn){
     if (!_segueInsp) { if (btn) { btn.disabled = false; } return; }
   }
 
-  if(!_pgpGsConnected){
+  if(!_pgpGsConnected || window._pcf121FilaPrimeiro){   // PCF_V121: envio em 2º plano = fila primeiro
     const qVisit = pgpAddPending('visit', payload);
     let qParts = { saved: true, blocked: false };
     if(payload.machine_id && Object.keys(payload.parts||{}).length > 0){
@@ -17236,10 +17245,11 @@ async function pgpEnviarGS(srcBtn){
     } else {
       queued++;
       pgpRegistroGravar(payload, 'fila', 'inspecao');   // V102 (item 6a)
+      if (window._pcf121FilaPrimeiro) { try { pcf121FilaCliente(payload); } catch (e121) {} }   // PCF_V121: o cadastro do cliente vai junto, como no envio direto
       try { if (typeof window.pcf117SubirAssinaturas === 'function') window.pcf117SubirAssinaturas(pgpBuildVisitRequest(payload), i); } catch (e117) {}   // PCF_V117
       // v55: antes era sucesso silencioso (só queued++); agora avisa visivelmente
       // que caiu na fila offline em vez de ter sido enviado.
-      setSendStatus('<span style="color:var(--orange)">🔴 Sem conexão — salvo na fila, reenvio automático</span>');
+      setSendStatus(window._pcf121FilaPrimeiro ? '<span style="color:var(--blue,#3b82f6)">📤 Na fila — sobe em 2º plano</span>' : '<span style="color:var(--orange)">🔴 Sem conexão — salvo na fila, reenvio automático</span>');
     }
     continue;
   }
@@ -23787,13 +23797,15 @@ window.pgpFlushPending = async function () {
   try {
     var snap = pgpGetPending();
     if (!snap.length) return;
-    var sent = 0, deadNew = 0;
+    var sent = 0, deadNew = 0, _p121Trav = {};   // PCF_V121: grupos (máquina) travados nesta rodada
     for (var i = 0; i < snap.length; i++) {
       var id = _pf113PendId(snap[i]);
       var item = null; var atual = pgpGetPending();
       for (var k = 0; k < atual.length; k++) if (_pf113PendId(atual[k]) === id) { item = atual[k]; break; }
       if (!item) continue;
-      if (item.emVoo && Date.now() - item.emVoo < 180000) continue;     // o envio direto está cuidando dele
+      var _g121 = (typeof _p121Grupo === 'function') ? _p121Grupo(item) : '';
+      if (_g121 && (_p121Trav[_g121] || _p121Trav['*'])) continue;   // PCF_V121: a mesma máquina espera a da frente
+      if (item.emVoo && Date.now() - item.emVoo < 180000) { if (_g121) _p121Trav[_g121] = 1; continue; }     // o envio direto está cuidando dele
       try {
         await pgpPostJson(item.action, item.body || {}, 1, null, { timeoutMs: 30000 });
         sent++;
@@ -23804,13 +23816,14 @@ window.pgpFlushPending = async function () {
       } catch (e) {
         var tries = (item.tries || 0) + 1;
         var lastError = String((e && e.message) || e || 'falha');
-        if ((e && e.permanent) || tries >= PGP_MAX_TRIES) {
+        if ((e && e.permanent) || (tries >= PGP_MAX_TRIES && !(typeof _p121Transitorio === 'function' && _p121Transitorio(e)))) {   // PCF_V121: rede caída não é veredito (a poda V81 manda para Conferir após 7 dias)
           var morto = _pf113PendMudar(id, function () { return null; }) || item;
           morto.tries = tries; morto.lastError = lastError; morto.lastTs = Date.now();
           morto.deadReason = (e && e.serverStatus) ? ('servidor: ' + e.serverStatus) : ('sem sucesso após ' + tries + ' tentativa(s)');
           var dead = pgpGetDead(); dead.push(morto); pgpSaveDead(dead); deadNew++;
         } else {
           _pf113PendMudar(id, function (x) { x.tries = tries; x.lastError = lastError; x.lastTs = Date.now(); return x; });
+          if (_g121) _p121Trav[_g121] = 1;   // PCF_V121: ficou na fila ⇒ o resto da MESMA máquina espera
         }
         if (!(e && e.permanent) && !_pgpGsConnected) break;               // V77 (G2c)
       }
@@ -30779,10 +30792,10 @@ try{
     }
     _enviando = true;
     var eraPrev = ehPrev();
-    if (btn) { btn.disabled = true; btn.classList.add('is-busy'); btn.textContent = '⏳ Enviando… não feche a tela'; }
+    if (btn) { btn.disabled = true; btn.classList.add('is-busy'); btn.textContent = _pcf121Rot('botao', '⏳ Enviando… não feche a tela'); }
     var etapas = [
       { rot: 'Salvar no aparelho', st: 'indo' },
-      { rot: (ehPrev() ? 'Registrar a preventiva' : 'Enviar a inspeção') + (sel.length > 1 ? ' (' + sel.length + ' máquinas)' : ''), st: '' },
+      { rot: _pcf121Rot('etapa', (ehPrev() ? 'Registrar a preventiva' : 'Enviar a inspeção') + (sel.length > 1 ? ' (' + sel.length + ' máquinas)' : '')), st: '' },
       { rot: 'Gerar o PDF' + (ehPrev() ? ' (com assinaturas)' : ''), st: '' }
     ];
     var pintar = function () { try { pgpEtapaPintar(etapas); } catch (e) {} };
@@ -30820,7 +30833,7 @@ try{
       resumo.fila = filaN; resumo.faltou = faltou.length;
       if (okN && !faltou.length) {
         etapas[1].st = 'ok';
-        etapas[1].msg = filaN ? (filaN + ' na fila — sobe(m) sozinha(s) ao conectar') : '';
+        etapas[1].msg = filaN ? (window._pcf121FilaPrimeiro ? _pcf121Rot('fila', '') : (filaN + ' na fila — sobe(m) sozinha(s) ao conectar')) : '';
       } else {
         etapas[1].st = 'erro';
         etapas[1].msg = (faltou.length ? 'não confirmada: Máq. ' + faltou.join(', ') + ' — ' : '') + (etapas[1].msg || 'veja o aviso na tela');
@@ -30860,7 +30873,7 @@ try{
       atualizar();
       if (!falhou) {
         var fim = resumo.faltou ? '⚠ Parte das máquinas NÃO foi confirmada — veja as etapas abaixo do botão.'
-                : resumo.fila ? '⏳ Guardado na fila do aparelho — sobe sozinho quando tiver sinal.' + (resumo.semPdf ? ' PDF não gerado (sem foto nem peça marcada).' : ' PDF gerado.')
+                : resumo.fila ? _pcf121Rot('fim', '⏳ Guardado na fila do aparelho — sobe sozinho quando tiver sinal.') + (resumo.semPdf ? ' PDF não gerado (sem foto nem peça marcada).' : ' PDF gerado.')
                 : resumo.semPdf ? '✅ Enviado. ⚠ PDF não gerado: nenhuma foto nem peça marcada.'
                 : '✅ Pronto — enviado e PDF gerado.';
         try { showNotification(fim); } catch (e) {}
@@ -32130,5 +32143,1067 @@ try{
 
 </script>
 <!-- ████ FIM PCF_V119 ████ -->
+<!-- ████ PCF_V121 (CAMPO 11 PONTOS) ████ -->
+<style>
+/* PCF_V121 (02/10/2026) — os 11 pontos do campo (prints do PCF V119) */
+/* 1 · "Não" que responde: sem marca, nenhuma pílula acesa; "Não" confirmado fica verde */
+.pcf121-sub-vazio .pcf116-sp.on[data-v="nao"]{border-color:#334155;background:#111a2e;color:#e2e8f0}
+.pcf116-subst:not(.pcf121-sub-vazio) .pcf116-sp.on[data-v="nao"]{border-color:#22c55e;background:#123024;color:#bbf7d0}
+.pcf116-subst:not(.pcf121-sub-vazio) .pcf116-sp.on[data-v="nao"]::before{content:'✓ '}
+.pcf116-sp:active{transform:scale(.97);filter:brightness(1.25)}
+.pcf121-sub-dica{font-size:11.5px;color:#94a3b8;margin-top:5px;line-height:1.35}
+/* 2 · ✕ na aba da máquina */
+.machine-tab .pcf121-x{display:inline-flex;align-items:center;justify-content:center;margin-left:8px;min-width:22px;height:22px;border-radius:11px;background:rgba(0,0,0,.28);color:#fff;font-size:12px;font-weight:800;line-height:1;cursor:pointer}
+.machine-tab .pcf121-x:active{background:#b91c1c}
+/* 3 · hora e data digitáveis + ícone com contraste */
+.pcf121-dt{display:flex;gap:6px;align-items:stretch;width:100%}
+.pcf121-dt .pcf121-dt-txt{flex:1 1 auto;min-width:0;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.pcf121-dt .pcf121-dt-txt.invalido{border-color:#ef4444!important;box-shadow:0 0 0 2px rgba(239,68,68,.25)}
+body input.pcf121-dt-nativo,body .section-body input.pcf121-dt-nativo{flex:0 0 54px!important;width:54px!important;min-width:54px!important;max-width:54px!important;padding:0!important;color:transparent!important;caret-color:transparent;cursor:pointer;color-scheme:dark;background:#1e293b!important;border:1.5px solid #475569!important}
+input.pcf121-dt-nativo::-webkit-datetime-edit,input.pcf121-dt-nativo::-webkit-datetime-edit-fields-wrapper{display:none}
+input.pcf121-dt-nativo::-webkit-calendar-picker-indicator{filter:invert(1) brightness(1.7);opacity:1;width:26px;height:26px;margin:0 auto;padding:0;cursor:pointer}
+.machine-panel input[type="time"],.machine-panel input[type="date"]{color-scheme:dark}
+.machine-panel input[type="time"]::-webkit-calendar-picker-indicator,.machine-panel input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(1) brightness(1.5);opacity:1}
+/* 4/7 · estimado × real por peça */
+.pcf121-est{display:block;margin-top:4px;font-size:11.5px;line-height:1.3;color:#93c5fd;white-space:normal}
+.pcf121-usar-est{margin-left:4px;min-height:28px;padding:2px 8px;border-radius:8px;border:1px solid #3b82f6;background:#172554;color:#bfdbfe;font-size:11px;font-weight:700;cursor:pointer}
+.pcf121-est b{color:#bfdbfe;font-variant-numeric:tabular-nums}
+.pcf121-est.alerta{color:#fbbf24}
+.pcf121-est.alerta b{color:#fde68a}
+/* 5 · item adicional: o que preencher */
+.pcf121-novo{font-size:12px;color:#fbbf24;margin:-2px 0 6px;line-height:1.4}
+.pcf121-chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 2px}
+.pcf121-chip{min-height:36px;padding:6px 10px;border-radius:18px;border:1px solid #475569;background:#1e293b;color:#e2e8f0;font-size:12.5px;cursor:pointer}
+.pcf121-chip:active{background:#334155}
+/* 5 · envio em 2º plano */
+.pcf121-envio{margin:8px 2px 0;padding:9px 11px;border-radius:10px;font-size:12.5px;line-height:1.45;background:#0f2a1f;border:1px solid #166534;color:#bbf7d0;display:none}
+.pcf121-envio.indo{background:#1e293b;border-color:#3b82f6;color:#dbeafe}
+.pcf121-envio.parado{background:#2a1f0f;border-color:#b45309;color:#fde68a}
+.pcf121-envio b{font-variant-numeric:tabular-nums}
+/* 6 · incluir outra máquina fora de OS */
+.pcf121-incluir{display:none;width:calc(100% - 24px);margin:8px 12px 0;min-height:52px;border-radius:12px;border:2px dashed #b45309;background:#1e293b;color:#f59e0b;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;letter-spacing:.02em;cursor:pointer;text-transform:uppercase}
+.pcf121-incluir:active{background:#334155}
+/* 8/10 · foto da visita anterior: usar ou apagar */
+.pcf121-prev{position:relative}
+.pcf121-prev-sem{display:flex;align-items:center;justify-content:center;width:50px;height:50px;font-size:10px;color:#94a3b8;text-align:center}
+.pcf121-usar{min-height:36px;padding:4px 10px;border-radius:8px;border:1px solid #16a34a;background:#123024;color:#bbf7d0;font-size:12px;font-weight:700;cursor:pointer;margin-left:4px}
+.pcf121-usar:disabled{opacity:.6}
+.pcf121-prev-nota{font-size:10.5px;color:#94a3b8;margin-left:4px;max-width:120px;line-height:1.25}
+.photo-thumbs-mini .pcf121-prev.dim{opacity:.55}
+/* 9 · referência sugerida */
+.pcf121-refsug{margin:4px 0 2px;font-size:11.5px;color:#94a3b8;line-height:1.35}
+.pcf121-refsug button{min-height:32px;margin:3px 4px 0 0;padding:3px 9px;border-radius:14px;border:1px solid #f58220;background:rgba(245,130,32,.10);color:#fdba74;font-size:12px;font-weight:700;cursor:pointer}
+.pcf121-refsug button.fam{border-style:dashed;color:#fcd9b6}
+</style>
+<script>
+/* ════════════════════════════════════════════════════════════════════════════════════════════════
+   PCF_V121 (02/10/2026) — OS 11 PONTOS DO CAMPO (prints do Fernando, PCF V119 em uso)
+   Par: SQL PCF_CAMPO_V121 (roda ANTES) · sw propertech-v123. Zero GAS.
+     1  "Não" do "Precisa trocar esta peça?" parecia morto: SEM marca a pílula "Não" já aparecia acesa
+        (o V116 pinta "Não" para o '' = "não sei"), então o toque não mudava nada na tela. Agora sem marca
+        nada fica aceso; "Não" tocado fica verde com ✓ (tocar de novo desfaz) e o aparelho confirma.
+     2  ✕ em cada aba de máquina (com 2+). Fechar aba = tirar a máquina desta coleta, com confirmação.
+     3  hora e data DIGITÁVEIS: ao lado do campo nativo nasce um campo de texto numérico (03:30, 15/08/2026)
+        que escreve no campo de sempre; o relógio/calendário ficam num ícone claro (contraste).
+     4/7 contador de cada peça: ESTIMADO (só leitura) × REAL (o técnico lê e digita — não vem mais pré-
+        preenchido, a mesma regra do horímetro total desde o v65). A estimativa usa (a) o RITMO da peça
+        aprendido do histórico (SQL pc_pecas_ritmo: quanto o contador anda por hora do horímetro total)
+        a partir da ÚLTIMA LEITURA da peça, (b) o horímetro REAL total assim que ele é digitado e (c) o
+        regime hora a hora no calendário (dias e faixas da semana), não a média semanal.
+     5  envio em 2º PLANO: "Enviar" grava tudo no aparelho e põe na fila (segundos); a fila sobe pela tela E
+        pelo service worker (Android, com o app fechado). A tela diz isso. "＋ Adicionar item" ganha um
+        guia do que preencher e nomes prontos (a foto é opcional).
+     6  "＋ Incluir outra máquina de <cliente>" também fora de OS (era só dentro de OS ⇒ "intermitente").
+     8/10 foto da visita anterior em cada item: a MAIS NOVA de verdade (SQL pc_fotos_anteriores), com
+        "✓ Usar no relatório" (vira foto desta visita) ou ✕ (sai do histórico). Miniatura guardada no aparelho.
+     9  referência sugerida pelas outras máquinas do mesmo modelo (SQL pc_ref_sugestoes).
+     11 conexão: ping com 20 s, reconexão mais rápida enquanto há fila, queda de rede não manda item para
+        "Conferir", e o chip diz "Reconectando…"/"Sem internet" em vez de "Servidor".
+   Só ADITIVO: embrulha por window[nome]; prefixo pcf121/_p121. Kill-switch do envio em 2º plano:
+   localStorage.pcf121_envio = 'direto'.
+   ════════════════════════════════════════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+  var P121 = { versao: 'PCF_V121', log: [] };
+  window.P121 = P121;
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
+  function log() { try { P121.log.push([Date.now()].concat([].slice.call(arguments)).join(' ')); if (P121.log.length > 80) P121.log.shift(); } catch (e) {} }
+  function aviso(m) { try { showNotification(m); } catch (e) {} }
+  function dorme(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function embrulhar(nome, fabrica) {
+    try { var o = window[nome]; if (typeof o !== 'function') return false; window[nome] = fabrica(o); window[nome].__p121 = true; return true; } catch (e) { return false; }
+  }
+  function depois(nome, fn) {
+    embrulhar(nome, function (orig) {
+      return function () {
+        var a = arguments, r = orig.apply(this, a);
+        try { if (r && typeof r.then === 'function') r.then(function () { try { fn.apply(null, a); } catch (e) {} }, function () {}); else fn.apply(null, a); } catch (e) {}
+        return r;
+      };
+    });
+  }
+  function nMaq() { try { return machines.length; } catch (e) { return 0; } }
+  function atual() { try { return currentMachine; } catch (e) { return 0; } }
+  function br(n) { return Math.round(Number(n)).toLocaleString('pt-BR'); }
+
+  // ── Postgres: RPC com o crachá do login com PIN ─────────────────────────────────────────────────
+  function _erro(tipo, msg) { var e = new Error(msg || tipo); e.p121 = tipo; return e; }
+  async function rpc(fn, args, prazoMs) {
+    try { if (typeof pgpRedeBloqueada === 'function' && pgpRedeBloqueada()) throw _erro('sem_rede', 'modo offline'); } catch (e) { if (e.p121) throw e; }
+    if (navigator.onLine === false) throw _erro('sem_rede', 'sem internet');
+    var tok = null; try { tok = await _pcfSupaToken(); } catch (e) { tok = null; }
+    if (!tok) throw _erro('sem_cracha', 'sem crachá do Postgres');
+    var ctl = (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(prazoMs || 12000) : undefined;
+    var r = await fetch(PCF_SUPA_URL + '/rest/v1/rpc/' + fn, { method: 'POST', signal: ctl,
+      headers: { 'apikey': PCF_SUPA_ANON, 'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: JSON.stringify(args || {}) });
+    var txt = await r.text(), d = null; try { d = JSON.parse(txt); } catch (e) {}
+    if (r.status === 404 && d && (d.code === 'PGRST202' || /Could not find the function/i.test(d.message || ''))) throw _erro('sem_sql', fn + ' não existe (rode o SQL PCF_CAMPO_V121)');
+    if (!r.ok) throw _erro('erro', (d && (d.message || d.erro)) || ('HTTP ' + r.status));
+    return d;
+  }
+  P121.rpc = rpc;
+
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  // 1 · "PRECISA TROCAR ESTA PEÇA?" — o "Não" que responde
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  function substBox(box) {
+    try {
+      var pk = box.getAttribute('data-subst-pk'), inp = $(pk + '_subst'), v = inp ? String(inp.value || '') : '';
+      var vazio = !(v === 'nao' || v === 'proxima' || v === 'urgente');
+      box.classList.toggle('pcf121-sub-vazio', vazio);
+      var d = box.querySelector('.pcf121-sub-dica');
+      if (!d) { d = document.createElement('div'); d.className = 'pcf121-sub-dica'; box.appendChild(d); }
+      var txt = vazio ? 'Sem marca = não precisa trocar. Toque em uma opção para registrar.'
+        : (v === 'nao' ? '✓ Registrado: não precisa trocar (toque de novo em "Não" para desfazer).' : '');
+      if (d.textContent !== txt) d.textContent = txt;          // idempotente: o observador não pode entrar em laço
+      var disp = txt ? '' : 'none'; if (d.style.display !== disp) d.style.display = disp;
+    } catch (e) {}
+  }
+  function substTodos() { document.querySelectorAll('[data-subst-pk]').forEach(substBox); }
+  P121.substTodos = substTodos;
+  embrulhar('pcf116SetSubst', function (orig) {
+    return function (pk, v) {
+      var inp = $(pk + '_subst'); var antes = inp ? String(inp.value || '') : '';
+      var r;
+      if (v === 'nao' && antes === 'nao') {               // tocar de novo desfaz (volta a "sem marca")
+        inp.value = '';
+        try { if (typeof pcf116RepintarSubst === 'function') pcf116RepintarSubst(); } catch (e) {}
+        try { inp.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) {}
+        try { pgpSaveDraftBreve(); } catch (e) {}
+        aviso('↩ Marca tirada desta peça.');
+      } else {
+        r = orig.apply(this, arguments);
+        if (v === 'nao') aviso('✓ Não precisa trocar — registrado.');
+        if (v === 'proxima') aviso('🟠 Troca na próxima visita — registrada.');
+      }
+      var box = document.querySelector('[data-subst-pk="' + pk + '"]'); if (box) substBox(box);
+      return r;
+    };
+  });
+  // repinturas do V116 (restore, troca de cenário) mudam classe/DOM: recalcula o estado "sem marca"
+  var _substT = null;
+  try {
+    new MutationObserver(function (ms) {
+      for (var i = 0; i < ms.length; i++) {
+        var t = ms[i].target;
+        if ((t.classList && t.classList.contains('pcf116-sp')) || (ms[i].addedNodes && ms[i].addedNodes.length)) {
+          clearTimeout(_substT); _substT = setTimeout(substTodos, 60); return;
+        }
+      }
+    }).observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] });
+  } catch (e) {}
+
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  // 2 · ✕ NA ABA DA MÁQUINA
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  function pintarXs() {
+    try {
+      var n = nMaq();
+      for (var i = 0; i < n; i++) {
+        var t = $('tab-' + i); if (!t) continue;
+        var x = t.querySelector('.pcf121-x');
+        if (n < 2) { if (x) x.remove(); continue; }
+        if (!x) {
+          x = document.createElement('span'); x.className = 'pcf121-x'; x.setAttribute('role', 'button');
+          x.setAttribute('aria-label', 'Fechar esta aba'); x.title = 'Fechar esta aba (tirar a máquina desta coleta)'; x.textContent = '✕';
+          (function (k) { x.addEventListener('click', function (ev) { ev.stopPropagation(); ev.preventDefault(); P121.fecharAba(k); }); })(i);
+          t.appendChild(x);
+        }
+      }
+    } catch (e) {}
+  }
+  depois('renderTabs', pintarXs);
+  // o nome da aba é escrito por textContent (updateTabName) e apaga o ✕ — repõe
+  depois('updateTabName', function () { pintarXs(); });
+  depois('updateAllTabNames', function () { pintarXs(); });
+
+  function remapChave(k, i) {
+    var m = /^m(\d+)_/.exec(String(k)); if (!m) return k;
+    var j = +m[1]; if (j === i) return null; if (j > i) return 'm' + (j - 1) + '_' + String(k).slice(m[0].length); return k;
+  }
+  function remapIdx(obj, i) {
+    var out = {}; Object.keys(obj || {}).forEach(function (k) { var j = parseInt(k, 10); if (isNaN(j)) { out[k] = obj[k]; return; } if (j === i) return; out[j > i ? j - 1 : j] = obj[k]; }); return out;
+  }
+  function remapEstado(st, i) {
+    var s = st, out = Object.assign({}, s);
+    out.fields = {}; Object.keys(s.fields || {}).forEach(function (k) { var nk = remapChave(k, i); if (nk) out.fields[nk] = s.fields[k]; });
+    out.fieldItems = (s.fieldItems || []).map(function (f) { var nk = remapChave(f.key, i); return nk ? Object.assign({}, f, { key: nk }) : null; }).filter(Boolean);
+    out.photoItems = (s.photoItems || []).filter(function (p) { return p.midx !== i; }).map(function (p) { return Object.assign({}, p, { midx: p.midx > i ? p.midx - 1 : p.midx }); });
+    out.scenarios = remapIdx(s.scenarios, i);
+    out.naButtons = {}; Object.keys(s.naButtons || {}).forEach(function (k) { var nk = remapChave(k, i); if (nk) out.naButtons[nk] = s.naButtons[k]; });
+    out.photoStore = remapIdx(s.photoStore, i);
+    out.refResp = {}; Object.keys(s.refResp || {}).forEach(function (k) { var nk = remapChave(k, i); if (nk) out.refResp[nk] = s.refResp[k]; });
+    out.loadedMachines = remapIdx(s.loadedMachines, i);
+    out.machineCount = Math.max(1, (s.machineCount || 1) - 1);
+    var cm = (typeof s.currentMachine === 'number') ? s.currentMachine : 0;
+    out.currentMachine = cm === i ? Math.max(0, i - 1) : (cm > i ? cm - 1 : cm);
+    try { out.machineSignatures = buildStateMachineSignatures(out); out.sessionSignature = out.machineSignatures.join('||'); } catch (e) {}
+    return out;
+  }
+  P121.remapEstado = remapEstado;
+  function enviando() {
+    try { if (window._pcf121FilaPrimeiro || window._pcf116PdfSel || window._pcf116Sel) return true; } catch (e) {}
+    try { if (_pgpEnviarGSBusy) return true; } catch (e) {}
+    try { if (_pgpGerarPdfBusy || _pgpGerarPdfConsolidadoBusy) return true; } catch (e) {}
+    try { var b = $('pcf116BtnEnviar'); if (b && (b.disabled || b.classList.contains('is-busy'))) return true; } catch (e) {}
+    return false;
+  }
+  P121.fecharAba = async function (i) {
+    var n = nMaq(); if (n < 2 || i < 0 || i >= n) return;
+    // auditoria 02/10: com envio ou PDF em curso os índices das máquinas estão sendo usados — fechar agora trocaria dado de máquina
+    if (enviando()) { aviso('⏳ Espere o envio/PDF terminar para fechar uma aba.'); return; }
+    var nome = ''; try { nome = pgpFieldVal(i, 'modelo') || ''; } catch (e) {}
+    var enviada = false;
+    try {
+      var eqx = pgpGetLoadedMachineForIndex(i), midx = String((eqx && (eqx.id || eqx.machine_id)) || pgpFieldVal(i, 'ns') || '');
+      var reg = pgpRegistroTudo(), hoje = new Date().toDateString();
+      Object.keys(reg).forEach(function (k) { var r = reg[k]; if (midx && r && String(r.machine_id) === midx && new Date(r.quando || 0).toDateString() === hoje) enviada = true; });
+    } catch (e) {}
+    var temDado = false; try { temDado = pgpHasMachineData(i) || pgpPainelTemColeta(i); } catch (e) {}
+    var msg = 'Fechar a aba ' + (i + 1) + (nome ? ' (' + nome + ')' : '') + '?\n\n' +
+      (temDado ? 'O que foi preenchido nela sai desta coleta. ' : 'Ela está vazia. ') +
+      'As outras máquinas não mudam.' + (enviada ? '\n\n⚠ Esta máquina já foi enviada hoje: fechar a aba NÃO desfaz o envio.' : '') +
+      (temDado ? '\nFotos que já subiram continuam no Drive da OS.' : '');
+    var ok = false;
+    try { ok = await AppDialog.confirm(msg, { title: 'Fechar aba', okLabel: 'Fechar aba', cancelLabel: 'Manter', danger: temDado }); } catch (e) { ok = false; }
+    if (!ok) return;
+    if (enviando()) { aviso('⏳ Um envio começou — feche a aba depois que ele terminar.'); return; }
+    try { pgpFlushDraftPendente(); } catch (e) {}
+    var st = captureState(), novo = remapEstado(st, i);
+    try {   // estado por índice que não viaja no captureState
+      var cz = remapIdx(_pgpContadorZerado, i); Object.keys(_pgpContadorZerado).forEach(function (k) { delete _pgpContadorZerado[k]; }); Object.assign(_pgpContadorZerado, cz);
+    } catch (e) {}
+    try { _pfItensAnteriores = remapIdx(_pfItensAnteriores, i); } catch (e) {}
+    try { window._pfFotosPendentes = {}; window._pfItensPendentes = {}; } catch (e) {}
+    try { _p121Est = remapIdx(_p121Est, i); _p121RitmoIdx = remapIdx(_p121RitmoIdx, i); _p121FotoIdent = remapIdx(_p121FotoIdent, i); } catch (e) {}
+    document.querySelectorAll('.machine-panel').forEach(function (p) { p.remove(); });
+    _pgpLoadedMachinesByIndex = {};
+    machines = [{}];
+    createPanel(0);
+    restoreState(novo);
+    try { switchMachine(Math.min(novo.currentMachine, nMaq() - 1)); } catch (e) {}
+    try { pgpAtualizarModoOS(); } catch (e) {}
+    try { pgpRegistroPintar(); } catch (e) {}
+    try { pgpSaveDraftAgora(); } catch (e) {}
+    pintarXs();
+    aviso('✓ Aba fechada. ' + nMaq() + (nMaq() > 1 ? ' máquinas' : ' máquina') + ' nesta coleta.');
+  };
+
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  // 3 · HORA E DATA DIGITÁVEIS (o campo nativo continua sendo a fonte; o de texto escreve nele)
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  var VALOR = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+  var SEL_DT = '.machine-panel input[type="time"], .machine-panel input[type="date"][data-key$="_ult_visita"], .machine-panel input[type="date"][data-key$="_prox_visita"], .machine-panel input[type="date"][data-key$="_data_visita"], .machine-panel input[type="date"][data-key$="_data_leitura"]';
+  function isoParaBr(v) { var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(v || ''); return m ? m[3] + '/' + m[2] + '/' + m[1] : ''; }
+  function mascara(tipo, s) {
+    var d = String(s || '').replace(/\D/g, '');
+    if (tipo === 'time') { d = d.slice(0, 4); return d.length > 2 ? d.slice(0, 2) + ':' + d.slice(2) : d; }
+    d = d.slice(0, 8);
+    if (d.length > 4) return d.slice(0, 2) + '/' + d.slice(2, 4) + '/' + d.slice(4);
+    if (d.length > 2) return d.slice(0, 2) + '/' + d.slice(2);
+    return d;
+  }
+  // texto → valor do campo nativo ('HH:MM' / 'AAAA-MM-DD'); null = incompleto/ inválido. fim=true aceita "7" ⇒ 07:00, "15/08/26".
+  function interpretar(tipo, s, fim) {
+    var d = String(s || '').replace(/\D/g, '');
+    if (!d) return '';
+    if (tipo === 'time') {
+      var h, m;
+      if (d.length === 4) { h = +d.slice(0, 2); m = +d.slice(2); }
+      else if (fim && d.length <= 2) { h = +d; m = 0; }
+      else if (fim && d.length === 3) { h = +d.slice(0, 1); m = +d.slice(1); }
+      else return null;
+      if (h > 23 || m > 59) return null;
+      return ('0' + h).slice(-2) + ':' + ('0' + m).slice(-2);
+    }
+    var dd, mm, aa;
+    if (d.length === 8) { dd = +d.slice(0, 2); mm = +d.slice(2, 4); aa = +d.slice(4); }
+    else if (fim && d.length === 6) { dd = +d.slice(0, 2); mm = +d.slice(2, 4); aa = 2000 + (+d.slice(4)); }
+    else return null;
+    var dt = new Date(aa, mm - 1, dd);
+    if (aa < 2000 || aa > 2100 || dt.getFullYear() !== aa || dt.getMonth() !== mm - 1 || dt.getDate() !== dd) return null;
+    return aa + '-' + ('0' + mm).slice(-2) + '-' + ('0' + dd).slice(-2);
+  }
+  P121.interpretar = interpretar;
+  function realcar(inp) {
+    if (!inp || inp.dataset.p121dt || !inp.parentNode) return;
+    if (inp.closest && inp.closest('.pt-table')) return;      // tabela do pistão: célula estreita, fica o nativo (com contraste)
+    inp.dataset.p121dt = '1';
+    var tipo = inp.type === 'time' ? 'time' : 'date';
+    var wrap = document.createElement('div'); wrap.className = 'pcf121-dt pcf121-dt-' + tipo;
+    var txt = document.createElement('input');
+    txt.type = 'text'; txt.className = 'pcf121-dt-txt'; txt.setAttribute('inputmode', 'numeric'); txt.setAttribute('autocomplete', 'off');
+    txt.setAttribute('enterkeyhint', 'done'); txt.setAttribute('data-lpignore', 'true'); txt.setAttribute('data-1p-ignore', 'true');
+    txt.placeholder = tipo === 'time' ? 'hh:mm' : 'dd/mm/aaaa'; txt.maxLength = tipo === 'time' ? 5 : 10;
+    txt.setAttribute('aria-label', tipo === 'time' ? 'Hora (digite, ex.: 0730)' : 'Data (digite, ex.: 15082026)');
+    inp.parentNode.insertBefore(wrap, inp); wrap.appendChild(txt); wrap.appendChild(inp);
+    inp.classList.add('pcf121-dt-nativo'); inp.title = tipo === 'time' ? 'Abrir o relógio' : 'Abrir o calendário';
+    function mostrar() { if (document.activeElement === txt) return; var v = VALOR.get.call(inp); txt.value = v ? (tipo === 'time' ? v.slice(0, 5) : isoParaBr(v)) : ''; txt.classList.remove('invalido'); }
+    try {
+      Object.defineProperty(inp, 'value', { configurable: true, enumerable: true,
+        get: function () { return VALOR.get.call(this); },
+        set: function (v) { VALOR.set.call(this, v); try { mostrar(); } catch (e) {} } });
+    } catch (e) {}
+    function aplicar(v) {
+      if (VALOR.get.call(inp) === v) return;
+      VALOR.set.call(inp, v);
+      try { inp.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) {}
+      try { inp.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) {}
+    }
+    txt.addEventListener('click', function (e) { e.stopPropagation(); });
+    txt.addEventListener('input', function () {
+      var pos = txt.value.length; txt.value = mascara(tipo, txt.value); void pos;
+      var v = interpretar(tipo, txt.value, false);
+      if (v !== null) { txt.classList.remove('invalido'); aplicar(v); }
+    });
+    txt.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); txt.blur(); } });
+    txt.addEventListener('blur', function () {
+      var v = interpretar(tipo, txt.value, true);
+      if (v === null) { txt.classList.add('invalido'); aviso(tipo === 'time' ? '⚠ Hora inválida — use hh:mm (ex.: 07:30).' : '⚠ Data inválida — use dd/mm/aaaa.'); return; }
+      txt.classList.remove('invalido'); aplicar(v); mostrar();
+    });
+    inp.addEventListener('input', mostrar); inp.addEventListener('change', mostrar);
+    inp.addEventListener('click', function (e) { e.stopPropagation(); try { if (typeof inp.showPicker === 'function') inp.showPicker(); } catch (x) {} });
+    mostrar();
+  }
+  function realcarTodos(raiz) { try { (raiz || document).querySelectorAll(SEL_DT).forEach(realcar); } catch (e) {} }
+  P121.realcarTodos = realcarTodos;
+  var _dtT = null;
+  try {
+    new MutationObserver(function (ms) {
+      for (var i = 0; i < ms.length; i++) if (ms[i].addedNodes && ms[i].addedNodes.length) { clearTimeout(_dtT); _dtT = setTimeout(function () { realcarTodos(); }, 30); return; }
+    }).observe(document.documentElement, { subtree: true, childList: true });
+  } catch (e) {}
+
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  // 4/7 · ESTIMADO × REAL — horímetro total e contador de cada peça
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  var DIAS_SEMANA = { 'seg-qui': [1, 2, 3, 4], 'seg-sex': [1, 2, 3, 4, 5], 'seg-sab': [1, 2, 3, 4, 5, 6], 'seg-dom': [0, 1, 2, 3, 4, 5, 6], 'sex': [5], 'sab': [6], 'dom': [0] };
+  var CD_JS = [1, 2, 3, 4, 5, 6, 0];   // cd0..cd6 = Seg..Dom
+  function hm(s) { var m = /^(\d{1,2}):(\d{2})/.exec(String(s || '')); return m ? (+m[1]) * 60 + (+m[2]) : null; }
+  function faixas(idx) {
+    var out = [], c = $('m' + idx + '_turnos'); if (!c) return out;
+    c.querySelectorAll('.turno-row').forEach(function (r) {
+      var sel = r.querySelector('.turno-dias-sel'), a = r.querySelector('input[type="time"][data-key$="_inicio"]'), f = r.querySelector('input[type="time"][data-key$="_fim"]');
+      if (!sel || !a || !f) return;
+      var ini = hm(a.value), fim = hm(f.value); if (ini === null || fim === null) return;
+      var dias = sel.value === 'custom'
+        ? [].slice.call(r.querySelectorAll('.custom-days-wrap input[type=checkbox]')).map(function (cb, k) { return cb.checked ? CD_JS[k] : -1; }).filter(function (x) { return x >= 0; })
+        : (DIAS_SEMANA[sel.value] || []);
+      if (dias.length) out.push({ dias: dias, ini: ini, fim: fim });
+    });
+    return out;
+  }
+  // horas de operação entre dois instantes, faixa por faixa no calendário (null = sem faixa)
+  function horasEntre(idx, t0, t1) {
+    var fx = faixas(idx); if (!fx.length || !(t0 > 0) || !(t1 > 0)) return null;
+    if (t1 <= t0) return 0;
+    if (t1 - t0 > 3 * 366 * 86400000) return null;
+    var tot = 0, d = new Date(t0); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - 1);
+    while (d.getTime() <= t1) {
+      var dow = d.getDay(), base = d.getTime();
+      for (var k = 0; k < fx.length; k++) {
+        var f = fx[k]; if (f.dias.indexOf(dow) < 0) continue;
+        var s = new Date(d); s.setMinutes(f.ini); var e = new Date(d); e.setMinutes(f.fim); if (f.fim <= f.ini) e.setDate(e.getDate() + 1);
+        var ov = Math.min(e.getTime(), t1) - Math.max(s.getTime(), t0); if (ov > 0) tot += ov;
+      }
+      d.setDate(d.getDate() + 1); void base;
+    }
+    return tot / 3600000;
+  }
+  P121.horasEntre = horasEntre;
+  function quando(v, agoraSeHoje) {   // data (dia) → meio-dia; ISO com hora → como está; hoje → agora
+    var s = String(v || '').trim(); if (!s) return 0;
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s), m2 = /^(\d{2})\/(\d{2})\/(\d{4})(?:[ ,T]+(\d{1,2}):(\d{2}))?/.exec(s);
+    if (m2 && m2[4] !== undefined) return new Date(+m2[3], +m2[2] - 1, +m2[1], +m2[4], +m2[5]).getTime();
+    var dt = m ? new Date(+m[1], +m[2] - 1, +m[3], 12) : (m2 ? new Date(+m2[3], +m2[2] - 1, +m2[1], 12) : null);
+    if (dt) {
+      if (agoraSeHoje) { var h = new Date(); if (dt.getFullYear() === h.getFullYear() && dt.getMonth() === h.getMonth() && dt.getDate() === h.getDate()) return Date.now(); }
+      return dt.getTime();
+    }
+    var t = new Date(s).getTime(); return isNaN(t) ? 0 : t;
+  }
+  P121.quando = quando;
+  function num(v) { if (v === null || v === undefined || v === '') return NaN; var s = String(v).trim().replace(/\s*h$/i, ''); if (/,/.test(s)) s = s.replace(/\./g, '').replace(',', '.'); else if (/^-?[1-9]\d{0,2}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, ''); var n = parseFloat(s); return isNaN(n) ? NaN : n; }
+
+  var _p121RitmoIdx = {};   // idx → { mid, pecas:{aid:{ritmo, amostras, ultima}} }
+  var _p121Est = {};        // idx → { pk: {est, fonte, dica} }
+  async function carregarRitmo(idx) {
+    var eq = null; try { eq = pgpGetLoadedMachineForIndex(idx); } catch (e) {}
+    var mid = (eq && (eq.id || eq.machine_id)) || '', ser = ''; try { ser = pgpFieldVal(idx, 'ns'); } catch (e) {}
+    if (!mid && !ser) return;
+    var chave = 'p121r::' + (mid || ser);
+    try { var c = await pgpIdbGet(chave); if (c && c.pecas && Date.now() - c.ts < 7 * 86400000) _p121RitmoIdx[idx] = { mid: mid || ser, pecas: c.pecas, cache: true }; } catch (e) {}
+    try {
+      var r = await rpc('pc_pecas_ritmo', { p_maquina_id: mid, p_serie: ser || null }, 10000);
+      var eq2 = null; try { eq2 = pgpGetLoadedMachineForIndex(idx); } catch (e) {}
+      if (((eq2 && (eq2.id || eq2.machine_id)) || '') !== mid) return;    // trocou de máquina na espera
+      if (r && r.pecas) { _p121RitmoIdx[idx] = { mid: mid || ser, pecas: r.pecas }; try { pgpIdbSet(chave, { ts: Date.now(), pecas: r.pecas }); } catch (e) {} }
+    } catch (e) { log('ritmo:', e.p121 || '', e.message); }
+    try { window.pfReprojetar(idx, false, true); } catch (e) {}
+  }
+  P121.carregarRitmo = carregarRitmo;
+
+  function elEst(pk) {
+    var vm = $(pk + '_valor_mostrado'); if (!vm || vm.type !== 'number') return null;
+    var e = $(pk + '_p121est');
+    if (!e) {
+      e = document.createElement('span'); e.className = 'pcf121-est'; e.id = pk + '_p121est';
+      e.addEventListener('click', function (ev) { ev.stopPropagation(); if (ev.target && ev.target.closest && ev.target.closest('.pcf121-usar-est')) usarEstPeca(pk); });
+      vm.insertAdjacentElement('afterend', e);
+    }
+    return e;
+  }
+  function usarEstPeca(pk) {
+    var vm = $(pk + '_valor_mostrado'), m = /^m(\d+)_/.exec(pk); if (!vm || !m) return;
+    var info = (_p121Est[+m[1]] || {})[pk]; if (!info || !isFinite(info.est)) return;
+    if (vm.value !== '' && vm.value !== String(info.est)) { aviso('O real já foi digitado — apague-o antes se quiser usar o estimado.'); return; }
+    vm.value = info.est;
+    try { vm.dispatchEvent(new Event('input', { bubbles: true })); vm.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) {}
+    aviso('↧ Estimado copiado para o real — use só se não conseguir ler o contador da peça.');
+  }
+  function pintarEstPeca(idx, pk) {
+    var e = elEst(pk); if (!e) return;
+    var info = (_p121Est[idx] || {})[pk], vm = $(pk + '_valor_mostrado');
+    if (!info || !isFinite(info.est)) { e.style.display = 'none'; e.innerHTML = ''; if (vm && vm.dataset.p121ph) { vm.placeholder = vm.dataset.p121ph; } return; }
+    if (vm && !vm.dataset.p121ph) vm.dataset.p121ph = vm.placeholder || '';
+    if (vm) vm.placeholder = 'real (est. ' + br(info.est) + ')';
+    var real = vm && String(vm.value).trim() !== '' ? num(vm.value) : NaN;
+    var txt = 'Estimado: <b>' + br(info.est) + '</b>';
+    var alerta = false;
+    if (isFinite(real)) {
+      var dif = real - info.est, tol = Math.max(40, Math.abs(info.est) * 0.10);
+      if (Math.abs(dif) > tol) { alerta = true; txt = '⚠ Confere? Estimado <b>' + br(info.est) + '</b>, lido <b>' + br(real) + '</b> (' + (dif > 0 ? '+' : '−') + br(Math.abs(dif)) + ')'; }
+      else txt += ' · lido <b>' + br(real) + '</b> ✓';
+    } else txt += ' <button type="button" class="pcf121-usar-est" title="Use só se não der para ler o contador da peça">↧ usar</button>';
+    e.className = 'pcf121-est' + (alerta ? ' alerta' : ''); e.innerHTML = txt; e.title = info.dica || ''; e.style.display = '';
+  }
+  function pintarEstimativas(idx) { var m = _p121Est[idx] || {}; Object.keys(m).forEach(function (pk) { pintarEstPeca(idx, pk); }); }
+  P121.pintarEstimativas = pintarEstimativas;
+
+  // pfReprojetar NOVO — mesmo contrato (idx, force, preservarColeta) e os MESMOS campos de sempre
+  // (horim_est_box, horimetro_estimado, placeholder do real, hint); o contador da peça deixa de ser
+  // pré-preenchido e ganha o "Estimado" ao lado.
+  window.pfReprojetar = function (idx, force, preservarColeta) {
+    if (preservarColeta) force = false;
+    var eq = null; try { eq = pgpGetLoadedMachineForIndex(idx); } catch (e) {}
+    if (!eq) return;
+    var calib = eq._horimCalib || {};
+    var fator = (calib.fator != null && !isNaN(calib.fator)) ? Number(calib.fator) : 1;
+    var baseReal = (calib.ultimo_real != null) ? calib.ultimo_real : (eq.hourTotal != null && eq.hourTotal !== '' ? Number(eq.hourTotal) : null);
+    var baseTs = quando(calib.ultimo_real_at) || quando(eq.lastVisit);
+    var hSem = pfHorasSemana(idx);
+    var hintEl = $('m' + idx + '_horim_proj_hint'), estEl = $('m' + idx + '_horimetro_estimado'), estBox = $('m' + idx + '_horim_est_box');
+    var hEl = document.querySelector('[data-key="m' + idx + '_horimetro"]'), dataEl = $('m' + idx + '_data_leitura');
+    var targetTs = quando(dataEl && dataEl.value, true) || Date.now();
+    if (force && hEl) { hEl.value = ''; if (hEl.dataset) hEl.dataset.proj = ''; }
+    try { setTimeout(function () { pfConferirLeitura(idx); }, 0); } catch (e) {}
+    var projTotal = null, delta = null, metodo = '';
+    if (baseReal != null && baseTs && (hSem > 0 || faixas(idx).length)) {
+      var hrs = horasEntre(idx, baseTs, targetTs);
+      if (hrs === null) { hrs = Math.max(0, (targetTs - baseTs) / 86400000) * (hSem / 7); metodo = 'média semanal'; }
+      else metodo = 'faixas do regime no calendário';
+      delta = hrs * fator; projTotal = Math.round(baseReal + delta);
+    }
+    if (projTotal === null) {
+      if (estBox) estBox.value = ''; if (estEl) estEl.value = '';
+      if (hEl && baseReal != null) hEl.placeholder = 'Real (últ. total ' + br(baseReal) + ')';
+      if (hintEl) hintEl.textContent = (hSem <= 0) ? '↳ Informe o regime de trabalho para estimar as horas na data da visita — e lance o horímetro REAL medido.' : '↳ Sem leitura anterior — lance o horímetro REAL medido no display.';
+    } else {
+      if (estBox) estBox.value = br(projTotal) + ' h';
+      if (estEl) estEl.value = projTotal;
+      if (hEl) hEl.placeholder = 'Real (est. ' + br(projTotal) + ')';
+      var dtxt = dataEl && dataEl.value ? dataEl.value.split('-').reverse().join('/') : 'hoje';
+      if (hintEl) hintEl.textContent = '↳ Estimado p/ ' + dtxt + ': ' + br(projTotal) + ' h (base ' + br(baseReal) + ' + ' + br(delta) + ' h pelas ' + metodo + (fator !== 1 ? ', fator ' + fator.toFixed(3).replace('.', ',') : '') + '). Leia o horímetro e lance o valor real.';
+    }
+    // ── peças ──
+    var est = {}; _p121Est[idx] = est;
+    try { if (pgpEhPistao(idx)) return; } catch (e) {}
+    var realTotal = hEl && String(hEl.value).trim() !== '' ? (typeof pgpHorimetroInt_ === 'function' ? pgpHorimetroInt_(hEl.value) : num(hEl.value)) : NaN;
+    var totalAgora = (isFinite(realTotal) && realTotal > 0) ? realTotal : projTotal;
+    var ritmo = (_p121RitmoIdx[idx] && _p121RitmoIdx[idx].pecas) || {};
+    var mapa = {}; try { mapa = pgpPartIdMapDe(idx) || {}; } catch (e) {}
+    (pgpPartsDe(idx) || []).forEach(function (pt) {
+      var aid = mapa[pt.k], pk = 'm' + idx + '_' + pt.k;
+      var vmEl = $(pk + '_valor_mostrado'); if (!vmEl || vmEl.type !== 'number') return;
+      var contEl = $(pk + '_contador'), sp = (aid && eq.parts) ? eq.parts[aid] : null, rp = aid ? ritmo[aid] : null;
+      var cont = (contEl && contEl.value) || (rp && rp.ultima && rp.ultima.contador) || (sp && sp.contador) || '';
+      if (cont !== 'progressivo' && cont !== 'regressivo') return;             // adesivo / não sei: não há o que projetar
+      var r = (rp && isFinite(Number(rp.ritmo)) && Number(rp.ritmo) > 0) ? Number(rp.ritmo) : 1;
+      var ult = rp && rp.ultima, e = null, dica = '';
+      var spUpd = sp && sp.updatedAt ? Date.parse(sp.updatedAt) : NaN, ultQ = ult && ult.quando ? Date.parse(ult.quando) : NaN;
+      var ultValida = ult && isFinite(num(ult.valor)) && isFinite(num(ult.horimetro)) && !(isFinite(spUpd) && isFinite(ultQ) && spUpd > ultQ + 86400000);
+      if (ultValida && totalAgora != null && isFinite(totalAgora)) {
+        var zerou = String(ult.zerou || '').toUpperCase() !== 'NAO' && String(ult.zerou || '').toUpperCase() !== 'NÃO';   // trocada SEM zerar: a conta continua
+        var base = (ult.acao === 'trocada' && zerou) ? (cont === 'regressivo' ? (num(ult.intervalo) || pt.intDefault || 0) : 0) : num(ult.valor);
+        var dh = Math.max(0, totalAgora - num(ult.horimetro));
+        e = cont === 'regressivo' ? base - r * dh : base + r * dh;
+        dica = 'Pela última leitura desta peça (' + br(num(ult.valor)) + (ult.acao === 'trocada' ? (zerou ? ', trocada e zerada' : ', trocada SEM zerar') : '') + ' com o horímetro em ' + br(num(ult.horimetro)) + ' h) + ' + br(dh) + ' h ' +
+          (isFinite(realTotal) && realTotal > 0 ? '(horímetro REAL digitado)' : '(horímetro estimado)') + ' × ritmo ' + r.toFixed(2).replace('.', ',') + (rp.amostras ? ' (' + rp.amostras + ' leitura(s) do histórico)' : ' (sem histórico: 1,00)');
+      } else {
+        var baseVm = sp ? num(sp.valorMostrado) : NaN;
+        if (!isFinite(baseVm) || baseReal == null) return;
+        var dMaq = (isFinite(realTotal) && realTotal > 0) ? (realTotal - baseReal) : delta;
+        if (dMaq === null || !isFinite(dMaq)) return;
+        dMaq = Math.max(0, dMaq);
+        e = cont === 'regressivo' ? baseVm - r * dMaq : baseVm + r * dMaq;
+        dica = 'Pelo cadastro da peça (' + br(baseVm) + ') + ' + br(dMaq) + ' h da máquina desde a última leitura × ritmo ' + r.toFixed(2).replace('.', ',');
+      }
+      if (e === null || !isFinite(e)) return;
+      est[pk] = { est: Math.round(e), dica: dica };
+      if (vmEl.dataset) vmEl.dataset.proj = String(Math.round(e));
+      try { calcPartRow(pk, pt.intDefault); } catch (x) {}
+      pintarEstPeca(idx, pk);
+    });
+    // contadores que perderam a estimativa (troca de cenário): limpa o rótulo
+    document.querySelectorAll('[id^="m' + idx + '_"][id$="_p121est"]').forEach(function (el) { var pk = el.id.replace(/_p121est$/, ''); if (!est[pk]) pintarEstPeca(idx, pk); });
+  };
+  // carregou a máquina ⇒ busca o ritmo (e as referências) em 2º plano
+  embrulhar('pfProjetarHorimetros', function (orig) {
+    return async function (idx) {
+      var r = await orig.apply(this, arguments);
+      try { carregarRitmo(idx); } catch (e) {}
+      try { carregarRefs(idx); } catch (e) {}
+      return r;
+    };
+  });
+  ['selectScenario', 'pgpAplicarPerfil'].forEach(function (n) {
+    depois(n, function () { setTimeout(function () { for (var i = 0; i < nMaq(); i++) { pintarEstimativas(i); pintarRefs(i); } }, 0); });
+  });
+  var _reproj = {};
+  document.addEventListener('input', function (ev) {
+    var t = ev.target; if (!t || !t.id) return;
+    var m = /^m(\d+)_(.+)_valor_mostrado$/.exec(t.id);
+    if (m) { pintarEstPeca(+m[1], 'm' + m[1] + '_' + m[2]); return; }
+    var h = /^m(\d+)_horimetro$/.exec(t.id);
+    if (h) { var i = +h[1]; clearTimeout(_reproj[i]); _reproj[i] = setTimeout(function () { try { window.pfReprojetar(i, false, true); } catch (e) {} }, 350); }
+  }, true);
+
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  // 5a · "＋ ADICIONAR ITEM" — o que preencher, e nomes prontos
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  var NOMES_PRONTOS = ['Válvula termostática', 'Válvula de admissão', 'Válvula de pressão mínima', 'Pressostato', 'Sensor de temperatura',
+    'Transdutor de pressão', 'Mangueira', 'Purgador', 'Ventilador / radiador', 'Motor elétrico', 'Elemento compressor', 'Vazamento de óleo'];
+  function nomesUsados() { try { var a = JSON.parse(localStorage.getItem('pcf117_nomes_v1') || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+  embrulhar('pcf117Adicionar', function (orig) {
+    return function (i) {
+      var r = orig.apply(this, arguments);
+      try {
+        var cards = document.querySelectorAll('#pcf117Lista' + i + ' .pcf117-item'), card = cards[cards.length - 1];
+        if (card && !card.querySelector('.pcf121-novo')) {
+          var nm = card.querySelector('.pcf117-nome');
+          var g = document.createElement('div'); g.className = 'pcf121-novo';
+          g.innerHTML = '<b>Novo item:</b> 1) dê o nome · 2) marque Ok / NOK / Trocada / N.A. · medição, observação e foto são <b>opcionais</b>.';
+          card.insertBefore(g, card.firstChild);
+          var usados = nomesUsados(), lista = usados.concat(NOMES_PRONTOS.filter(function (n) { return usados.map(function (x) { return String(x).toLowerCase(); }).indexOf(n.toLowerCase()) < 0; })).slice(0, 10);
+          var ch = document.createElement('div'); ch.className = 'pcf121-chips';
+          ch.innerHTML = lista.map(function (n) { return '<button type="button" class="pcf121-chip">' + esc(n) + '</button>'; }).join('');
+          ch.addEventListener('click', function (ev) {
+            var b = ev.target.closest('.pcf121-chip'); if (!b || !nm) return; ev.stopPropagation();
+            nm.value = b.textContent; nm.dispatchEvent(new Event('input', { bubbles: true })); nm.dispatchEvent(new Event('change', { bubbles: true }));
+            ch.remove();
+          });
+          var l1 = card.querySelector('.pcf117-l1'); if (l1) l1.insertAdjacentElement('afterend', ch);
+          var fb = card.querySelector('.pcf117-foto .btn-foto-inline');
+          if (fb && /📷 Foto$/.test(fb.textContent.trim())) { fb.textContent = '📷 Foto (opcional)'; fb.setAttribute('data-orig-label', '📷 Foto (opcional)'); }
+          card.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        }
+      } catch (e) {}
+      return r;
+    };
+  });
+
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  // 6 · "INCLUIR OUTRA MÁQUINA" TAMBÉM FORA DE OS
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  function barraAvulsa() {
+    try {
+      var bar = $('pgpOsMaquinasBar'); if (!bar || !bar.parentNode) return;
+      var b = $('pcf121IncluirAvulsa');
+      if (!b) {
+        b = document.createElement('button'); b.type = 'button'; b.id = 'pcf121IncluirAvulsa'; b.className = 'pcf121-incluir';
+        b.addEventListener('click', function (ev) { ev.stopPropagation(); try { addMachine(); } catch (e) { aviso('⚠ Não consegui abrir uma aba nova: ' + (e && e.message)); } });
+        bar.parentNode.insertBefore(b, bar.nextSibling);
+      }
+      var emOS = false; try { emOS = pgpEmOS(); } catch (e) {}
+      var eq = null; try { eq = pgpGetLoadedMachineForIndex(atual()); } catch (e) {}
+      var cli = ''; try { cli = pgpDriveClientName(atual()); } catch (e) {}
+      if (!cli || cli === 'SemCliente') { try { cli = vg(atual(), 'razao_social'); } catch (e) {} }
+      var mostra = !emOS && !!eq && cli && cli !== '—' && cli !== 'SemCliente';
+      b.style.display = mostra ? 'block' : 'none';
+      if (mostra) b.textContent = '➕ Incluir outra máquina de ' + cli;
+    } catch (e) {}
+  }
+  P121.barraAvulsa = barraAvulsa;
+  depois('pgpAtualizarModoOS', barraAvulsa);
+  depois('switchMachine', function () { try { pgpAtualizarModoOS(); } catch (e) { barraAvulsa(); } });
+  depois('pgpRenderLoadedCard', barraAvulsa);
+  // a OS de inspeção avulsa nasce no meio da coleta (1ª foto): a barra muda de dono na hora, não "depois"
+  embrulhar('pgpGarantirOSInspecaoAvulsa', function (orig) {
+    return function () {
+      var p = orig.apply(this, arguments);
+      try { Promise.resolve(p).then(function () { try { pgpAtualizarModoOS(); } catch (e) {} }, function () {}); } catch (e) {}
+      // SEM teto (auditoria 02/10): a fila de dados não recarimba o os_id — a visita espera a OS de verdade, como no V119.
+      return p;
+    };
+  });
+
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  // 8/10 · FOTO DA VISITA ANTERIOR — a mais nova de verdade, usar ou apagar
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  var _p121FotoIdent = {};
+  var _origCarregarItens = window.pfCarregarFotosItensMaquina;
+  function rotuloFoto(midx, pk) {
+    try { var ph = pgpPhotosDe(midx).find(function (p) { return p.photoKey === pk; }); if (ph) return ph.label; } catch (e) {}
+    try { if (HORI_PHOTO_LABELS[pk]) return HORI_PHOTO_LABELS[pk]; } catch (e) {}
+    try { if (PART_PHOTO_LABELS[pk]) return PART_PHOTO_LABELS[pk]; } catch (e) {}
+    try { var b = document.querySelector('[data-photokey="' + pk + '"]'); if (b) return b.getAttribute('data-orig-label') || b.textContent.trim(); } catch (e) {}
+    return pk;
+  }
+  window.pfThumbsAnterioresHtml = function (midx, photoKey) {
+    var arr = (_pfItensAnteriores[midx] && _pfItensAnteriores[midx][photoKey]) || [];
+    if (!arr.length) return '';
+    var f = arr[0];
+    var temAtual = false; try { temAtual = ((photoStore[midx] || {})[photoKey] || []).some(function (p) { return p && p.dataUrl; }); } catch (e) {}
+    var t = 'Visita anterior' + (f.data ? ' — ' + f.data : '') + (f.os_numero ? ' (OS ' + f.os_numero + ')' : '');
+    var pkJs = String(photoKey).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    var del = f.attachment_id ? ('<div class="photo-thumb-del" title="Remover do histórico desta máquina" onclick="event.stopPropagation();pfRemoverFotoAnterior(' + midx + ',\'' + pkJs + '\',\'' + String(f.attachment_id).replace(/'/g, "\\'") + '\')">✕</div>') : '';
+    var img = f.thumb ? '<img src="' + f.thumb + '" alt="" loading="lazy" width="120" height="120">' : '<div class="pcf121-prev-sem">📷<br>' + esc(f.data || 'anterior') + '</div>';
+    var abrir = f.file_url ? ' onclick="event.stopPropagation();window.open(\'' + String(f.file_url).replace(/'/g, '%27') + '\',\'_blank\')" style="cursor:pointer"' : '';
+    return '<div class="photo-thumb-mini photo-thumb-prev pcf121-prev' + (temAtual ? ' dim' : '') + '" title="' + esc(t) + '"' + abrir + '>' + img + del +
+      '<div class="photo-thumb-prev-tag">&#8617;' + (f.data ? ' ' + esc(f.data.slice(0, 5)) : '') + '</div></div>' +
+      (temAtual ? '<span class="pcf121-prev-nota">↩ da visita de ' + esc(f.data || 'antes') + ' · no relatório vale a desta visita</span>'
+        : (f.file_id ? '<button type="button" class="pcf121-usar" onclick="event.stopPropagation();P121.usarAnterior(' + midx + ',\'' + pkJs + '\',this)">✓ Usar no relatório</button>' : ''));
+  };
+  P121.usarAnterior = async function (midx, pk, btn) {
+    var f = ((_pfItensAnteriores[midx] || {})[pk] || [])[0]; if (!f || !f.file_id) return;
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Baixando…'; }
+    try {
+      var r = await pgpPostJson('getFotoBase64', { file_id: f.file_id }, 0, null, { timeoutMs: 60000 });
+      if (!r || !r.base64) throw new Error((r && r.error) || 'sem conteúdo');
+      var bin = atob(r.base64), u = new Uint8Array(bin.length); for (var k = 0; k < bin.length; k++) u[k] = bin.charCodeAt(k);
+      var tipo = r.mimeType || 'image/jpeg', file = new File([u], pk + '_anterior.jpg', { type: tipo });
+      var rot = rotuloFoto(midx, pk) + ' (foto da visita de ' + (f.data || 'antes') + ')';
+      await storePhotosFromFileList(midx, pk, rot, [file], false);
+      try {   // marca o item do registro fotográfico, como a captura de câmera faz
+        var panel = $('panel-' + midx);
+        if (panel) panel.querySelectorAll('.photo-item').forEach(function (item) {
+          var ph = pgpPhotosDe(midx)[parseInt(item.dataset.pidx, 10)];
+          if (ph && ph.photoKey === pk) { item.classList.remove('photo-nd'); var nd = item.querySelector('.photo-nd-btn'); if (nd) nd.classList.remove('active'); item.classList.add('photo-checked'); refreshSection(item.closest('[data-section]')); }
+        });
+      } catch (e) {}
+      try { updateProgress(); checkDone(); } catch (e) {}
+      try { renderPhotoThumbs(midx, pk); } catch (e) {}
+      aviso('✓ Foto da visita de ' + (f.data || 'antes') + ' usada no relatório desta visita.');
+    } catch (e) {
+      if (btn) { btn.disabled = false; btn.textContent = '✓ Usar no relatório'; }
+      aviso('🚫 Não consegui baixar a foto anterior: ' + (e && e.message ? e.message : e) + '. Tire uma nova.');
+    }
+  };
+  var _p121Removidas = {};
+  try { pgpIdbGet('p121rem').then(function (m) { if (m && typeof m === 'object') Object.keys(m).forEach(function (k) { if (Date.now() - m[k] < 7 * 86400000) _p121Removidas[k] = m[k]; }); }); } catch (e) {}
+  embrulhar('pfRemoverFotoAnterior', function (orig) {
+    return async function (midx, photoKey, attachmentId) {
+      var r = await orig.apply(this, arguments);
+      try {
+        var ainda = ((_pfItensAnteriores[midx] || {})[photoKey] || []).some(function (x) { return String(x.attachment_id || '') === String(attachmentId); });
+        if (!ainda) {   // o servidor aceitou (a função antiga só tira da lista quando o desativarAnexo deu certo)
+          _p121Removidas[String(attachmentId)] = Date.now(); pgpIdbSet('p121rem', _p121Removidas);
+          if (_p121FotoIdent[midx]) pgpIdbDel('pa121::' + _p121FotoIdent[midx]);
+          try { renderPhotoThumbs(midx, photoKey); } catch (e) {}
+        }
+      } catch (e) {}
+      return r;
+    };
+  });
+  function chavesDoPainel(idx) { var s = {}; document.querySelectorAll('#panel-' + idx + ' .photo-thumbs-mini[data-pkey]').forEach(function (c) { s[c.getAttribute('data-pkey')] = 1; }); return Object.keys(s); }
+  function aplicarAnteriores(idx, itens) {
+    var antes = Object.keys(_pfItensAnteriores[idx] || {});
+    _pfItensAnteriores[idx] = itens || {};
+    var todas = {}; antes.concat(Object.keys(itens || {})).forEach(function (k) { todas[k] = 1; });
+    Object.keys(todas).forEach(function (pk) { try { renderPhotoThumbs(idx, pk); } catch (e) {} });
+  }
+  P121.aplicarAnteriores = aplicarAnteriores;
+  window.pfCarregarFotosItensMaquina = async function (idx) {
+    if (typeof currentMachine === 'number' && idx !== currentMachine) { (window._pfItensPendentes = window._pfItensPendentes || {})[idx] = true; return; }
+    var eq = null; try { eq = pgpGetLoadedMachineForIndex(idx); } catch (e) {}
+    var mid = (eq && (eq.id || eq.machine_id)) || '', ser = ''; try { ser = pgpFieldVal(idx, 'ns') || ''; } catch (e) {}
+    var ident = mid || ser;
+    if (_p121FotoIdent[idx] !== ident) { _p121FotoIdent[idx] = ident; aplicarAnteriores(idx, {}); }   // nada de sobra da máquina anterior deste painel
+    if (!ident) return;
+    var ck = 'pa121::' + ident;
+    try { var rec = await pgpIdbGet(ck); if (rec && rec.itens && Date.now() - (rec.ts || 0) < 30 * 86400000 && _p121FotoIdent[idx] === ident) {
+      var vivos = {}; Object.keys(rec.itens).forEach(function (pk) { var l = (rec.itens[pk] || []).filter(function (x) { return !_p121Removidas[String(x.attachment_id || '')]; }); if (l.length) vivos[pk] = l; });
+      aplicarAnteriores(idx, vivos); } } catch (e) {}
+    var lista;
+    try {
+      var r = await rpc('pc_fotos_anteriores', { p_maquina_id: mid, p_serie: ser || null, p_excluir_os: String(window._PGP_OS_NUMERO || '') || null, p_chaves: null }, 12000);
+      lista = ((r && r.itens) || []).filter(function (x) { return !_p121Removidas[String(x.attachment_id || '')]; });
+    } catch (e) {
+      log('fotos anteriores pelo Postgres:', e.p121 || '', e.message);
+      if (e.p121 === 'sem_sql' || e.p121 === 'sem_cracha' || e.p121 === 'erro') { try { return await _origCarregarItens.apply(this, arguments); } catch (x) { return; } }
+      return;   // sem rede: fica o cache
+    }
+    // miniaturas: do aparelho (pft::) e, as que faltam, do Drive pelo Apps Script — SÓ as escolhidas
+    var falta = {}, semOs = [];
+    for (var k = 0; k < lista.length; k++) {
+      var f = lista[k]; f.thumb = '';
+      try { var c = await pgpIdbGet('pft::' + f.file_id); if (c && c.u) f.thumb = c.u; } catch (e) {}
+      if (!f.thumb) { if (f.os_numero) (falta[f.os_numero] = falta[f.os_numero] || []).push(f); else semOs.push(f); }
+    }
+    var oss = Object.keys(falta);
+    for (var o = 0; o < oss.length; o++) {
+      try {
+        var ids = falta[oss[o]].map(function (x) { return x.file_id; });
+        var rv = await pgpPostJson('getFotosDaVisita', { numero_os: oss[o], file_ids: ids.join(','), thumb: true, max_fotos: 24 }, 0, null, { timeoutMs: 45000 });
+        ((rv && rv.fotos) || []).forEach(function (ft) {
+          falta[oss[o]].forEach(function (x) { if (x.file_id === ft.file_id && ft.dataUrl) { x.thumb = ft.dataUrl; try { pgpIdbSet('pft::' + x.file_id, { u: ft.dataUrl, ts: Date.now() }); } catch (e) {} } });
+        });
+      } catch (e) { log('miniaturas da OS', oss[o], e && e.message); }
+    }
+    if (semOs.length) {   // foto sem número de OS (inspeção avulsa antiga): o caminho antigo, só para essas chaves
+      try {
+        var rg = await pfGet('getFotosItensMaquina', { machine_id: mid, serial: ser, cliente: pgpDriveClientName(idx), por_item: 3, max_thumbs: 24,
+          photo_keys: semOs.map(function (x) { return x.photo_key; }).join(',') }, 0);
+        semOs.forEach(function (x) {
+          var cand = ((rg && rg.itens) || {})[x.photo_key] || [];
+          var mesmo = cand.filter(function (c) { return c.file_id === x.file_id; })[0];
+          if (mesmo && mesmo.thumb) { x.thumb = mesmo.thumb; try { pgpIdbSet('pft::' + x.file_id, { u: mesmo.thumb, ts: Date.now() }); } catch (e) {} }
+        });
+      } catch (e) {}
+    }
+    var eq2 = null; try { eq2 = pgpGetLoadedMachineForIndex(idx); } catch (e) {}
+    if ((((eq2 && (eq2.id || eq2.machine_id)) || '') || (function () { try { return pgpFieldVal(idx, 'ns'); } catch (e) { return ''; } })()) !== ident) return;
+    var itens = {}; lista.forEach(function (x) { itens[x.photo_key] = [x]; });
+    aplicarAnteriores(idx, itens);
+    try { pgpIdbSet(ck, { ts: Date.now(), itens: itens }); } catch (e) {}
+    void chavesDoPainel;
+  };
+
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  // 9 · REFERÊNCIA SUGERIDA PELAS OUTRAS MÁQUINAS DO MESMO MODELO
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  var _p121Refs = {};   // 'marca|modelo' → { pecas, ts }
+  function chaveModelo(idx) {
+    var eq = null; try { eq = pgpGetLoadedMachineForIndex(idx); } catch (e) {}
+    var marca = '', modelo = ''; try { marca = pgpFieldVal(idx, 'marca'); modelo = pgpFieldVal(idx, 'modelo'); } catch (e) {}
+    marca = marca || (eq && (eq.brand || eq.marca)) || ''; modelo = modelo || (eq && (eq.model || eq.modelo)) || '';
+    return { marca: marca, modelo: modelo, mid: (eq && (eq.id || eq.machine_id)) || '', k: (marca + '|' + modelo).toUpperCase() };
+  }
+  async function carregarRefs(idx) {
+    var c = chaveModelo(idx); if (!c.modelo) return;
+    var mem = _p121Refs[c.k];
+    if (!mem) { try { var l = await pgpIdbGet('p121ref::' + c.k); if (l && Date.now() - l.ts < 7 * 86400000) mem = _p121Refs[c.k] = l; } catch (e) {} }
+    if (mem) pintarRefs(idx);
+    if (mem && Date.now() - mem.ts < 30 * 60000) return;
+    try {
+      var r = await rpc('pc_ref_sugestoes', { p_marca: c.marca, p_modelo: c.modelo, p_maquina_id: c.mid || null }, 10000);
+      if (r && r.pecas) { _p121Refs[c.k] = { pecas: r.pecas, ts: Date.now() }; try { pgpIdbSet('p121ref::' + c.k, _p121Refs[c.k]); } catch (e) {} }
+    } catch (e) { log('refs:', e.p121 || '', e.message); }
+    pintarRefs(idx);
+  }
+  P121.carregarRefs = carregarRefs;
+  function norm(s) { return String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+  function pintarRefUma(idx, pk, aid, modelo, lista) {
+    var inp = $(pk + '_ref'); if (!inp) return;
+    var box = $(pk + '_p121refs');
+    var v = norm(inp.value);
+    var mostrar = (lista || []).filter(function (s) { return norm(s.ref) !== v; });
+    if (!lista || !lista.length || (v && lista.some(function (s) { return norm(s.ref) === v; }) && mostrar.length === 0)) { if (box) box.remove(); return; }
+    if (!box) { box = document.createElement('div'); box.className = 'pcf121-refsug'; box.id = pk + '_p121refs'; inp.insertAdjacentElement('afterend', box); }
+    box.innerHTML = '💡 ' + (v ? 'Outras ' : 'Em outras ') + esc(modelo) + (v ? ' usam também:' : ' do catálogo:') + '<br>' +
+      mostrar.map(function (s) {
+        return '<button type="button" class="' + (s.mesmo_modelo ? '' : 'fam') + '" data-ref="' + esc(s.ref) + '" title="' + (s.mesmo_modelo ? 'mesmo modelo' : 'modelo parecido (mesma família)') + '">' + esc(s.ref) + ' · ' + s.maquinas + (s.mesmo_modelo ? '' : ' ~') + '</button>';
+      }).join('');
+    box.onclick = function (ev) {
+      var b = ev.target.closest('button[data-ref]'); if (!b) return; ev.stopPropagation();
+      inp.value = b.getAttribute('data-ref');
+      try { inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) {}
+      try { pgpSaveDraftBreve(); } catch (e) {}
+      pintarRefUma(idx, pk, aid, modelo, lista);
+    };
+  }
+  function pintarRefs(idx) {
+    try {
+      var c = chaveModelo(idx), mem = _p121Refs[c.k]; if (!mem || !mem.pecas) return;
+      var mapa = pgpPartIdMapDe(idx) || {};
+      (pgpPartsDe(idx) || []).forEach(function (pt) { var aid = mapa[pt.k]; pintarRefUma(idx, 'm' + idx + '_' + pt.k, aid, c.modelo, aid ? mem.pecas[aid] : null); });
+    } catch (e) {}
+  }
+  P121.pintarRefs = pintarRefs;
+  document.addEventListener('input', function (ev) {
+    var t = ev.target, m = t && t.id && /^m(\d+)_(.+)_ref$/.exec(t.id); if (!m) return;
+    var idx = +m[1], c = chaveModelo(idx), mem = _p121Refs[c.k]; if (!mem) return;
+    var aid = (pgpPartIdMapDe(idx) || {})[m[2]]; pintarRefUma(idx, t.id.slice(0, -4), aid, c.modelo, aid ? mem.pecas[aid] : null);
+  }, true);
+
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  // 5b · ENVIO EM 2º PLANO — a fila sobe pela tela E pelo service worker
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  function filaPrimeiroLigado() { try { return localStorage.getItem('pcf121_envio') !== 'direto'; } catch (e) { return true; } }
+  function temSync() { try { return !!(window.SyncManager && 'serviceWorker' in navigator); } catch (e) { return false; } }
+  P121.filaPrimeiroLigado = filaPrimeiroLigado;
+  window._pcf121Rot = function (qual, padrao) {
+    if (!window._pcf121FilaPrimeiro) return padrao;
+    if (qual === 'botao') return '⏳ Guardando no aparelho…';
+    if (qual === 'etapa') return padrao.replace(/^Registrar a preventiva|^Enviar a inspeção/, function (x) { return 'Pôr na fila de envio — ' + (x.indexOf('Registrar') === 0 ? 'preventiva' : 'inspeção'); });
+    if (qual === 'fila') return '📤 na fila — sobe em 2º plano' + (temSync() ? '; pode fechar o app' : ' (no iPhone, deixe o app aberto até o ✓)');
+    if (qual === 'fim') return '📤 Guardado e na fila — o envio continua em 2º plano.' + (temSync() ? ' Pode fechar o app.' : ' No iPhone, deixe o app aberto até o ✓.');
+    return padrao;
+  };
+  var _envioViu = 0, _envioFimEm = 0;
+  function pintarEnvio() {
+    try {
+      var rod = $('pcf116Rodape'); if (!rod) return;
+      var el = $('pcf121Envio');
+      if (!el) { el = document.createElement('div'); el.id = 'pcf121Envio'; el.className = 'pcf121-envio'; el.setAttribute('aria-live', 'polite'); var bt = $('pcf116BtnEnviar'); if (bt) bt.insertAdjacentElement('afterend', el); else rod.appendChild(el); }
+      var c = { sync: 0, drive: 0, dead: 0 }; try { c = pgpFilaContagens(); } catch (e) {}
+      var n = (c.sync || 0) + (c.drive || 0);
+      if (n > 0) {
+        _envioViu = Math.max(_envioViu, n); _envioFimEm = 0;
+        var parado = !_pgpGsConnected;
+        el.className = 'pcf121-envio ' + (parado ? 'parado' : 'indo');
+        el.innerHTML = (parado ? '⏸ <b>' + n + '</b> envio(s) guardado(s) no aparelho — ' + (navigator.onLine === false ? 'sem internet agora; sobe sozinho quando voltar.' : 'reconectando ao servidor; sobe sozinho.')
+                               : '📤 Enviando em 2º plano: <b>' + n + '</b> item(ns) na fila.') +
+          (temSync() ? ' Pode fechar o app — no Android o envio continua sozinho.' : ' No iPhone, deixe o app aberto até terminar.');
+        el.style.display = '';
+      } else if (_envioViu > 0) {
+        if (!_envioFimEm) _envioFimEm = Date.now();
+        el.className = 'pcf121-envio'; el.innerHTML = '✅ Tudo enviado às <b>' + new Date(_envioFimEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + '</b> — nada guardado esperando.';
+        el.style.display = '';
+      } else el.style.display = 'none';
+    } catch (e) {}
+  }
+  P121.pintarEnvio = pintarEnvio;
+  depois('pgpUpdatePendingBadge', pintarEnvio);
+  embrulhar('pcf116Enviar', function (orig) {
+    return async function () {
+      if (!filaPrimeiroLigado()) return orig.apply(this, arguments);
+      if (window._pcf121FilaPrimeiro) return orig.apply(this, arguments);   // já há um envio em curso: o original recusa o 2º toque
+      window._pcf121FilaPrimeiro = true;
+      var r;
+      try { r = await orig.apply(this, arguments); }
+      finally {
+        window._pcf121FilaPrimeiro = false;
+        try { pgpFlushAdminLocal(); } catch (e) {}
+        drenarAgora('envio');
+      }
+      return r;
+    };
+  });
+  function drenarAgora(motivo) {
+    log('drenar:', motivo);
+    Promise.resolve().then(function () { return espelharFila(); }).catch(function () {}).then(function () {
+      var off = false; try { off = typeof pgpRedeBloqueada === 'function' && pgpRedeBloqueada(); } catch (e) {}
+      if (!off) {
+        try { _pf113PedirSync(); } catch (e) {}
+        try { if (_pgpGsConnected) pgpFlushPending(); else if (typeof pgpAutoPing === 'function') pgpAutoPing(); } catch (e) {}
+      }
+      pintarEnvio();
+    });
+  }
+  P121.drenarAgora = drenarAgora;
+  // o mesmo corpo do saveClient que o envio direto manda (V74 T2: dentro de OS só as datas; o GAS v82 recusa o resto)
+  window.pcf121FilaCliente = function (payload) {
+    if (!payload || !(payload.client || payload.cnpj || payload.phone || payload.email || payload.city || payload.contact || payload.branch || payload.nextVisit || payload.lastVisit)) return false;
+    var nome = payload.client || ''; if (!nome) return false;
+    var trav = false; try { trav = (typeof pgpCadTravado === 'function') ? pgpCadTravado() : false; } catch (e) {}
+    var c = trav ? { nome: nome, nextVisit: payload.nextVisit || '', lastVisit: payload.lastVisit || '', origem: 'campo_os' }
+      : { nome: nome, cnpj: payload.cnpj || '', telefone: payload.phone || '', email: payload.email || '', cidade: payload.city || '',
+          contato: payload.contact || '', filial: payload.branch || '', nextVisit: payload.nextVisit || '', lastVisit: payload.lastVisit || '',
+          endereco: payload.endereco || '', uf: payload.uf || '', origem: 'campo' };
+    var q = pgpQueueRequest('saveClient', { client: c, origem: c.origem, os_id: String(window._PGP_OS_ID || ''), machine_id: payload.machine_id || '' });
+    return !!(q && q.saved);
+  };
+
+  // ── o espelho da fila de dados no IndexedDB (o service worker não lê localStorage) ──────────────
+  //   sqi::<h> = { id, h, action, body, ts, ordem, emVoo }   · o SW grava sqd::<h> = { id, ts } ao enviar
+  function hash(s) { var h = 0x811c9dc5; s = String(s); for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = (h * 0x01000193) >>> 0; } return ('0000000' + h.toString(16)).slice(-8) + s.length.toString(36); }
+  P121.hash = hash;
+  function comLock(fn, ifAvailable) {
+    try {
+      if (navigator.locks && typeof navigator.locks.request === 'function') {
+        var ctl = (!ifAvailable && typeof AbortController !== 'undefined') ? new AbortController() : null;
+        var tmo = ctl ? setTimeout(function () { try { ctl.abort(); } catch (e) {} }, 30000) : null;
+        var op = ifAvailable ? { ifAvailable: true } : (ctl ? { signal: ctl.signal } : {});
+        return navigator.locks.request('proper-sq', op, function (lk) { if (tmo) clearTimeout(tmo); return (lk || !ifAvailable) ? fn(true) : { pulou: true }; })
+          .catch(function (e) { if (tmo) clearTimeout(tmo); if (e && e.name === 'AbortError') return { pulou: true }; throw e; });
+      }
+    } catch (e) {}
+    return Promise.resolve().then(function () { return fn(false); });
+  }
+  async function chavesIdb(prefixo) {
+    var st = await _pgpIdbStore('readonly'); if (!st || !st.getAllKeys) return [];
+    return new Promise(function (res) { try { var rq = st.getAllKeys(IDBKeyRange.bound(prefixo, prefixo + '￿')); rq.onsuccess = function () { res(rq.result || []); }; rq.onerror = function () { res([]); }; } catch (e) { res([]); } });
+  }
+  // o que o service worker já mandou sai da fila da tela (só se for a MESMA versão do item)
+  async function reconciliar() {
+    var n = 0;
+    try {
+      var ks = await chavesIdb('sqd::');
+      for (var i = 0; i < ks.length; i++) {
+        var d = await pgpIdbGet(ks[i]); if (!d) { pgpIdbDel(ks[i]); continue; }
+        var saiu = _pf113PendMudar(String(d.id || ''), function (x) { return (Number(x.ts) === Number(d.ts)) ? null : x; });
+        if (saiu && Number(saiu.ts) === Number(d.ts)) {
+          n++;
+          try { if (saiu.action === 'savePreventiva' || saiu.action === 'saveVisit') pgpRegistroPorVisitId((saiu.body && saiu.body.visit_id) || '', 'ok'); } catch (e) {}
+        }
+        await pgpIdbDel(ks[i]);
+      }
+      var kd = await chavesIdb('dqd::');   // anexos que o SW mandou: saem da contagem mesmo sem o ping verde
+      for (var j = 0; j < kd.length; j++) {
+        var qid = kd[j].slice(5), lst = pgpGetDriveQueue(), achou = null;
+        for (var q = 0; q < lst.length; q++) if (lst[q] && String(lst[q].qid) === qid) { achou = lst[q]; break; }
+        if (achou) { _pf113DqMudar(_pf113DqId(achou), function () { return null; }); _pf113DqLimparBlob(achou); n++; }
+        await pgpIdbDel(kd[j]);   // já fora da fila da tela (enviado por ela ou pelo SW): o marcador não serve mais
+      }
+    } catch (e) { log('reconciliar:', e && e.message); }
+    if (n) { try { pgpUpdatePendingBadge(); pgpRegistroPintar(); } catch (e) {} }
+    return n;
+  }
+  P121.reconciliar = reconciliar;
+  var _espelhado = {};
+  async function espelharFila() {
+    if (!('indexedDB' in window)) return;
+    return comLock(espelharSemTrava, false);
+  }
+  async function espelharSemTrava() {
+    if (!('indexedDB' in window)) return;
+    {
+      await reconciliar();
+      var lista = []; try { lista = pgpGetPending(); } catch (e) {}
+      var quer = {};
+      lista.forEach(function (it, pos) {
+        if (!it || !it.action) return;
+        var id = _pf113PendId(it), h = hash(id);
+        quer[h] = { id: id, h: h, action: it.action, body: it.body || {}, ts: it.ts || 0, ordem: pos, emVoo: it.emVoo || 0 };
+      });
+      var tem = await chavesIdb('sqi::');
+      for (var i = 0; i < tem.length; i++) { var h0 = tem[i].slice(5); if (!quer[h0]) { await pgpIdbDel(tem[i]); delete _espelhado[h0]; } }
+      var hs = Object.keys(quer);
+      for (var k = 0; k < hs.length; k++) {
+        var q = quer[hs[k]], sig = q.ts + '|' + q.emVoo + '|' + q.ordem;
+        if (_espelhado[q.h] === sig && tem.indexOf('sqi::' + q.h) >= 0) continue;
+        var ant = await pgpIdbGet('sqi::' + q.h);
+        if (ant && Number(ant.ts) === Number(q.ts)) { q.sw_tentativas = ant.sw_tentativas || 0; q.sw_erro = ant.sw_erro || ''; if (ant.sw_recusado) q.sw_recusado = true; }
+        await pgpIdbSet('sqi::' + q.h, q); _espelhado[q.h] = sig;
+      }
+    }
+  }
+  P121.espelharFila = espelharFila;
+  window._p121Grupo = function (it) {
+    var b = (it && it.body) || {}, m = b.machine || {};
+    return String(b.machine_id || m.id || b.serial || m.serial || b.tag || m.tag || b.os_id || '*');
+  };
+  async function arrendarEspelho(sim) {
+    var ks = await chavesIdb('sqi::');
+    for (var i = 0; i < ks.length; i++) {
+      var r = await pgpIdbGet(ks[i]); if (!r) continue;
+      if (sim) { r.lease_por = 'page'; r.lease_ate = Date.now() + 180000; } else if (r.lease_por === 'page') { delete r.lease_por; delete r.lease_ate; }
+      await pgpIdbSet(ks[i], r);
+    }
+  }
+  // descartou na tela ⇒ sai do espelho NA HORA (o SW não pode mandar o que o técnico mandou não mandar)
+  embrulhar('pgpDescartarPending', function (orig) {
+    return function (idx) {
+      var antes = {}; try { pgpGetPending().forEach(function (it) { antes[_pf113PendId(it)] = 1; }); } catch (e) {}
+      var r = orig.apply(this, arguments);
+      try { var depois = {}; pgpGetPending().forEach(function (it) { depois[_pf113PendId(it)] = 1; });
+        Object.keys(antes).forEach(function (id) { if (!depois[id]) pgpIdbDel('sqi::' + hash(id)); }); } catch (e) {}
+      return r;
+    };
+  });
+  var _espT = null;
+  depois('pgpInvalidarFilaContagens', function () { clearTimeout(_espT); _espT = setTimeout(function () { espelharFila().catch(function () {}); }, 400); });
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') { espelharFila().then(function () { try { _pf113PedirSync(); } catch (e) {} }, function () {}); }
+    else reconciliar().then(pintarEnvio);
+  });
+  // a tela e o service worker nunca mandam a fila de dados ao mesmo tempo (trava 'proper-sq')
+  var _p121FlushDepois = null;
+  embrulhar('pgpFlushPending', function (orig) {
+    return async function () {
+      var self = this, a = arguments;
+      var r = await comLock(async function () {
+        try { await reconciliar(); } catch (e) {}
+        try { await arrendarEspelho(true); } catch (e) {}
+        try { return await orig.apply(self, a); }
+        finally {
+          try { await espelharSemTrava(); } catch (e) {}      // o que subiu sai do espelho AINDA com a trava
+          try { await arrendarEspelho(false); } catch (e) {}
+        }
+      }, true);
+      // trava ocupada (o SW drenando ou o espelho gravando): não perde a rodada — tenta de novo em 4 s
+      if (r && r.pulou && !_p121FlushDepois) _p121FlushDepois = setTimeout(function () { _p121FlushDepois = null; try { pgpFlushPending(); } catch (e) {} }, 4000);
+      pintarEnvio();
+      return r;
+    };
+  });
+  try {
+    if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', function (ev) {
+      var d = ev && ev.data; if (!d || d.tipo !== 'proper-outbox-enviado') return;
+      reconciliar().then(function (n) { if (n) aviso('✅ ' + n + ' envio(s) concluído(s) em 2º plano.'); pintarEnvio(); });
+    });
+  } catch (e) {}
+
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  // 11 · CONEXÃO — reconexão mais rápida enquanto há fila; queda de rede não é "Conferir"
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  // erro de REDE (sem resposta, tempo esgotado, HTML de cold start, HTTP 5xx) não é veredito do servidor
+  window._p121Transitorio = function (e) {
+    if (!e || e.permanent) return false;
+    var m = String(e.message || e || '');
+    // só infraestrutura: rede, prazo, 5xx/429/408 e a página HTML de erro do Google. HTTP 4xx NÃO (auditoria 02/10).
+    // Teto continua existindo: o item parado há mais de 7 dias vai para Conferir pela poda V81.
+    return e.name === 'TimeoutError' || e.name === 'AbortError' || /Failed to fetch|NetworkError|Load failed|aborted|timed? ?out|Tempo esgotado|GAS retornou HTML|^HTTP (5\d\d|429|408)$|Resposta inválida|sem conex/i.test(m);
+  };
+  var _espera = 15000, _ultTent = 0;
+  setInterval(function () {
+    try {
+      if (document.visibilityState !== 'visible' || _pgpGsConnected) { _espera = 15000; return; }
+      if (typeof pgpRedeBloqueada === 'function' && pgpRedeBloqueada()) return;
+      if (navigator.onLine === false) return;
+      var c = pgpFilaContagens(); if (((c.sync || 0) + (c.drive || 0)) === 0) return;
+      if (Date.now() - _ultTent < _espera) return;
+      _ultTent = Date.now(); _espera = Math.min(_espera * 2, 90000);
+      if (typeof pgpAutoPing === 'function') pgpAutoPing();
+    } catch (e) {}
+  }, 5000);
+
+  // ── boot ──────────────────────────────────────────────────────────────────────────────────────
+  function iniciar() {
+    realcarTodos(); substTodos(); pintarXs(); barraAvulsa(); pintarEnvio();
+    setTimeout(function () { espelharFila().catch(function () {}); reconciliar().then(pintarEnvio); }, 3000);
+    setTimeout(async function () {   // poda: miniaturas e caches com mais de 60 dias (no máximo 400 por abertura)
+      try { var ks = (await chavesIdb('pft::')).concat(await chavesIdb('pa121::'), await chavesIdb('p121r::'), await chavesIdb('p121ref::'));
+        for (var i = 0; i < ks.length && i < 400; i++) { var v = await pgpIdbGet(ks[i]); if (!v || !v.ts || Date.now() - v.ts > 60 * 86400000) await pgpIdbDel(ks[i]); } } catch (e) {}
+    }, 20000);
+    P121.ok = true;
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
+})();
+</script>
+
 </body>
 </html>
