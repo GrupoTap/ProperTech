@@ -1611,8 +1611,15 @@ html[data-boot="pipeline"] #pf113Splash{display:flex;position:fixed;inset:0;z-in
   Reenviar no card (o mesmo envio, mesmo visit_id) e Descartar com confirmacao e lixeira de 7 dias.
   O SQL COLETA_SEGURA_1 roda antes do PCM V241 (o PCF nao depende dele).
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V122</title>
-<meta name="app-build" content="PCF_V122" data-date="2026-10-05">
+<!--
+  PCF_V123 · COLETA SEGURA (2a entrega, parte 2a) · 06/10/2026 · feito SOBRE o PCF_V122 no ar · par sw propertech-v125.
+  O Salvar guarda TAMBEM no servidor (rascunho da coleta, so de quem salvou): depois da prova no aparelho, cada maquina
+  sobe por pc_rasc_salvar com controle de versao; selo de nuvem com a hora do servidor; sem sinal fica no celular e
+  sobe sozinho; fotos nunca vao no rascunho (o selo avisa quantas ainda estao so no celular); versao mais nova no
+  servidor nunca e sobrescrita em silencio. O SQL COLETA_SEGURA_2 roda ANTES de publicar este PCF.
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V123</title>
+<meta name="app-build" content="PCF_V123" data-date="2026-10-06">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -33560,8 +33567,10 @@ input.pcf121-dt-nativo::-webkit-calendar-picker-indicator{filter:invert(1) brigh
     });
     if (sv) {
       var hs = sv.onde === 'rascunho' ? Math.min(sv.quando || Infinity, PF122.prova.em) : sv.quando;
-      return { cod: 'salvo', txt: ROT.salvo(hhmm(hs)), hora: hs,
+      var e0 = { cod: 'salvo', txt: ROT.salvo(hhmm(hs)), hora: hs,
                motivo: sv.onde === 'guardada' ? 'Em ☰ → Coletas guardadas, neste celular' + (sv.fotos ? ' (com ' + sv.fotos + ' foto' + (sv.fotos > 1 ? 's' : '') + ')' : '') + '.' : '' };
+      try { if (typeof PF122.decorarSalvo === 'function') e0 = PF122.decorarSalvo(m, sv, e0) || e0; } catch (e1) {}   // PCF_V123 (COLSEG_V2): ☁️
+      return e0;
     }
     return null;
   }
@@ -33596,7 +33605,7 @@ input.pcf121-dt-nativo::-webkit-calendar-picker-indicator{filter:invert(1) brigh
     var k = e.acao.k, ref = e.acao.ref || '';
     if (k === 'concluir' && ondeCard) k = 'abrir';
     // A14 · ✅ é só de "Recebido": o botão dentro de um aviso ⚠ não usa o ✅
-    var rot = { dead: '🔁 Reenviar', sw: '🔁 Reenviar', pend: '🔁 Tentar agora', lixo: '↩ Trazer de volta e reenviar', concluir: '📤 Concluir coleta', abrir: '📋 Abrir a coleta', velho: '🗑 Descartar o envio antigo' }[k] || '';
+    var rot = { dead: '🔁 Reenviar', sw: '🔁 Reenviar', pend: '🔁 Tentar agora', lixo: '↩ Trazer de volta e reenviar', concluir: '📤 Concluir coleta', abrir: '📋 Abrir a coleta', velho: '🗑 Descartar o envio antigo', rasc: '📤 Gravar a desta tela no servidor' }[k] || '';
     if (!rot) return '';
     return '<button type="button" class="pf122-bt' + (e.cod === 'falha' ? ' prim' : '') + '" data-pf122-acao="' + esc(k) + '" data-ref="' + esc(ref) + '"' + (tarefaId ? ' data-tarefa="' + esc(tarefaId) + '"' : '') + '>' + rot + '</button>';
   }
@@ -34191,6 +34200,534 @@ input.pcf121-dt-nativo::-webkit-calendar-picker-indicator{filter:invert(1) brigh
   var _osT = null;
   function pintarDepoisOS() { if (_osT) return; _osT = setTimeout(function () { _osT = null; try { decorarOS(); } catch (e) {} }, 150); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
+})();
+</script>
+
+<!-- ████ PCF_V123 · COLSEG_V2 (COLETA SEGURA, RASCUNHO NO SERVIDOR) ████ -->
+<style id="pf123Estilo">
+.pf123-nuvem{display:block;margin:4px 0 0;font-size:12px;line-height:1.4;color:#93c5fd}
+.pf123-sheet-aviso{background:#fffbeb;color:#7c2d12;border:1px solid #f59e0b;border-radius:10px;padding:10px 12px;margin:10px 0;font-size:13.5px;line-height:1.45}
+</style>
+<script>
+/* ════════════════════════════════════════════════════════════════════════════════════════════════
+   PCF_V123 · COLSEG_V2 · COLETA SEGURA, 2ª entrega (2a) · 06/10/2026 — o 💾 Salvar guarda TAMBÉM no servidor (☁️).
+   Par: SQL COLETA_SEGURA_2 (pcf_rascunho_coleta + pc_rasc_*; roda ANTES) · sw propertech-v125.
+   D1 (Fernando): fechar o app, limpar o cache ou trocar de celular não pode perder a coleta.
+   D2 (06/10): o rascunho do servidor é SÓ de quem salvou (o dono é o crachá do login com PIN).
+   COMO FUNCIONA
+     · 💾 Salvar (1ª entrega: grava no aparelho e CONFERE) → só depois de "Salvo" com prova, cada máquina com dados vira
+       um envio de rascunho na fila PRÓPRIA deste bloco (pcf123_rasc_fila_v1) e sobe por pc_rasc_salvar(p) com a versão
+       que o aparelho conhece. Volta a versão nova + a hora do SERVIDOR ⇒ ☁️ "Salvo no servidor às HH:MM".
+     · Sem sinal / sem crachá / sem o SQL: fica 📝 "Salvo só neste celular. Sobe ao conectar"; sobe sozinho (online,
+       ao voltar ao app, quando o servidor responde, a cada 60 s com fila).
+     · Fotos NUNCA vão no rascunho (só a referência: chave, nome, id do Drive quando já subiu). Foto que ainda não subiu
+       aparece no selo: "☁️ Salvo no servidor · N fotos ainda só neste celular".
+     · Versão velha: o servidor RECUSA e devolve a atual (aparelho, hora). A tela NÃO sobrescreve em silêncio: o selo
+       avisa e oferece "📤 Gravar a desta tela no servidor" com confirmação. (Recuperar a do servidor = 2ª parte, 2b.)
+     · Mudou a tela depois do ☁️: volta a 📝 e diz "no servidor: a versão das HH:MM".
+   Depois da 1ª auditoria (06/10): a fila e o mapa são do TÉCNICO (dono = sub do crachá; o de outro espera o dono); a chave
+   de cada máquina é única na coleta (#m<i> quando duas são iguais) e, se mudar, o servidor RENOMEIA a linha
+   (machine_key_anterior); a resposta perdida não vira "versão mais nova" (uids_base); a assinatura de dados não leva o estado
+   de tela nem as fotos; ao abrir o app a referência da tela vem do rascunho guardado (o ☁️ sobrevive à reabertura); a
+   referência das fotos sobe sozinha quando a foto ganha o id do Drive.
+   Depois da 2ª auditoria (06/10): renomear a chave só na MESMA coleta (coleta_uid; Nova coleta/Descartar/outra coleta zeram);
+   sem sinal, a chave velha que nunca subiu sai da fila; máquina sem nº de série/modelo/horímetro é DITA ("N de M no servidor");
+   mudou durante a subida ⇒ não promete ☁️; cota cheia ⇒ "recusado: cota" (não "sem sinal"); a foto vai com o nome do arquivo e
+   a referência confirmada não é rebaixada ao reabrir; "Gravar a desta tela" passa antes pela prova no celular; texto limpo de
+   \u0000/meio-emoji; fila com teto.
+   Remendos no bloco COLSEG_V1 (com âncora contada no builder): o retorno 📝 do estado passa por PF122.decorarSalvo;
+   o mapa de botões ganha 'rasc'. Prefixos: _pf123 / PF123 / pf123-. Nada renomeado; nada de alert/confirm nativo.
+   ════════════════════════════════════════════════════════════════════════════════════════════════ */
+(function () {
+  if (window.PF123) return;
+  var PF123 = window.PF123 = { versao: 'PCF_V123', log: [], tela: {}, voo: null };
+  var MAP_KEY = 'pcf123_rasc_v1', FILA_KEY = 'pcf123_rasc_fila_v1', AP_KEY = 'pcf123_aparelho_v1';
+  function $(id) { return document.getElementById(id); }
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function p2(n) { return (n < 10 ? '0' : '') + n; }
+  function hhmm(v) { var d = new Date(v || 0); if (isNaN(d.getTime())) return '--:--'; var h = p2(d.getHours()) + ':' + p2(d.getMinutes());
+    return d.toDateString() === (new Date()).toDateString() ? h : p2(d.getDate()) + '/' + p2(d.getMonth() + 1) + ' ' + h; }
+  function log() { try { PF123.log.push([Date.now()].concat([].slice.call(arguments)).join(' ')); if (PF123.log.length > 80) PF123.log.shift(); } catch (e) {} }
+  function aviso(m) { try { showNotification(m); } catch (e) {} }
+  function lerJ(k, padrao) { try { var v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? padrao : v; } catch (e) { return padrao; } }
+  function gravarJ(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
+  function norm(k) { return String(k == null ? '' : k).trim().toLowerCase(); }
+  function casa(a, b) { for (var i = 0; i < (a || []).length; i++) for (var j = 0; j < (b || []).length; j++) if (norm(a[i]) && norm(a[i]) === norm(b[j])) return true; return false; }
+  // hash curto (cyrb53) — só para dizer "é a MESMA coleta" sem guardar o texto duas vezes
+  function hash(str) { var h1 = 0xdeadbeef, h2 = 0x41c6ce57; for (var i = 0, ch; i < str.length; i++) { ch = str.charCodeAt(i); h1 = Math.imul(h1 ^ ch, 2654435761); h2 = Math.imul(h2 ^ ch, 1597334677); }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909); h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16); }
+
+  // ── o aparelho (id estável, para o "aparelho X" do conflito) ──────────────────────────────────────
+  function aparelho() {
+    var a = lerJ(AP_KEY, null); if (a && a.id) return a.id;
+    var ua = String((navigator && navigator.userAgent) || ''), tipo = /iPhone|iPad/i.test(ua) ? 'iPhone' : (/Android/i.test(ua) ? 'Android' : (/Windows/i.test(ua) ? 'Windows' : (/Mac/i.test(ua) ? 'Mac' : 'Linux')));
+    var rnd = ''; try { var b = new Uint8Array(3); crypto.getRandomValues(b); rnd = Array.prototype.map.call(b, function (x) { return (x < 16 ? '0' : '') + x.toString(16); }).join(''); } catch (e) { rnd = Math.random().toString(16).slice(2, 8); }
+    var id = 'AP-' + rnd + ' · ' + tipo; gravarJ(AP_KEY, { id: id, em: Date.now() }); return id;
+  }
+  PF123.aparelho = aparelho;
+  // o técnico DESTA página (o mesmo critério do crachá): a fila e o mapa são dele
+  function dono() {
+    try { if (window.CRACHA_V1 && CRACHA_V1._t && CRACHA_V1._t.uidPagina) { var u = CRACHA_V1._t.uidPagina(); if (u) return String(u); } } catch (e) {}
+    try { var s = window.PROPER_SESSION || JSON.parse(localStorage.getItem('proper_session') || 'null'); return String((s && (s.id_tecnico || (s.tecnico && s.tecnico.id))) || ''); } catch (e) { return ''; }
+  }
+  function subDo(tok) { try { return String(JSON.parse(atob(String(tok).split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).sub || ''); } catch (e) { return ''; } }
+  PF123.dono = dono;
+
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  // 1 · A COLETA DE CADA MÁQUINA, SEM FOTO (o que vai para o servidor)
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  var RX_M = /^m(\d+)_/;
+  function daMaq(k, j) { var m = RX_M.exec(String(k || '')); return m ? Number(m[1]) === j : true; }   // sem prefixo = campo comum da coleta
+  // 2ª auditoria (#14): \u0000 e meio-emoji (surrogate solto) davam 400 PERMANENTE no servidor — saem do texto que sobe
+  var RX_SUJO = /\u0000|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(^|[^\uD800-\uDBFF])[\uDC00-\uDFFF]/g;
+  function limpo(o) { try { return JSON.parse(JSON.stringify(o, function (k, v) { return typeof v === 'string' ? v.replace(RX_SUJO, '$1') : v; })); } catch (e) { return o; } }
+  // ── a COLETA de cada máquina (coleta_uid) · 2ª auditoria (#1, ALTA) ────────────────────────────────
+  // "Mesma máquina, chave nova" (série digitada depois, máquina do cadastro) só vale DENTRO da mesma coleta. O vínculo era o
+  // ÍNDICE da máquina: a coleta seguinte (Nova coleta → Descartar; outra avulsa) no mesmo índice RENOMEAVA e sobrescrevia a
+  // anterior no servidor. Agora cada máquina-da-coleta tem um id aleatório deste aparelho, que vai no rascunho; o aparelho e o
+  // servidor só renomeiam quando o id bate. Zera: Nova coleta, Descartar, abrir outra coleta salva, troca de técnico/OS/tipo,
+  // e a máquina esvaziada (Limpar máquina). Na dúvida, NÃO renomeia (o pior caso é uma linha a mais, nunca uma a menos).
+  var CU_KEY = 'pcf123_coleta_v1';
+  function rnd6() { try { var b = new Uint8Array(4); crypto.getRandomValues(b); return Array.prototype.map.call(b, function (x) { return (x < 16 ? '0' : '') + x.toString(16); }).join(''); } catch (e) { return Math.random().toString(16).slice(2, 10); } }
+  function cuidsDo(ctx) { var c = lerJ(CU_KEY, null); return (c && c.ctx === ctx && c.m && typeof c.m === 'object') ? c : { ctx: ctx, m: {} }; }
+  function cuid(sub, os, tipo, j) {
+    var ctx = sub + '|' + os + '|' + tipo, c = cuidsDo(ctx);
+    if (!c.m[j]) { c.m[j] = 'CU-' + rnd6() + '-' + Date.now().toString(36); gravarJ(CU_KEY, c); }
+    return c.m[j];
+  }
+  function zerarColeta(motivo) { gravarJ(CU_KEY, { ctx: '', m: {}, em: Date.now(), motivo: motivo || '' }); log('coleta zerada', motivo); }
+  PF123.zerarColeta = zerarColeta;
+  var RX_PADRAO = /_(perfil|data_visita|razao_social|tecnico|scenario)$|_turno\d+_/;
+  function temDados(st, j) {   // a máquina tem algo além do que o app pré-preenche (perfil, data, cliente, turnos)?
+    var f = st.fields || {}, ks = Object.keys(f);
+    for (var i = 0; i < ks.length; i++) { var k = ks[i]; if (k.indexOf('m' + j + '_') === 0 && !RX_PADRAO.test(k)) { var v = String(f[k] == null ? '' : f[k]).trim(); if (v && v !== 'on') return true; } }
+    try { if (typeof pgpMaquinaTemConteudo === 'function' && j < (Number(st.machineCount) || 1) && pgpMaquinaTemConteudo(j)) return true; } catch (e) {}
+    return false;
+  }
+  function chavesDe(st, j) {
+    var f = st.fields || {}, ns = String(f['m' + j + '_ns'] || '').trim(), mod = String(f['m' + j + '_modelo'] || '').trim(), ks = [];
+    var eq = st.loadedMachines && st.loadedMachines[j];
+    if (eq && (eq.id || eq.machine_id)) ks.push(String(eq.id || eq.machine_id));
+    try { ks.push(pgpMachineKey(f['m' + j + '_razao_social'] || f.m0_razao_social || '', f['m' + j + '_marca'] || '', mod, ns)); } catch (e) {}
+    if (ns) ks.push(ns);
+    return ks.filter(function (k, i) { return k && ks.indexOf(k) === i; });
+  }
+  function maquinasDoEstado(st, sub) {
+    var out = []; out.semId = []; out.vazias = []; if (!st || !st.fields) return out;
+    if (sub == null) sub = dono();
+    var n = Number(st.machineCount) || 1, f = st.fields, tipo = st.tipoVisita === 'preventiva' ? 'preventiva' : 'inspecao', os = String(st.osId || '');
+    for (var j = 0; j < n; j++) {
+      var ns = String(f['m' + j + '_ns'] || '').trim(), mod = String(f['m' + j + '_modelo'] || '').trim(), hor = String(f['m' + j + '_horimetro'] || '').trim();
+      var ks = (ns || mod || hor) ? chavesDe(st, j) : [];
+      if (!ks.length) { if (temDados(st, j)) out.semId.push(j); else out.vazias.push(j); continue; }   // 2ª auditoria (#2): quem ficou de fora é DITO
+      var campos = {}; Object.keys(f).forEach(function (k) { if (daMaq(k, j)) campos[k] = f[k]; });
+      var itens = (st.fieldItems || []).filter(function (x) { return x && daMaq(x.key, j); });
+      var fotosRef = [], pend = 0, ps = (st.photoStore || {})[j] || {};
+      Object.keys(ps).sort().forEach(function (pk) {
+        (ps[pk] || []).forEach(function (fo, i) {
+          if (!fo) return;
+          var subiu = fo.driveStatus === 'ok';
+          if (!subiu && fo.dataUrl) pend++;
+          // 2ª auditoria (#5): a referência IDENTIFICA a foto — o nome do arquivo (a chave que o próprio app usa) e o id do Drive
+          fotosRef.push({ chave: pk, n: i, label: String(fo.label || ''), status: subiu ? 'ok' : 'pendente no aparelho', drive_id: String(fo.fileId || ''), file_name: String(fo.fileName || '') });
+        });
+      });
+      var na = {}; Object.keys(st.naButtons || {}).forEach(function (id) { if (daMaq(id, j)) na[id] = st.naButtons[id]; });
+      var payload = limpo({
+        fmt: 'COLSEG_V2/2', idx: j, tipoVisita: tipo, coleta_uid: sub ? cuid(sub, os, tipo, j) : '',
+        osId: os, osCliente: String(st.osCliente || ''),
+        fields: campos, fieldItems: itens, photoItems: (st.photoItems || []).filter(function (x) { return x && x.midx === j; }),
+        naButtons: na, scenario: (st.scenarios || {})[j] || '', loadedMachine: (st.loadedMachines || {})[j] || null,
+        refResp: st.refResp || {}, fotos: fotosRef, draftTs: Number(st.ts) || 0
+      });
+      out.push({ idx: j, mk: ks[0], chaves: ks, tipo: tipo, os: os, cuid: payload.coleta_uid, payload: payload, pend: pend });
+    }
+    // duas máquinas da coleta com a MESMA chave (mesmo cliente/marca/modelo, sem nº de série): cada uma ganha a SUA
+    var cont = {}; out.forEach(function (x) { cont[x.mk] = (cont[x.mk] || 0) + 1; });
+    out.forEach(function (x) { if (cont[x.mk] > 1) { x.mk = x.mk + '#m' + x.idx; x.chaves = [x.mk]; x.repetida = true; } });
+    var m = mapa();
+    out.forEach(function (x) {
+      // 2ª auditoria (#10): ao reabrir, o app perde o id/nome da foto que JÁ subiu — a referência confirmada pelo servidor NÃO é rebaixada
+      var y = m[chaveDe(x, sub)], conf = (y && y.fotos) || [];
+      x.payload.fotos.forEach(function (r) {
+        if (r.status !== 'ok' || (r.drive_id && r.file_name)) return;
+        var c = conf.filter(function (z) { return z && z.chave === r.chave && z.n === r.n && z.label === r.label && z.status === 'ok'; })[0];
+        if (c) { if (!r.drive_id) r.drive_id = c.drive_id || ''; if (!r.file_name) r.file_name = c.file_name || ''; }
+      });
+      // a assinatura dos DADOS não inclui o carimbo, o estado de tela (itens abertos/marcados) nem as fotos;
+      // as fotos têm assinatura própria (referências: o que subiu ao Drive, o nome e o id)
+      x.sig = hash(JSON.stringify(Object.assign({}, x.payload, { draftTs: 0, fieldItems: 0, fotos: 0 })));
+      x.sigF = hash(JSON.stringify(x.payload.fotos));
+    });
+    return out;
+  }
+  PF123.maquinasDoEstado = maquinasDoEstado;
+  function chaveDe(x, sub) { return (sub != null ? sub : (x.sub != null ? x.sub : dono())) + '|' + x.os + '|' + x.tipo + '|' + x.mk; }
+
+  // o que a TELA tem agora (atualizado a cada salvamento do rascunho): para saber se o ☁️ ainda é desta tela
+  function lembrarTela(st, origem) {
+    var sub = dono();
+    // a máquina ESVAZIADA (Limpar máquina) deixa de ser a mesma coleta: a próxima que entrar nesse lugar ganha id novo
+    try {
+      var tp0 = (st && st.tipoVisita === 'preventiva') ? 'preventiva' : 'inspecao', c0 = cuidsDo(sub + '|' + String((st && st.osId) || '') + '|' + tp0), mudou = false;
+      if (st && st.fields) for (var j = 0; j < (Number(st.machineCount) || 1); j++) {
+        var f0 = st.fields;
+        if (c0.m[j] && !String(f0['m' + j + '_ns'] || '').trim() && !String(f0['m' + j + '_modelo'] || '').trim() && !String(f0['m' + j + '_horimetro'] || '').trim() && !temDados(st, j)) { delete c0.m[j]; mudou = true; }
+      }
+      if (mudou) gravarJ(CU_KEY, c0);
+    } catch (e) {}
+    var t = {}, lista = maquinasDoEstado(st, sub), sem = {};
+    lista.forEach(function (x) { t[chaveDe(x, sub)] = { sig: x.sig, sigF: x.sigF, pend: x.pend, chaves: x.chaves, os: x.os, tipo: x.tipo, mk: x.mk, idx: x.idx, cuid: x.cuid }; });
+    (lista.semId || []).forEach(function (j) { sem[String((st && st.osId) || '') + '|' + ((st && st.tipoVisita === 'preventiva') ? 'preventiva' : 'inspecao') + '|' + j] = true; });
+    PF123.tela = t; PF123.telaSemId = sem; PF123.telaEm = Date.now(); PF123.telaOrigem = origem || 'salvamento';
+    // a foto subiu ao Drive DEPOIS do ☁️ (mesmos dados): sobe só a referência, sozinha
+    try {
+      if (origem === 'boot') return;
+      var m = mapa(), novas = lista.filter(function (x) { var y = m[chaveDe(x)]; return y && y.estado === 'ok' && y.sig === x.sig && y.sigF !== x.sigF; });
+      if (novas.length) { clearTimeout(PF123._tF); PF123._tF = setTimeout(function () { if (enfileirar(novas, 'fotos')) drenar('fotos'); }, 2000); }
+    } catch (e) {}
+  }
+  // ao abrir o app: a referência da tela é o RASCUNHO GUARDADO (texto + fotos do IndexedDB), não a memória da sessão
+  async function telaDoBoot() {
+    var d = null; try { d = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); } catch (e) { d = null; }
+    if (!d || !d.fields || PF123.telaOrigem === 'salvamento') return;
+    try {
+      if (!d.photoStore || !Object.keys(d.photoStore).length) {
+        var rec = await pgpIdbGet(_pgpPhotoKeyFor('draft'));
+        if (rec && rec.photoStore) d.photoStore = rec.photoStore;
+      }
+    } catch (e) {}
+    if (PF123.telaOrigem === 'salvamento') return;     // um salvamento de verdade chegou antes: ele vale
+    lembrarTela(d, 'boot');
+    try { if (window.PF122 && PF122.pintar) PF122.pintar(); } catch (e) {}
+  }
+  PF123.telaDoBoot = telaDoBoot;
+  try {
+    var _sd = window.saveDraftStateSafely;
+    if (typeof _sd === 'function') window.saveDraftStateSafely = function (state) {
+      var r = _sd.apply(this, arguments);
+      try { lembrarTela(state, 'salvamento'); } catch (e) {}
+      return r;
+    };
+  } catch (e) {}
+  // os caminhos que começam OUTRA coleta: o id da coleta zera (o rascunho anterior no servidor fica intacto)
+  function embrulhar(nome, depois) {
+    try {
+      var f0 = window[nome]; if (typeof f0 !== 'function' || f0._pf123) return;
+      var w = function () {
+        var antes = !!localStorage.getItem(DRAFT_KEY), r = f0.apply(this, arguments);
+        Promise.resolve(r).then(function () { try { depois(antes); } catch (e) {} }, function () {});
+        return r;
+      };
+      w._pf123 = true; window[nome] = w;
+    } catch (e) {}
+  }
+  embrulhar('novaColeta', function () { if (!localStorage.getItem(DRAFT_KEY)) zerarColeta('nova coleta'); });     // "Salvar antes" cancelado: nada foi apagado ⇒ não zera
+  embrulhar('discardDraft', function () { if (!localStorage.getItem(DRAFT_KEY)) zerarColeta('descartar'); });
+  embrulhar('restaurarSessao', function () { zerarColeta('abriu outra coleta salva'); });
+
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  // 2 · O SERVIDOR (pc_rasc_salvar com o crachá do login com PIN)
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  function erro(tipo, msg, st) { var e = new Error(msg || tipo); e.pf123 = tipo; e.status = st || 0; return e; }
+  async function rpc(fn, args, prazoMs) {
+    try { if (typeof pgpRedeBloqueada === 'function' && pgpRedeBloqueada()) throw erro('rede', 'modo offline'); } catch (e) { if (e.pf123) throw e; }
+    if (navigator.onLine === false) throw erro('rede', 'sem internet');
+    var tok = null; try { tok = await _pcfSupaToken(); } catch (e) { tok = null; }
+    if (!tok) throw erro('cracha', 'falta o login com PIN neste celular (entre de novo pelo Hub)');
+    var r, txt = '', d = null;
+    try {
+      var ctl = (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(prazoMs || 15000) : undefined;
+      r = await fetch(PCF_SUPA_URL + '/rest/v1/rpc/' + fn, { method: 'POST', signal: ctl,
+        headers: { 'apikey': PCF_SUPA_ANON, 'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: JSON.stringify(args || {}) });
+      txt = await r.text();
+    } catch (e) { throw erro('rede', 'sem resposta do servidor'); }
+    try { d = JSON.parse(txt); } catch (e) { d = null; }
+    if (r.status === 404 && d && (d.code === 'PGRST202' || /Could not find the function/i.test(d.message || ''))) throw erro('sem_sql', 'o servidor ainda não tem o rascunho (SQL COLETA_SEGURA_2)', 404);
+    if (r.status === 401 || r.status === 403) throw erro('cracha', (d && d.message) || 'o servidor recusou o crachá — entre de novo pelo Hub', r.status);
+    if (r.status >= 500 || r.status === 0) throw erro('rede', 'o servidor falhou (' + r.status + ')', r.status);
+    if (!r.ok) {   // 2ª auditoria (#4): a cota cheia é um NÃO do servidor (4xx com hint 'cota'), nunca "sem sinal"
+      var ex = erro('recusado', (d && d.hint === 'cota') ? 'a cota de rascunhos deste técnico no servidor está cheia — conclua/envie as coletas pendentes' : ((d && (d.message || d.hint)) || ('HTTP ' + r.status)), r.status);
+      ex.hint = (d && d.hint) || ''; throw ex;
+    }
+    return d;
+  }
+  PF123.rpc = rpc;
+
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  // 3 · A FILA DE SUBIDA (própria; nunca a do app) e o MAPA do que o servidor confirmou
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  // mapa[chave] = { estado: ok|fila|conflito|erro, versao, em (hora do servidor), sig, pend, chaves, os, tipo, mk, motivo, atual }
+  // fila[chave] = { os, tipo, mk, chaves, payload, sig, pend, uid, desde, parado }
+  function mapa() { var m = lerJ(MAP_KEY, {}); return (m && typeof m === 'object') ? m : {}; }
+  function fila() { var f = lerJ(FILA_KEY, {}); return (f && typeof f === 'object') ? f : {}; }
+  function gravarMapa(m) {   // teto: 500 entradas; as confirmadas mais velhas saem primeiro (nunca as da fila nem as em conflito)
+    var ks = Object.keys(m);
+    if (ks.length > 500) {
+      ks.filter(function (k) { return m[k] && m[k].estado === 'ok'; }).sort(function (a, b) { return (m[a].quando || 0) - (m[b].quando || 0); })
+        .slice(0, ks.length - 500).forEach(function (k) { delete m[k]; });
+    }
+    return gravarJ(MAP_KEY, m);
+  }
+  // a MESMA máquina da MESMA coleta (coleta_uid igual) com chave ANTERIOR (série digitada depois, máquina do cadastro):
+  // a que o servidor já confirmou (versão > 0) — é a linha que o servidor renomeia. Outra coleta NUNCA casa (2ª auditoria #1).
+  function anterior(m, x, sub) {
+    var k0 = chaveDe(x, sub), achou = null;
+    Object.keys(m).forEach(function (k) { var y = m[k]; if (!achou && k !== k0 && y && y.sub === sub && y.os === x.os && y.tipo === x.tipo && x.cuid && y.cuid === x.cuid && y.mk !== x.mk && Number(y.versao) > 0) achou = k; });
+    return achou;
+  }
+  function enfileirar(lista, origem) {
+    var sub = dono(); if (!sub) return false;
+    var f = fila(), m = mapa(), ap = aparelho(), agora = Date.now();
+    // fila com teto (1ª auditoria #13, resto): conflito/erro parado de coleta abandonada sai depois de 30 dias; nunca mais de 300 itens
+    Object.keys(f).forEach(function (k) { var q = f[k]; if (!q || (q.parado && agora - (Number(q.desde) || 0) > 30 * 864e5)) delete f[k]; });
+    var kf = Object.keys(f);
+    if (kf.length > 300) kf.filter(function (k) { return f[k].parado; }).sort(function (a, b) { return (f[a].desde || 0) - (f[b].desde || 0); }).slice(0, kf.length - 300).forEach(function (k) { delete f[k]; });
+    lista.forEach(function (x, i) {
+      var k = chaveDe(x, sub), velho = f[k], kAnt = (m[k] && Number(m[k].versao) > 0) ? null : anterior(m, x, sub);
+      // 2ª auditoria (#9): sem sinal, a chave mudou entre dois 💾 — o envio com a chave velha (que nunca subiu) SAI da fila;
+      // os uids dele vão junto (se um deles chegou ao servidor, o servidor renomeia aquela linha)
+      var herdados = [];
+      Object.keys(f).forEach(function (ko) {
+        var q = f[ko]; if (ko === k || !q || q.sub !== sub || q.os !== x.os || q.tipo !== x.tipo || !x.cuid || q.cuid !== x.cuid || q.mk === x.mk) return;
+        var yo = m[ko] || {};
+        herdados = herdados.concat(q.uidsBase || [], [q.uid], yo.uidsPend || []);
+        if (!kAnt && Number(yo.versao) > 0) kAnt = ko;
+        else if (!kAnt && (yo.uidsPend || []).length) kAnt = ko;            // pode ter chegado: o servidor renomeia se a linha existir
+        delete f[ko]; if (ko !== kAnt && !(Number(yo.versao) > 0)) delete m[ko];
+      });
+      f[k] = { sub: sub, os: x.os, tipo: x.tipo, mk: x.mk, idx: x.idx, cuid: x.cuid, chaves: x.chaves, payload: x.payload, sig: x.sig, sigF: x.sigF, pend: x.pend,
+               uid: 'RS-' + ap.slice(3, 9) + '-' + agora + '-' + i, desde: agora, parado: false, origem: origem || 'salvar',
+               // os envios desta máquina que saíram e não tiveram resposta: o servidor pode ter gravado um deles
+               uidsBase: (velho ? (velho.uidsBase || []).concat(velho.uid) : ((m[k] && m[k].uidsPend) || [])).concat(herdados).filter(function (u, j, a) { return u && a.indexOf(u) === j; }).slice(-10),
+               mka: kAnt ? (m[kAnt] || {}).mk || '' : '', kAnt: kAnt || '' };
+      if (kAnt && !f[k].mka) { f[k].mka = ''; f[k].kAnt = ''; }
+    });
+    if (!gravarJ(FILA_KEY, f)) return false;
+    lista.forEach(function (x) {
+      var k = chaveDe(x, sub), y = m[k] || {};
+      if (y.estado !== 'ok' || y.sig !== x.sig) { y.estado = 'fila'; y.motivo = ''; }
+      y.sub = sub; y.os = x.os; y.tipo = x.tipo; y.mk = x.mk; y.idx = x.idx; y.chaves = x.chaves; y.cuid = x.cuid; m[k] = y;
+    });
+    gravarMapa(m);
+    return true;
+  }
+  var _drenando = null;
+  function drenar(motivo) {
+    if (_drenando) return _drenando;
+    _drenando = (async function () {
+      var res = { ok: 0, fila: 0, conflito: 0, erro: 0, outro: 0 };
+      var tok = null; try { tok = await _pcfSupaToken(); } catch (e) { tok = null; }
+      var subTok = tok ? subDo(tok) : '', f = fila(), ks = Object.keys(f);
+      for (var i = 0; i < ks.length; i++) {
+        var k = ks[i], it = f[k]; if (!it) continue;
+        if (it.parado) { res.conflito++; continue; }
+        if (!it.sub || (subTok && it.sub !== subTok)) { res.outro++; continue; }   // é de OUTRO técnico: espera o dono entrar
+        var m = mapa(), y = m[k] || {}, yA = it.kAnt ? (m[it.kAnt] || {}) : {};
+        var base = Number(y.versao) || Number(yA.versao) || 0;
+        if (it.versaoBase != null) base = Number(it.versaoBase) || 0;          // "gravar por cima" escolhido pelo técnico
+        var uidsBase = (it.uidsBase || []).concat(y.uidsPend || []).filter(function (u, j, a) { return u && a.indexOf(u) === j; }).slice(-10);
+        try {
+          var d = await rpc('pc_rasc_salvar', { p: { os_id: it.os, machine_key: it.mk, machine_key_anterior: it.mka || '', tipo: it.tipo, aparelho_id: aparelho(),
+                                                     payload: it.payload, versao_base: base, uid: it.uid, uids_base: uidsBase, fotos_pendentes: it.pend || 0 } });
+          m = mapa(); y = m[k] || {};
+          if (d && d.ok === true && Number(d.versao) >= 1) {
+            m[k] = { estado: 'ok', versao: Number(d.versao), em: d.atualizado_em, sig: it.sig, sigF: it.sigF, pend: it.pend || 0, sub: it.sub, idx: it.idx,
+                     chaves: it.chaves, os: it.os, tipo: it.tipo, mk: it.mk, cuid: it.cuid || '', motivo: '', uidsPend: [], quando: Date.now(),
+                     fotos: ((it.payload || {}).fotos || []).filter(function (z) { return z && z.status === 'ok' && (z.drive_id || z.file_name); }) };
+            if (it.kAnt && it.kAnt !== k && !d.novo) delete m[it.kAnt];        // a linha antiga foi renomeada (ou apagada) no servidor
+            if (!gravarMapa(m)) { log('rasc', k, 'mapa não gravou'); res.erro++; break; }   // sem o mapa, NÃO tira da fila (senão o próximo vira conflito)
+            var fa = fila(); if (fa[k] && fa[k].uid === it.uid) delete fa[k]; gravarJ(FILA_KEY, fa);
+            res.ok++;
+          } else if (d && d.ok === false && d.motivo === 'versao') {
+            var a = d.atual || null;
+            m[k] = Object.assign({}, y, { estado: 'conflito', atual: a ? { versao: a.versao, aparelho_id: a.aparelho_id, atualizado_em: a.atualizado_em } : null,
+                                          sub: it.sub, idx: it.idx, chaves: it.chaves, os: it.os, tipo: it.tipo, mk: it.mk, motivo: String(d.mensagem || '') });
+            gravarMapa(m);
+            var fc = fila(); if (fc[k] && fc[k].uid === it.uid) { fc[k].parado = true; delete fc[k].versaoBase; } gravarJ(FILA_KEY, fc);
+            res.conflito++;
+          } else {
+            m[k] = Object.assign({}, y, { estado: 'erro', motivo: 'resposta inesperada do servidor' }); gravarMapa(m); res.erro++;
+          }
+        } catch (e) {
+          m = mapa(); y = m[k] || {};
+          var tipo = e.pf123 || 'rede';
+          if (tipo === 'recusado') {                                              // o servidor disse NÃO (dado inválido, cota): não insiste
+            m[k] = Object.assign({}, y, { estado: 'erro', motivo: (e.hint === 'cota' ? '' : 'o servidor recusou: ') + e.message, sub: it.sub, idx: it.idx, chaves: it.chaves, os: it.os, tipo: it.tipo, mk: it.mk });
+            gravarMapa(m);
+            var fb = fila(); if (fb[k] && fb[k].uid === it.uid) fb[k].parado = true; gravarJ(FILA_KEY, fb);
+            res.erro++;
+          } else {
+            var pend = (y.uidsPend || []).slice(); if (tipo === 'rede' && pend.indexOf(it.uid) < 0) pend.push(it.uid);   // pode ter chegado: a resposta é que não veio
+            m[k] = Object.assign({}, y, { estado: y.estado === 'ok' ? 'ok' : 'fila', motivoFila: e.message, uidsPend: pend.slice(-5), sub: it.sub, idx: it.idx, chaves: it.chaves, os: it.os, tipo: it.tipo, mk: it.mk });
+            gravarMapa(m);
+            res.fila++;
+          }
+          log('rasc', k, tipo, e.message);
+          if (tipo === 'rede' || tipo === 'cracha' || tipo === 'sem_sql') { res.fila += Math.max(0, ks.length - i - 1); break; }
+        }
+      }
+      PF123.ultima = { em: Date.now(), motivo: motivo || '', res: res };
+      try { if (window.PF122 && PF122.pintar) PF122.pintar(); } catch (e) {}
+      return res;
+    })();
+    var p = _drenando;
+    p.then(function () { _drenando = null; }, function () { _drenando = null; });
+    return p;
+  }
+  PF123.drenar = drenar;
+  function temFila() { var f = fila(), u = dono(); return Object.keys(f).some(function (k) { return f[k] && !f[k].parado && f[k].sub === u; }); }
+
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  // 4 · O 💾 SALVAR: depois do "Salvo no celular" COM PROVA, sobe ao servidor
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  var _subindo = false;
+  async function subir(origem) {
+    var st = null; try { st = captureState(); st.clientName = vg(0, 'razao_social'); } catch (e) { st = null; }
+    var todas = maquinasDoEstado(st);
+    if (!todas.length) { try { lembrarTela(st, 'salvamento'); } catch (e) {} return { nada: true, semId: todas.semId || [] }; }
+    try { lembrarTela(st, 'salvamento'); } catch (e) {}
+    var mp = mapa(), lista = todas.filter(function (x) { var y = mp[chaveDe(x)]; return !(y && y.estado === 'ok' && y.sig === x.sig && y.sigF === x.sigF); });   // igual ao do servidor: não sobe de novo
+    if (lista.length && !enfileirar(lista)) return { semFila: true };
+    var res = await drenar(origem || 'salvar');
+    return { res: res, lista: todas, semId: todas.semId || [] };
+  }
+  PF123.subir = subir;
+  function msg(cls, txt) { var el = $('pf122Msg'); if (!el) return; el.className = 'pf122-msg' + (cls ? ' ' + cls : ''); el.textContent = txt; }
+  try {
+    var _salvar = window.pcf122Salvar;
+    if (typeof _salvar === 'function') window.pcf122Salvar = async function (btn) {
+      var r = await _salvar.apply(this, arguments);
+      if (!(r && r.ok) || _subindo) return r;                   // sem a prova no aparelho, nada sobe (e o 📝 já disse o porquê)
+      _subindo = true;
+      try {
+        msg('ok', '📝 Salvo no celular às ' + hhmm(r.quando) + ' — conferido. ⏳ Subindo para o servidor…');
+        var s = await subir('salvar');
+        var semId = (s.semId || []).map(function (j) { return 'Máq. ' + (j + 1); }).join(', ');
+        var faltaId = semId ? ' ' + semId + ' só no celular (falta nº de série, modelo ou horímetro para subir).' : '';
+        if (s.nada) msg('ok', '📝 Salvo no celular às ' + hhmm(r.quando) + ' — conferido. Sobe ao servidor quando a máquina tiver nº de série, modelo ou horímetro.');   // 2ª auditoria (#7)
+        else if (s.semFila) msg('erro', '📝 Salvo SÓ neste celular (conferido). ⚠ Não consegui pôr na fila do servidor (memória cheia?).');
+        else if (s.res) {
+          var m = mapa(), oks = [], conf = [], pend = 0, tela = PF123.tela || {}, mudou = false;
+          (s.lista || []).forEach(function (x) {
+            var k = chaveDe(x), y = m[k] || {}, t = tela[k];
+            if (!t || t.sig !== x.sig) mudou = true;          // 2ª auditoria (#3): a tela mudou DURANTE a subida — o servidor tem a de antes
+            if (y.estado === 'ok' && y.sig === x.sig) { oks.push(y); pend += Number(x.pend) || 0; } else if (y.estado === 'conflito' || y.estado === 'erro') conf.push(y);
+          });
+          oks.sort(function (a, b) { return String(b.em || '').localeCompare(String(a.em || '')); });   // a hora da mensagem é a da gravação MAIS NOVA
+          if (conf.length) msg('erro', '📝 Salvo no celular (conferido). ⚠ No servidor: ' + (conf[0].estado === 'conflito' ? 'há uma versão MAIS NOVA desta coleta (' + ((conf[0].atual || {}).aparelho_id || 'outro aparelho') + ') — veja o selo da máquina.' : conf[0].motivo));
+          else if (mudou) msg('ok', '📝 Salvo no celular (conferido). ⚠ Você mudou a coleta durante a subida: o servidor ficou com a versão de antes — toque em 💾 Salvar de novo.');
+          else if (oks.length === s.lista.length) msg('ok', (semId ? '☁️ ' + oks.length + ' de ' + (oks.length + s.semId.length) + ' máquinas no servidor' : '☁️ Salvo no servidor' + (oks.length > 1 ? ' (' + oks.length + ' máquinas)' : '')) +
+                                                       ' às ' + hhmm(oks[0].em) + (semId ? ' e todas no celular' : ' e no celular') + ' — conferido.' + faltaId + (pend ? ' ' + pend + ' foto' + (pend > 1 ? 's' : '') + ' ainda só neste celular (sobem com o envio).' : ''));
+          else msg('ok', '📝 Salvo só neste celular (conferido). Sobe ao servidor sozinho quando conectar.' + faltaId);
+        }
+      } catch (e) { log('subir', e && e.message); }
+      finally { _subindo = false; }
+      return r;
+    };
+  } catch (e) {}
+
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  // 5 · O SELO: o 📝 do bloco COLSEG_V1 passa por aqui (remendo no estado) — ☁️ só com a confirmação do servidor
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  function decorarSalvo(m, sv, e) {
+    if (!sv || sv.onde !== 'rascunho' || !e) return e;
+    var os = String(m.os || ''), tela = PF123.tela || {}, t = null, k = '';
+    Object.keys(tela).forEach(function (kk) { var x = tela[kk]; if (!t && x && x.os === os && x.tipo === m.tipo && x.idx === sv.idx) { t = x; k = kk; } });
+    if (!t) {                                                  // a tela ainda não foi lida: não afirma nada sobre o servidor…
+      if ((PF123.telaSemId || {})[os + '|' + m.tipo + '|' + sv.idx]) e.motivo = 'Só neste celular: para subir ao servidor, falta o nº de série, o modelo ou o horímetro.';   // …salvo o que falta
+      return e;
+    }
+    var mp = mapa(), y = mp[k], fl = fila(), q = fl[k];
+    if (y && y.estado === 'conflito' && q && q.parado) {
+      var a = y.atual || {};
+      e.motivo = 'Há uma versão MAIS NOVA desta máquina no servidor' + (a.aparelho_id ? ' (' + (a.aparelho_id === aparelho() ? 'deste celular, ' : 'aparelho ' + a.aparelho_id + ', ') + (a.atualizado_em ? 'às ' + hhmm(a.atualizado_em) : '') + ')' : '') +
+                 '. A desta tela está salva só neste celular — nada foi sobrescrito.';
+      e.acao = { k: 'rasc', ref: k };
+      return e;
+    }
+    if (q && !q.parado && q.origem !== 'fotos') {
+      e.txt = '📝 Salvo só neste celular. Sobe ao conectar';
+      e.motivo = (y && y.motivoFila) ? 'Ainda não subiu: ' + y.motivoFila + '.' : 'Sobe ao servidor sozinho quando houver sinal.';
+      return e;
+    }
+    if (y && y.estado === 'erro') { e.motivo = 'O servidor não guardou: ' + (y.motivo || 'erro') + '.'; return e; }
+    if (y && y.estado === 'ok') {
+      if (t.sig === y.sig) {
+        var pend = Number(t.pend) || 0, fotosVelhas = t.sigF !== y.sigF;
+        return { cod: 'servidor', txt: '☁️ Salvo no servidor às ' + hhmm(y.em) + (pend ? ' · ' + pend + ' foto' + (pend > 1 ? 's' : '') + ' ainda só neste celular' : (fotosVelhas ? ' · subindo as referências das fotos' : '')),
+                 hora: new Date(y.em).getTime() || e.hora, motivo: pend ? 'As fotos sobem com o envio da coleta; até lá, estão só neste celular.' : '' };
+      }
+      e.motivo = 'No servidor: a versão das ' + hhmm(y.em) + ' (antes das últimas mudanças). Toque em 💾 Salvar para subir esta.';
+      return e;
+    }
+    return e;
+  }
+  try { if (window.PF122) PF122.decorarSalvo = decorarSalvo; } catch (e) {}
+  PF123.decorarSalvo = decorarSalvo;
+
+  // ── "📤 Gravar a desta tela no servidor" — só com confirmação; nunca em silêncio ─────────────────
+  function janela(html, aoMontar) {
+    var ov = document.createElement('div'); ov.className = 'pcf116-ov';
+    ov.innerHTML = '<div class="pcf116-sheet" role="dialog" aria-modal="true">' + html + '</div>';
+    document.body.appendChild(ov);
+    var fechado = false;
+    function fechar() { if (fechado) return; fechado = true; try { document.body.removeChild(ov); } catch (e) {} }
+    if (aoMontar) aoMontar(ov, fechar);
+    return fechar;
+  }
+  function gravarPorCima(ref) {
+    var f = fila(), q = f[ref], y = mapa()[ref]; if (!q || !y) { aviso('Nada pendente para esta máquina — atualize a tela.'); return; }
+    var a = y.atual || {};
+    janela('<h3>Gravar a desta tela no servidor?</h3>' +
+      '<div class="pf123-sheet-aviso">⚠ No servidor há uma versão <b>mais nova</b> desta máquina' + (a.aparelho_id ? ', salva no aparelho <b>' + esc(a.aparelho_id) + '</b>' : '') +
+      (a.atualizado_em ? ' às <b>' + esc(hhmm(a.atualizado_em)) + '</b>' : '') + '. Gravar a desta tela <b>substitui</b> aquela no servidor (ela continua no outro aparelho).</div>' +
+      '<div class="pcf116-pe"><button type="button" class="pcf116-cancel">Voltar (não gravar)</button><button type="button" class="pcf116-ok aviso" data-pf123-sobre="1">Gravar a desta tela</button></div>',
+      function (ov, fechar) {
+        ov.querySelector('.pcf116-cancel').onclick = fechar;
+        ov.addEventListener('click', function (ev) { if (ev.target === ov) fechar(); });
+        ov.querySelector('[data-pf123-sobre]').onclick = async function () {
+          fechar();
+          // 2ª auditoria (#8): o que sobe é o que passou pela PROVA no celular — primeiro o 💾 do aparelho (com conferência)
+          var pr = null; try { pr = await _salvar.call(window, null); } catch (e) { pr = null; }
+          if (!(pr && pr.ok)) { aviso('⚠ Não consegui salvar no celular com conferência — nada foi gravado no servidor. Tente 💾 Salvar.'); return; }
+          // a coleta que acabou de ser PROVADA (o rascunho relido do aparelho; as fotos só como referência) — sobre a versão que o servidor mostrou
+          var st = null; try { st = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); } catch (e) { st = null; }
+          try { var cs = captureState(); if (!st || !st.fields) st = cs; else st.photoStore = cs.photoStore; } catch (e) {}
+          var x = maquinasDoEstado(st).filter(function (z) { return chaveDe(z, q.sub) === ref; })[0];
+          var ff = fila(), alvo = ff[ref] || q;
+          if (x) { alvo.payload = x.payload; alvo.sig = x.sig; alvo.sigF = x.sigF; alvo.pend = x.pend; alvo.cuid = x.cuid; }
+          alvo.versaoBase = Number(a.versao) || 0; alvo.parado = false; alvo.uid = 'RS-' + aparelho().slice(3, 9) + '-' + Date.now() + '-s';
+          ff[ref] = alvo; gravarJ(FILA_KEY, ff);
+          var mm = mapa(); if (mm[ref]) { mm[ref].estado = 'fila'; gravarJ(MAP_KEY, mm); }
+          var r = await drenar('por-cima');
+          var y2 = mapa()[ref] || {};
+          aviso(y2.estado === 'ok' ? '☁️ Gravada no servidor às ' + hhmm(y2.em) + '.' : (y2.estado === 'conflito' ? '⚠ O servidor mudou de novo — veja o selo.' : '📝 Ficou na fila: sobe ao conectar.'));
+        };
+      });
+  }
+  PF123.gravarPorCima = gravarPorCima;
+  document.addEventListener('click', function (ev) {
+    var b = ev.target && ev.target.closest && ev.target.closest('[data-pf122-acao="rasc"]'); if (!b) return;
+    ev.preventDefault();
+    gravarPorCima(b.getAttribute('data-ref') || '');
+  }, true);
+
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  // 6 · QUANDO TENTAR DE NOVO (sobe sozinho)
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  function talvez(motivo) { try { if (temFila()) drenar(motivo); } catch (e) {} }
+  window.addEventListener('online', function () { talvez('online'); });
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') talvez('visivel'); });
+  try {
+    var _gs = window.pgpSetGsStatus;
+    if (typeof _gs === 'function') window.pgpSetGsStatus = function (s) { var r = _gs.apply(this, arguments); try { if (s === 'ok') setTimeout(function () { talvez('servidor-ok'); }, 300); } catch (e) {} return r; };
+  } catch (e) {}
+  setInterval(function () { if (document.visibilityState === 'visible') talvez('60s'); }, 60000);
+  setTimeout(function () { telaDoBoot().catch(function () {}); }, 1200);
+  setTimeout(function () { talvez('abertura'); }, 2500);
+  PF123.ok = true;
 })();
 </script>
 
