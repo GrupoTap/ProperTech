@@ -9,7 +9,8 @@
  * O activate abaixo apaga qualquer cache antigo com prefixo 'propertech-'.
  */
 const CACHE_BASE = 'propertech-';
-const CACHE = CACHE_BASE + 'v123';  // 02/10/2026 — par do PCF_V121 (campo 11 pontos). Sem bump, o celular serve o V119 do cache.
+const CACHE = CACHE_BASE + 'v124';  // 05/10/2026 — par do PCF_V122 (coleta segura, 1ª entrega). Sem bump, o celular serve o V121 do cache.
+// antes: 'v123'  // 02/10/2026 — par do PCF_V121 (campo 11 pontos).
 // antes: 'v121'  // 30/09/2026 — par do PCF_V119 (crachá renovável). Sem bump, o celular serve o V118 do cache.
 // antes: 'v119' — par do PCF_V117 (＋ Adicionar item)
 // antes: 'v118'  // 29/09/2026 — par do PCF_V116 (campo simples). Sem bump, o celular serve o V115 do cache.
@@ -64,6 +65,7 @@ const CACHE = CACHE_BASE + 'v123';  // 02/10/2026 — par do PCF_V121 (campo 11 
 //        PCF_V118 ↔  propertech-v120  (29/09 — reabertura robusta: tstatus no formulário, linha do envio no card)
 //        PCF_V119 ↔  propertech-v121  (30/09 — crachá renovável: o modo rápido não desliga sozinho em 12 h)
 //        PCF_V121 ↔  propertech-v123  (02/10 — campo 11 pontos: a fila de DADOS também sobe com o app fechado)
+//        PCF_V122 ↔  propertech-v124  (05/10 — coleta segura: 💾 Salvar com prova, selo único, Reenviar no card)
 //    Quem "corrigir" isto para propertech-v91 achando que alinha as versões
 //    reintroduz o pior modo de falha deste arquivo: a chave ficaria IGUAL à do
 //    deploy anterior, o activate não apagaria nada, e o técnico continuaria
