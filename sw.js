@@ -9,7 +9,7 @@
  * O activate abaixo apaga qualquer cache antigo com prefixo 'propertech-'.
  */
 const CACHE_BASE = 'propertech-';
-const CACHE = CACHE_BASE + 'v125';  // 06/10/2026 — par do PCF_V123 (coleta segura, 2ª entrega: rascunho no servidor). Sem bump, o celular serve o V122 do cache.
+const CACHE = CACHE_BASE + 'v128';  // 07/10/2026 — par do PCF_V126 (botão 🏠 Menu → ProperHub no pipeline). Sem bump, o celular serve o V123 do cache.
 // antes: 'v124'  // 05/10/2026 — par do PCF_V122 (coleta segura, 1ª entrega).
 // antes: 'v123'  // 02/10/2026 — par do PCF_V121 (campo 11 pontos).
 // antes: 'v121'  // 30/09/2026 — par do PCF_V119 (crachá renovável). Sem bump, o celular serve o V118 do cache.
@@ -68,6 +68,7 @@ const CACHE = CACHE_BASE + 'v125';  // 06/10/2026 — par do PCF_V123 (coleta se
 //        PCF_V121 ↔  propertech-v123  (02/10 — campo 11 pontos: a fila de DADOS também sobe com o app fechado)
 //        PCF_V122 ↔  propertech-v124  (05/10 — coleta segura: 💾 Salvar com prova, selo único, Reenviar no card)
 //        PCF_V123 ↔  propertech-v125  (06/10 — coleta segura 2a: 💾 Salvar também no servidor, selo ☁️)
+//        PCF_V126 ↔  propertech-v128  (07/10 — botão 🏠 Menu no pipeline: volta ao menu do ProperHub; V124/V125 reservados e não construídos)
 //    Quem "corrigir" isto para propertech-v91 achando que alinha as versões
 //    reintroduz o pior modo de falha deste arquivo: a chave ficaria IGUAL à do
 //    deploy anterior, o activate não apagaria nada, e o técnico continuaria

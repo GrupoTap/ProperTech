@@ -1618,8 +1618,15 @@ html[data-boot="pipeline"] #pf113Splash{display:flex;position:fixed;inset:0;z-in
   sobe sozinho; fotos nunca vao no rascunho (o selo avisa quantas ainda estao so no celular); versao mais nova no
   servidor nunca e sobrescrita em silencio. O SQL COLETA_SEGURA_2 roda ANTES de publicar este PCF.
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V123</title>
-<meta name="app-build" content="PCF_V123" data-date="2026-10-06">
+<!--
+  PCF_V126 · BOTAO MENU (PROPERHUB) · 07/10/2026 · feito SOBRE o PCF_V123 no ar · par sw propertech-v128.
+  Pedido do Fernando: voltar ao menu do ProperHub (Administracao, Agenda, Inspecao...) a partir do pipeline.
+  Botao "Menu" fixo no cabecalho do overlay, ao lado do sino. A seta antiga (pfFechar) nao foi tocada.
+  Coleta aberta na tela de tras nunca sai calada (Salvar e ir ao menu, com a prova do V122); envios ainda
+  na fila do celular sao ditos com o numero antes de sair. Zero SQL, zero GAS. Bloco PF126 no fim do body.
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V126</title>
+<meta name="app-build" content="PCF_V126" data-date="2026-10-07">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -21671,6 +21678,8 @@ if(window._PGP_OS_ID && (function(){ try { return localStorage.getItem('proper_p
       <div id="pfTitulo" style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;color:white;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">🔧 Pipeline</div>
       <div id="pfOsLabel" style="font-size:11px;color:rgba(255,255,255,.65);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</div>
     </div>
+    <!-- PCF_V126 (PF126): caminho explicito de volta ao menu do ProperHub -->
+    <button type="button" id="pf126Menu" onclick="_pf126IrMenu(this)" title="Voltar ao menu do ProperHub (Administração, Agenda, Inspeção…)" aria-label="Voltar ao menu do ProperHub" style="flex-shrink:0;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:10px;padding:6px 11px;min-height:38px;font-weight:800;cursor:pointer;white-space:nowrap">🏠 Menu</button>
     <!-- Badge de notificações no header do overlay -->
     <div id="pfNotifBtn" onclick="pfToggleNotif()" style="position:relative;cursor:pointer;font-size:20px;line-height:1;padding:6px">
       🔔
@@ -34728,6 +34737,250 @@ input.pcf121-dt-nativo::-webkit-calendar-picker-indicator{filter:invert(1) brigh
   setTimeout(function () { telaDoBoot().catch(function () {}); }, 1200);
   setTimeout(function () { talvez('abertura'); }, 2500);
   PF123.ok = true;
+})();
+</script>
+
+<!-- ████ PCF_V126 · PF126 (🏠 MENU → PROPERHUB) ████ -->
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════════════════════
+   PCF_V126 · PF126 · 07/10/2026 — O BOTÃO "🏠 Menu" NO CABEÇALHO DO PIPELINE.
+
+   O PEDIDO (Fernando, print da tela Externas/Oficina): "preciso de um botão para voltar à tela do
+   ProperHub para escolher outras opções, adm, agenda, inspeção". A seta do cabeçalho (pfFechar) só leva
+   ao Hub quando o app foi aberto pelo card "Minhas OS" do Hub (window._PF_VEIO_DO_HUB); quem chegou de
+   volta de um formulário, ou por link de OS, toca na seta e cai na tela antiga de coleta. A seta NÃO foi
+   mexida (só aditivo): o botão novo é um caminho explícito e sempre igual.
+
+   REGRAS (cada uma tem sabotagem na bancada):
+   R1  O botão leva ao MENU do Hub (grupotap.github.io/ProperHub/). Com a sessão válida o Hub abre direto
+       no menu de módulos, sem PIN.
+   R2  Coleta aberta na tela de trás (temDadosPreenchidos, honesto desde a V97) NUNCA sai calada: a folha
+       oferece "💾 Salvar e ir ao menu" (o MESMO 💾 com prova do V122 — pcf122Salvar; só sai se o salvamento
+       voltou ok), "Voltar para a coleta" e "Sair sem salvar".
+   R3  Envio que ainda não subiu (fila de dados, fila do Drive, formulários, rascunho do servidor DESTE técnico)
+       é DITO com o número antes de sair; ficam guardados no celular — o texto não promete prazo. Formulários
+       que não deu para contar em 1,5 s são DITOS como "não consegui conferir", nunca como zero.
+   R4  A saída intencional não dispara o "Sair do site?" do Chrome (_allowLeave, como o pfAbrirForm da V85)
+       e encerra o poll do sino (como o pfFechar da V76).
+   R5  Duplo toque não dispara duas vezes (trava própria data-pcm-enviando, que o PWAIT respeita).
+   R6  O Voltar do Android fecha a folha antes de qualquer outra camada — e, se o 💾 da folha ainda está
+       rodando, CANCELA a saída (o técnico desistiu: a coleta fica na tela).
+   R7  O "Salvar e ir" espera só a PROVA no celular (PF122.ultimoSalvar), não a subida ao servidor (PF123): o
+       rascunho que ainda não subiu fica na fila dele e é contado no passo da fila.
+   R8  Saída que não aconteceu (navegação abortada, volta pelo bfcache) desfaz a trava em 12 s: o botão e o
+       Voltar do Android não ficam mortos.
+   Auditoria independente de 07/10 (10 achados) — consertos 1–8 e 10 neste bloco; o 9 (conflito no servidor
+   avisado só no formulário) está nos limites do LEIA-ME.
+   ═══════════════════════════════════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+  var PF126 = window.PF126 = { versao: 'PCF_V126', hub: 'https://grupotap.github.io/ProperHub/', saindo: false, ocupado: false, log: [] };
+  function log() { try { var a = [].slice.call(arguments).map(String).join(' '); PF126.log.push(new Date().toISOString().slice(11, 19) + ' ' + a); if (PF126.log.length > 40) PF126.log.shift(); } catch (e) {} }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function $(id) { return document.getElementById(id); }
+
+  // ── estilo do botão e da folha ───────────────────────────────────────────────────────────────
+  try {
+    var st = document.createElement('style'); st.id = 'pf126Css';
+    st.textContent =
+      '#pf126Menu{flex-shrink:0;display:inline-flex;align-items:center;gap:4px;min-height:38px;padding:6px 11px;border-radius:10px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.12);color:#fff;font-family:"Barlow Condensed",sans-serif;font-size:15px;font-weight:800;letter-spacing:.3px;cursor:pointer;white-space:nowrap;-webkit-tap-highlight-color:rgba(255,255,255,.25)}' +
+      '#pf126Menu:active{background:rgba(255,255,255,.3);transform:scale(.97)}' +
+      '#pf126Menu[data-pcm-enviando]{opacity:.6}' +
+      '#pf126Folha{position:fixed;inset:0;z-index:100045;background:rgba(2,6,23,.92);display:flex;flex-direction:column;justify-content:flex-end;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));color:#e2e8f0;font-family:inherit}' +
+      '#pf126Folha .pf126-caixa{background:#0f172a;border:1px solid #334155;border-radius:16px;padding:16px;max-width:520px;width:100%;margin:0 auto;box-sizing:border-box}' +
+      '#pf126Folha h3{margin:0 0 8px;font-size:19px;line-height:1.25}' +
+      '#pf126Folha p{margin:0 0 10px;font-size:14.5px;line-height:1.45;color:#cbd5e1}' +
+      '#pf126Folha .pf126-msg{font-size:14px;line-height:1.4;margin:0 0 10px;min-height:0}' +
+      '#pf126Folha .pf126-msg.erro{color:#fca5a5;font-weight:700}' +
+      '#pf126Folha .pf126-btns{display:flex;flex-direction:column;gap:8px;margin-top:6px}' +
+      '#pf126Folha button{min-height:48px;border-radius:12px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;font-family:inherit;font-size:15.5px;font-weight:800;cursor:pointer;padding:8px 12px}' +
+      '#pf126Folha button.pf126-ir{background:#1d4ed8;border-color:#1d4ed8;color:#fff}' +
+      '#pf126Folha button.pf126-fraco{background:transparent;border-color:transparent;color:#94a3b8;font-weight:700;text-decoration:underline;min-height:44px}' +
+      '#pf126Folha button:active{filter:brightness(1.25)}' +
+      '#pf126Folha button[disabled]{opacity:.5}';
+    document.head.appendChild(st);
+  } catch (e) {}
+
+  // ── o que ainda está só no celular ────────────────────────────────────────────────────────────
+  function contarFilasSinc() {
+    var p = { dados: 0, drive: 0, rascunho: 0 };
+    try { p.dados = (typeof pgpGetPending === 'function' ? (pgpGetPending() || []) : []).length; } catch (e) {}
+    try { p.drive = (typeof pgpGetDriveQueue === 'function' ? (pgpGetDriveQueue() || []) : []).length; } catch (e) {}
+    try {
+      var f = JSON.parse(localStorage.getItem('pcf123_rasc_fila_v1') || '{}') || {};
+      var eu = null; try { if (window.PF123 && typeof window.PF123.dono === 'function') eu = window.PF123.dono(); } catch (e) {}
+      p.rascunho = Object.keys(f).filter(function (k) { return f[k] && !f[k].parado && (eu == null || f[k].sub === eu); }).length;
+    } catch (e) {}
+    return p;
+  }
+  function contarForms(tetoMs) {
+    return new Promise(function (res) {
+      var feito = false;
+      var t = setTimeout(function () { if (!feito) { feito = true; res(null); } }, tetoMs || 1500);   // null = não sei (nunca "zero")
+      try {
+        if (typeof _pf113ContarForms !== 'function') { feito = true; clearTimeout(t); res(0); return; }
+        Promise.resolve(_pf113ContarForms()).then(function (n) { if (!feito) { feito = true; clearTimeout(t); res(Number(n) || 0); } },
+                                                   function () { if (!feito) { feito = true; clearTimeout(t); res(null); } });
+      } catch (e) { if (!feito) { feito = true; clearTimeout(t); res(null); } }
+    });
+  }
+  function coletaAberta() {
+    try { return typeof temDadosPreenchidos === 'function' && !!temDadosPreenchidos(); } catch (e) { return false; }
+  }
+  PF126.contarFilasSinc = contarFilasSinc; PF126.coletaAberta = coletaAberta;
+
+  // ── folha ──────────────────────────────────────────────────────────────────────────────────────
+  function fecharFolha() { var f = $('pf126Folha'); if (f) f.remove(); }
+  function abrirFolha(html) {
+    fecharFolha();
+    var f = document.createElement('div'); f.id = 'pf126Folha'; f.setAttribute('role', 'dialog'); f.setAttribute('aria-modal', 'true');
+    f.innerHTML = '<div class="pf126-caixa">' + html + '</div>';
+    document.body.appendChild(f);
+    return f;
+  }
+  PF126.fecharFolha = fecharFolha;
+
+  // ── sair de verdade ────────────────────────────────────────────────────────────────────────────
+  function sair(motivo) {
+    if (PF126.saindo) return;
+    PF126.saindo = true;
+    log('saindo para o Hub:', motivo || '');
+    try { if (typeof _pfNotifInterval !== 'undefined' && _pfNotifInterval) { clearInterval(_pfNotifInterval); _pfNotifInterval = null; } } catch (e) {}
+    try { _allowLeave = true; } catch (e) {}
+    clearTimeout(PF126._tVolta);
+    PF126._tVolta = setTimeout(desfazerSaida, 12000);  // R8 · se ainda estou aqui em 12 s, a navegação não aconteceu
+    PF126.ir(PF126.hub);
+  }
+  function desfazerSaida() {
+    if (!PF126.saindo) return;
+    PF126.saindo = false;
+    try { _allowLeave = false; } catch (e) {}
+    try { var b = $('pf126Menu'); if (b) b.removeAttribute('data-pcm-enviando'); } catch (e) {}
+    log('a saída não aconteceu — trava desfeita');
+  }
+  PF126.desfazerSaida = desfazerSaida;
+  window.addEventListener('pageshow', function (ev) { if (ev && ev.persisted) desfazerSaida(); });
+  PF126.ir = function (url) { window.location.href = url; };   // ponto único de navegação (a bancada troca este)
+  PF126.sair = sair;
+
+  // ── passo 2: a fila ──────────────────────────────────────────────────────────────────────────
+  async function passoFila() {
+    var p = contarFilasSinc();
+    var nf = await contarForms(1500);
+    var total = p.dados + p.drive + p.rascunho + (nf || 0);
+    PF126.ultimaContagem = { dados: p.dados, drive: p.drive, rascunho: p.rascunho, forms: nf };
+    if (!total && nf !== null) { sair('fila-zero'); return; }
+    var partes = [];
+    if (p.dados) partes.push(p.dados + ' envio' + (p.dados > 1 ? 's' : '') + ' de dados');
+    if (nf) partes.push(nf + ' formulário' + (nf > 1 ? 's' : ''));
+    if (p.drive) partes.push(p.drive + ' arquivo' + (p.drive > 1 ? 's' : '') + ' para o Drive');
+    if (p.rascunho) partes.push(p.rascunho + ' rascunho' + (p.rascunho > 1 ? 's' : '') + ' para o servidor');
+    var titulo = total ? '⏳ Ainda há ' + total + ' envio' + (total > 1 ? 's' : '') + ' na fila deste celular'
+                       : '⏳ Não consegui conferir os formulários pendentes';
+    var f = abrirFolha(
+      '<h3>' + titulo + '</h3>' +
+      (partes.length ? '<p>' + esc(partes.join(' · ')) + '.</p>' : '') +
+      (nf === null ? '<p>A contagem dos formulários que ainda não subiram não respondeu a tempo — pode haver algum na fila.</p>' : '') +
+      '<p>Ficam guardados neste celular. Os formulários podem subir sozinhos quando houver sinal; o resto sobe quando você abrir o Campo com sinal.</p>' +
+      '<div class="pf126-btns">' +
+        '<button type="button" class="pf126-ir" data-pf126="ir">🏠 Ir ao menu assim mesmo</button>' +
+        '<button type="button" data-pf126="ficar">Ficar e tentar enviar agora</button>' +
+      '</div>');
+    f.querySelector('[data-pf126="ir"]').onclick = function () { fecharFolha(); sair('fila-aceita'); };
+    f.querySelector('[data-pf126="ficar"]').onclick = function () {
+      fecharFolha();
+      var bloqueada = false; try { bloqueada = typeof pgpRedeBloqueada === 'function' && !!pgpRedeBloqueada(); } catch (e) {}
+      if (bloqueada) { try { if (typeof pfToast === 'function') pfToast('📴 O modo offline está ligado — nada sobe enquanto ele estiver ligado. Desligue o modo offline para enviar.'); } catch (e) {} return; }
+      try { if (typeof pgpFlushPending === 'function') pgpFlushPending(); } catch (e) {}
+      try { if (typeof _pf113DrenarForms === 'function') _pf113DrenarForms({ prioridade: true }); } catch (e) {}
+      try { if (window.PF123 && typeof window.PF123.drenar === 'function') window.PF123.drenar('pf126'); } catch (e) {}
+      try { if (typeof pfToast === 'function') pfToast('⏳ Tentando enviar a fila agora (sem sinal, ela continua guardada no celular).'); } catch (e) {}
+    };
+  }
+
+  // R7 + 6 · espera a PROVA do 💾 (PF122.ultimoSalvar), não a subida ao servidor que o PF123 faz depois dela.
+  // Se já havia um 💾 rodando, o pcf122Salvar volta vazio na hora: espera o resultado DAQUELE (mesma prova).
+  function esperarProva(pSalvar) {
+    return new Promise(function (res) {
+      var fim = false, t0 = Date.now(), terminou = false, tTerm = 0;
+      function acabar(v) { if (!fim) { fim = true; clearInterval(iv); res(v); } }
+      Promise.resolve(pSalvar).then(function (v) { terminou = true; tTerm = Date.now(); if (v && v.ok === false) acabar(v); },
+                                    function (e) { acabar({ ok: false, motivo: String((e && e.message) || e) }); });
+      var iv = setInterval(function () {
+        var u = window.PF122 && window.PF122.ultimoSalvar;
+        if (u) { acabar(u); return; }
+        if (terminou && Date.now() - tTerm > 10000) { acabar({ ok: false, motivo: 'o salvamento não respondeu' }); return; }
+        if (Date.now() - t0 > 30000) acabar({ ok: false, motivo: 'o salvamento passou de 30 s sem terminar' });
+      }, 120);
+    });
+  }
+  PF126.esperarProva = esperarProva;
+
+  // ── passo 1: a coleta da tela de trás ─────────────────────────────────────────────────────────
+  function passoColeta() {
+    var f = abrirFolha(
+      '<h3>📝 Há uma coleta aberta na tela do Campo</h3>' +
+      '<p>Antes de ir ao menu, salve no celular. Ela fica guardada e volta quando você abrir o Campo de novo.</p>' +
+      '<div class="pf126-msg" id="pf126Msg"></div>' +
+      '<div class="pf126-btns">' +
+        '<button type="button" class="pf126-ir" data-pf126="salvar">💾 Salvar e ir ao menu</button>' +
+        '<button type="button" data-pf126="voltar">Voltar para a coleta</button>' +
+        '<button type="button" class="pf126-fraco" data-pf126="semsalvar">Sair sem salvar (o que não foi salvo pode se perder)</button>' +
+      '</div>');
+    var bS = f.querySelector('[data-pf126="salvar"]');
+    var bV = f.querySelector('[data-pf126="voltar"]'), bN = f.querySelector('[data-pf126="semsalvar"]');
+    bS.onclick = async function () {
+      if (bS.getAttribute('data-pcm-enviando')) return;
+      bS.setAttribute('data-pcm-enviando', '1');
+      bN.disabled = true;                                   // "Sair sem salvar" não corre junto com o salvar
+      var msg = $('pf126Msg'); if (msg) { msg.className = 'pf126-msg'; msg.textContent = '⏳ Salvando no celular e conferindo…'; }
+      var ok = false, motivo = '', r = null;
+      try {
+        if (typeof window.pcf122Salvar === 'function' && window.PF122) {
+          window.PF122.ultimoSalvar = null;
+          r = await esperarProva(window.pcf122Salvar(bS));   // R7 · a prova no celular, não a subida ao servidor
+          ok = !!(r && r.ok); motivo = (r && r.motivo) || '';
+        } else {
+          motivo = 'o salvamento com prova não está disponível nesta tela';
+        }
+      } catch (e) { ok = false; motivo = String((e && e.message) || e); }
+      bS.removeAttribute('data-pcm-enviando'); bN.disabled = false;
+      if (!f.isConnected) { log('salvar terminou com a folha fechada — saída CANCELADA'); return; }   // R6 · o técnico desistiu
+      if (ok) { fecharFolha(); log('coleta salva com prova'); passoFila(); return; }
+      log('salvar falhou:', motivo);
+      if (msg) { msg.className = 'pf126-msg erro'; msg.textContent = '⚠ Não consegui salvar (' + motivo + '). Nada foi apagado — volte para a coleta e tente 💾 Salvar.'; }
+    };
+    bV.onclick = function () {
+      fecharFolha();
+      try { var ov = $('pfOverlay'); if (ov) ov.style.display = 'none'; } catch (e) {}
+    };
+    bN.onclick = function () { if (bN.disabled) return; fecharFolha(); passoFila(); };
+  }
+
+  // ── o toque no botão ──────────────────────────────────────────────────────────────────────────
+  window._pf126IrMenu = async function (btn) {
+    if (PF126.saindo || PF126.ocupado) return;
+    PF126.ocupado = true;
+    try { if (btn) btn.setAttribute('data-pcm-enviando', '1'); } catch (e) {}
+    try {
+      try { if (typeof pgpFlushDraftPendente === 'function') pgpFlushDraftPendente(); } catch (e) {}
+      if (coletaAberta()) passoColeta(); else await passoFila();
+    } finally {
+      PF126.ocupado = false;
+      try { if (btn && !PF126.saindo) btn.removeAttribute('data-pcm-enviando'); } catch (e) {}
+    }
+  };
+
+  // ── R6 · Voltar do Android: a folha é a camada de cima ──────────────────────────────────────
+  try {
+    var _vc = window._pgpVoltarUmaCamada;
+    if (typeof _vc === 'function') window._pgpVoltarUmaCamada = function () {
+      if ($('pf126Folha')) { fecharFolha(); return true; }
+      return _vc.apply(this, arguments);
+    };
+  } catch (e) {}
+
+  PF126.ok = true;
 })();
 </script>
 
