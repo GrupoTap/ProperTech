@@ -1655,8 +1655,18 @@ html[data-boot="pipeline"] #pf113Splash{display:flex;position:fixed;inset:0;z-in
   fotos como vagas e tema claro no app inteiro. As regras de vez/fila/designacao sao as do motor, chamadas pelo
   nome; a tela antiga fica no DOM, escondida. Zero SQL, zero GAS. Bloco PF129 (head e fim do body).
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V129</title>
-<meta name="app-build" content="PCF_V129" data-date="2026-10-08">
+<!--
+  PCF_V130 · HUB DE CARTOES DA COLETA (aprovado D1–D6) · 08/10/2026 · par sw propertech-v132.
+  Sobre o PCF_V129. Mesma chave por aparelho (Visual novo); desligada, o app e o V129/V128 de sempre.
+  Ligada: cabecalho limpo (OS · maquina ▾ · conexao · fila · ☰), etapa "Cliente e maquina" so com painel vazio,
+  hub da maquina (resumo, progresso, Inspecao/Preventiva, etapas numeradas uma por vez com Fechar/Proxima),
+  etapa 08 Assinaturas, trocador de maquinas no lugar das abas, barra de baixo Salvar/Concluir/Mais e a trava
+  do horimetro VISIVEL (🔒 no cartao 03, vaga do display com 📷/N/D na etapa 03, maquina travada desmarcada no
+  Concluir com "Tirar a foto agora"). "Faltando preencher" lista pecas sem acao. Corrige o "Nao" aceso sem
+  escolha no tema claro. Nada sai do DOM. Zero SQL, zero GAS. Bloco PF130 (head e fim do body).
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V130</title>
+<meta name="app-build" content="PCF_V130" data-date="2026-10-08">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -3524,6 +3534,12 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
    Chave: localStorage 'pf129_visual_novo' = '1' (☰ Menu → "Visual novo"). Desligada = o PCF de sempre. */
 (function () {
   try { if (localStorage.getItem('pf129_visual_novo') === '1') document.documentElement.classList.add('pf129'); } catch (e) {}
+})();
+</script>
+<script>
+/* PCF_V130 (PF130) · HUB DE CARTOES — mesma chave do V129 ("Visual novo"); liga antes do 1o desenho (sem piscar o cabecalho antigo). */
+(function () {
+  try { if (localStorage.getItem('pf129_visual_novo') === '1') document.documentElement.classList.add('pf130'); } catch (e) {}
 })();
 </script>
 </head>
@@ -37727,6 +37743,935 @@ html.pf129 .pf129-vagas .pf129-nd .pf129-vst{color:#475569}
 })();
 </script>
 <!-- ████ FIM PCF_V129 (PF129) ████ -->
+
+<!-- ████ PCF_V130 (PF130) · HUB DE CARTOES DA COLETA (atras da chave "Visual novo") ████ -->
+<style>
+/* ═════ PCF_V130 (PF130) — so vale com html.pf129 (a chave "Visual novo" do V129). Sem a chave: o PCF de sempre. ═════
+   Regra da casa: NADA e removido do DOM. O cabecalho antigo, as abas, a etapa de cliente, o rodape do V116/V122 e as
+   secoes continuam la (o motor escreve neles); esta camada so ESCONDE, REORDENA a vista e cria atalhos que chamam os
+   botoes de verdade. */
+#pf130Top,#pf130Pe,#pf130Strip,#pf130Forms,#pf130Cli,.pf130-hub,.pf130-etapas,.pf130-pl,.pf130-hd,.pf130-fim,.pf130-assin,.pf130-hvaga,.pf130-cat{display:none}
+html.pf129.pf130 .pf130-cat{display:flex;margin:4px 0 10px}
+html.pf129.pf130 .pf130-etapas,html.pf129.pf130 .pf130-hub .pf130-sec{display:flex}
+html.pf129.pf130 .pf130-pl{display:inline-block}
+html.pf129.pf130 body{padding-bottom:calc(128px + env(safe-area-inset-bottom,0px))!important}
+html.pf129.pf130 header,html.pf129.pf130 #machineTabs,html.pf129.pf130 #pgpTipoVisitaWrap{display:none!important}
+/* etapa "Cliente e maquina": so no modo cli */
+html.pf129.pf130:not(.pf130-cli) #pgpBancoBanner,html.pf129.pf130:not(.pf130-cli) #pgpOsMaquinasBar,
+html.pf129.pf130:not(.pf130-cli) #pgpLoadedCard,html.pf129.pf130:not(.pf130-cli) #pgpNewMachine,
+html.pf129.pf130:not(.pf130-cli) #pcf121IncluirAvulsa{display:none!important}
+html.pf129.pf130:not(.pf130-cli) body > #machineHistoryPanel{display:none!important}
+html.pf129.pf130.pf130-cli #machineContent,html.pf129.pf130.pf130-cli #pcf116Rodape,html.pf129.pf130.pf130-cli #pf130Pe,
+html.pf129.pf130.pf130-cli #pgpReturnToOSContainer{display:none!important}
+html.pf129.pf130.pf130-cli #pf130Cli{display:block}
+/* cabecalho novo */
+html.pf129.pf130 #pf130Top{display:block;position:sticky;top:0;z-index:60;background:#fff;border-bottom:1px solid #e2e8f0}
+#pf130Top .r{display:flex;align-items:center;gap:7px;padding:8px 10px 7px}
+#pf130Top .bk,#pf130Top .mn{width:38px;height:38px;border-radius:10px;border:1px solid #cbd5e1;background:#fff;font-size:19px;display:flex;align-items:center;justify-content:center;position:relative;flex-shrink:0;cursor:pointer;color:#0f172a;padding:0}
+#pf130Top .bk .bd{position:absolute;top:-5px;right:-5px;background:#dc2626;color:#fff;font:800 10px Inter,sans-serif;border-radius:9px;padding:0 5px;min-width:16px}
+#pf130Top .tt{flex:1;min-width:0;background:none;border:0;text-align:left;padding:0;cursor:pointer;color:#0f172a;font-family:Inter,'Barlow',system-ui,sans-serif}
+#pf130Top .tt b{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#pf130Top .tt span{display:block;font-size:12px;color:#475569;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#pf130Top .net{display:flex;align-items:center;gap:4px;font:600 11.5px Inter,sans-serif;border-radius:999px;padding:5px 8px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;cursor:pointer;flex-shrink:1;min-width:0;white-space:nowrap;max-width:96px;overflow:hidden;text-overflow:ellipsis}
+#pf130Top .net i{width:8px;height:8px;border-radius:50%;background:#16a34a;display:inline-block;flex-shrink:0}
+#pf130Top .net.av{border-color:#fcd34d;background:#fffbeb;color:#92400e}#pf130Top .net.av i{background:#f59e0b}
+#pf130Top .net.er{border-color:#fecaca;background:#fef2f2;color:#991b1b}#pf130Top .net.er i{background:#dc2626}
+#pf130Top .fl{font:700 12px Inter,sans-serif;color:#92400e;background:#fffbeb;border:1px solid #fcd34d;border-radius:999px;padding:5px 8px;cursor:pointer;flex-shrink:0;white-space:nowrap}
+#pf130Top .tt{min-width:96px}
+#pf130Top .bar{height:3px;background:#e2e8f0}#pf130Top .bar i{display:block;height:3px;background:#c2410c;width:0;transition:width .3s}
+html.pf129.pf130 #pf130Forms.on{display:flex}
+#pf130Forms{align-items:center;gap:8px;margin:8px 12px 0;padding:8px 10px;border-radius:12px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;font:600 13px Inter,sans-serif;cursor:pointer}
+/* hub */
+html.pf129.pf130 .pf130-hub{display:block;padding:12px 2px 0}
+.pf130-hub{font-family:Inter,'Barlow',system-ui,sans-serif;color:#0f172a}
+.pf130-hub .kick{font-size:11px;font-weight:700;letter-spacing:1.2px;color:#475569;text-transform:uppercase;display:flex;align-items:center;gap:6px}
+.pf130-hub .kick:before{content:'';width:7px;height:7px;border-radius:50%;background:#16a34a}
+.pf130-hub h1{font-size:23px;font-weight:800;margin:4px 0 2px;letter-spacing:-.3px;line-height:1.15;word-break:break-word}
+.pf130-hub .sub{color:#475569;font-size:13px}
+.pf130-seg{display:flex;background:#e2e8f0;border-radius:12px;padding:3px;margin:12px 0}
+.pf130-seg button{flex:1;text-align:center;padding:9px 0;border-radius:10px;font:700 14px Inter,sans-serif;color:#334155;background:none;border:0;cursor:pointer}
+.pf130-seg button.on{background:#fff;color:#c2410c;box-shadow:0 1px 3px rgba(15,23,42,.12)}
+.pf130-card{background:#fff;border:1px solid #d9e0ea;border-radius:16px;padding:14px;margin-bottom:10px}
+.pf130-maq{display:flex;gap:12px;align-items:flex-start}
+.pf130-ic{width:42px;height:42px;border-radius:12px;background:#fff7ed;border:1px solid #fed7aa;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.pf130-maq b{font-size:16px;display:block;word-break:break-word}.pf130-maq .m{font-size:13px;color:#475569;margin-top:2px}
+.pf130-trocar{margin-left:auto;font:700 12px Inter,sans-serif;color:#c2410c;border:1px solid #fdba74;border-radius:9px;padding:7px 9px;white-space:nowrap;background:#fff;cursor:pointer}
+.pf130-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.pf130-chip{font-size:12px;font-weight:600;background:#eef2f7;color:#1e293b;border-radius:8px;padding:4px 8px}
+.pf130-prog{margin-top:12px;display:flex;justify-content:space-between;font-size:13px;color:#334155}.pf130-prog b{color:#c2410c}
+.pf130-pbar{height:7px;background:#e2e8f0;border-radius:9px;margin-top:6px;overflow:hidden}.pf130-pbar i{display:block;height:100%;background:#c2410c;border-radius:9px}
+.pf130-faltam{font-size:12.5px;color:#475569;margin-top:6px}.pf130-faltam button{color:#c2410c;font-weight:700;background:none;border:0;padding:0;font:inherit;font-weight:700;cursor:pointer}
+.pf130-hist{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#334155;border-top:1px solid #eef2f7;margin-top:12px;padding-top:10px;width:100%;background:none;border-left:0;border-right:0;border-bottom:0;cursor:pointer;font-family:inherit}
+.pf130-histslot #machineHistoryPanel{margin-top:8px!important}
+.pf130-sec{font-family:Inter,'Barlow',system-ui,sans-serif;color:#0f172a;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:2px 10px;margin:16px 2px 8px}
+.pf130-sec h2{font-size:18px;font-weight:700;margin:0;white-space:nowrap}.pf130-sec span{font-size:12.5px;color:#475569}
+/* cada secao vira um cartao de etapa */
+html.pf129.pf130 .machine-panel .section,html.pf129.pf130 .machine-panel .section > .section-header,html.pf129.pf130 .pf130-assin{scroll-margin-top:66px}
+html.pf129.pf130 .machine-panel .section{border-radius:16px!important;margin-bottom:9px!important;overflow:hidden;box-shadow:none!important}
+html.pf129.pf130 .machine-panel .section > .section-header{display:flex!important;align-items:center;gap:12px;padding:12px!important;min-height:64px;background:#fff!important}
+html.pf129.pf130 .machine-panel .section > .section-header > .icon,html.pf129.pf130 .machine-panel .section > .section-header > .title,
+html.pf129.pf130 .machine-panel .section > .section-header > .chevron,html.pf129.pf130 .machine-panel .section > .section-header > .badge{display:none!important}
+html.pf129.pf130 .pf130-hd{display:flex;align-items:center;gap:12px;flex:1;min-width:0}
+.pf130-hd .ic2{width:40px;height:40px;border-radius:11px;background:#f1f5f9;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
+.pf130-hd .tx{flex:1;min-width:0;display:block;text-align:left}
+.pf130-hd .tx > span{display:block}
+.pf130-hd .n{font:700 11px Inter,sans-serif;color:#475569}
+.pf130-hd .t{font:700 15.5px Inter,sans-serif;color:#0f172a}
+.pf130-hd .d{font:400 12.5px Inter,sans-serif;color:#475569;margin-top:1px}
+html.pf129.pf130 .machine-panel .section > .section-header .pf129-sit{margin:0!important;order:3}
+html.pf129.pf130 .machine-panel .section.pf130-ok{border-color:#bbf7d0!important}
+html.pf129.pf130 .machine-panel .section.pf130-ok .ic2{background:#f0fdf4;border-color:#bbf7d0}
+html.pf129.pf130 .machine-panel .section.pf130-lock{border-color:#fca5a5!important}
+html.pf129.pf130 .machine-panel .section.pf130-lock .ic2{background:#fef2f2;border-color:#fecaca}
+html.pf129.pf130 .machine-panel .section.pf130-open{border:1.5px solid #c2410c!important;box-shadow:0 0 0 2px #fed7aa!important}
+html.pf129.pf130 .machine-panel .section.pf130-open > .section-header{background:#fff7ed!important}
+.pf130-pl{font:700 11.5px Inter,sans-serif;border-radius:999px;padding:4px 9px;white-space:nowrap;background:#f1f5f9;color:#475569;flex-shrink:0}
+.pf130-pl.lk{background:#fee2e2;color:#991b1b}.pf130-pl.ok{background:#dcfce7;color:#166534}.pf130-pl.f{background:#fef3c7;color:#92400e}
+html.pf129.pf130 .machine-panel .section.pf130-lock > .section-header .pf129-sit,html.pf129.pf130 .machine-panel .section.pf130-pecas > .section-header .pf129-sit{display:none!important}
+html.pf129.pf130 .pf130-fim{display:flex;gap:8px;margin:14px 0 4px}
+.pf130-b{display:flex;align-items:center;justify-content:center;gap:6px;min-height:46px;border-radius:12px;font:700 15px Inter,sans-serif;border:1.5px solid #94a3b8;background:#fff;color:#0f172a;cursor:pointer;padding:0 12px;flex:1}
+.pf130-b.or{background:#c2410c;border-color:#c2410c;color:#fff}
+.pf130-b.pri{background:#15803d;border-color:#15803d;color:#fff}
+.pf130-b.sm{min-height:38px;font-size:13.5px}
+/* assinaturas (etapa 08) */
+html.pf129.pf130 .pf130-assin{display:block;background:#fff;border:1px solid #d9e0ea;border-radius:16px;margin-bottom:9px;overflow:hidden}
+.pf130-assin .h{display:flex;align-items:center;gap:12px;padding:12px;min-height:64px;cursor:pointer}
+.pf130-assin .bd2{padding:2px 12px 12px;border-top:1px solid #f1f5f9;font:13px Inter,sans-serif;color:#334155}
+/* vaga do horimetro dentro da etapa 03 (decisao D6) */
+html.pf129.pf130 .pf130-hvaga{display:block;border:2px dashed #cbd5e1;border-radius:14px;padding:10px;background:#f8fafc;margin:10px 0}
+.pf130-hvaga .st{font:800 10.5px Inter,sans-serif;letter-spacing:.6px;color:#92400e}
+.pf130-hvaga b{display:block;font:700 14px Inter,sans-serif;margin-top:3px}.pf130-hvaga small{display:block;font-size:12px;color:#475569}
+.pf130-hvaga .vb{display:flex;gap:8px;margin-top:8px}
+.pf130-hvaga.lk{border:2px solid #dc2626;background:#fef2f2}.pf130-hvaga.lk .st{color:#991b1b}
+.pf130-hvaga.ok{border:2px solid #16a34a;background:#f0fdf4}.pf130-hvaga.ok .st{color:#166534}
+.pf130-hvaga.nd{border:2px solid #94a3b8;background:#f1f5f9}.pf130-hvaga.nd .st{color:#475569}
+.pf130-hvaga .tip{font-size:11.5px;color:#475569;margin-top:6px}
+/* rodape do V116/V122 vira o cartao "Situacao do envio" (os botoes vao para a barra de baixo) */
+html.pf129.pf130 #pcf116Rodape{margin:6px 12px 12px!important;border-radius:16px!important}
+html.pf129.pf130 #pcf116Rodape #pcf116Maquinas,html.pf129.pf130 #pcf116Rodape #pf122Linha1,
+html.pf129.pf130 #pcf116Rodape #pcf116BtnEnviar,html.pf129.pf130 #pcf116Rodape .pcf116-linha2,html.pf129.pf130 #pcf116Rodape #pcf116Explica{display:none!important}
+html.pf129.pf130 #pcf116Rodape:before{content:'Situação do envio';display:block;font:700 16px Inter,sans-serif;color:#0f172a;margin-bottom:6px}
+/* barra de baixo */
+html.pf129.pf130 #pf130Pe{display:block;position:fixed;left:0;right:0;bottom:0;z-index:150;background:#fff;border-top:1px solid #e2e8f0;padding:7px 12px calc(10px + env(safe-area-inset-bottom,0px))}
+#pf130Pe .sv{font:600 12px Inter,sans-serif;color:#166534;text-align:center;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#pf130Pe .sv.er{color:#b91c1c;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+#pf130Pe .rw{display:flex;gap:8px}
+#pf130Pe .rw .pf130-b{min-height:50px}
+#pf130Pe .mais{flex:0 0 52px;padding:0}
+#pf130Pe .cc{flex:1.7}
+/* faixa do envio em curso, acima da barra */
+html.pf129.pf130 #pf130Strip.on{display:block}
+#pf130Strip{position:fixed;left:0;right:0;bottom:calc(98px + env(safe-area-inset-bottom,0px));z-index:149;background:#eff6ff;color:#1e3a8a;border-top:1px solid #bfdbfe;padding:8px 12px;font:600 12.5px Inter,sans-serif}
+/* o que e fixo embaixo sobe para cima da barra (nunca por cima dos botoes) */
+html.pf129.pf130 #pgpBarraOffline{bottom:calc(98px + env(safe-area-inset-bottom,0px))!important;z-index:148!important}
+html.pf129.pf130 .pf108-perto{bottom:120px!important}
+html.pf129.pf130 .foto-toast{bottom:122px!important}
+/* D5: o filtro ▾ (CFX) da tabela de pecas deixa de aparecer na coleta */
+html.pf129.pf130 .machine-panel .cfx-b{display:none!important}
+/* consulta de pecas vira folha */
+html.pf129.pf130 #catalogLookupPanel{position:fixed;left:0;right:0;bottom:0;z-index:9000;max-height:82vh;overflow:auto;border-radius:18px 18px 0 0;box-shadow:0 -8px 30px rgba(15,23,42,.25)}
+/* "Nao" do "Precisa trocar?" sem marca: apagado (o CSS do V129 acendia — conferencia D13) */
+html.pf129 .pcf121-sub-vazio .pcf116-sp.on[data-v="nao"]{background:#fff!important;color:#0f172a!important;border-color:#94a3b8!important}
+html.pf129 .pcf116-subst:not(.pcf121-sub-vazio) .pcf116-sp.on[data-v="nao"]{background:#15803d!important;color:#fff!important;border-color:#15803d!important}
+/* impressao (A11): sai o que e so da tela do hub; o titulo original das secoes volta */
+@media print{#pf130Top,#pf130Pe,#pf130Strip,#pf130Forms,#pf130Cli,.pf130-hub,.pf130-etapas,.pf130-fim,.pf130-cat,.pf130-hvaga,.pf130-pl,.pf130-ov,.pf130-hd{display:none!important}
+html.pf129.pf130 .machine-panel .section > .section-header > .title,html.pf129.pf130 .machine-panel .section > .section-header > .icon{display:inline!important}
+html.pf129.pf130 body{padding-bottom:0!important}}
+/* etapa Cliente e maquina */
+#pf130Cli{padding:12px 14px 4px;font-family:Inter,'Barlow',system-ui,sans-serif;color:#0f172a}
+#pf130Cli h1{font-size:23px;font-weight:800;margin:4px 0 2px}
+#pf130Cli .sub{color:#475569;font-size:13px}
+#pf130Cli .rw{display:flex;gap:8px;margin-top:10px}
+html.pf129.pf130.pf130-cli #pgpTipoVisitaWrap{display:block!important}
+/* folhas proprias */
+.pf130-ov{position:fixed;inset:0;z-index:9500;background:rgba(15,23,42,.45);display:flex;align-items:flex-end;justify-content:center}
+.pf130-sh{width:100%;max-width:560px;background:#fff;border-radius:20px 20px 0 0;padding:16px 14px calc(16px + env(safe-area-inset-bottom,0px));max-height:90vh;overflow:auto;font-family:Inter,'Barlow',system-ui,sans-serif;color:#0f172a}
+.pf130-sh h3{font-size:18px;margin:0 0 4px}.pf130-sh .s{color:#475569;font-size:13px;margin-bottom:10px}
+.pf130-li{display:flex;gap:10px;align-items:center;border:1px solid #e2e8f0;border-radius:13px;padding:10px;margin-bottom:8px;cursor:pointer;background:#fff;width:100%;text-align:left;font:inherit;color:inherit}
+.pf130-li.on{border-color:#c2410c;background:#fff7ed}
+.pf130-li .tx{flex:1;min-width:0}.pf130-li b{font-size:14.5px;display:block}.pf130-li small{display:block;color:#475569;font-size:12px}
+.pf130-li .x{width:34px;height:34px;border-radius:9px;border:1px solid #fecaca;color:#b91c1c;display:flex;align-items:center;justify-content:center;font-weight:800;background:#fff;flex-shrink:0;cursor:pointer}
+.pf130-sh .pf130-b{margin-top:8px;width:100%}
+.pf130-sh .hint{font-size:12px;color:#475569;margin:4px 2px 0}
+.pf130-lockln{color:#991b1b;font-weight:700;font-size:12.5px;margin-top:4px}
+.pf130-novo{font:800 9.5px Inter,sans-serif;font-style:normal;background:#c2410c;color:#fff;border-radius:5px;padding:1px 5px;margin-left:4px;vertical-align:2px}
+.pf130-ver{text-transform:uppercase;text-align:center;font:600 11px Inter,sans-serif;color:#64748b;letter-spacing:.6px;padding:6px 0 2px}
+.pf130-lockbt{margin-top:6px;display:inline-flex;min-height:36px;border-radius:10px;border:0;background:#c2410c;color:#fff;font:700 13px Inter,sans-serif;padding:0 12px;cursor:pointer}
+</style>
+<div id="pf130Top" role="banner"><div class="r">
+  <button type="button" class="bk" id="pf130Voltar" aria-label="Voltar para as OS">‹<span class="bd" id="pf130Notif" style="display:none"></span></button>
+  <button type="button" class="tt" id="pf130Titulo" aria-label="Trocar de máquina"><b id="pf130T1">Coleta</b><span id="pf130T2">Máq. 1 de 1 ▾</span></button>
+  <span class="net" id="pf130Net" role="button" tabindex="0" title="Toque para conferir a conexão"><i></i><span id="pf130NetTx">Servidor</span></span>
+  <span class="fl" id="pf130Fila" role="button" tabindex="0" style="display:none"></span>
+  <button type="button" class="mn" id="pf130Menu" aria-label="Menu">☰</button>
+</div><div class="bar"><i id="pf130Bar"></i></div></div>
+<div id="pf130Forms" role="button" tabindex="0"></div>
+<div id="pf130Cli"><div class="pf130-hub" style="display:block;padding:0">
+  <div class="kick">Começar</div><h1>Cliente e máquina</h1>
+  <div class="sub" id="pf130CliSub">Escolha a máquina abaixo para já trazer cadastro, peças e histórico — ou preencha à mão.</div>
+  <div class="rw"><button type="button" class="pf130-b sm" id="pf130Pular">Pular: preencher à mão</button><button type="button" class="pf130-b sm" id="pf130CliVoltar" style="display:none">← Voltar às etapas</button></div>
+</div></div>
+<div id="pf130Strip" role="status" aria-live="polite"></div>
+<div id="pf130Pe"><div class="sv" id="pf130Salvo">💾 Tudo o que você preenche fica salvo no aparelho sozinho.</div>
+  <div class="rw"><button type="button" class="pf130-b" id="pf130Salvar">💾 Salvar</button><button type="button" class="pf130-b pri cc" id="pf130Concluir">✅ Concluir coleta</button><button type="button" class="pf130-b mais" id="pf130Mais" aria-label="Mais opções">⋯</button></div></div>
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════════════
+   PCF_V130 (PF130) — 08/10/2026 · rodada 2026-10-08_pcf_hub_real · aprovada pelo Fernando (D1–D6)
+   HUB DE CARTOES DA COLETA, atras da MESMA chave do V129 ("Visual novo", por aparelho).
+   - cabecalho limpo (OS, maquina ▾, conexao, fila, ☰) · etapa "Cliente e maquina" so quando o painel esta vazio
+   - hub da maquina: resumo, progresso, Inspecao/Preventiva, etapas numeradas (uma aberta por vez, "Fechar etapa")
+   - etapa 08 Assinaturas · "Fotos da ultima visita" · cartao "Situacao do envio" (o rodape de sempre)
+   - barra de baixo: 💾 Salvar · ✅ Concluir · ⋯ Mais (chamam os botoes de verdade) · trocador de maquinas
+   - trava do horimetro VISIVEL: 🔒 no cartao 03, vaga do display com 📷/N/D na etapa 03 (D6), maquina travada
+     desmarcada na folha do Concluir com "📷 Tirar a foto agora" (D1). A trava em si continua a do V128.
+   - "Faltando preencher" passa a listar as pecas sem acao (na preventiva)
+   Regra: nada sai do DOM; o motor continua escrevendo onde sempre escreveu. Sem prompt/confirm/alert nativos.
+   ═══════════════════════════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+  if (window.PF130) return;
+  var PF130 = window.PF130 = { versao: 'PCF_V130', erros: [], forcarCli: false, aberta: {} };
+  function nota(e, onde) { try { PF130.erros.push({ onde: onde, msg: String(e && e.message || e) }); if (PF130.erros.length > 40) PF130.erros.shift(); } catch (x) {} }
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { try { return pgpEscHtml(String(s == null ? '' : s)); } catch (e) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); } }
+  function ligado() { try { return !!(window.PF129 && PF129.ligado()); } catch (e) { return false; } }
+  PF130.ligado = ligado;
+  function atual() { try { return currentMachine || 0; } catch (e) { return 0; } }
+  function nMaq() { try { return (machines && machines.length) || 0; } catch (e) { return 0; } }
+  function campo(i, k) { var el = document.querySelector('[data-key="m' + i + '_' + k + '"]'); return el ? String(el.value || '').trim() : ''; }
+  function ehPrev() { try { return _pgpTipoVisita === 'preventiva'; } catch (e) { return false; } }
+  function emOS() { try { return !!window._PGP_OS_ID; } catch (e) { return false; } }
+  function painel(i) { return $('panel-' + i); }
+  function prog(i) { try { return pcf116Progresso(i); } catch (e) { return { total: 0, done: 0, falta: 0, pct: 0, semAcao: 0 }; } }
+  function clicar(el) { try { if (el) { el.click(); return true; } } catch (e) { nota(e, 'clicar'); } return false; }
+
+  // ── trava do horimetro (o MESMO criterio do PF128: perfil com horimetro obrigatorio, preventiva,
+  //    sem foto do display e sem N/D na vaga "Horimetro" da secao 5) ─────────────────────────────
+  function perfil(i) { try { return pgpPerfil(i) || {}; } catch (e) { return {}; } }
+  function fotosHorim(i) { try { var a = (typeof photoStore !== 'undefined') && photoStore[i] && photoStore[i].horimetro; return Array.isArray(a) ? a.length : 0; } catch (e) { return 0; } }
+  function itemHorim(i) {
+    var p = painel(i); if (!p) return null;
+    var th = p.querySelectorAll('.photo-item-group > .photo-thumbs-mini[data-pkey="horimetro"]');
+    for (var k = 0; k < th.length; k++) { var it = th[k].parentNode.querySelector('.photo-item'); if (it) return it; }
+    return null;
+  }
+  function horimND(i) { var it = itemHorim(i); return !!(it && it.classList.contains('photo-nd')); }
+  function travado(i) {
+    try {
+      if (!ehPrev()) return false;
+      if (!perfil(i).horimetroObrigatorio) return false;
+      if (typeof pgpHasMachineData === 'function' && !pgpHasMachineData(i)) return false;
+      return !fotosHorim(i) && !horimND(i);
+    } catch (e) { return false; }
+  }
+  PF130.travado = travado;
+
+  // ── modo "Cliente e maquina": painel sem maquina (nem do banco nem digitada) ─────────────────
+  function vazio(i) {
+    try { if (typeof pgpGetLoadedMachineForIndex === 'function' && pgpGetLoadedMachineForIndex(i)) return false; } catch (e) {}
+    return !campo(i, 'marca') && !campo(i, 'modelo') && !campo(i, 'ns') && !campo(i, 'tag');
+  }
+  function precisaCli() { var i = atual(); if (PF130.forcarCli) return true; var p = painel(i); return vazio(i) && !(p && p.__pf130Pulou); }
+  PF130.precisaCli = precisaCli;
+
+  // ── etapas: nome, numero e descricao pelo titulo de cada secao ───────────────────────────────
+  var ETAPAS = [
+    [/Dados do Cliente/i, '01', 'Cliente', 'Razão social, contato, CNPJ e datas'],
+    [/Identifica/i, '02', 'Máquina', 'Marca, modelo, série, tipo e TAG'],
+    [/Fotos da última visita/i, '', 'Fotos da última visita', 'Fotos da visita anterior · abrir no Drive'],
+    [/Horímetro/i, '03', 'Horímetro e regime', 'Leitura real e turnos de trabalho'],
+    [/Pistão/i, '04', 'Checklist do pistão', 'Itens com ciclo em dias, estado e ação'],
+    [/Peças/i, '04', 'Peças', 'Cenário, contadores e ação de cada peça'],
+    [/Registro Fotográfico/i, '05', 'Fotos', 'Cada foto pedida é uma vaga'],
+    [/Observações Finais/i, '06', 'Observações', 'Observações gerais, responsável e horas'],
+    [/Itens adicionais/i, '07', 'Itens adicionais', 'O que o checklist não tem · opcional']
+  ];
+  function etapaDe(sec) {
+    var t = sec.querySelector(':scope > .section-header .title');
+    var s = t ? t.textContent : '';
+    for (var k = 0; k < ETAPAS.length; k++) if (ETAPAS[k][0].test(s)) return ETAPAS[k];
+    return [null, '', s.replace(/^\d+\.\s*/, ''), ''];
+  }
+  function iconeDe(sec) { var i = sec.querySelector(':scope > .section-header .icon'); return i ? i.textContent : '•'; }
+  function secoesDe(p) { return p ? [].slice.call(p.querySelectorAll(':scope > .section')) : []; }
+  function contaSec(sec) {
+    var total = sec.querySelectorAll('.field-item').length + sec.querySelectorAll('.photo-item').length;
+    var feitos = sec.querySelectorAll('.field-item.checked').length + sec.querySelectorAll('.photo-item.photo-checked').length + sec.querySelectorAll('.photo-item.photo-nd').length;
+    return { total: total, feitos: feitos };
+  }
+  function contaPecasSec(sec, idx) {   // mesmo criterio do V129: na secao de pecas, a situacao vem das pecas (acao ou N/A)
+    if (!sec.querySelector('[id$="parts_table_wrap"]')) return null;
+    var pts = []; try { pts = pgpPartsDe(idx) || []; } catch (e) { return null; }
+    var feitas = 0, montadas = 0;
+    pts.forEach(function (pt) { var ac = $('m' + idx + '_' + pt.k + '_acao'); if (!ac) return; montadas++; var na = $('m' + idx + '_' + pt.k + '_na'); if ((na && na.classList.contains('active')) || ac.value) feitas++; });
+    if (!montadas) return { total: 1, feitos: 0, semTabela: true };
+    return { total: montadas, feitos: feitas };
+  }
+  function secAberta(sec) { var h = sec.querySelector(':scope > .section-header'); return !!(h && !h.classList.contains('collapsed')); }
+  function fecharSec(sec) {
+    var h = sec.querySelector(':scope > .section-header'); if (!h) return;
+    h.classList.add('collapsed'); if (h.nextElementSibling) h.nextElementSibling.classList.add('hidden');
+    sec.classList.remove('pf130-open'); agendar();
+  }
+  function abrirSec(sec, rolar) {
+    var p = sec.closest('.machine-panel');
+    secoesDe(p).forEach(function (s) { if (s !== sec) fecharSec(s); });
+    try { var a = p && p.querySelector('.pf130-assin.pf130-open'); if (a && a !== sec) fecharAssin(a); } catch (e) {}
+    var h = sec.querySelector(':scope > .section-header'); if (!h) return;
+    h.classList.remove('collapsed'); if (h.nextElementSibling) h.nextElementSibling.classList.remove('hidden');
+    sec.classList.add('pf130-open'); agendar();
+    if (rolar) setTimeout(function () { rolarPara(h); }, 30);
+  }
+  PF130.abrirSec = abrirSec;
+  function rolarPara(el) {   // o topo do elemento logo abaixo do cabecalho fixo (scroll-margin nao vale: a secao tem overflow:hidden — A5)
+    try {
+      var t = $('pf130Top'), alt = t ? t.getBoundingClientRect().height : 0;
+      window.scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + window.scrollY - alt - 8), behavior: 'smooth' });
+    } catch (e) {}
+  }
+  function fecharAssin(a) { a.classList.remove('pf130-open'); var b = a.querySelector('.bd2'); if (b) b.style.display = 'none'; }
+
+  // toggleSection: no hub, abrir uma etapa fecha as outras (como no prototipo)
+  try {
+    var _tg = window.toggleSection;
+    if (typeof _tg === 'function' && !_tg.__pf130) {
+      window.toggleSection = function (header) {
+        try {
+          if (ligado() && header && header.closest && header.closest('.machine-panel')) {
+            var sec = header.closest('.section');
+            if (sec) { if (secAberta(sec)) fecharSec(sec); else abrirSec(sec, true); pintarHub(); return; }
+          }
+        } catch (e) { nota(e, 'toggleSection'); }
+        return _tg.apply(this, arguments);
+      };
+      window.toggleSection.__pf130 = true;
+    }
+  } catch (e) { nota(e, 'embrulho toggleSection'); }
+
+  // Quem rola ate um campo dentro de uma etapa fechada (Faltando, trava do horimetro, ＋ Adicionar item...)
+  // abre a etapa primeiro.
+  var _rolarOrig = Element.prototype.scrollIntoView;
+  function abrirSeFechada(el) {
+    try {
+      if (!ligado() || !el || !el.closest) return;
+      var sec = el.closest('.machine-panel > .section');
+      if (sec && (!secAberta(sec) || !sec.classList.contains('pf130-open')) && !el.matches('.section-header')) abrirSec(sec, false);
+    } catch (e) {}
+  }
+  try {
+    Element.prototype.scrollIntoView = function () { abrirSeFechada(this); return _rolarOrig.apply(this, arguments); };
+  } catch (e) { nota(e, 'scrollIntoView'); }
+  document.addEventListener('focusin', function (ev) { abrirSeFechada(ev.target); }, true);
+
+  // ── decorar um painel (idempotente) ──────────────────────────────────────────────────────────
+  function proxima(sec) {
+    var ss = secoesDe(sec.closest('.machine-panel')), k = ss.indexOf(sec);
+    for (var j = k + 1; j < ss.length; j++) { if (!/pf-prevfotos-section/.test(ss[j].className)) return ss[j]; }
+    return null;
+  }
+  function decorarSecao(sec) {
+    var h = sec.querySelector(':scope > .section-header'); if (!h) return;
+    var et = etapaDe(sec);
+    var hd = h.querySelector(':scope > .pf130-hd');
+    if (!hd) {
+      hd = document.createElement('span'); hd.className = 'pf130-hd';
+      hd.innerHTML = '<span class="ic2"></span><span class="tx"><span class="n"></span><span class="t"></span><span class="d"></span></span>';
+      h.insertBefore(hd, h.firstChild);
+    }
+    var ic = iconeDe(sec), n = et[1], t = et[2], d = et[3];
+    if (n && secAberta(sec) && sec.hasAttribute('data-section')) {   // a etapa aberta mostra "x de y" (inventario #183)
+      var pn0 = sec.closest('.machine-panel'), i0 = pn0 ? parseInt(String(pn0.id).replace('panel-', ''), 10) : atual();
+      var c0 = contaPecasSec(sec, i0) || contaSec(sec); if (c0.total > 0 && !c0.semTabela) n += ' · ' + c0.feitos + ' de ' + c0.total;
+    }
+    if (hd.__pf130 !== ic + n + t + d) {
+      hd.querySelector('.ic2').textContent = ic; hd.querySelector('.n').textContent = n;
+      hd.querySelector('.t').textContent = t; hd.querySelector('.d').textContent = d; hd.__pf130 = ic + n + t + d;
+    }
+    // pilula propria onde o V129 nao poe a situacao (Fotos da ultima visita, Itens adicionais) e a do 🔒
+    var pl = h.querySelector(':scope > .pf130-pl');
+    var txt = '', cls = 'pf130-pl';
+    var pn = sec.closest('.machine-panel'), idx = pn ? parseInt(String(pn.id).replace('panel-', ''), 10) : atual();
+    if (/Horímetro/i.test(t) && travado(idx)) { txt = '🔒 Falta a foto'; cls += ' lk'; }
+    else if (/pf-prevfotos-section/.test(sec.className)) { var bd = h.querySelector('.badge'); txt = bd ? (bd.textContent.trim() === '—' ? '—' : bd.textContent.trim()) : ''; }
+    else if (/pcf117-sec/.test(sec.className)) { var b7 = h.querySelector('.badge'); var nn = b7 ? parseInt(b7.textContent, 10) || 0 : 0; txt = nn ? (nn + (nn > 1 ? ' itens' : ' item')) : 'Opcional'; }
+    else if (sec.hasAttribute('data-section') && (!h.querySelector('.pf129-sit') || contaPecasSec(sec, idx))) {   // o V129 so pinta depois do 1o evento da secao
+      var cc = contaPecasSec(sec, idx) || contaSec(sec);
+      if (cc.total > 0) { var fl = Math.max(0, cc.total - cc.feitos); txt = cc.semTabela ? 'Escolha o cenário' : (!fl ? 'Completa' : (!cc.feitos ? 'Não começou' : 'Faltam ' + fl)); cls += !fl && !cc.semTabela ? ' ok' : (cc.feitos ? ' f' : ''); }
+    }
+    if (txt) {
+      if (!pl) { pl = document.createElement('span'); h.appendChild(pl); }
+      if (pl.textContent !== txt) pl.textContent = txt;
+      if (pl.className !== cls) pl.className = cls;
+    } else if (pl) pl.remove();
+    sec.classList.toggle('pf130-lock', /Horímetro/i.test(t) && travado(idx));
+    sec.classList.toggle('pf130-pecas', !!sec.querySelector('[id$="parts_table_wrap"]'));
+    if (sec.hasAttribute('data-section')) { var c = contaPecasSec(sec, idx) || contaSec(sec); sec.classList.toggle('pf130-ok', c.total > 0 && !c.semTabela && c.feitos >= c.total); }
+    // rodape da etapa: Fechar · Proxima
+    var body = h.nextElementSibling;
+    if (body && !body.querySelector(':scope > .pf130-fim')) {
+      var f = document.createElement('div'); f.className = 'pf130-fim';
+      f.innerHTML = '<button type="button" class="pf130-b" data-pf130="fechar">Fechar etapa</button><button type="button" class="pf130-b or" data-pf130="prox"></button>';
+      body.appendChild(f);
+    }
+    var bp = body && body.querySelector(':scope > .pf130-fim [data-pf130="prox"]');
+    if (bp) { var px = proxima(sec); var tp = px ? 'Próxima: ' + etapaDe(px)[2] + ' →' : ''; if (bp.textContent !== tp) bp.textContent = tp; bp.style.display = px ? '' : 'none'; }
+  }
+  function decorarPecas(i) {   // etapa 04: "🔍 Consultar catalogo" no topo (o 🔍 do cabecalho antigo some no hub — inventario #10/#51)
+    var w = $('m' + i + '_parts_table_wrap'); var sec = w ? w.closest('.machine-panel > .section') : null;
+    if (!sec) { secoesDe(painel(i)).forEach(function (s) { if (/Peças|Pistão/i.test(etapaDe(s)[2])) sec = s; }); }
+    if (!sec) return;
+    var body = sec.querySelector(':scope > .section-body'); if (!body || body.querySelector(':scope > .pf130-cat')) return;
+    var d = document.createElement('div'); d.className = 'pf130-cat';
+    d.innerHTML = '<button type="button" class="pf130-b sm" data-pf130="cat">🔍 Consultar catálogo de peças</button>';
+    body.insertBefore(d, body.firstChild);
+  }
+  function decorarVagaHorim(i) {
+    var p = painel(i); if (!p) return;
+    var bf = $('m' + i + '_btn_foto_horimetro'); if (!bf) return;
+    var v = $('pf130HVaga' + i);
+    if (!v) {
+      v = document.createElement('div'); v.id = 'pf130HVaga' + i; v.className = 'pf130-hvaga';
+      var sb = bf.closest('.section-body') || bf.parentNode;   // VAGA grande no topo da etapa 03 (inventario #75)
+      sb.insertBefore(v, sb.firstChild);
+    }
+    var lk = travado(i), nd = horimND(i), n = fotosHorim(i), obrig = !!perfil(i).horimetroObrigatorio && ehPrev();
+    var est = n ? 'ok' : (nd ? 'nd' : (lk ? 'lk' : 'f'));
+    var st = { ok: '✓ FEITA (' + n + '/3)', nd: 'NÃO DISPONÍVEL', lk: '🔒 FALTA — OBRIGATÓRIA PARA REGISTRAR', f: obrig ? 'FALTA' : 'FALTA · opcional' }[est];
+    var chave = est + '|' + n;
+    if (v.__pf130 === chave) return;
+    v.__pf130 = chave;
+    v.className = 'pf130-hvaga ' + est;
+    v.innerHTML = '<span class="st">' + esc(st) + '</span><b>Foto do display do horímetro</b><small>Display ou relógio analógico bem focado</small>' +
+      '<div class="vb"><button type="button" class="pf130-b sm" data-pf130="hfoto">📷 ' + (n ? 'Outra foto' : 'Tirar foto') + '</button>' +
+      '<button type="button" class="pf130-b sm" data-pf130="hnd">' + (nd ? 'Desfazer N/D' : 'N/D') + '</button></div>' +
+      '<div class="tip">É a MESMA vaga "Horímetro" da etapa 05: a foto (ou o N/D) vale nos dois lugares.</div>';
+  }
+  function decorarAssin(i) {
+    var p = painel(i); if (!p) return;
+    var s7 = $('pcf117Sec' + i); if (!s7) return;
+    var a = $('pf130Assin' + i);
+    if (!a) {
+      a = document.createElement('div'); a.id = 'pf130Assin' + i; a.className = 'pf130-assin';
+      a.innerHTML = '<div class="h" data-pf130="assin-h"><span class="pf130-hd" style="display:flex"><span class="ic2">✍️</span><span class="tx"><span class="n">08</span><span class="t">Assinaturas</span><span class="d">Opcional — entram no PDF</span></span></span><span class="pf130-pl" data-pf130="assin-pl">Opcional</span></div>' +
+        '<div class="bd2" style="display:none"><div data-pf130="assin-st" style="margin:10px 0 8px"></div><button type="button" class="pf130-b or" data-pf130="assin">✍️ Coletar assinaturas</button>' +
+        '<div style="font-size:12px;color:#475569;margin-top:6px">O mesmo de hoje: nome → desenho com o dedo → confirmar; técnico, depois o responsável.</div></div>';
+      s7.parentNode.insertBefore(a, s7.nextSibling);
+    } else if (a.previousElementSibling !== s7) s7.parentNode.insertBefore(a, s7.nextSibling);
+    var st = $('pcf117AssinSt' + i), tx = st ? String(st.textContent || '').trim() : '';
+    var sEl = a.querySelector('[data-pf130="assin-st"]'), want = tx || 'Nenhuma assinatura colhida nesta visita.';
+    if (sEl.textContent !== want) sEl.textContent = want;
+    var pl = a.querySelector('[data-pf130="assin-pl"]'), tem = /técnico/i.test(tx), cli = /cliente/i.test(tx);
+    var pt = tem && cli ? 'Técnico ✓ · Cliente ✓' : (tem ? 'Técnico ✓' : (cli ? 'Cliente ✓' : 'Opcional'));
+    if (pl.textContent !== pt) { pl.textContent = pt; pl.className = 'pf130-pl' + (tem || cli ? ' ok' : ''); }
+  }
+  function decorarPainel(p) {
+    if (!p) return;
+    var i = parseInt(String(p.id).replace('panel-', ''), 10);
+    if (!p.querySelector(':scope > .pf130-hub')) {
+      var hub = document.createElement('div'); hub.className = 'pf130-hub'; hub.id = 'pf130Hub' + i;
+      p.insertBefore(hub, p.firstChild);
+    }
+    if (!p.__pf130Fechou) {   // ao ligar: todas as etapas comecam fechadas (uma por vez); o estado de antes fica guardado
+      p.__pf130Antes = secoesDe(p).map(function (s) { return !secAberta(s); });
+      secoesDe(p).forEach(fecharSec); p.__pf130Fechou = true;
+    }
+    secoesDe(p).forEach(decorarSecao);
+    decorarVagaHorim(i);
+    decorarAssin(i);
+    decorarPecas(i);
+  }
+
+  // ── o hub (topo do painel aberto) ────────────────────────────────────────────────────────────
+  function tituloOS() {
+    var num = ''; try { num = String(window._PGP_OS_NUMERO || window._PGP_OS_ID || ''); } catch (e) {}
+    return num ? ('OS ' + num) : 'Coleta avulsa';
+  }
+  function nomeMaq(i) { return campo(i, 'modelo') || campo(i, 'marca') || 'Máquina sem nome'; }
+  function idMaq(i) {
+    var ns = campo(i, 'ns'), tag = campo(i, 'tag'), loc = campo(i, 'localizacao');
+    return [ns ? 'Série ' + ns : '', tag ? 'TAG ' + tag : '', loc].filter(Boolean).join(' · ');
+  }
+  function pintarHub() {
+    if (!ligado()) return;
+    var i = atual(), p = painel(i); if (!p) return;
+    var hub = p.querySelector(':scope > .pf130-hub'); if (!hub) return;
+    var pr = prog(i), cli = campo(i, 'razao_social'), cid = [campo(i, 'cidade'), campo(i, 'uf')].filter(Boolean).join(' · ');
+    var resp = campo(i, 'contato');
+    var pf = perfil(i), pfTxt = pf && pf.id === 'pistao' ? 'Checklist: pistão' : 'Checklist: parafuso';
+    var ult = campo(i, 'ult_visita'); if (/^\d{4}-\d{2}-\d{2}$/.test(ult)) ult = ult.slice(8, 10) + '/' + ult.slice(5, 7) + '/' + ult.slice(0, 4);
+    var ss = secoesDe(p).filter(function (s) { return s.hasAttribute('data-section'); });
+    var feitas = ss.filter(function (s) { var c = contaPecasSec(s, i) || contaSec(s); return c.total > 0 && !c.semTabela && c.feitos >= c.total; }).length;
+    var prev = ehPrev();
+    var html = '<div class="kick">' + (emOS() ? 'Coleta da ' + esc(tituloOS()) : 'Coleta em andamento') + '</div>' +
+      '<h1>' + esc(cli || 'Cliente não informado') + '</h1><div class="sub">' + esc([cid, resp ? 'Contato: ' + resp : ''].filter(Boolean).join(' · ') || 'Preencha na etapa 01') + '</div>' +
+      '<div class="pf130-seg" role="group" aria-label="Tipo de visita"><button type="button" data-pf130="tipo-i" class="' + (prev ? '' : 'on') + '">🔍 Inspeção</button><button type="button" data-pf130="tipo-p" class="' + (prev ? 'on' : '') + '">🔧 Preventiva</button></div>' +
+      '<div class="pf130-card"><div class="pf130-maq"><div class="pf130-ic">' + (pf && pf.id === 'pistao' ? '🔩' : '🔧') + '</div><div style="min-width:0"><b>' + esc(nomeMaq(i)) + '</b><div class="m">' + esc(idMaq(i) || 'sem série / TAG') + '</div></div>' +
+      '<button type="button" class="pf130-trocar" data-pf130="trocar">Trocar ▾</button></div>' +
+      '<div class="pf130-chips"><span class="pf130-chip">' + pfTxt + '</span>' + (ult ? '<span class="pf130-chip">Última visita ' + esc(ult) + '</span>' : '') + (nMaq() > 1 ? '<span class="pf130-chip">Máq. ' + (i + 1) + ' de ' + nMaq() + '</span>' : '') + '</div>' +
+      '<div class="pf130-prog"><span>Progresso desta máquina</span><b>' + pr.pct + '%</b></div><div class="pf130-pbar"><i style="width:' + pr.pct + '%"></i></div>' +
+      '<div class="pf130-faltam">' + (pr.falta ? 'Faltam ' + pr.falta + ' ite' + (pr.falta > 1 ? 'ns' : 'm') + (pr.semAcao ? ' (' + pr.semAcao + ' peça' + (pr.semAcao > 1 ? 's' : '') + ' sem ação)' : '') + ' · ' : 'Tudo preenchido ✓ · ') + '<button type="button" data-pf130="falta">ver o que falta ›</button></div>' +
+      '<button type="button" class="pf130-hist" data-pf130="hist"><span>🕘 Últimas visitas</span><span>' + (PF130.histAberto ? '▴' : '›') + '</span></button><div class="pf130-histslot" id="pf130HistSlot' + i + '"></div></div>';
+    var et = p.querySelector(':scope > .pf130-etapas'), s1 = p.querySelector(':scope > .section');
+    if (!et) { et = document.createElement('div'); et.className = 'pf130-sec pf130-etapas'; }
+    if (s1 && et.nextElementSibling !== s1) p.insertBefore(et, s1);
+    var eh = '<h2>Etapas da coleta</h2><span>' + feitas + ' de ' + ss.length + ' concluídas · 07 e 08 opcionais</span>';
+    if (et.__pf130 !== eh) { et.innerHTML = eh; et.__pf130 = eh; }
+    if (hub.__pf130 !== html) {
+      var slotAntes = $('machineHistoryPanel');
+      if (slotAntes && hub.contains(slotAntes)) devolver('machineHistoryPanel');   // nunca deixar o no do motor dentro de HTML reescrito
+      hub.innerHTML = html; hub.__pf130 = html;
+      if (PF130.histAberto && slotAntes) { var sl = $('pf130HistSlot' + i); if (sl) sl.appendChild(slotAntes); }
+    }
+  }
+  function pintarTopo() {
+    if (!ligado()) return;
+    var i = atual(), n = nMaq();
+    var t1 = $('pf130T1'), t2 = $('pf130T2');
+    var a = tituloOS(); if (t1.textContent !== a) t1.textContent = a;
+    var b = 'Máq. ' + (i + 1) + ' de ' + Math.max(1, n) + ' · ' + nomeMaq(i) + ' ▾'; if (t2.textContent !== b) t2.textContent = b;
+    // conexao: o texto e o ponto do cabecalho antigo (pgpSetGsStatus continua escrevendo la)
+    var tx = $('gsTextPgp'), dot = $('gsDotPgp'), net = $('pf130Net'), nt = $('pf130NetTx');
+    var s = tx ? String(tx.textContent || '').trim() : 'Servidor';
+    if (nt.textContent !== s) nt.textContent = s;
+    var cls = 'net' + (/offline|sem internet|erro|falh/i.test(s) ? ' er' : (/conect|confer|reconect|servidor/i.test(s) || (dot && /off/.test(dot.className)) ? ' av' : ''));
+    if (net.className !== cls) net.className = cls;
+    // fila: o chip antigo (pgpUpdatePendingBadge continua escrevendo la)
+    var pb = $('pgpPendingBadge'), fl = $('pf130Fila');
+    var vis = pb && pb.style.display !== 'none' && String(pb.textContent || '').trim();
+    fl.style.display = vis ? '' : 'none';
+    if (vis) {   // "⏳ Aguardando envio: 3 · ⚠ Conferir: 1" → "⏳ 3 · ⚠ 1" (a frase inteira fica no title e na Fila)
+      var full = pb.textContent.replace(/\s+/g, ' ').trim(), ag = /Aguardando[^0-9]*(\d+)/i.exec(full), cf = /Conferir[^0-9]*(\d+)/i.exec(full);
+      var curto = (ag || cf) ? [ag ? '⏳ ' + ag[1] : '', cf ? '⚠ ' + cf[1] : ''].filter(Boolean).join(' · ') : full;
+      if (fl.textContent !== curto) fl.textContent = curto;
+      if (fl.title !== full) fl.title = full;
+    }
+    // avisos do escritorio (o badge vermelho do 🔧)
+    var nb = $('pfNotifBadge'), bd = $('pf130Notif');
+    var nv = nb && nb.style.display !== 'none' && String(nb.textContent || '').trim();
+    bd.style.display = nv ? '' : 'none'; if (nv && bd.textContent !== nv) bd.textContent = nv;
+    // barra de progresso fina
+    var pr = prog(i), bar = $('pf130Bar'); if (bar) bar.style.width = pr.pct + '%';
+    // chip "📤 N formularios" (V113 cria dentro do cabecalho antigo)
+    var fc = $('pf113FormsChip'), pf = $('pf130Forms');
+    var fv = fc && fc.style.display !== 'none' && fc.offsetParent !== undefined && String(fc.textContent || '').trim();
+    pf.classList.toggle('on', !!fv); if (fv && pf.textContent !== fv) pf.textContent = fv;
+  }
+  function pintarPe() {
+    if (!ligado()) return;
+    // linha de cima: a frase do "salvo" do V122 (#pcf116Salvo); um erro de salvar (#pf122Msg.erro) passa na frente
+    var sv = $('pcf116Salvo'), mg = $('pf122Msg'), el = $('pf130Salvo');
+    var erro = mg && /\berro\b/.test(mg.className) && String(mg.textContent || '').trim();
+    var t = erro || (sv ? String(sv.textContent || '').replace(/\s+/g, ' ').trim() : '');
+    if (el.textContent !== t) el.textContent = t;
+    var c = 'sv' + (erro || /⚠|Não consegui/i.test(t) ? ' er' : ''); if (el.className !== c) el.className = c;
+    // 💾: o estado do botao de verdade (⏳ Salvando… / desabilitado)
+    var bs = $('pf122BtnSalvar'), b2 = $('pf130Salvar');
+    var ls = bs ? String(bs.textContent || '').trim() : '💾 Salvar'; if (b2.textContent !== ls) b2.textContent = ls;
+    b2.disabled = !!(bs && bs.disabled);
+    // ✅: o MESMO rotulo do botao do rodape (o V122 ja o traduz para "✅ Concluir coleta [das N maquinas]" / ⏳ …)
+    var be = $('pcf116BtnEnviar'), bc = $('pf130Concluir');
+    var lb = be ? String(be.textContent || '').trim() : '✅ Concluir coleta';
+    if (bc.textContent !== lb) bc.textContent = lb;
+    bc.disabled = !!(be && be.disabled);
+  }
+  // faixa do envio em curso (as etapas do V116 ficam no rodape, la embaixo)
+  var _tStrip = null;
+  function pintarStrip() {
+    if (!ligado()) return;
+    var et = $('pgpEtapasStatus'), s = $('pf130Strip');
+    var t = et ? String(et.textContent || '').replace(/\s+/g, ' ').trim() : '';
+    var emCurso = /⏳/.test(t);
+    if (t && (emCurso || s.classList.contains('on'))) {
+      var tx = '📤 ' + t; if (s.textContent !== tx) s.textContent = tx;
+      s.classList.add('on');
+      clearTimeout(_tStrip);
+      if (!emCurso) _tStrip = setTimeout(function () { s.classList.remove('on'); }, 6000);
+    }
+  }
+  // Pilha dos fixos de baixo, pelas alturas REAIS: barra (💾 ✅ ⋯) → barra do modo offline → faixa do envio → cartao do GPS
+  // e aviso de foto. Nada fica por cima do botao de baixo dele (auditoria A13).
+  function pilha() {
+    var st = $('pf130Pilha');
+    if (!st) { st = document.createElement('style'); st.id = 'pf130Pilha'; document.head.appendChild(st); }
+    if (!ligado()) { if (st.textContent) st.textContent = ''; return; }
+    var alt = function (el) { if (!el) return 0; var cs = getComputedStyle(el); if (cs.display === 'none' || cs.visibility === 'hidden') return 0; return Math.ceil(el.getBoundingClientRect().height); };
+    var cli = document.documentElement.classList.contains('pf130-cli');
+    var pe = cli ? 0 : (alt($('pf130Pe')) || 98), off = alt($('pgpBarraOffline')), fx = $('pf130Strip'), fxa = fx && fx.classList.contains('on') ? alt(fx) : 0;
+    var R = 'html.pf129.pf130:not(.pf130-x) body';   // mais especifico que as regras fixas do bloco (que ficam de reserva)
+    var css = R + ' #pgpBarraOffline{bottom:' + pe + 'px!important}' +
+      R + ' #pf130Strip{bottom:' + (pe + off) + 'px}' +
+      R + ' .pf108-perto{bottom:' + (pe + off + fxa + 10) + 'px!important}' +
+      R + ' .foto-toast{bottom:' + (pe + off + fxa + 14) + 'px!important}' +
+      R + '{padding-bottom:' + (pe + off + fxa + 30) + 'px!important}';
+    css = '@media screen{' + css + '}';   // na impressao nao vale (R4)
+    if (st.textContent !== css) st.textContent = css;
+  }
+  PF130.pilha = pilha;
+  // "Voltar para OS" e o historico vao para o hub (no lugar de sempre ficariam no fim da pagina / na etapa de cliente)
+  var _lugar = {}, _ref = {};
+  function mover(id, destino) {
+    var el = $(id); if (!el || !destino) return;
+    _ref[id] = el;
+    if (!_lugar[id]) { var m = document.createComment('pf130:' + id); el.parentNode.insertBefore(m, el); _lugar[id] = m; }
+    if (el.parentNode !== destino.parentNode || el.nextSibling !== destino) destino.parentNode.insertBefore(el, destino);
+  }
+  function devolver(id) {
+    var el = $(id), m = _lugar[id];
+    if (!el && _ref[id]) el = _ref[id];   // o painel que o hospedava saiu do DOM (Nova coleta, fechar aba): o no do motor volta assim mesmo
+    if (el && m && m.parentNode && (el.parentNode !== m.parentNode || el.previousSibling !== m)) m.parentNode.insertBefore(el, m.nextSibling);
+    if (el && el.__pf130Disp !== undefined) { el.style.display = el.__pf130Disp; el.__pf130Disp = undefined; }
+  }
+  function resgatar() {   // o historico do motor nunca pode sumir junto com um painel removido
+    var r = _ref.machineHistoryPanel;
+    if (r && !document.contains(r) && !$('machineHistoryPanel')) {
+      devolver('machineHistoryPanel'); PF130.histAberto = false;
+      try { if (typeof pgpRenderLoadedCard === 'function') pgpRenderLoadedCard(atual()); } catch (e) {}   // o motor decide se o historico aparece (R1)
+    }
+  }
+
+  // ── modo Cliente e maquina × hub ─────────────────────────────────────────────────────────────
+  function aplicarModo() {
+    if (!ligado()) return;
+    var cli = precisaCli();
+    document.documentElement.classList.toggle('pf130-cli', cli);
+    var v = $('pf130CliVoltar'), pu = $('pf130Pular');
+    if (v) v.style.display = (PF130.forcarCli && !vazio(atual())) ? '' : 'none';
+    if (pu) pu.style.display = (PF130.forcarCli && !vazio(atual())) ? 'none' : '';
+    var sub = $('pf130CliSub');
+    if (sub) { var t = emOS() ? 'Máquinas da ' + tituloOS() + ': escolha abaixo. Se a máquina não estiver na lista, cadastre na hora.' : 'Escolha o cliente e a máquina abaixo para já trazer cadastro, peças e histórico — ou preencha à mão.'; if (sub.textContent !== t) sub.textContent = t; }
+    // o cartao "Voltar para OS" no alto do conteudo
+    var mc = $('machineContent'); if (mc) mover('pgpReturnToOSContainer', mc);
+  }
+
+  // ── um "pintar tudo" coalescido ──────────────────────────────────────────────────────────────
+  var _raf = 0;
+  function tudo() {
+    _raf = 0; PF130.ciclos = (PF130.ciclos || 0) + 1;
+    if (!ligado()) return;
+    try { document.documentElement.classList.add('pf130'); } catch (e) {}
+    try { aplicarModo(); } catch (e) { nota(e, 'modo'); }
+    try { document.querySelectorAll('#machineContent > .machine-panel').forEach(decorarPainel); } catch (e) { nota(e, 'decorar'); }
+    try { pintarHub(); } catch (e) { nota(e, 'hub'); }
+    try { pintarTopo(); } catch (e) { nota(e, 'topo'); }
+    try { pintarPe(); } catch (e) { nota(e, 'pe'); }
+    try { pintarStrip(); } catch (e) { nota(e, 'strip'); }
+    try { pilha(); } catch (e) { nota(e, 'pilha'); }
+    try { resgatar(); } catch (e) { nota(e, 'resgatar'); }
+  }
+  function agendar() { if (_raf) return; _raf = (window.requestAnimationFrame || setTimeout)(tudo, 16); }
+  PF130.pintar = function () { _raf = 0; tudo(); };
+  ['pcf:estado', 'pcf:secao'].forEach(function (ev) { document.addEventListener(ev, agendar); });
+  try {
+    var mo = new MutationObserver(function (ms) {
+      if (!ligado()) return;
+      for (var k = 0; k < ms.length; k++) {
+        var t = ms[k].target;
+        if (t && t.closest && t.closest('#pf130Top,#pf130Pe,#pf130Strip,.pf130-hub,.pf130-etapas,.pf130-hd,.pf130-pl,.pf130-hvaga,.pf130-assin,.pf130-fim,#pf130Forms')) continue;
+        agendar(); return;
+      }
+    });
+    var alvos = function () {
+      ['machineContent', 'pcf116Rodape', 'pgpPendingBadge', 'gsTextPgp', 'pfNotifBadge', 'pcf116Salvo', 'pcf116BtnEnviar', 'pgpEtapasStatus'].forEach(function (id) {
+        var el = $(id); if (el && !el.__pf130mo) { el.__pf130mo = true; mo.observe(el, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['class', 'style', 'disabled'] }); }
+      });
+      var hd = document.querySelector('header .pcf-chiprow'); if (hd && !hd.__pf130mo) { hd.__pf130mo = true; mo.observe(hd, { childList: true, subtree: true, characterData: true, attributes: true }); }
+    };
+    alvos(); setInterval(alvos, 3000);
+  } catch (e) { nota(e, 'observer'); }
+
+  // switchMachine: troca de maquina repinta o hub e o modo
+  try {
+    var _sw = window.switchMachine;
+    if (typeof _sw === 'function' && !_sw.__pf130) {
+      window.switchMachine = function () { try { if (PF130.histAberto || _lugar.machineHistoryPanel) { devolver('machineHistoryPanel'); PF130.histAberto = false; } } catch (e) {} var r = _sw.apply(this, arguments); try { PF130.forcarCli = false; agendar(); if (ligado()) window.scrollTo({ top: 0 }); } catch (e) {} return r; };
+      window.switchMachine.__pf130 = true;
+    }
+  } catch (e) { nota(e, 'embrulho switchMachine'); }
+
+  // ── cliques (delegados) ──────────────────────────────────────────────────────────────────────
+  document.addEventListener('click', function (ev) {
+    if (!ligado()) return;
+    var b = ev.target && ev.target.closest ? ev.target.closest('[data-pf130]') : null;
+    if (!b) return;
+    var a = b.getAttribute('data-pf130'), i = atual();
+    try {
+      if (a === 'fechar') { var s = b.closest('.section'); if (s) { fecharSec(s); rolarPara(s); } agendar(); }
+      else if (a === 'prox') { var s2 = b.closest('.section'), px = s2 && proxima(s2); if (px) abrirSec(px, true); agendar(); }
+      else if (a === 'tipo-i') { if (ehPrev()) clicar($('btnTipoInspecao')); setTimeout(agendar, 50); }
+      else if (a === 'tipo-p') { if (!ehPrev()) clicar($('btnTipoPreventiva')); setTimeout(agendar, 50); }
+      else if (a === 'trocar') PF130.trocador();
+      else if (a === 'cat') { var cp = $('catalogLookupPanel'); if (cp && cp.style.display === 'none' && typeof pgpToggleCatalogPanel === 'function') pgpToggleCatalogPanel(); else if (cp) { try { $('catalogLookupInput').focus(); } catch (x) {} } }
+      else if (a === 'falta') { if (typeof pcfAbrirFaltaPanel === 'function') pcfAbrirFaltaPanel(); }
+      else if (a === 'hist') {
+        PF130.histAberto = !PF130.histAberto;
+        var hp = $('machineHistoryPanel'), sl = $('pf130HistSlot' + i);
+        if (PF130.histAberto) {
+          if (hp && sl) { if (!_lugar.machineHistoryPanel) mover('machineHistoryPanel', hp); _ref.machineHistoryPanel = hp; if (hp.__pf130Disp === undefined) hp.__pf130Disp = hp.style.display; sl.appendChild(hp); hp.style.display = 'block'; }
+          else if (sl) sl.innerHTML = '<div style="font-size:12.5px;color:#475569;margin-top:8px">O histórico aparece quando a máquina vem do banco (etapa "Cliente e máquina").</div>';
+        } else { devolver('machineHistoryPanel'); }
+        var sp = b.querySelector('span:last-child'); if (sp) sp.textContent = PF130.histAberto ? '▴' : '›';
+      }
+      else if (a === 'hfoto') { var bf = $('m' + i + '_btn_foto_horimetro'); if (bf && typeof abrirFotoPicker === 'function') abrirFotoPicker(bf, 'linked', i, 'horimetro'); }
+      else if (a === 'hnd') { var it = itemHorim(i); if (it) clicar(it.querySelector('.photo-nd-btn')); setTimeout(agendar, 50); }
+      else if (a === 'assin-h') { var as = b.closest('.pf130-assin'), bd = as.querySelector('.bd2'); var ab = bd.style.display === 'none'; if (ab) { secoesDe(as.closest('.machine-panel')).forEach(fecharSec); as.classList.add('pf130-open'); bd.style.display = ''; } else fecharAssin(as); }
+      else if (a === 'assin') { clicar(document.querySelector('#pcf117Sec' + i + ' [data-pcf117="assin"]')); }
+    } catch (e) { nota(e, 'clique ' + a); }
+  });
+  function ligarTopo() {
+    var on = function (id, fn) { var el = $(id); if (el) el.addEventListener('click', function (e) { if (!ligado()) return; try { fn(e); } catch (x) { nota(x, id); } }); };
+    on('pf130Voltar', function () { var nb = $('pfNotifBadge'), pn = $('pf130Notif'); if (nb && pn && pn.style.display !== 'none') clicar(nb); else if (typeof pfAbrir === 'function') pfAbrir(); });
+    on('pf130Titulo', function () { PF130.trocador(); });
+    on('pf130Net', function () { if (typeof pgpTestGs === 'function') pgpTestGs(true); });
+    on('pf130Fila', function () { if (typeof pgpAbrirFilaPanel === 'function') pgpAbrirFilaPanel(); });
+    on('pf130Menu', function () { if (typeof pcf116AbrirMenu === 'function') pcf116AbrirMenu(); });
+    on('pf130Forms', function () { clicar($('pf113FormsChip')); });
+    on('pf130Salvar', function () { var b = $('pf122BtnSalvar'); if (b) clicar(b); else if (typeof pcf122Salvar === 'function') pcf122Salvar(null); });
+    on('pf130Concluir', function () { PF130.concluir(); });
+    on('pf130Mais', function () { if (typeof pcf116AbrirMais === 'function') pcf116AbrirMais(); });
+    on('pf130Pular', function () { var pp = painel(atual()); if (pp) pp.__pf130Pulou = true; PF130.forcarCli = false; PF130.pintar(); try { window.scrollTo({ top: 0 }); } catch (x) {} });
+    on('pf130CliVoltar', function () { PF130.forcarCli = false; PF130.pintar(); });
+  }
+
+  document.addEventListener('keydown', function (ev) {
+    if (!ligado() || (ev.key !== 'Enter' && ev.key !== ' ')) return;
+    var t = ev.target; if (!t || !t.matches || !t.matches('[role="button"][tabindex]')) return;
+    if (!t.closest('#pf130Top,#pf130Forms,#pf130Folha')) return;
+    ev.preventDefault(); t.click();
+  });
+  // ── folhas proprias ──────────────────────────────────────────────────────────────────────────
+  function folha(html, montar) {
+    fecharFolha();
+    var ov = document.createElement('div'); ov.className = 'pf130-ov'; ov.id = 'pf130Folha';
+    ov.innerHTML = '<div class="pf130-sh" role="dialog" aria-modal="true">' + html + '</div>';
+    ov.addEventListener('click', function (e) { if (e.target === ov) fecharFolha(); });
+    document.body.appendChild(ov);
+    if (montar) montar(ov);
+    return ov;
+  }
+  function fecharFolha() { var f = $('pf130Folha'); if (f) f.remove(); }
+  PF130.fecharFolha = fecharFolha;
+
+  // trocador de maquinas (substitui as abas)
+  PF130.trocador = function () {
+    var n = nMaq(), cur = atual(), linhas = '';
+    for (var k = 0; k < n; k++) {
+      var pr = prog(k), rg = null; try { rg = pcf116RegistroDe(k); } catch (e) {}
+      var hoje = rg && rg.quando && (new Date(rg.quando)).toDateString() === (new Date()).toDateString();
+      var stt = hoje ? (rg.estado === 'fila' ? '⏳ na fila' : '✅ enviada') : (travado(k) ? '🔒 falta a foto do horímetro' : '');
+      linhas += '<div class="pf130-li' + (k === cur ? ' on' : '') + '" role="button" tabindex="0" data-pf130m="ir" data-i="' + k + '"><div class="pf130-ic">🔧</div><div class="tx"><b>' + (k + 1) + ' · ' + esc(nomeMaq(k)) + '</b><small>' + esc([idMaq(k), pr.pct + '%', stt].filter(Boolean).join(' · ')) + '</small></div>' +
+        (n > 1 ? '<button type="button" class="x" data-pf130m="x" data-i="' + k + '" aria-label="Fechar esta máquina">✕</button>' : '') + '</div>';
+    }
+    var cliNome = campo(0, 'razao_social');
+    var osBtn = $('pgpOsMaquinasLabel'), osTx = osBtn ? String(osBtn.textContent || '').trim() : '';
+    var incluir = emOS() ? (osTx || '➕ Incluir outra máquina desta OS') : (cliNome ? '➕ Incluir outra máquina de ' + cliNome : '');
+    folha('<h3>Máquinas desta coleta</h3><div class="s">' + esc(emOS() ? tituloOS() + (cliNome ? ' · ' + cliNome : '') : (cliNome || 'Coleta avulsa')) + '</div>' + linhas +
+      (incluir ? '<button type="button" class="pf130-b" data-pf130m="incluir">' + esc(incluir) + '</button><div class="hint">abre a lista de máquinas do cliente (o mesmo botão de hoje)</div>' : '') +
+      '<button type="button" class="pf130-b" data-pf130m="branco">+ Máquina em branco</button>' +
+      '<button type="button" class="pf130-b" data-pf130m="cli">🔄 Trocar a máquina deste painel</button><div class="hint">vai para "Cliente e máquina": ✕ Limpar, busca por série/TAG e cadastro rápido</div>' +
+      '<button type="button" class="pf130-b" data-pf130m="fechar" style="border:0;color:#475569">Fechar</button>',
+      function (ov) {
+        ov.addEventListener('click', function (e) {
+          var b = e.target.closest ? e.target.closest('[data-pf130m]') : null; if (!b) return;
+          var a = b.getAttribute('data-pf130m'), k = parseInt(b.getAttribute('data-i'), 10);
+          e.stopPropagation();
+          try {
+            if (a === 'x') { fecharFolha(); if (window.P121 && typeof P121.fecharAba === 'function') P121.fecharAba(k); return; }
+            if (a === 'ir') { fecharFolha(); if (k !== atual()) switchMachine(k); else agendar(); try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (x) {} return; }
+            if (a === 'incluir') {
+              fecharFolha();
+              if (emOS()) { clicar($('pgpOsMaquinasBtn')); PF130.forcarCli = true; }
+              else { var bi = $('pcf121IncluirAvulsa'); if (bi) clicar(bi); else addMachine(); }
+              agendar(); try { window.scrollTo({ top: 0 }); } catch (x) {} return;
+            }
+            if (a === 'branco') { fecharFolha(); addMachine(); agendar(); return; }
+            if (a === 'cli') { fecharFolha(); PF130.forcarCli = true; agendar(); try { window.scrollTo({ top: 0 }); } catch (x) {} return; }
+            if (a === 'fechar') fecharFolha();
+          } catch (x) { nota(x, 'trocador ' + a); }
+        });
+      });
+  };
+
+  // ✅ Concluir: a trava aparece ANTES (D1). Com todas as maquinas com dado travadas, a nossa folha explica e leva a vaga;
+  // senao abre o fluxo de sempre (pcf116Enviar), e a folha dele recebe a maquina travada DESMARCADA com o botao.
+  function irFotoHorimetro(k) {
+    try {
+      if (k !== atual()) switchMachine(k);
+      PF130.forcarCli = false; tudo();
+      var p = painel(k), sec = null;
+      secoesDe(p).forEach(function (s) { if (/Horímetro/i.test(etapaDe(s)[2])) sec = s; });
+      if (sec) abrirSec(sec, true);
+      setTimeout(function () { var bf = $('m' + k + '_btn_foto_horimetro'); if (bf && typeof abrirFotoPicker === 'function') abrirFotoPicker(bf, 'linked', k, 'horimetro'); }, 350);
+    } catch (e) { nota(e, 'irFotoHorimetro'); }
+  }
+  PF130.irFotoHorimetro = irFotoHorimetro;
+  PF130.concluir = function () {
+    var be = $('pcf116BtnEnviar');
+    if (!be || be.disabled) return;
+    var n = nMaq(), comDado = [], trav = [];
+    for (var k = 0; k < n; k++) { var td = false; try { td = pgpHasMachineData(k); } catch (e) {} if (td) { comDado.push(k); if (travado(k)) trav.push(k); } }
+    if (comDado.length && trav.length === comDado.length) {
+      var ls = trav.map(function (k) { return '<div class="pf130-li" style="cursor:default"><div class="pf130-ic">🔒</div><div class="tx"><b>' + (k + 1) + ' · ' + esc(nomeMaq(k)) + '</b><small>Falta a foto do display do horímetro — sem ela a preventiva não registra (ou marque N/D se o display não aparece).</small>' +
+        '<button type="button" class="pf130-lockbt" data-pf130c="foto" data-i="' + k + '">📷 Tirar a foto do horímetro agora</button></div></div>'; }).join('');
+      folha('<h3>🔒 Falta a foto do horímetro</h3><div class="s">Esta máquina tem horímetro: a foto do display é a prova da leitura e é obrigatória para registrar a preventiva.</div>' + ls +
+        '<button type="button" class="pf130-b" data-pf130c="voltar">Voltar</button>', function (ov) {
+          ov.addEventListener('click', function (e) {
+            var b = e.target.closest ? e.target.closest('[data-pf130c]') : null; if (!b) return;
+            var a = b.getAttribute('data-pf130c'); fecharFolha();
+            if (a === 'foto') irFotoHorimetro(parseInt(b.getAttribute('data-i'), 10));
+          });
+        });
+      return;
+    }
+    clicar(be);
+  };
+  // a folha do V116 (".pcf116-ov" com ".pcf116-cb"): maquina travada vem desmarcada, com a linha 🔒 e o botao
+  function tratarFolhaEnvio(ov) {
+    if (!ligado() || !ov || ov.__pf130) return;
+    var cbs = ov.querySelectorAll('.pcf116-cb'); if (!cbs.length) return;
+    ov.__pf130 = true;
+    [].forEach.call(cbs, function (cb) {
+      var k = parseInt(cb.getAttribute('data-idx'), 10);
+      if (!travado(k)) return;
+      if (cb.checked) { cb.checked = false; try { cb.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) {} }
+      var lab = cb.closest('label') || cb.parentNode, alvo = lab.querySelector('div') || lab;
+      var d = document.createElement('div');
+      d.innerHTML = '<div class="pf130-lockln">🔒 Falta a foto do horímetro — não registra sem ela</div><button type="button" class="pf130-lockbt" data-i="' + k + '">📷 Tirar a foto do horímetro agora</button>';
+      d.querySelector('button').addEventListener('click', function (e) {
+        e.preventDefault(); e.stopPropagation();
+        var c = ov.querySelector('.pcf116-cancel'); if (c) clicar(c); else try { ov.remove(); } catch (x) {}
+        irFotoHorimetro(k);
+      });
+      alvo.appendChild(d);
+    });
+  }
+  try {
+    new MutationObserver(function (ms) {
+      if (!ligado()) return;
+      ms.forEach(function (m) { [].forEach.call(m.addedNodes || [], function (nd) { if (nd.nodeType === 1 && nd.classList && nd.classList.contains('pcf116-ov')) setTimeout(function () { tratarFolhaEnvio(nd); }, 0); }); });
+    }).observe(document.body, { childList: true });
+  } catch (e) { nota(e, 'observer folha'); }
+
+  // "Faltando preencher": na preventiva, as pecas sem acao entram na lista (o numero do topo ja as contava)
+  try {
+    var _cf = window.pcfColetarFaltantes;
+    if (typeof _cf === 'function' && !_cf.__pf130) {
+      window.pcfColetarFaltantes = function () {
+        var out = _cf.apply(this, arguments);
+        try {
+          if (!ligado() || !ehPrev()) return out;
+          var i = atual(), parts = []; try { parts = pgpPartsDe(i) || []; } catch (e) { parts = []; }
+          var p = painel(i), sec4 = null;
+          secoesDe(p).forEach(function (s) { if (/Peças|Pistão/i.test((s.querySelector(':scope > .section-header .title') || {}).textContent || '')) sec4 = s; });
+          var tit = sec4 ? String((sec4.querySelector(':scope > .section-header .title') || {}).textContent || 'Peças').trim() : 'Peças';
+          parts.forEach(function (pt) {
+            var pk = 'm' + i + '_' + pt.k, na = $(pk + '_na'), ac = $(pk + '_acao');
+            if (!na && !ac) return;
+            if ((na && na.classList.contains('active')) || (ac && ac.value)) return;
+            var el = $(pk + '_acao_conferida') || $(pk + '_tr') || ac;
+            out.push({ sec: tit, nome: (pt.nome || pt.label || pt.k) + ' — sem ação (Conferida/Trocada/N/A)', el: el, tipo: 'campo' });
+          });
+        } catch (e) { nota(e, 'faltantes'); }
+        return out;
+      };
+      window.pcfColetarFaltantes.__pf130 = true;
+    }
+  } catch (e) { nota(e, 'embrulho faltantes'); }
+
+  // Voltar do Android: depois das camadas de sempre, fecha a folha nossa, sai do "Cliente e maquina" forcado e fecha a etapa aberta
+  try {
+    var _vc = window._pgpVoltarUmaCamada;
+    if (typeof _vc === 'function' && !_vc.__pf130) {
+      window._pgpVoltarUmaCamada = function () {
+        if (ligado() && $('pf130Folha')) { fecharFolha(); return true; }
+        var r = _vc.apply(this, arguments);
+        if (r) return r;
+        try {
+          if (!ligado()) return r;
+          if (PF130.forcarCli && !vazio(atual())) { PF130.forcarCli = false; agendar(); return true; }
+          var p = painel(atual());
+          var ab = secoesDe(p).filter(secAberta);
+          if (ab.length) { ab.forEach(fecharSec); agendar(); return true; }
+          var as = p && p.querySelector('.pf130-assin.pf130-open'); if (as) { fecharAssin(as); return true; }
+        } catch (e) { nota(e, 'voltar'); }
+        return r;
+      };
+      window._pgpVoltarUmaCamada.__pf130 = true;
+    }
+  } catch (e) { nota(e, 'embrulho voltar'); }
+
+  // ☰ Menu: no hub o cabecalho antigo some, entao a 🔍 Consulta de pecas e a ⚙️ Configuracao entram na folha; versao no rodape
+  try {
+    var _mn = window.pcf116AbrirMenu;
+    if (typeof _mn === 'function' && !_mn.__pf130) {
+      window.pcf116AbrirMenu = function () {
+        var r = _mn.apply(this, arguments);
+        try {
+          if (!ligado()) return r;
+          var ovs = document.querySelectorAll('.pcf116-ov'), ov = ovs[ovs.length - 1];
+          var corpo = ov && ov.querySelector('.pcf116-corpo');
+          if (corpo && !corpo.querySelector('[data-o="pf130cat"]')) {
+            var it = function (o, ic, t, d) { return '<button type="button" class="pcf116-item" data-o="' + o + '"><span class="ic">' + ic + '</span><span>' + t + ' <em class="pf130-novo">NOVO</em><small>' + d + '</small></span></button>'; };
+            var ref = corpo.querySelector('[data-o="conexao"]');
+            var html = it('pf130cat', '🔍', 'Consulta de peças', 'catálogo local (antes era a lupa do topo)') + it('pf130cfg', '⚙️', 'Configuração', 'endereço do servidor (antes era tocar na pílula)');
+            if (ref) ref.insertAdjacentHTML('beforebegin', html); else corpo.insertAdjacentHTML('beforeend', html);
+            var fecharMenu = function () { var c = ov.querySelector('.pcf116-pe .pcf116-cancel'); if (c) c.click(); else try { ov.remove(); } catch (e) {} };
+            corpo.querySelector('[data-o="pf130cat"]').onclick = function () { fecharMenu(); var cp = $('catalogLookupPanel'); if (cp && cp.style.display === 'none') pgpToggleCatalogPanel(); };
+            corpo.querySelector('[data-o="pf130cfg"]').onclick = function () { fecharMenu(); if (typeof abrirConfig === 'function') abrirConfig(); };
+            var pe = ov.querySelector('.pcf116-pe');
+            var st = $('pcfBuildStamp'), v = st ? String(st.textContent || '').trim() : '';
+            if (pe && !ov.querySelector('.pf130-ver')) pe.insertAdjacentHTML('afterend', '<div class="pf130-ver">PROPER ' + esc(v || 'FIELD · V130') + '</div>');
+          }
+        } catch (e) { nota(e, 'menu'); }
+        return r;
+      };
+      window.pcf116AbrirMenu.__pf130 = true;
+    }
+  } catch (e) { nota(e, 'embrulho menu'); }
+
+  // ── ligar / desligar (a chave e a do V129) ───────────────────────────────────────────────────
+  function desligar() {
+    document.documentElement.classList.remove('pf130', 'pf130-cli');
+    fecharFolha();
+    devolver('pgpReturnToOSContainer'); devolver('machineHistoryPanel'); PF130.histAberto = false;
+    try { pilha(); } catch (e) {}
+    try {
+      document.querySelectorAll('#machineContent > .machine-panel').forEach(function (p) {
+        p.__pf130Fechou = false;
+        p.querySelectorAll('.pf130-assin.pf130-open').forEach(fecharAssin);
+        var antes = p.__pf130Antes, ss = secoesDe(p), usar = antes && antes.length === ss.length;
+        ss.forEach(function (s, k) {   // o visual de sempre: como estava antes de ligar (sem registro: tudo aberto, menos "Fotos da ultima visita")
+          s.classList.remove('pf130-open', 'pf130-ok', 'pf130-lock', 'pf130-pecas');
+          var fechada = usar ? antes[k] : /pf-prevfotos-section/.test(s.className);
+          var h = s.querySelector(':scope > .section-header'); if (!h) return;
+          h.classList.toggle('collapsed', !!fechada); if (h.nextElementSibling) h.nextElementSibling.classList.toggle('hidden', !!fechada);
+        });
+        p.__pf130Antes = null;
+      });
+    } catch (e) { nota(e, 'desligar'); }
+  }
+  try {
+    var _lg = PF129 && PF129.ligar;
+    if (typeof _lg === 'function' && !_lg.__pf130) {
+      PF129.ligar = function (sim) { var r = _lg.apply(this, arguments); try { if (sim) { document.documentElement.classList.add('pf130'); PF130.pintar(); } else desligar(); } catch (e) { nota(e, 'ligar'); } return r; };
+      PF129.ligar.__pf130 = true;
+    }
+  } catch (e) { nota(e, 'embrulho ligar'); }
+
+  // cabecalho e barra de baixo vao para o lugar certo do documento (topo / fim do body)
+  function posicionar() {
+    var t = $('pf130Top'); if (t && document.body.firstElementChild !== t) document.body.insertBefore(t, document.body.firstChild);
+    var f = $('pf130Forms'); if (f && t && t.nextElementSibling !== f) t.parentNode.insertBefore(f, t.nextSibling);
+    var c = $('pf130Cli'), banco = $('pgpBancoBanner'); if (c && banco && banco.previousElementSibling !== c) banco.parentNode.insertBefore(c, banco);
+  }
+  function iniciar() {
+    try { posicionar(); ligarTopo(); } catch (e) { nota(e, 'iniciar'); }
+    if (ligado()) { document.documentElement.classList.add('pf130'); tudo(); }
+    setInterval(function () { if (ligado()) agendar(); }, 2500);   // rede de seguranca (conexao, fila, selos que mudam sem evento)
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else setTimeout(iniciar, 0);
+})();
+</script>
+<!-- ████ FIM PCF_V130 (PF130) ████ -->
 
 </body>
 </html>
