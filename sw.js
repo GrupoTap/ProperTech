@@ -9,7 +9,10 @@
  * O activate abaixo apaga qualquer cache antigo com prefixo 'propertech-'.
  */
 const CACHE_BASE = 'propertech-';
-const CACHE = CACHE_BASE + 'v128';  // 07/10/2026 — par do PCF_V126 (botão 🏠 Menu → ProperHub no pipeline). Sem bump, o celular serve o V123 do cache.
+const CACHE = CACHE_BASE + 'v131';  // 08/10/2026 — par do PCF_V129 (visual novo por aparelho: Minhas OS, cartões, tema claro). Sem bump, o celular serve o V128 do cache.
+// antes: 'v130'  // 07/10/2026 — par do PCF_V128 (base do Hub de Cartões: exportar/importar, trava do horímetro, histórico pelo Postgres). Sem bump, o celular serve o V127 do cache.
+// antes: 'v129'  // 07/10/2026 — par do PCF_V127 (estabilidade do campo: foto/coleta/abertura do cache). Sem bump, o celular serve o V126 do cache.
+// antes: 'v128'  // 07/10/2026 — par do PCF_V126 (botão 🏠 Menu → ProperHub no pipeline).
 // antes: 'v124'  // 05/10/2026 — par do PCF_V122 (coleta segura, 1ª entrega).
 // antes: 'v123'  // 02/10/2026 — par do PCF_V121 (campo 11 pontos).
 // antes: 'v121'  // 30/09/2026 — par do PCF_V119 (crachá renovável). Sem bump, o celular serve o V118 do cache.
@@ -57,6 +60,8 @@ const CACHE = CACHE_BASE + 'v128';  // 07/10/2026 — par do PCF_V126 (botão �
 //        PCF_V108 ↔  propertech-v110  (11/09 — a rodada Campo e Documentos)
 //        PCF_V110 ↔  propertech-v112  (17/09 — os motores CFX + PWAIT, front puro)
 //        PCF_V109 ↔  propertech-v111  (11/09 — o PDF da preventiva: compress:true + PDF na fila do IndexedDB)
+//        PCF_V129 ↔  propertech-v131  (08/10 — visual novo por aparelho)
+//        PCF_V128 ↔  propertech-v130  (07/10 — base do Hub de Cartões; o V127 da pcf_estabilidade vai antes)
 //        PCF_V112 ↔  propertech-v114  (21/09 — o documento volta a começar no DOCTYPE)
 //        PCF_V113 ↔  propertech-v115  (26/09 — PCF estável + Background Sync + Leaflet no shell)
 //        PCF_V114 ↔  propertech-v116  (27/09 — PWAIT v4: botão de janela fechada não fica preso)
@@ -69,6 +74,7 @@ const CACHE = CACHE_BASE + 'v128';  // 07/10/2026 — par do PCF_V126 (botão �
 //        PCF_V122 ↔  propertech-v124  (05/10 — coleta segura: 💾 Salvar com prova, selo único, Reenviar no card)
 //        PCF_V123 ↔  propertech-v125  (06/10 — coleta segura 2a: 💾 Salvar também no servidor, selo ☁️)
 //        PCF_V126 ↔  propertech-v128  (07/10 — botão 🏠 Menu no pipeline: volta ao menu do ProperHub; V124/V125 reservados e não construídos)
+//        PCF_V127 ↔  propertech-v129  (07/10 — estabilidade: card/coleta não se perdem na câmera; a página abre do cache — PF127)
 //    Quem "corrigir" isto para propertech-v91 achando que alinha as versões
 //    reintroduz o pior modo de falha deste arquivo: a chave ficaria IGUAL à do
 //    deploy anterior, o activate não apagaria nada, e o técnico continuaria
@@ -114,6 +120,7 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE)
       .then((c) => c.addAll(APP_SHELL.map((u) => new Request(u, { cache: 'reload' }))))
+      .then(() => caches.open(CACHE).then((c) => c.put('/ProperTech/__pf127_nav_ts', new Response(String(Date.now())))).catch(() => {})) // PCF_V127 (PF127 D)
       .then(() => self.skipWaiting())
       .catch((e) => {
         console.error('[SW] install FALHOU — deploy incompleto? O cache anterior fica intacto.', e);
@@ -133,6 +140,47 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// PCF_V127 (PF127 D) — navegação servida do cache (uma chave, sem a query) + revalidação de no máximo 6 h.
+const _PF127_NAV = '/ProperTech/index.html';
+const _PF127_NAV_TS = '/ProperTech/__pf127_nav_ts';
+const _PF127_NAV_IDADE = 6 * 3600 * 1000;
+function _pf127NavRevalidar() {
+  return caches.open(CACHE).then((c) => c.match(_PF127_NAV_TS).then((m) => (m ? m.text() : '0')).then((t) => {
+    if (Date.now() - Number(t || 0) < _PF127_NAV_IDADE) return null;
+    return fetch(_PF127_NAV, { cache: 'no-cache' }).then((res) => {
+      // só uma resposta boa, do próprio site e sem redirecionamento entra no lugar da página (e só então a hora anda)
+      if (res && res.ok && res.type === 'basic' && !res.redirected) return c.put(_PF127_NAV, res.clone()).then(() => c.put(_PF127_NAV_TS, new Response(String(Date.now()))));
+      return null;
+    });
+  })).catch(() => null);
+}
+function _pf127NavDoCache(event) {
+  // só decide servir do cache se HÁ cópia; sem ela, devolve false e o caminho antigo segue
+  event.respondWith((async () => {
+    let hit = null;
+    try { const c = await caches.open(CACHE); hit = await c.match(_PF127_NAV); } catch (e) { hit = null; }
+    if (hit) { event.waitUntil(_pf127NavRevalidar()); return hit; }
+    return _pf127NavRede(event.request);
+  })());
+  return true;
+}
+// sem cópia no cache: o caminho de antes (corrida de 3 s), mas gravando na chave única
+async function _pf127NavRede(req) {
+  const networkPromise = fetch(req).then((res) => {
+    if (res && res.ok && res.type === 'basic' && !res.redirected) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(_PF127_NAV, copy)).catch(() => {}); }
+    return res;
+  });
+  const timer = new Promise((resolve) => setTimeout(() => resolve('TIMEOUT'), 3000));
+  const first = await Promise.race([networkPromise.catch(() => 'NETFAIL'), timer]);
+  if (first !== 'TIMEOUT' && first !== 'NETFAIL') return first;
+  const cached = await caches.match(_PF127_NAV, { ignoreSearch: true }).catch(() => null);
+  if (cached) { networkPromise.catch(() => {}); return cached; }
+  return networkPromise.catch(() => caches.match(_PF127_NAV, { ignoreSearch: true }).then((hit) => hit || Response.error()));
+}
+// PCF_V127 (PF127 D) — arquivos do APP_SHELL (jsPDF, Leaflet, ícones) saem do cache sem baixar de novo a cada
+// abertura: o install de cada versão já os traz com cache:'reload'. O resto segue stale-while-revalidate.
+const _PF127_SHELL = new Set(APP_SHELL.filter((u) => u !== _PF127_NAV));
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   const url = new URL(req.url);
@@ -147,6 +195,17 @@ self.addEventListener('fetch', (event) => {
     (req.headers.get('accept') || '').includes('text/html');
 
   if (isNavigation) {
+    // ══════════════════════════════════════════════════════════════════════════════════════════
+    // PCF_V127 (PF127 D) — A PÁGINA ABRE DO CACHE, COM UMA CHAVE SÓ.
+    // 🕳 Medido: a corrida de 3 s abaixo para quando chegam os PRIMEIROS bytes, não o arquivo; com
+    //    4G fraco mas vivo a rede sempre 'ganhava' e os 2,1 MB (639 KB comprimidos) desciam a CADA
+    //    abertura e a cada volta de formulário. E cada URL com ?os_id=… virava uma cópia de 2,1 MB.
+    // 🔑 Versão nova chega pelo bump deste arquivo (install pré-carrega o index com cache:'reload',
+    //    o activate apaga o cache velho e a faixa 'Versão nova' do proper-pwa.js oferece recarregar).
+    //    Sem bump, a página se revalida sozinha em 2º plano no máximo a cada 6 h.
+    // ⚠ Sem cache (1ª visita / cache apagado) cai no caminho de antes, intacto, logo abaixo.
+    // ══════════════════════════════════════════════════════════════════════════════════════════
+    if (_pf127NavDoCache(event)) return;
     // V76 (F1a) — network-first COM CORRIDA de 3s contra o cache.
     // Antes: abrir o app esperava o index de ~750KB vir INTEIRO do GitHub Pages
     // antes de pintar qualquer coisa — em 3G de galpão, segundos de tela branca
@@ -184,6 +243,15 @@ self.addEventListener('fetch', (event) => {
         caches.match('/ProperTech/index.html').then((hit) => hit || Response.error())
       );
     })());
+    return;
+  }
+
+  // PCF_V127 (PF127 D): arquivo do APP_SHELL = cache primeiro, sem revalidar (o bump traz o novo)
+  if (_PF127_SHELL.has(url.pathname)) {
+    event.respondWith(caches.match(req, { ignoreSearch: true }).then((hit) => hit || fetch(req).then((res) => {
+      if (res && res.status === 200) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {}); }
+      return res;
+    })));
     return;
   }
 
