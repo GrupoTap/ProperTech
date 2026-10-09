@@ -1673,8 +1673,17 @@ html[data-boot="pipeline"] #pf113Splash{display:flex;position:fixed;inset:0;z-in
   linha do checklist da preventiva responde pela pilula Trocada da linha. Visual de sempre e Visual novo. Zero GAS.
   Bloco PF131 no fim do body.
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V131</title>
-<meta name="app-build" content="PCF_V131" data-date="2026-10-08">
+<!--
+  PCF_V134 · CAMERA DENTRO DO PCF · 09/10/2026 · feito SOBRE o PCF_V131 no ar · par sw propertech-v136.
+  Pedido do Fernando (print do cartao "Sua coleta nao se perdeu"): o tecnico abre a camera e o app volta para a
+  escolha de OS. A camera do celular e outro app; com ela na frente o Android fechava o PCF. Agora a camera abre
+  DENTRO da pagina (getUserMedia), com Usar/Repetir, lanterna e zoom quando o aparelho tem; a foto entra pelo mesmo
+  campo de arquivo de sempre. Camera do celular e galeria continuam na propria tela; sem permissao/suporte, a do
+  celular como antes. Chave por aparelho no menu. Se o app cair mesmo assim, volta sozinho para a coleta (o
+  Continuar do cartao do V127, uma vez). Zero SQL, zero GAS. Bloco PF134 no fim do body.
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V134</title>
+<meta name="app-build" content="PCF_V134" data-date="2026-10-09">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -39191,6 +39200,657 @@ html.pf129 .pf131-c.on{background:#fffbeb;border-color:#b45309;color:#92400e}
 })();
 </script>
 <!-- ████ FIM PCF_V131 (PF131) ████ -->
+
+<!-- ████ PCF_V134 (PF134) · CAMERA DENTRO DO PCF · 09/10/2026 ████
+     🕳 Pedido do Fernando (09/10 15h10, print do cartao "Sua coleta nao se perdeu"): "tecnico preenchendo OS e abre pra
+        tirar uma foto, do nada a tela volta pra essa tela de escolha de OS". O PCF abria a camera DO CELULAR
+        (<input capture>): com a camera (outro app) na frente, o Chrome vai para 2o plano e o Android, sem memoria,
+        FECHA a pagina. Na volta o PCF abre do zero; a foto que estava sendo tirada nunca chega. O V127 so salvava o
+        que ja estava preenchido (cartao "Continuar de onde parei").
+     🔑 A camera passa a abrir DENTRO da pagina (getUserMedia): o PCF nunca sai da tela, entao o Android nao tem o
+        que fechar. A foto tirada entra pelo MESMO <input> que a camera do celular usava (DataTransfer + change):
+        tudo depois dela (compressao, miniatura, copia no aparelho, Drive, rascunho) e o caminho de sempre.
+        · Usar / Repetir antes de entregar (como a camera do Android faz); lanterna e zoom quando o aparelho tem.
+        · "📱 Camera do celular" e "🖼 Galeria" na propria tela, para quem precisar; sem permissao, sem camera ou
+          navegador antigo => a camera do celular, como antes (nada fica sem foto).
+        · Chave por aparelho no ☰ Menu ("Camera: dentro do app" / "do celular"). Padrao: dentro do app.
+        · Se o app cair mesmo assim com a camera do celular aberta, o PCF volta SOZINHO para a coleta (o
+          "Continuar" do cartao do V127 e tocado pelo app, uma vez) e avisa para tirar de novo a ultima foto.
+     Zero SQL, zero GAS. Nada do V131 muda de lugar. -->
+<style id="pf134css">
+#pf134Cam{position:fixed;inset:0;z-index:100200;background:#000;color:#fff;display:flex;flex-direction:column;font-family:inherit;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+#pf134Cam[hidden]{display:none!important}
+#pf134Cam .pf134-palco{position:relative;flex:1 1 auto;min-height:0;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#000}
+#pf134Cam video,#pf134Cam .pf134-foto{width:100%;height:100%;object-fit:contain;background:#000;display:block}
+#pf134Cam .pf134-foto[hidden],#pf134Cam video[hidden]{display:none}
+#pf134Cam .pf134-topo{position:absolute;top:0;left:0;right:0;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:calc(10px + env(safe-area-inset-top,0px)) 12px 12px;background:linear-gradient(rgba(0,0,0,.75),rgba(0,0,0,0))}
+#pf134Cam .pf134-titulo{flex:1 1 auto;min-width:0;text-align:center;font-size:15px;font-weight:700;line-height:1.25;text-shadow:0 1px 3px #000;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#pf134Cam button{font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:rgba(255,255,255,.25)}
+#pf134Cam .pf134-bt{min-width:52px;min-height:52px;border-radius:26px;border:1.5px solid rgba(255,255,255,.55);background:rgba(0,0,0,.55);color:#fff;font-size:15px;font-weight:700;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:transform .08s,background .08s}
+#pf134Cam .pf134-bt:active{transform:scale(.94);background:rgba(255,255,255,.28)}
+#pf134Cam .pf134-bt[aria-pressed="true"]{background:#facc15;color:#111;border-color:#facc15}
+#pf134Cam .pf134-bt[hidden]{display:none}
+#pf134Cam .pf134-msg{position:absolute;left:16px;right:16px;top:50%;transform:translateY(-50%);z-index:2;text-align:center;font-size:17px;line-height:1.45;font-weight:600;text-shadow:0 1px 3px #000}
+#pf134Cam .pf134-msg[hidden]{display:none}
+#pf134Cam .pf134-msg small{display:block;font-size:14px;font-weight:500;opacity:.9;margin-top:8px}
+#pf134Cam .pf134-msg .pf134-acoes{display:flex;flex-direction:column;gap:10px;margin-top:18px;align-items:stretch}
+#pf134Cam .pf134-zoom{position:absolute;left:24px;right:24px;bottom:14px;z-index:2;display:flex;align-items:center;gap:10px;font-size:13px;font-weight:700;text-shadow:0 1px 2px #000}
+#pf134Cam .pf134-zoom[hidden]{display:none}
+#pf134Cam .pf134-zoom input{flex:1 1 auto;min-height:36px;accent-color:#facc15}
+#pf134Cam .pf134-base{flex:0 0 auto;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;padding:14px 12px calc(16px + env(safe-area-inset-bottom,0px));background:#000}
+#pf134Cam .pf134-base[hidden]{display:none}
+#pf134Cam .pf134-base .pf134-bt{font-size:13px;padding:0 10px;min-height:52px}
+#pf134Cam .pf134-base .pf134-esq{justify-self:start}
+#pf134Cam .pf134-base .pf134-dir{justify-self:end}
+#pf134Cam .pf134-disparo{width:78px;height:78px;border-radius:50%;border:5px solid #fff;background:rgba(255,255,255,.18);padding:0;transition:transform .08s,background .08s}
+#pf134Cam .pf134-disparo:active{transform:scale(.9);background:#fff}
+#pf134Cam .pf134-disparo:disabled{opacity:.35}
+#pf134Cam .pf134-conferir{flex:0 0 auto;display:grid;grid-template-columns:1fr auto 1.4fr;gap:10px;padding:14px 12px calc(16px + env(safe-area-inset-bottom,0px));background:#000}
+#pf134Cam .pf134-conferir[hidden]{display:none}
+#pf134Cam .pf134-conferir .pf134-bt{min-height:56px;font-size:16px;border-radius:14px}
+#pf134Cam .pf134-usar{background:#16a34a!important;border-color:#16a34a!important;color:#fff!important}
+#pf134Cam .pf134-usar:active{background:#15803d!important}
+#pf134Cam .pf134-clarao{position:absolute;inset:0;z-index:4;background:#fff;opacity:0;pointer-events:none;transition:opacity .18s}
+#pf134Cam .pf134-clarao.on{opacity:.85;transition:none}
+#pf134Cam .pf134-acao-larga{min-height:54px;border-radius:14px;font-size:16px}
+#pf134Cam .pf134-girar{min-width:56px!important;padding:0 8px!important;font-size:15px!important;white-space:nowrap}
+#pf134Cam .pf134-faixa{position:absolute;left:12px;right:12px;top:calc(76px + env(safe-area-inset-top,0px));z-index:5;background:rgba(17,24,39,.94);color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:12px;padding:10px 12px;font-size:14px;font-weight:600;line-height:1.35;text-align:center}
+#pf134Cam .pf134-faixa[hidden]{display:none}
+html.pf134-aberta,html.pf134-aberta body{overflow:hidden!important}
+</style>
+<script>
+(function () {
+  'use strict';
+  if (window.PF134) return;
+  var PF134 = window.PF134 = {
+    versao: 'PCF_V134', log: [], aberta: false, estado: 'fechada', alvo: null, permissao: '',
+    usos: { app: 0, celular: 0, galeria: 0, auto: 0, recusas: 0 }, ultimoErro: '', voltaAuto: null
+  };
+  var KEY = 'pf134_camera';                  // '' (padrao) = dentro do app · 'celular' = camera do celular, como antes
+  var CAP_LADO = 2560, QUALIDADE = 0.92;     // o Drive reduz para 1600 depois (DRIVE_PHOTO_MAX_W): sobra de nitidez
+  var PRAZO_ABRIR = 12000;                   // camera que nao responde (sem a pergunta de permissao na tela)
+  function $(id) { return document.getElementById(id); }
+  function log() { try { PF134.log.push([new Date().toISOString().slice(11, 19)].concat([].slice.call(arguments)).join(' ')); if (PF134.log.length > 80) PF134.log.shift(); } catch (e) {} }
+  function toast(m) { try { if (typeof showFotoToast === 'function') return showFotoToast(m); } catch (e) {} try { showNotification(m); } catch (e2) {} }
+  function aviso(m) { try { showNotification(m); } catch (e) { toast(m); } }
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+
+  // ── chave por aparelho ──────────────────────────────────────────────────────────────────────────
+  PF134.ligada = function () { try { return localStorage.getItem(KEY) !== 'celular'; } catch (e) { return true; } };
+  PF134.ligar = function (sim) {
+    try { if (sim) localStorage.removeItem(KEY); else localStorage.setItem(KEY, 'celular'); } catch (e) {}
+    log('chave', sim ? 'app' : 'celular');
+    aviso(sim ? '📷 A câmera abre dentro do PCF neste aparelho (o app não fecha mais ao fotografar).'
+              : '📱 A câmera do celular volta a ser usada neste aparelho. Se o app fechar ao fotografar, volte para "dentro do app" no ☰ Menu.');
+  };
+  // ── o aparelho consegue? ────────────────────────────────────────────────────────────────────────
+  var _dtOk = null;
+  function dataTransferOk() {
+    if (_dtOk !== null) return _dtOk;
+    try {
+      var dt = new DataTransfer(); dt.items.add(new File(['x'], 't.jpg', { type: 'image/jpeg' }));
+      var inp = document.createElement('input'); inp.type = 'file'; inp.files = dt.files;
+      _dtOk = !!(inp.files && inp.files.length === 1);
+    } catch (e) { _dtOk = false; }
+    return _dtOk;
+  }
+  PF134.suportada = function () {
+    try {
+      if (window.isSecureContext === false) return false;
+      if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') return false;
+      return dataTransferOk();
+    } catch (e) { return false; }
+  };
+  // permissao lembrada pelo navegador: negada => direto para a camera do celular (sem tela de erro a cada foto)
+  try {
+    if (navigator.permissions && navigator.permissions.query) {
+      navigator.permissions.query({ name: 'camera' }).then(function (st) {
+        PF134.permissao = st.state;
+        st.onchange = function () { PF134.permissao = st.state; log('permissão', st.state); };
+      }, function () {});
+    }
+  } catch (e) {}
+  var avisouNegada = false;
+
+  // ── quem e camera ───────────────────────────────────────────────────────────────────────────────
+  var _click = HTMLInputElement.prototype.click;
+  PF134._clickOriginal = _click;
+  var nativo = 0;                            // > 0 enquanto o proprio PF134 pede a camera do celular
+  function ehCamera(el) {
+    try { return !!(el && el.tagName === 'INPUT' && String(el.type).toLowerCase() === 'file' && el.hasAttribute('capture') && !el.disabled); } catch (e) { return false; }
+  }
+  function negada() {
+    if (PF134.permissao !== 'denied') return false;
+    if (!avisouNegada) { avisouNegada = true; toast('📱 O PCF está sem permissão para a câmera: usando a câmera do celular.'); }
+    return true;
+  }
+  function interceptar(el) { return !nativo && ehCamera(el) && PF134.ligada() && PF134.suportada() && !negada(); }
+  PF134.interceptaria = function (el) { return !nativo && ehCamera(el) && PF134.ligada() && PF134.suportada() && PF134.permissao !== 'denied'; };
+
+  // 1) o caminho do app inteiro: fotoPickerEscolher/fotoDireto e o "📷 Tirar a foto agora" chamam input.click()
+  // marca "o PCF foi para a camera/galeria DO CELULAR": se o Android fechar a pagina la, a abertura seguinte sabe
+  // (a marca do V127 nao serve: o visibilitychange 'hidden' que vem logo depois regrava a marca SEM a camera)
+  var NAT_KEY = 'pf134_nativa_v1';
+  function ehImagem(el) {
+    try { return !!(el && el.tagName === 'INPUT' && String(el.type).toLowerCase() === 'file' && /image/i.test(el.getAttribute('accept') || '')); } catch (e) { return false; }
+  }
+  function limparNativa() { try { localStorage.removeItem(NAT_KEY); } catch (e) {} }
+  function marcarNativa(tipo, el) {
+    try { localStorage.setItem(NAT_KEY, JSON.stringify({ ts: Date.now(), tipo: tipo, os: String(window._PGP_OS_ID || '') })); } catch (e) {}
+    // o seletor do celular respondeu (foto escolhida ou cancelado) com a pagina VIVA: a marca nao vale mais
+    try { if (el && el.addEventListener) { el.addEventListener('change', limparNativa, { once: true }); el.addEventListener('cancel', limparNativa, { once: true }); } } catch (e) {}
+  }
+  PF134._marcarNativa = marcarNativa;
+  HTMLInputElement.prototype.click = function () {
+    if (interceptar(this)) { abrir(this, 'click'); return; }
+    if (ehImagem(this)) marcarNativa(ehCamera(this) ? 'camera' : 'galeria', this);
+    return _click.apply(this, arguments);
+  };
+  // 2) campo de foto tocado direto (fotos das tarefas do pipeline, `pfRenderRequisitosHtml`)
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    if (!ehCamera(t)) { if (e.isTrusted && ehImagem(t) && !nativo) marcarNativa('galeria', t); return; }
+    var gesto = e.isTrusted || !!(navigator.userActivation && navigator.userActivation.isActive);
+    if (!gesto) return;
+    if (!interceptar(t)) { if (!nativo) marcarNativa('camera', t); return; }
+    e.preventDefault(); e.stopImmediatePropagation();
+    abrir(t, 'toque');
+  }, true);
+
+  // ── a tela da camera ────────────────────────────────────────────────────────────────────────────
+  var raiz = null, video = null, foto = null, msgEl = null, tituloEl = null, baseEl = null, confEl = null,
+      zoomEl = null, zoomIn = null, zoomVal = null, luzBt = null, disparoBt = null, claraoEl = null;
+  var stream = null, track = null, geracao = 0, blobAtual = null, urlAtual = '', luz = false, toqueAuto = 0, faixaEl = null, faixaT = 0;
+  PF134.sessao = 0;
+  function montar() {
+    if (raiz && document.body.contains(raiz)) return;
+    raiz = document.createElement('div');
+    raiz.id = 'pf134Cam'; raiz.setAttribute('role', 'dialog'); raiz.setAttribute('aria-modal', 'true'); raiz.setAttribute('aria-label', 'Câmera');
+    raiz.hidden = true;
+    raiz.innerHTML =
+      '<div class="pf134-palco">' +
+        '<video playsinline muted autoplay></video>' +
+        '<img class="pf134-foto" alt="Foto tirada" hidden>' +
+        '<div class="pf134-clarao"></div>' +
+        '<div class="pf134-topo">' +
+          '<button type="button" class="pf134-bt" data-pf134="fechar" aria-label="Fechar a câmera">✕</button>' +
+          '<div class="pf134-titulo">📷 Foto</div>' +
+          '<button type="button" class="pf134-bt" data-pf134="luz" aria-pressed="false" aria-label="Lanterna" hidden>🔦</button>' +
+        '</div>' +
+        '<div class="pf134-msg" role="status" aria-live="polite"></div>' +
+        '<div class="pf134-faixa" role="alert" hidden></div>' +
+        '<div class="pf134-zoom" hidden><span>1×</span><input type="range" aria-label="Zoom" step="0.1"><span class="pf134-zv">1×</span></div>' +
+      '</div>' +
+      '<div class="pf134-base">' +
+        '<button type="button" class="pf134-bt pf134-esq" data-pf134="galeria">🖼 Galeria</button>' +
+        '<button type="button" class="pf134-disparo" data-pf134="disparar" aria-label="Tirar a foto" disabled></button>' +
+        '<button type="button" class="pf134-bt pf134-dir" data-pf134="celular">📱 Câmera do celular</button>' +
+      '</div>' +
+      '<div class="pf134-conferir" hidden>' +
+        '<button type="button" class="pf134-bt" data-pf134="repetir">↺ Repetir</button>' +
+        '<button type="button" class="pf134-bt pf134-girar" data-pf134="girar" aria-label="Girar a foto 90 graus">⟳ 90°</button>' +
+        '<button type="button" class="pf134-bt pf134-usar" data-pf134="usar">✓ Usar a foto</button>' +
+      '</div>';
+    document.body.appendChild(raiz);
+    video = raiz.querySelector('video'); foto = raiz.querySelector('.pf134-foto'); msgEl = raiz.querySelector('.pf134-msg');
+    tituloEl = raiz.querySelector('.pf134-titulo'); baseEl = raiz.querySelector('.pf134-base'); confEl = raiz.querySelector('.pf134-conferir');
+    zoomEl = raiz.querySelector('.pf134-zoom'); zoomIn = zoomEl.querySelector('input'); zoomVal = zoomEl.querySelector('.pf134-zv');
+    faixaEl = raiz.querySelector('.pf134-faixa');
+    luzBt = raiz.querySelector('[data-pf134="luz"]'); disparoBt = raiz.querySelector('[data-pf134="disparar"]'); claraoEl = raiz.querySelector('.pf134-clarao');
+    try { video.muted = true; video.setAttribute('muted', ''); } catch (e) {}
+    raiz.addEventListener('click', function (e) {
+      var b = e.target && e.target.closest ? e.target.closest('button[data-pf134]') : null;
+      if (!b || b.disabled) return;
+      e.stopPropagation();
+      var a = b.getAttribute('data-pf134');
+      if (a === 'fechar') return fechar('fechar');
+      if (a === 'disparar') return disparar();
+      if (a === 'repetir') return repetir();
+      if (a === 'usar') return usar();
+      if (a === 'celular') return usarCelular();
+      if (a === 'galeria') return usarGaleria();
+      if (a === 'luz') return alternarLuz();
+      if (a === 'girar') return girarFoto();
+    });
+    zoomIn.addEventListener('input', function () {
+      var z = Number(zoomIn.value); zoomVal.textContent = (Math.round(z * 10) / 10) + '×';
+      try { if (track) track.applyConstraints({ advanced: [{ zoom: z }] }).catch(function () {}); } catch (e) {}
+    });
+  }
+  function dizer(m) {
+    if (!PF134.aberta || !faixaEl) return toast(m);
+    faixaEl.textContent = m; faixaEl.hidden = false; PF134.ultimaFaixa = m;
+    clearTimeout(faixaT); faixaT = setTimeout(function () { try { faixaEl.hidden = true; } catch (e) {} }, 4000);
+  }
+  PF134.dizer = dizer;
+  function mostrarMsg(html) { if (!msgEl) return; if (html) { msgEl.innerHTML = html; msgEl.hidden = false; } else { msgEl.innerHTML = ''; msgEl.hidden = true; } }
+  function definirEstado(s) {
+    PF134.estado = s;
+    if (!raiz) return;
+    raiz.setAttribute('data-estado', s);
+    var conferir = s === 'conferir' || s === 'girando';
+    baseEl.hidden = conferir || s === 'erro';
+    confEl.hidden = !conferir;
+    foto.hidden = !conferir;
+    video.hidden = conferir || s === 'erro';
+    disparoBt.disabled = s !== 'pronta';
+    try { confEl.querySelectorAll('button').forEach(function (b) { b.disabled = s !== 'conferir'; }); } catch (e) {}
+    if (s !== 'pronta') zoomEl.hidden = true;
+  }
+  function tituloDo(input) {
+    // rotulo do item quando da para achar (cartao/linha da foto); senao "Foto"
+    try {
+      var t = '', c = input && input.closest ? input.closest('.photo-item') : null;
+      if (c) t = (c.querySelector('.photo-pname') || {}).textContent;
+      if (!t && input && input.closest) { c = input.closest('.pt-quick-box'); if (c) t = (c.querySelector('.pt-box-partname') || {}).textContent; }
+      t = String(t || '').replace(/\s+/g, ' ').trim();
+      if (t && t.length <= 60) return '📷 ' + t;
+    } catch (e) {}
+    return '📷 Foto';
+  }
+
+  function abrir(input, via) {
+    if (PF134.aberta) { log('abrir ignorado: já aberta'); return; }
+    montar();
+    PF134.aberta = true; PF134.alvo = input; PF134.via = via; luz = false; PF134.sessao++;
+    ouvirGravidade(true);
+    try { faixaEl.hidden = true; } catch (e) {}
+    try { luzBt.setAttribute('aria-pressed', 'false'); luzBt.hidden = true; } catch (e) {}
+    tituloEl.textContent = (PF134._titulo && PF134._titulo()) || tituloDo(PF134._gatilho || input);
+    raiz.hidden = false;
+    document.documentElement.classList.add('pf134-aberta');
+    definirEstado('abrindo');
+    mostrarMsg('Abrindo a câmera…');
+    log('abrir', via);
+    iniciarStream();
+  }
+  PF134.abrir = abrir;
+
+  function pararStream() {
+    geracao++;
+    var s = stream; stream = null; track = null;
+    try { if (s) s.getTracks().forEach(function (t) { try { t.stop(); } catch (e) {} }); } catch (e) {}
+    try { if (video) { video.pause(); video.srcObject = null; } } catch (e) {}
+  }
+  PF134._pararStream = pararStream;
+  function comPrazo(p, ms) {
+    return new Promise(function (ok, falha) {
+      var t = setTimeout(function () { var e = new Error('A câmera não respondeu em ' + Math.round(ms / 1000) + ' s'); e.name = 'Prazo'; falha(e); }, ms);
+      p.then(function (v) { clearTimeout(t); ok(v); }, function (e) { clearTimeout(t); falha(e); });
+    });
+  }
+  async function iniciarStream() {
+    pararStream();
+    var minha = ++geracao;
+    var tentativas = [
+      { audio: false, video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1440 } } },
+      { audio: false, video: { facingMode: { ideal: 'environment' } } },
+      { audio: false, video: true }
+    ];
+    // a pergunta "Permitir camera?" fica na tela o tempo que o tecnico quiser: sem prazo enquanto ela pode estar la
+    var semPrazo = PF134.permissao !== 'granted';
+    if (semPrazo) mostrarMsg('Abrindo a câmera…<small>Se o celular perguntar, toque em <b>Permitir</b>.</small>');
+    var s = null, erro = null;
+    for (var i = 0; i < tentativas.length && !s; i++) {
+      try {
+        var p = navigator.mediaDevices.getUserMedia(tentativas[i]);
+        // resposta que chega depois de desistirmos: solta a camera
+        p.then(function (tarde) { if (tarde && tarde !== stream && (minha !== geracao || !PF134.aberta)) { try { tarde.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} } }, function () {});
+        s = await (semPrazo ? p : comPrazo(p, PRAZO_ABRIR));
+      } catch (e) {
+        erro = e; log('getUserMedia', i, e && e.name, e && e.message);
+        if (e && (e.name === 'NotAllowedError' || e.name === 'SecurityError' || e.name === 'Prazo')) break;
+      }
+      if (minha !== geracao || !PF134.aberta) { try { if (s) s.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} return; }
+    }
+    if (!s) return falhou(erro);
+    stream = s; track = s.getVideoTracks()[0] || null;
+    try { video.srcObject = s; } catch (e) { return falhou(e); }
+    try { await comPrazo(new Promise(function (ok) { if (video.readyState >= 1 && video.videoWidth) return ok(); video.addEventListener('loadedmetadata', function () { ok(); }, { once: true }); }), 8000); }
+    catch (e) { if (minha !== geracao || !PF134.aberta) return; return falhou(e); }   // prazo de uma abertura ANTIGA nao derruba a nova
+    try { await video.play(); } catch (e) { log('play', e && e.name); }
+    if (minha !== geracao || !PF134.aberta) return;
+    PF134.permissao = 'granted';
+    mostrarMsg('');
+    definirEstado('pronta');
+    recursos();
+    log('pronta', video.videoWidth + 'x' + video.videoHeight);
+  }
+  function recursos() {
+    var caps = {};
+    try { caps = (track && typeof track.getCapabilities === 'function') ? (track.getCapabilities() || {}) : {}; } catch (e) { caps = {}; }
+    luz = false;   // trilha nova nasce com a lanterna apagada
+    try { luzBt.hidden = !caps.torch; luzBt.setAttribute('aria-pressed', 'false'); } catch (e) {}
+    try {
+      var z = caps.zoom;
+      if (z && typeof z.max === 'number' && typeof z.min === 'number' && z.max > z.min) {
+        var atual = z.min; try { var st = track.getSettings(); if (st && st.zoom) atual = st.zoom; } catch (e) {}
+        zoomIn.min = z.min; zoomIn.max = Math.min(z.max, z.min * 8 || z.max); zoomIn.step = z.step || 0.1; zoomIn.value = atual;
+        zoomVal.textContent = (Math.round(atual * 10) / 10) + '×';
+        zoomEl.hidden = false;
+      } else zoomEl.hidden = true;
+    } catch (e) { zoomEl.hidden = true; }
+  }
+  function alternarLuz() {
+    if (!track) return;
+    var quer = !luz;
+    track.applyConstraints({ advanced: [{ torch: quer }] }).then(function () { luz = quer; luzBt.setAttribute('aria-pressed', quer ? 'true' : 'false'); },
+      function (e) { log('lanterna', e && e.name); dizer('Este celular não deixa ligar a lanterna pela câmera do app.'); });
+  }
+  function falhou(e) {
+    pararStream();
+    var nome = (e && e.name) || 'Erro';
+    PF134.ultimoErro = nome + ': ' + ((e && e.message) || '');
+    log('falhou', PF134.ultimoErro);
+    if (!PF134.aberta) return;
+    definirEstado('erro');
+    var porque;
+    var negadaDeVez = (nome === 'NotAllowedError' || nome === 'SecurityError') && (PF134.permissao === 'denied' || nome === 'SecurityError');
+    if ((nome === 'NotAllowedError' || nome === 'SecurityError') && !negadaDeVez) {
+      PF134.usos.recusas++;
+      porque = 'A câmera não foi liberada.<small>Toque em ↻ Tentar de novo e depois em <b>Permitir</b> — ou use a câmera do celular.</small>';
+    } else if (negadaDeVez) {
+      PF134.usos.recusas++;
+      porque = 'O PCF está sem permissão para usar a câmera.<small>Para liberar: toque no 🔒 ao lado do endereço › Permissões › Câmera › Permitir. Enquanto isso, use a câmera do celular.</small>';
+    } else if (nome === 'NotFoundError' || nome === 'OverconstrainedError') {
+      porque = 'Não achei a câmera deste aparelho.<small>Use a câmera do celular.</small>';
+    } else if (nome === 'NotReadableError' || nome === 'AbortError') {
+      porque = 'A câmera está ocupada por outro app.<small>Feche o outro app que usa a câmera e tente de novo, ou use a câmera do celular.</small>';
+    } else {
+      porque = 'A câmera não abriu dentro do PCF.<small>' + esc((e && e.message) || nome) + '</small>';
+    }
+    mostrarMsg(porque + '<div class="pf134-acoes">' +
+      '<button type="button" class="pf134-bt pf134-acao-larga pf134-usar" data-pf134="celular">📱 Usar a câmera do celular</button>' +
+      (negadaDeVez ? '' : '<button type="button" class="pf134-bt pf134-acao-larga" data-pf134="tentar">↻ Tentar de novo</button>') +
+      '<button type="button" class="pf134-bt pf134-acao-larga" data-pf134="fechar">Fechar</button></div>');
+    var tb = msgEl.querySelector('[data-pf134="tentar"]');
+    if (tb) tb.onclick = function (ev) { ev.stopPropagation(); definirEstado('abrindo'); mostrarMsg('Abrindo a câmera…'); iniciarStream(); };
+  }
+  function soltarFoto() {
+    try { if (urlAtual) URL.revokeObjectURL(urlAtual); } catch (e) {}
+    urlAtual = ''; blobAtual = null;
+    try { if (foto) foto.removeAttribute('src'); } catch (e) {}
+  }
+  function clarao() { try { claraoEl.classList.add('on'); setTimeout(function () { claraoEl.classList.remove('on'); }, 60); } catch (e) {} }
+  function disparar() {
+    if (PF134.estado !== 'pronta' || !video) return;
+    var w = video.videoWidth, h = video.videoHeight;
+    if (!w || !h) { dizer('A câmera ainda está abrindo — tente de novo.'); return; }
+    var k = Math.min(1, CAP_LADO / Math.max(w, h));
+    var cw = Math.round(w * k), ch = Math.round(h * k);
+    var giro = giroDaFoto(), sess = PF134.sessao;
+    definirEstado('tirando');
+    clarao();
+    var cv;
+    try { cv = desenhar(video, cw, ch, giro); } catch (e) { log('drawImage', e && e.message); definirEstado('pronta'); dizer('⚠ Não consegui tirar a foto — tente de novo.'); return; }
+    PF134.ultimoGiro = giro;
+    try { video.pause(); } catch (e) {}
+    cv.toBlob(function (b) {
+      try { cv.width = 0; cv.height = 0; } catch (e) {}
+      // so a MESMA sessao, ainda esperando esta foto (Voltar + outro 📷 no meio = descarta)
+      if (!PF134.aberta || sess !== PF134.sessao || PF134.estado !== 'tirando') { log('foto descartada: sessão mudou'); return; }
+      if (!b || !b.size) { try { video.play(); } catch (e) {} definirEstado(stream ? 'pronta' : 'abrindo'); if (!stream) iniciarStream(); dizer('⚠ Não consegui tirar a foto — tente de novo.'); return; }
+      soltarFoto();
+      blobAtual = b; urlAtual = URL.createObjectURL(b); foto.src = urlAtual;
+      definirEstado('conferir');
+      log('foto', cw + 'x' + ch, 'giro ' + giro, Math.round(b.size / 1024) + ' KB');
+    }, 'image/jpeg', QUALIDADE);
+  }
+  // ── ORIENTACAO: o app e travado em retrato (manifest), entao com o celular DEITADO o quadro da camera vem de lado.
+  // A gravidade diz como o aparelho esta; a tela diz como o quadro veio. A diferenca e o quanto girar. Sem sensor = 0.
+  // E o tecnico VE o resultado antes do Usar, com ⟳ para corrigir na mao.
+  var grav = null;
+  function aoMover(e) {
+    try { var g = e.accelerationIncludingGravity; if (g && g.x != null && g.y != null) grav = { x: Number(g.x), y: Number(g.y), em: Date.now() }; } catch (x) {}
+  }
+  function ouvirGravidade(sim) {
+    try { if (sim) window.addEventListener('devicemotion', aoMover); else { window.removeEventListener('devicemotion', aoMover); grav = null; } } catch (e) {}
+  }
+  function anguloFisico() {
+    if (!grav || Date.now() - grav.em > 2000) return 0;
+    var x = grav.x, y = grav.y;
+    if (/iPhone|iPad|iPod/.test(navigator.userAgent || '')) { x = -x; y = -y; }   // o iOS informa o sinal ao contrario do Android
+    if (Math.abs(x) > 5 && Math.abs(x) > Math.abs(y) + 2) return x > 0 ? 90 : 270;
+    if (y < -5 && Math.abs(y) > Math.abs(x) + 2) return 180;
+    return 0;
+  }
+  function anguloTela() { try { var a = (screen.orientation && typeof screen.orientation.angle === 'number') ? screen.orientation.angle : (typeof window.orientation === 'number' ? window.orientation : 0); return ((a % 360) + 360) % 360; } catch (e) { return 0; } }
+  function giroDaFoto() { var d = (anguloFisico() - anguloTela() + 360) % 360; return (360 - d) % 360; }   // giro no sentido horario
+  PF134._giro = function () { return { fisico: anguloFisico(), tela: anguloTela(), giro: giroDaFoto() }; };
+  function desenhar(fonte, w, h, giro) {
+    var cv = document.createElement('canvas'), deitar = giro === 90 || giro === 270;
+    cv.width = deitar ? h : w; cv.height = deitar ? w : h;
+    var x = cv.getContext('2d');
+    x.translate(cv.width / 2, cv.height / 2); x.rotate(giro * Math.PI / 180); x.drawImage(fonte, -w / 2, -h / 2, w, h);
+    return cv;
+  }
+  function girarFoto() {
+    if (PF134.estado !== 'conferir' || !foto || !foto.naturalWidth) return;
+    var sess = PF134.sessao, cv;
+    definirEstado('girando');
+    try { cv = desenhar(foto, foto.naturalWidth, foto.naturalHeight, 90); } catch (e) { definirEstado('conferir'); dizer('⚠ Não consegui girar a foto.'); return; }
+    cv.toBlob(function (b) {
+      try { cv.width = 0; cv.height = 0; } catch (e) {}
+      if (!PF134.aberta || sess !== PF134.sessao || PF134.estado !== 'girando') return;
+      if (!b || !b.size) { definirEstado('conferir'); dizer('⚠ Não consegui girar a foto.'); return; }
+      soltarFoto(); blobAtual = b; urlAtual = URL.createObjectURL(b); foto.src = urlAtual;
+      PF134.giros = (PF134.giros || 0) + 1;
+      definirEstado('conferir');
+    }, 'image/jpeg', QUALIDADE);
+  }
+  function repetir() {
+    soltarFoto();
+    if (!stream) { definirEstado('abrindo'); mostrarMsg('Abrindo a câmera…'); iniciarStream(); return; }
+    try { video.play(); } catch (e) {}
+    definirEstado('pronta'); recursos();
+  }
+  function nomeArquivo() {
+    var d = new Date(), p = function (n) { return (n < 10 ? '0' : '') + n; };
+    return 'PCF_' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '_' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds()) + '.jpg';
+  }
+  // entrega pelo MESMO campo: o que o app faz com a foto da camera do celular, faz com esta
+  function entregar(alvo, files) {
+    try {
+      var dt = new DataTransfer();
+      files.forEach(function (f) { dt.items.add(f); });
+      alvo.files = dt.files;
+      if (!alvo.files || alvo.files.length !== files.length) throw new Error('o campo não aceitou a foto');
+      alvo.dispatchEvent(new Event('input', { bubbles: true }));
+      alvo.dispatchEvent(new Event('change', { bubbles: true }));
+      return true;
+    } catch (e) { log('entregar falhou', e && e.message); PF134.ultimoErro = 'entregar: ' + (e && e.message); return false; }
+  }
+  PF134._entregar = entregar;
+  function usar() {
+    if (PF134.estado !== 'conferir' || !blobAtual) return;
+    var alvo = PF134.alvo, f;
+    try { f = new File([blobAtual], nomeArquivo(), { type: 'image/jpeg', lastModified: Date.now() }); } catch (e) { f = null; }
+    if (!f) { toast('⚠ Não consegui preparar a foto — tente de novo.'); return; }
+    fechar('usar');                         // solta a camera ANTES do trabalho pesado da foto (memoria)
+    setTimeout(function () {
+      if (entregar(alvo, [f])) { PF134.usos.app++; log('entregue', f.name, Math.round(f.size / 1024) + ' KB'); }
+      else aviso('⚠ A foto não entrou no relatório (' + esc(PF134.ultimoErro) + '). Tire de novo pela câmera do celular: ☰ Menu → Câmera.');
+    }, 0);
+  }
+  function usarCelular() {
+    var alvo = PF134.alvo;
+    fechar('celular');
+    if (!alvo) return;
+    PF134.usos.celular++;
+    log('câmera do celular');
+    try { if (typeof pgpSaveDraftAgora === 'function') pgpSaveDraftAgora(); } catch (e) {}
+    try { if (window.PF127 && typeof PF127.marcarTela === 'function') PF127.marcarTela(null, true); } catch (e) {}
+    marcarNativa('camera', alvo);
+    nativo++;
+    try { _click.call(alvo); } finally { nativo--; }
+  }
+  function usarGaleria() {
+    var alvo = PF134.alvo, ctx = PF134._ctx;
+    if (!alvo) return;
+    // veio do seletor do app (📷 de item/peca): a galeria do PROPRIO app, igual a "🖼 Galeria" de sempre
+    // (o campo da camera trataria a foto como "da camera" e baixaria uma copia no aparelho)
+    if (ctx && alvo.id === 'globalCameraInput' && typeof window.fotoPickerEscolher === 'function') {
+      fechar('galeria');
+      try { _pickerContext = { type: ctx.type, triggerBtn: ctx.triggerBtn, midx: ctx.midx, photoKey: ctx.photoKey }; } catch (e) { log('contexto do seletor', e && e.message); }
+      PF134.usos.galeria++;
+      log('galeria do app');
+      window.fotoPickerEscolher('galeria');
+      return;
+    }
+    // campo FORA do documento: o "input"/"change" dele nao sobe ao ouvinte da coleta (licao do PF128)
+    var g = document.createElement('input');
+    g.type = 'file'; g.accept = alvo.getAttribute('accept') || 'image/*';
+    if (alvo.multiple) g.multiple = true;
+    g.onchange = function () {
+      var fs = []; try { fs = Array.prototype.slice.call(g.files || []); } catch (e) {}
+      if (!fs.length) return;
+      if (!alvo.multiple) fs = fs.slice(0, 1);
+      if (entregar(alvo, fs)) { PF134.usos.galeria++; log('galeria', fs.length); }
+      else aviso('⚠ A foto da galeria não entrou (' + esc(PF134.ultimoErro) + ').');
+    };
+    fechar('galeria');
+    try { if (typeof pgpSaveDraftAgora === 'function') pgpSaveDraftAgora(); } catch (e) {}
+    marcarNativa('galeria', g);
+    nativo++;
+    try { _click.call(g); } finally { nativo--; }
+  }
+  function fechar(motivo) {
+    if (!PF134.aberta) return;
+    PF134.aberta = false;
+    pararStream();
+    ouvirGravidade(false);
+    try { if (faixaEl) faixaEl.hidden = true; } catch (e) {}
+    soltarFoto();
+    try { if (raiz) raiz.hidden = true; } catch (e) {}
+    document.documentElement.classList.remove('pf134-aberta');
+    definirEstado('fechada');
+    log('fechar', motivo || '');
+    PF134.alvo = null; PF134._gatilho = null; PF134._ctx = null;
+  }
+  PF134.fechar = fechar;
+  PF134.disparar = disparar; PF134.usar = usar; PF134.repetir = repetir;
+
+  // tela apagou / outro app: solta a camera; na volta, abre de novo (a foto em conferencia continua)
+  document.addEventListener('visibilitychange', function () {
+    if (!PF134.aberta) return;
+    if (document.visibilityState === 'hidden') {
+      if (stream) { log('2º plano: câmera solta'); pararStream(); }
+    } else if (PF134.estado === 'pronta' || PF134.estado === 'abrindo') {   // 'tirando'/'conferir': a foto ja saiu do video; Repetir reabre
+      definirEstado('abrindo'); mostrarMsg('Abrindo a câmera…'); iniciarStream();
+    }
+  });
+  // botao Voltar do Android: fecha a camera (uma camada por toque, regra do V99)
+  try {
+    var _vc = window._pgpVoltarUmaCamada;
+    if (typeof _vc === 'function' && !_vc.__pf134) {
+      window._pgpVoltarUmaCamada = function () {
+        if (PF134.aberta) { fechar('voltar'); return true; }
+        return _vc.apply(this, arguments);
+      };
+      window._pgpVoltarUmaCamada.__pf134 = true;
+    }
+  } catch (e) { log('embrulho voltar', e && e.message); }
+  // o rotulo da foto: o gatilho que o app guardou no fotoPickerEscolher
+  try {
+    var _fpe = window.fotoPickerEscolher;
+    if (typeof _fpe === 'function' && !_fpe.__pf134) {
+      window.fotoPickerEscolher = function (origem) {
+        try { var c = (typeof _pickerContext !== 'undefined') ? _pickerContext : null; PF134._gatilho = (c && c.triggerBtn) || null;
+              PF134._ctx = (c && origem === 'camera') ? { type: c.type, triggerBtn: c.triggerBtn, midx: c.midx, photoKey: c.photoKey } : null; } catch (e) { PF134._gatilho = null; PF134._ctx = null; }
+        try { return _fpe.apply(this, arguments); } finally { if (!PF134.aberta) { PF134._gatilho = null; PF134._ctx = null; } }
+      };
+      window.fotoPickerEscolher.__pf134 = true;
+    }
+  } catch (e) { log('embrulho picker', e && e.message); }
+
+  // ── a chave no menu ☰ ───────────────────────────────────────────────────────────────────────────
+  try {
+    var _menu = window.pcf116AbrirMenu;
+    if (typeof _menu === 'function' && !_menu.__pf134) {
+      window.pcf116AbrirMenu = function () {
+        var r = _menu.apply(this, arguments);
+        try {
+          var ovs = document.querySelectorAll('.pcf116-ov'), ov = ovs[ovs.length - 1];
+          var corpo = ov && ov.querySelector('.pcf116-corpo');
+          if (corpo && !corpo.querySelector('[data-o="pf134cam"]')) {
+            var on = PF134.ligada();
+            corpo.insertAdjacentHTML('beforeend', '<button type="button" class="pcf116-item" data-o="pf134cam"><span class="ic">' + (on ? '📷' : '📱') + '</span><span>' +
+              (on ? 'Câmera: dentro do app ✓' : 'Câmera: do celular') + '<small>' +
+              (on ? 'o PCF não sai da tela ao fotografar. Toque para usar a câmera do celular neste aparelho'
+                  : 'o Android pode fechar o app ao fotografar. Toque para a câmera abrir dentro do app') + '</small></span></button>');
+            corpo.querySelector('[data-o="pf134cam"]').onclick = function () {
+              var c = ov.querySelector('.pcf116-pe .pcf116-cancel'); if (c) c.click(); else try { ov.remove(); } catch (e) {}
+              PF134.ligar(!on);
+            };
+          }
+        } catch (e) { log('menu', e && e.message); }
+        return r;
+      };
+      window.pcf116AbrirMenu.__pf134 = true;
+    }
+  } catch (e) { log('embrulho menu', e && e.message); }
+
+  // ═══ VOLTA AUTOMATICA: o app caiu mesmo assim com a camera do celular aberta ═══════════════════════
+  // O V127 guardou a coleta e mostrou o cartao. Se a marca diz COLETA + CAMERA ha pouco, e a reserva foi criada
+  // NESTA abertura, o app toca o "Continuar" sozinho (o mesmo botao, as mesmas provas do V127), uma vez.
+  // Toque do tecnico no cartao antes disso = ele decide. Qualquer recusa/falha deixa o cartao como estava.
+  var VOLTA_MARCA = 10 * 60000, VOLTA_RESERVA = 120000;   // ida a camera dura minutos, nao meia hora
+  var nat = null;
+  try { nat = JSON.parse(localStorage.getItem(NAT_KEY) || 'null'); } catch (e) { nat = null; }
+  try { localStorage.removeItem(NAT_KEY); } catch (e) {}
+  PF134.bootNativa = nat;
+  // a pagina voltou do 2o plano SEM ser fechada: a marca nao vale mais
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') { try { localStorage.removeItem(NAT_KEY); } catch (e) {} } });
+  function voltaAutomatica() {
+    var P = window.PF127;
+    if (!nat || !nat.ts || (Date.now() - Number(nat.ts)) > VOLTA_MARCA) return;
+    if (!P || !P.boot || !P.copia || typeof P.reservas !== 'function') return;
+    var mk = P.boot.marca;
+    if (!mk || mk.tela !== 'coleta' || Number(mk.ts || 0) < Number(nat.ts) - 5000) return;   // a coleta era a tela quando saiu para a camera
+    Promise.resolve(P.copia).then(function (ok) {
+      if (!ok) return;
+      var l = P.reservas(), r = l[l.length - 1];
+      if (!r || (Date.now() - Number(r.criado || 0)) > VOLTA_RESERVA) return;
+      var cartao = $('pf127Retomar');
+      if (!cartao) return;
+      cartao.addEventListener('pointerdown', function () { toqueAuto++; }, true);
+      var tentar = function () {
+        setTimeout(function () {
+          try {
+            var c = $('pf127Retomar');
+            if (!c || toqueAuto) { log('volta automática: técnico decidiu'); return; }
+            var b = c.querySelector('button[data-pf127="continuar"][data-ts="' + String(r.ts).replace(/["\\]/g, '\\$&') + '"]');
+            if (!b || b.disabled) return;
+            PF134.voltaAuto = { ts: r.ts, em: Date.now() };
+            PF134.usos.auto++;
+            log('volta automática', r.ts);
+            b.click();
+            var espera = 0, fim = setInterval(function () {
+              espera += 250;
+              var u = P.ultimaRetomada;
+              if (u && String(u.ts) === String(r.ts) && !P.restaurando) {
+                clearInterval(fim);
+                PF134.voltaAuto.resultado = u.recusada ? 'recusada' : (u.faltam ? 'divergiu' : 'ok');
+                if (!u.recusada && !u.faltam) {
+                  var m = 'O celular fechou o app enquanto ' + (nat.tipo === 'galeria' ? 'a galeria' : 'a câmera') + ' estava aberta. Voltamos para a coleta' +
+                          (r.fotos ? ' com as ' + r.fotos + ' foto(s) que já estavam salvas' : '') +
+                          '.\n\n📷 A foto que estava sendo ' + (nat.tipo === 'galeria' ? 'escolhida' : 'tirada') + ' NÃO chegou: ' + (nat.tipo === 'galeria' ? 'escolha de novo.' : 'tire de novo.') +
+                          (PF134.ligada() ? '' : '\n\nPara isso não acontecer mais: ☰ Menu → "Câmera: do celular" (toque para a câmera abrir dentro do app).');
+                  try { if (window.AppDialog && AppDialog.alert) AppDialog.alert(m, { title: '↩ De volta à coleta', variant: 'warn' }); else aviso(m.replace(/\n+/g, ' ')); } catch (e) { aviso(m.replace(/\n+/g, ' ')); }
+                }
+              } else if (espera > 20000) clearInterval(fim);
+            }, 250);
+          } catch (e) { log('volta automática falhou', e && e.message); }
+        }, 450);
+      };
+      if (document.readyState === 'complete') tentar(); else window.addEventListener('load', tentar, { once: true });
+    }, function () {});
+  }
+  try { voltaAutomatica(); } catch (e) { log('volta', e && e.message); }
+  log('pronto', PF134.suportada() ? 'câmera do app disponível' : 'sem câmera do app (usa a do celular)', PF134.ligada() ? 'chave: app' : 'chave: celular');
+})();
+</script>
+<!-- ████ FIM PCF_V134 (PF134) ████ -->
 
 </body>
 </html>
