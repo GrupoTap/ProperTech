@@ -1665,8 +1665,16 @@ html[data-boot="pipeline"] #pf113Splash{display:flex;position:fixed;inset:0;z-in
   Concluir com "Tirar a foto agora"). "Faltando preencher" lista pecas sem acao. Corrige o "Nao" aceso sem
   escolha no tema claro. Nada sai do DOM. Zero SQL, zero GAS. Bloco PF130 (head e fim do body).
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V130</title>
-<meta name="app-build" content="PCF_V130" data-date="2026-10-08">
+<!--
+  PCF_V131 · PECAS DA OS (1a entrega) · 08/10/2026 · par sw propertech-v133 · par do SQL PECAS_DA_OS (roda ANTES).
+  Sobre o PCF_V130 no ar. As pecas da proposta ACEITA chegam a OS marcadas "Trocar": cartao "Pecas desta OS" na tela
+  da OS (acima das tarefas) e no painel de cada maquina da coleta (so as pecas daquela maquina). Resposta Trocada
+  (qtd + referencia usada) ou Nao trocada + motivo, gravada no celular antes de subir (fila propria); a peca que e
+  linha do checklist da preventiva responde pela pilula Trocada da linha. Visual de sempre e Visual novo. Zero GAS.
+  Bloco PF131 no fim do body.
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V131</title>
+<meta name="app-build" content="PCF_V131" data-date="2026-10-08">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -38672,6 +38680,517 @@ html.pf129.pf130.pf130-cli #pgpTipoVisitaWrap{display:block!important}
 })();
 </script>
 <!-- ████ FIM PCF_V130 (PF130) ████ -->
+
+<!-- ████ PCF_V131 (PF131) · PEÇAS DA OS — as peças da proposta aceita chegam marcadas "Trocar" ████ -->
+<style>
+/* PF131 — cartão "🔩 Peças desta OS" (tela da OS e coleta). Escuro por padrão; claro com html.pf129 (Visual novo). */
+.pf131{margin:0 0 14px;border:1px solid #334155;border-radius:12px;background:#111a2e;color:#e2e8f0;font-size:14px;overflow:hidden}
+.pf131-h{display:flex;align-items:center;gap:8px;padding:11px 12px;border-bottom:1px solid #22304a}
+.pf131-h b{font-size:15px}
+.pf131-h .pf131-res{margin-left:auto;font-size:12px;color:#94a3b8;text-align:right}
+.pf131-nota{padding:8px 12px;font-size:12.5px;color:#94a3b8}
+.pf131-nota.av{color:#fbbf24}.pf131-nota.er{color:#fca5a5}
+.pf131-maq{padding:7px 12px 3px;font-size:11.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:#93c5fd}
+.pf131-it{padding:10px 12px;border-top:1px solid #1e293b}
+.pf131-it:first-of-type{border-top:0}
+.pf131-l1{display:flex;gap:8px;align-items:flex-start;justify-content:space-between}
+.pf131-d{font-weight:700;line-height:1.25}
+.pf131-q{white-space:nowrap;font-weight:700;color:#cbd5e1}
+.pf131-m{font-size:12px;color:#94a3b8;margin-top:3px;line-height:1.35}
+.pf131-st{margin-top:6px;font-size:13px;line-height:1.35}
+.pf131-st.tr{color:#86efac}.pf131-st.nt{color:#fcd34d}.pf131-st.pv{color:#93c5fd}.pf131-st.fi{color:#fbbf24}.pf131-st.rc{color:#fca5a5}
+.pf131-bts{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.pf131-b{min-height:44px;padding:8px 12px;border:2px solid #334155;border-radius:8px;background:#0f172a;color:#e2e8f0;font:700 14px 'Barlow Condensed',system-ui,sans-serif;cursor:pointer;flex:1 1 auto}
+.pf131-b:active{transform:translateY(1px);filter:brightness(1.2)}
+.pf131-b.ok{border-color:#16a34a;background:#0f2a1a;color:#bbf7d0}
+.pf131-b.nao{border-color:#b45309;background:#2a1f0f;color:#fde68a}
+.pf131-b.lv{flex:0 0 auto;min-height:36px;font-size:13px;padding:6px 10px}
+.pf131-b[disabled]{opacity:.55;cursor:wait}
+.pf131-f{margin-top:8px;padding:10px;border:1px dashed #475569;border-radius:8px;background:#0b1324}
+.pf131-f label{display:block;font-size:12px;color:#94a3b8;margin:6px 0 3px}
+.pf131-f input[type=text]{width:100%;box-sizing:border-box;min-height:42px;padding:8px 10px;border:1px solid #475569;border-radius:8px;background:#0f172a;color:#e2e8f0;font-size:15px}
+.pf131-ch{display:flex;gap:6px;flex-wrap:wrap}
+.pf131-c{min-height:40px;padding:6px 10px;border:2px solid #475569;border-radius:20px;background:#0f172a;color:#e2e8f0;font-size:13px;cursor:pointer}
+.pf131-c.on{border-color:#f59e0b;background:#3a2a15;color:#fde68a}
+.pf131-ant{padding:8px 12px;border-top:1px dashed #475569;font-size:12.5px;color:#94a3b8}
+html.pf129 .pf131{background:#fff;border-color:#d9e0ea;color:#0f172a}
+html.pf129 .pf131-h{border-bottom-color:#e5e9f0}
+html.pf129 .pf131-h .pf131-res,html.pf129 .pf131-m,html.pf129 .pf131-nota,html.pf129 .pf131-f label,html.pf129 .pf131-ant{color:#475569}
+html.pf129 .pf131-nota.av{color:#92400e}html.pf129 .pf131-nota.er{color:#b91c1c}
+html.pf129 .pf131-maq{color:#1d4ed8}
+html.pf129 .pf131-it{border-top-color:#eef1f5}
+html.pf129 .pf131-q{color:#334155}
+html.pf129 .pf131-st.tr{color:#166534}html.pf129 .pf131-st.nt{color:#92400e}html.pf129 .pf131-st.pv{color:#1d4ed8}
+html.pf129 .pf131-st.fi{color:#92400e}html.pf129 .pf131-st.rc{color:#b91c1c}
+html.pf129 .pf131-b{background:#fff;border-color:#cbd5e1;color:#0f172a}
+html.pf129 .pf131-b.ok{background:#f0fdf4;border-color:#16a34a;color:#166534}
+html.pf129 .pf131-b.nao{background:#fffbeb;border-color:#b45309;color:#92400e}
+html.pf129 .pf131-f{background:#f8fafc;border-color:#cbd5e1}
+html.pf129 .pf131-f input[type=text]{background:#fff;border-color:#cbd5e1;color:#0f172a}
+html.pf129 .pf131-c{background:#fff;border-color:#cbd5e1;color:#0f172a}
+html.pf129 .pf131-c.on{background:#fffbeb;border-color:#b45309;color:#92400e}
+</style>
+<script>
+/* ════════════════════════════════════════════════════════════════════════════════════════════════════════
+   PCF_V131 (PF131) — 08/10/2026 · rodada 2026-10-08_pecas_da_os · par do SQL PECAS_DA_OS (roda ANTES).
+   Pedido do Fernando: as peças aprovadas na proposta do CRM chegam à OS do PCF marcadas "Trocar".
+   · Tela da OS (acima das tarefas): "🔩 Peças desta OS" — as peças da proposta ACEITA, máquina a máquina.
+   · Coleta (inspeção/preventiva): o mesmo cartão no painel de cada máquina, só com as peças DAQUELA máquina.
+   · Resposta: ✅ Trocada (qtd + referência usada, se outra) ou ⏸ Não trocada + motivo. Gravada no celular ANTES
+     de subir (fila própria pf131_fila_v1); sai da fila só com o "ok" do servidor; ☁️ só com a linha que o servidor
+     devolveu. A lista do servidor fica guardada com a HORA (pf131_pecas_v1) — o estado otimista nunca vai para ela.
+   · Peça que também é linha do checklist da preventiva: UMA resposta só — a pílula "Trocada" da linha (o servidor
+     já lê a troca da preventiva). Marcar "Trocada" na linha desfaz um "Não trocada" dado antes para aquela peça.
+   · Visual de sempre e Visual novo (html.pf129): o mesmo cartão, no mesmo lugar. Nada do app muda de nome.
+   Zero GAS. Lê/grava só pelas RPCs pc_os_pecas / pc_os_peca_responder com o crachá do login com PIN.
+   ════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+  var PF131 = window.PF131 = { versao: 'PCF_V131', log: [], dados: {}, erro: {}, voo: {}, ger: {}, reler: {}, aberto: '', form: {}, subindo: false, toque: null };
+  var CACHE_KEY = 'pf131_pecas_v1', FILA_KEY = 'pf131_fila_v1', RECUSA_KEY = 'pf131_recusados_v1';
+  // recusa DEFINITIVA = o banco disse NÃO por regra desta rodada (P0001 + hint); qualquer outro 4xx/5xx fica na fila
+  var HINTS_DEFINITIVOS = { fora_da_lista: 1, cancelada: 1, uid_reusado: 1, motivo: 1, qtd: 1, estado: 1, chave: 1, uid: 1, os: 1, ref: 1, formato: 1 };
+  var MOTIVOS = [['cliente_desistiu', 'Cliente desistiu'], ['peca_nao_chegou', 'Peça não chegou'], ['nao_precisou', 'Não precisou'], ['outro', 'Outro…']];
+  function $(id) { return document.getElementById(id); }
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function nota(e, onde) { try { PF131.log.push({ onde: onde, msg: String((e && e.message) || e), em: Date.now() }); if (PF131.log.length > 40) PF131.log.shift(); } catch (x) {} }
+  function lerJ(k, p) { try { var v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? p : v; } catch (e) { return p; } }
+  function gravarJ(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { nota(e, 'gravar ' + k); return false; } }
+  function aviso(m) { try { showNotification(m); } catch (e) {} }
+  function hhmm(ms) { var d = new Date(ms || 0); if (!ms || isNaN(d.getTime())) return ''; var p = function (n) { return (n < 10 ? '0' : '') + n; };
+    var hoje = new Date(); return (d.toDateString() === hoje.toDateString() ? '' : p(d.getDate()) + '/' + p(d.getMonth() + 1) + ' ') + p(d.getHours()) + ':' + p(d.getMinutes()); }
+  function num(v) { var n = Number(v); if (!isFinite(n)) return String(v == null ? '' : v); return (Math.round(n * 1000) / 1000).toLocaleString('pt-BR'); }
+  function dataBR(s) { s = String(s || ''); return /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(8, 10) + '/' + s.slice(5, 7) : s; }
+  function osTela() { try { return String(_pfOsId || ''); } catch (e) { return ''; } }
+  function osColeta() { try { return String(window._PGP_OS_ID || ''); } catch (e) { return ''; } }
+  function ehPrev() { try { return _pgpTipoVisita === 'preventiva'; } catch (e) { return false; } }
+  function uid() { return 'pf131-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10); }
+  function dono() { try { if (window.PF123 && typeof PF123.dono === 'function') return String(PF123.dono() || ''); } catch (e) {}
+    try { var s = window.PROPER_SESSION || JSON.parse(localStorage.getItem('proper_session') || 'null'); return String((s && (s.id_tecnico || (s.tecnico && s.tecnico.id))) || ''); } catch (e) { return ''; } }
+  function qtdCampo(v) { var n = Number(v); if (!isFinite(n)) return ''; return String(Math.round(n * 1000) / 1000).replace('.', ','); }   // sem separador de milhar (o "1.000" virava 1)
+
+  // ── 1 · o servidor (o mesmo transporte do 💾 da coleta segura, com o crachá do PIN) ─────────────────────
+  function erro(tipo, msg, st) { var e = new Error(msg || tipo); e.pf131 = tipo; e.status = st || 0; return e; }
+  async function rpc(fn, args) {
+    if (window.PF123 && typeof PF123.rpc === 'function') {
+      try { return await PF123.rpc(fn, args, 15000); }
+      catch (e) {
+        var t = e && e.pf123;
+        if (t === 'sem_sql') throw erro('sem_sql', 'o servidor ainda não tem a lista de peças da OS (SQL PECAS_DA_OS)', 404);
+        var ex2 = erro(t || 'rede', (e && e.message) || 'falhou', e && e.status); ex2.hint = (e && e.hint) || ''; throw ex2;
+      }
+    }
+    if (navigator.onLine === false) throw erro('rede', 'sem internet');
+    var tok = null; try { tok = await _pcfSupaToken(); } catch (e) { tok = null; }
+    if (!tok) throw erro('cracha', 'falta o login com PIN neste celular (entre de novo pelo Hub)');
+    var r, d = null, txt = '';
+    try {
+      r = await fetch(PCF_SUPA_URL + '/rest/v1/rpc/' + fn, { method: 'POST',
+        headers: { 'apikey': PCF_SUPA_ANON, 'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: JSON.stringify(args || {}) });
+      txt = await r.text();
+    } catch (e) { throw erro('rede', 'sem resposta do servidor'); }
+    try { d = JSON.parse(txt); } catch (e) { d = null; }
+    if (r.status === 404) throw erro('sem_sql', 'o servidor ainda não tem a lista de peças da OS (SQL PECAS_DA_OS)', 404);
+    if (r.status === 401 || r.status === 403) throw erro('cracha', (d && d.message) || 'o servidor recusou o crachá — entre de novo pelo Hub', r.status);
+    if (r.status >= 500 || !r.status) throw erro('rede', 'o servidor falhou (' + r.status + ')', r.status);
+    if (!r.ok) { var ex = erro('recusado', (d && (d.message || d.hint)) || ('HTTP ' + r.status), r.status); ex.hint = (d && d.hint) || ''; throw ex; }
+    return d;
+  }
+  PF131.rpc = rpc;
+
+  // ── 2 · a lista guardada no celular (SÓ o que o servidor disse, com a hora) ───────────────────────────────
+  function cache() { var c = lerJ(CACHE_KEY, {}); return (c && typeof c === 'object') ? c : {}; }
+  function cacheGravar(os, d, ts) {
+    var c = cache(); c[os] = { d: d, ts: ts || Date.now() };
+    var ks = Object.keys(c); if (ks.length > 20) ks.sort(function (a, b) { return (c[a].ts || 0) - (c[b].ts || 0); }).slice(0, ks.length - 20).forEach(function (k) { delete c[k]; });
+    gravarJ(CACHE_KEY, c);
+  }
+  function dadosDe(os) {
+    if (!os) return null;
+    if (PF131.dados[os]) return PF131.dados[os];
+    var c = cache()[os]; if (c && c.d && c.d.ok) return { d: c.d, ts: c.ts, fonte: 'cache' };
+    return null;
+  }
+  // troca UMA peça do que o servidor devolveu (resposta confirmada) — também no guardado
+  function aplicarConfirmada(os, r) {
+    var x = dadosDe(os); if (!x || !x.d || !Array.isArray(x.d.pecas)) return;
+    x.d.pecas.forEach(function (p) {
+      if (p.chave !== r.chave) return;
+      p.estado = r.estado === 'prevista' ? (p.derivada_visita ? 'trocada' : 'prevista') : r.estado;
+      p.derivada = r.estado === 'prevista' && !!p.derivada_visita;
+      p.motivo = r.motivo || null; p.ref_usada = r.ref_usada || null; p.por_nome = r.por_nome || ''; p.em = r.em || null;
+      p.qtd_trocada = r.estado === 'trocada' ? (r.qtd != null ? r.qtd : p.qtd) : (p.derivada ? p.qtd : null);
+    });
+    PF131.ger[os] = (PF131.ger[os] || 0) + 1;   // uma leitura disparada ANTES desta confirmação não vale mais
+    PF131.dados[os] = { d: x.d, ts: x.ts, fonte: x.fonte };
+    if (!x.d.sem_os) cacheGravar(os, x.d, x.ts);   // a hora mostrada continua sendo a da LEITURA
+  }
+
+  // ── 3 · ler do servidor ──────────────────────────────────────────────────────────────────────────────────
+  async function carregar(os, porque) {
+    if (!os || PF131.voo[os]) return;
+    PF131.voo[os] = true; pintar();
+    var g0 = PF131.ger[os] || 0;
+    try {
+      var d = await rpc('pc_os_pecas', { p_os: os });
+      if (!d || d.ok !== true || !Array.isArray(d.pecas)) throw erro('recusado', 'resposta estranha do servidor');
+      if ((PF131.ger[os] || 0) !== g0) { PF131.reler[os] = true; return; }   // chegou uma confirmação no meio: esta foto é velha — relê
+      PF131.dados[os] = { d: d, ts: Date.now(), fonte: 'servidor' };
+      delete PF131.erro[os];
+      if (!d.sem_os) cacheGravar(os, d);   // "a OS ainda não chegou ao banco" nunca vira lista vazia guardada
+    } catch (e) {
+      PF131.erro[os] = { tipo: e.pf131 || 'rede', msg: (e && e.message) || 'falhou', em: Date.now() };
+      nota(e, 'carregar ' + os + ' (' + (porque || '') + ')');
+    } finally { delete PF131.voo[os]; pintar(); if (PF131.reler[os]) { delete PF131.reler[os]; setTimeout(function () { carregar(os, 'releitura'); }, 0); } }
+  }
+  PF131.carregar = carregar;
+
+  // ── 4 · a fila de respostas (persist-first) ─────────────────────────────────────────────────────────────
+  function fila() { var f = lerJ(FILA_KEY, {}); return (f && typeof f === 'object') ? f : {}; }
+  function recusados() { var r = lerJ(RECUSA_KEY, []); return Array.isArray(r) ? r : []; }
+  function pendenteDe(os, chave) {   // a resposta mais NOVA ainda no celular para esta peça (de QUALQUER técnico — o desenho diz de quem)
+    var f = fila(), m = null;
+    Object.keys(f).forEach(function (k) { var it = f[k]; if (it && it.os === os && it.chave === chave && (!m || it.desde > m.desde)) m = it; });
+    return m;
+  }
+  function estEfetivo(p, pen) { return pen ? (pen.estado === 'limpar' ? (p.derivada_visita ? 'trocada' : 'prevista') : pen.estado) : p.estado; }
+  function enfileirar(it) {
+    it.client_uid = it.client_uid || uid(); it.desde = Date.now(); it.sub = dono();   // a fila é do TÉCNICO (celular compartilhado)
+    if (!it.sub) { aviso('⚠ Sem o login do técnico neste celular — entre de novo pelo ProperHub. A resposta NÃO foi guardada.'); return false; }
+    PF131.ger[it.os] = (PF131.ger[it.os] || 0) + 1;
+    var f = fila(); f[it.client_uid] = it;
+    if (!gravarJ(FILA_KEY, f)) { aviso('⚠ O celular está sem espaço — a resposta NÃO foi guardada. Libere espaço e toque de novo.'); return false; }
+    PF131.aberto = ''; pintar(); subir();
+    return true;
+  }
+  PF131.enfileirar = enfileirar;
+  async function subir() {
+    if (PF131.subindo) return; PF131.subindo = true;
+    var parou = false, feitos = {}, reler = {};
+    try {
+      var eu = dono();
+      var ks = Object.keys(fila()).filter(function (k) { var x = fila()[k]; return x && x.sub === eu; })   // o de outro técnico espera o login dele
+        .sort(function (a, b) { return fila()[a].desde - fila()[b].desde; });
+      for (var i = 0; i < ks.length; i++) {
+        var it = fila()[ks[i]]; if (!it) continue; feitos[ks[i]] = 1;
+        try {
+          var r = await rpc('pc_os_peca_responder', { p: { os: it.os, chave: it.chave, estado: it.estado, motivo: it.motivo || null,
+                                                           qtd: it.qtd || null, ref_usada: it.ref_usada || null, client_uid: it.client_uid } });
+          if (!r || r.ok !== true || r.chave !== it.chave) throw erro('recusado', 'o servidor não confirmou a resposta');
+          var f = fila(); delete f[it.client_uid]; gravarJ(FILA_KEY, f);
+          aplicarConfirmada(it.os, r); delete PF131.erro[it.os]; reler[it.os] = 1;
+        } catch (e) {
+          if (e.pf131 === 'recusado' && e.status === 400 && HINTS_DEFINITIVOS[e.hint]) {
+            // o banco disse NÃO por regra (a peça saiu da proposta, a OS foi cancelada…): a resposta sai da fila, mas fica
+            // GUARDADA no celular, com o conteúdo, até o técnico ler (nunca se perde calada)
+            var x = dadosDe(it.os), p0 = x && x.d ? (x.d.pecas || []).filter(function (q) { return q.chave === it.chave; })[0] : null;
+            var rc = recusados(); rc.push({ os: it.os, chave: it.chave, estado: it.estado, motivo: it.motivo || '', qtd: it.qtd || null, ref_usada: it.ref_usada || '',
+                                            descricao: (p0 && p0.descricao) || '', msg: e.message, em: Date.now(), sub: it.sub });
+            if (!gravarJ(RECUSA_KEY, rc.slice(-200))) {   // sem espaço para guardar a recusa: NÃO tira da fila e PARA (sem laço de reenvio)
+              it.erro = 'sem espaço no celular para guardar a recusa: ' + e.message; var h0 = fila(); if (h0[it.client_uid]) { h0[it.client_uid] = it; gravarJ(FILA_KEY, h0); } parou = true; break; }
+            var g = fila(); delete g[it.client_uid]; gravarJ(FILA_KEY, g);
+            aviso('⚠ Peças da OS: o servidor recusou uma resposta — ' + e.message + ' (ela ficou anotada no cartão)');
+            reler[it.os] = 1;
+          } else {
+            it.erro = e.message; it.tent = (it.tent || 0) + 1; var h = fila(); if (h[it.client_uid]) { h[it.client_uid] = it; gravarJ(FILA_KEY, h); } nota(e, 'subir');
+            // sem rede, crachá, servidor fora (5xx) ou limite (429): para e tenta depois. Outro 4xx que não é regra: este fica na fila com
+            // o erro e os SEGUINTES seguem (um item estranho não trava a fila inteira do técnico)
+            if (e.pf131 !== 'recusado' || e.status === 429 || e.status >= 500 || !e.status) { parou = true; break; }
+          }
+        }
+      }
+    } finally {
+      PF131.subindo = false; pintar();
+      Object.keys(reler).forEach(function (os) { carregar(os, 'depois de subir'); });
+      // entrou resposta nova enquanto subia: sobe já (não espera o relógio de 30 s)
+      if (!parou) { var eu2 = dono(); if (Object.keys(fila()).some(function (k) { var x = fila()[k]; return x && x.sub === eu2 && !feitos[k]; })) setTimeout(subir, 50); }
+    }
+  }
+  PF131.subir = subir;
+
+  // ── 5 · o desenho ────────────────────────────────────────────────────────────────────────────────────────
+  function rotMotivo(m) {
+    m = String(m || ''); for (var i = 0; i < MOTIVOS.length; i++) if (MOTIVOS[i][0] === m) return MOTIVOS[i][1];
+    return m.indexOf('outro:') === 0 ? m.slice(6).trim() : m;
+  }
+  // a linha do checklist da preventiva que é esta peça (só na coleta, na máquina idx)
+  function linhaChecklist(p, idx) {
+    if (idx == null || !p.part_id || !ehPrev()) return null;
+    try {
+      var mp = pgpPartIdMapDe(idx) || {}, k = Object.keys(mp).filter(function (x) { return mp[x] === p.part_id; })[0];
+      if (!k) return null;
+      var pk = 'm' + idx + '_' + k, ac = $(pk + '_acao'); if (!ac) return null;
+      return { pk: pk, acao: String(ac.value || '') };
+    } catch (e) { return null; }
+  }
+  function itemHtml(os, p, idx) {
+    var key = os + '|' + p.chave, pen = pendenteDe(os, p.chave), ch = linhaChecklist(p, idx);
+    var est = estEfetivo(p, pen), deOutro = pen && pen.sub && pen.sub !== dono();
+    var h = '<div class="pf131-it" data-pf131-chave="' + esc(p.chave) + '">' +
+      '<div class="pf131-l1"><span class="pf131-d">' + esc(p.descricao) + '</span><span class="pf131-q">' + esc(num(p.qtd)) + ' ' + esc(p.unidade || 'un') + '</span></div>';
+    var m = ['📋 ' + esc(p.proposta || 'Proposta') + (p.versao ? ' v' + esc(p.versao) : '') + (p.tipo === 'complementar' ? ' (complementar)' : '')];
+    if (p.codigo) m.push('Ref. ' + esc(p.codigo));
+    if (p.omie_codigo) m.push('Omie ' + esc(p.omie_codigo) + (p.omie_descricao && p.omie_descricao !== p.descricao ? ' · ' + esc(p.omie_descricao) : ''));
+    h += '<div class="pf131-m">' + m.join(' · ') + '</div>';
+    // a situação, em palavras
+    var st = '', cl = 'pv';
+    if (est === 'trocada') {
+      cl = 'tr';
+      if (pen) st = '✅ Trocada' + (pen.qtd ? ' · ' + esc(num(pen.qtd)) : '') + (pen.ref_usada ? ' · ref. ' + esc(pen.ref_usada) : '');
+      else if (p.derivada) st = '✅ Trocada na preventiva' + (p.derivada_data ? ' de ' + esc(dataBR(p.derivada_data)) : '') + (p.ref_usada ? ' · ref. ' + esc(p.ref_usada) : '');
+      else st = '✅ Trocada · ' + esc(num(p.qtd_trocada != null ? p.qtd_trocada : p.qtd)) + (p.ref_usada ? ' · ref. ' + esc(p.ref_usada) : '') + (p.por_nome ? ' · ' + esc(p.por_nome) : '') + (p.em ? ' ' + esc(hhmm(Date.parse(p.em))) : '') + ' ☁️';
+    } else if (est === 'nao_trocada') {
+      cl = 'nt'; st = '⏸ Não trocada — ' + esc(rotMotivo(pen ? pen.motivo : p.motivo)) + (!pen && p.por_nome ? ' · ' + esc(p.por_nome) : '') + (!pen && p.em ? ' ' + esc(hhmm(Date.parse(p.em))) + ' ☁️' : '');
+    } else if (ch && ch.acao === 'trocada') {
+      cl = 'tr'; st = '✅ Marcada "Trocada" no checklist — sobe com a preventiva';
+    } else st = '🔧 Trocar nesta visita';
+    h += '<div class="pf131-st ' + cl + '">' + st + '</div>';
+    if (pen) h += '<div class="pf131-st fi">' + (deOutro ? '⏳ Resposta de ' + esc(pen.sub) + ' guardada neste celular — sobe quando ' + esc(pen.sub) + ' entrar de novo'
+                                                       : '⏳ Guardada no celular — sobe ao servidor quando houver sinal' + (pen.erro ? ' (' + esc(pen.erro) + ')' : '')) + '</div>';
+    // ações
+    if (deOutro) h += '<div class="pf131-m">Para não inverter a ordem das respostas, esta peça só pode ser mudada depois que a resposta de ' + esc(pen.sub) + ' subir.</div>';
+    else if (PF131.aberto === key + '|t' || PF131.aberto === key + '|n') h += formHtml(os, p, PF131.aberto.slice(-1));
+    else {
+      h += '<div class="pf131-bts">';
+      if (ch) {
+        if (ch.acao !== 'trocada') h += '<button type="button" class="pf131-b ok" data-pf131="chk" data-pk="' + esc(ch.pk) + '">✅ Trocada (marca no checklist)</button>';
+        if (ch.acao !== 'trocada' && est !== 'nao_trocada') h += '<button type="button" class="pf131-b nao" data-pf131="nao" data-k="' + esc(key) + '">⏸ Não trocada</button>';
+        // resposta gravada à parte (não trocada, ou trocada dada na tela da OS): pode ser desfeita — a linha do checklist manda
+        if (est === 'nao_trocada' || (est === 'trocada' && (pen || !p.derivada))) h += '<button type="button" class="pf131-b lv" data-pf131="limpar" data-k="' + esc(key) + '">↺ Desfazer</button>';
+      } else if (est === 'prevista') {
+        h += '<button type="button" class="pf131-b ok" data-pf131="trocada" data-k="' + esc(key) + '">✅ Trocada</button>' +
+             '<button type="button" class="pf131-b nao" data-pf131="nao" data-k="' + esc(key) + '">⏸ Não trocada</button>';
+      } else if (!(est === 'trocada' && p.derivada && !pen)) {
+        h += '<button type="button" class="pf131-b lv" data-pf131="mudar" data-k="' + esc(key) + '">✎ Mudar a resposta</button>' +
+             '<button type="button" class="pf131-b lv" data-pf131="limpar" data-k="' + esc(key) + '">↺ Desfazer</button>';
+      }
+      h += '</div>';
+    }
+    return h + '</div>';
+  }
+  function formHtml(os, p, modo) {
+    var key = os + '|' + p.chave, f = PF131.form[key] || (PF131.form[key] = { qtd: qtdCampo(p.qtd), ref: '', motivo: '', outro: '' });
+    var h = '<div class="pf131-f" data-k="' + esc(key) + '">';
+    if (modo === 't') {
+      h += '<label>Quantidade trocada</label><input type="text" inputmode="decimal" autocomplete="off" name="pf131_qtd_nofill" data-lpignore="true" data-1p-ignore data-pf131-campo="qtd" value="' + esc(f.qtd) + '">' +
+           '<label>Referência usada (só se for OUTRA, equivalente)</label><input type="text" autocomplete="off" name="pf131_ref_nofill" data-lpignore="true" data-1p-ignore data-pf131-campo="ref" maxlength="80" placeholder="' + esc(p.codigo || 'a mesma da proposta') + '" value="' + esc(f.ref) + '">' +
+           '<div class="pf131-bts"><button type="button" class="pf131-b ok" data-pf131="ok-t" data-k="' + esc(key) + '">✅ Confirmar: trocada</button><button type="button" class="pf131-b lv" data-pf131="fechar">Cancelar</button></div>';
+    } else {
+      h += '<label>Por que não foi trocada?</label><div class="pf131-ch">' + MOTIVOS.map(function (m) {
+             return '<button type="button" class="pf131-c' + (f.motivo === m[0] ? ' on' : '') + '" data-pf131="mot" data-v="' + m[0] + '" data-k="' + esc(key) + '">' + esc(m[1]) + '</button>'; }).join('') + '</div>' +
+           (f.motivo === 'outro' ? '<label>Qual o motivo?</label><input type="text" autocomplete="off" name="pf131_mot_nofill" data-lpignore="true" data-1p-ignore data-pf131-campo="outro" maxlength="280" value="' + esc(f.outro) + '">' : '') +
+           '<div class="pf131-bts"><button type="button" class="pf131-b nao" data-pf131="ok-n" data-k="' + esc(key) + '">⏸ Confirmar: não trocada</button><button type="button" class="pf131-b lv" data-pf131="fechar">Cancelar</button></div>';
+    }
+    return h + '</div>';
+  }
+  // o cartão inteiro de uma OS (idx = máquina da coleta, ou null = a OS toda)
+  function cartaoHtml(os, idx, mid) {
+    var x = dadosDe(os), er = PF131.erro[os], voo = !!PF131.voo[os];
+    var h = '<div class="pf131-h"><span>🔩</span><b>Peças desta OS</b>';
+    if (!x) {
+      h += '</div>';
+      if (er) {
+        var msg = er.tipo === 'sem_sql' ? 'O servidor ainda não tem a lista de peças aprovadas (SQL PECAS_DA_OS). Avise o escritório.'
+          : er.tipo === 'cracha' ? 'Não consegui conferir as peças: ' + esc(er.msg) : 'Não consegui conferir as peças aprovadas desta OS (' + esc(er.msg) + ').';
+        return h + '<div class="pf131-nota er">' + msg + '</div><div class="pf131-nota"><button type="button" class="pf131-b lv" data-pf131="atualizar" data-os="' + esc(os) + '">↻ Tentar de novo</button></div>';
+      }
+      return h + '<div class="pf131-nota">' + (voo ? 'Conferindo as peças aprovadas na proposta…' : 'Ainda não conferi as peças desta OS.') + '</div>';
+    }
+    var d = x.d, ps = (d.pecas || []).filter(function (p) { return idx == null || !mid || !p.maquina_id || p.maquina_id === mid; });
+    if (d.cancelada) return h + '</div><div class="pf131-nota">OS cancelada — nenhuma peça a trocar.</div>';
+    if (d.sem_os) return h + '</div><div class="pf131-nota av">A OS ainda não chegou ao banco — confiro de novo em instantes.' + (voo ? ' Conferindo…' : '') + '</div>';
+    var tr = 0, nt = 0; ps.forEach(function (p) { var e = estEfetivo(p, pendenteDe(os, p.chave)); if (e === 'trocada') tr++; else if (e === 'nao_trocada') nt++; });
+    h += '<span class="pf131-res">' + (ps.length ? ps.length + ' aprovada' + (ps.length > 1 ? 's' : '') + ' · ' + tr + ' trocada' + (tr !== 1 ? 's' : '') + (nt ? ' · ' + nt + ' não' : '') : '') + '</span></div>';
+    var origem = x.fonte === 'cache' ? 'Lista de ' + esc(hhmm(x.ts)) + ' guardada no celular' + (er ? ' — sem conexão agora (' + esc(er.msg) + ')' : '') : '';
+    if (!ps.length) {
+      return h + '<div class="pf131-nota">' + (idx != null && mid && (d.pecas || []).length ? 'Nenhuma peça aprovada para ESTA máquina (há ' + d.pecas.length + ' em outra máquina da OS).'
+        : 'Nenhuma peça aprovada em proposta para esta OS.') + (origem ? ' ' + origem + '.' : '') + '</div>';
+    }
+    if (origem) h += '<div class="pf131-nota av">' + origem + '.</div>';
+    var grupo = null;
+    ps.forEach(function (p) {
+      if (idx == null) {
+        var g = p.maquina_rotulo || (p.maquina_id ? p.maquina_id : 'Sem máquina definida');
+        if (g !== grupo) { grupo = g; h += '<div class="pf131-maq">' + esc(g) + '</div>'; }
+      }
+      h += itemHtml(os, p, idx);
+    });
+    if (idx == null && (d.antigas || []).length) {
+      h += '<div class="pf131-ant">Respostas de peças que SAÍRAM da proposta (versão nova aceita): ' + d.antigas.map(function (a) {
+        return esc(a.descricao || 'peça') + ' — ' + (a.estado === 'trocada' ? 'trocada' : 'não trocada'); }).join(' · ') + '. Fale com o escritório.</div>';
+    }
+    var rc = recusados().filter(function (r) { return r.os === os; });
+    if (rc.length) {
+      h += '<div class="pf131-nota er">⚠ O servidor recusou ' + (rc.length > 1 ? rc.length + ' respostas' : 'uma resposta') + ' guardada' + (rc.length > 1 ? 's' : '') + ' neste celular (anote e responda de novo, se for o caso):<br>' +
+        rc.map(function (r) { return '• ' + esc(r.descricao || 'peça') + ' — ' + (r.estado === 'trocada' ? 'trocada' + (r.qtd ? ' ' + esc(num(r.qtd)) : '') + (r.ref_usada ? ' (ref. ' + esc(r.ref_usada) + ')' : '') : r.estado === 'nao_trocada' ? 'não trocada: ' + esc(rotMotivo(r.motivo)) : 'desfazer') + ' · motivo da recusa: ' + esc(r.msg); }).join('<br>') +
+        ' <button type="button" class="pf131-b lv" data-pf131="ok-rc" data-os="' + esc(os) + '">Entendi</button></div>';
+    }
+    return h;
+  }
+  PF131.cartaoHtml = cartaoHtml;
+  function pintarEm(el, html) {   // nunca repinta por cima do que está sendo digitado
+    if (!el) return;
+    var foco = document.activeElement;
+    if (foco && el.contains(foco) && foco.tagName === 'INPUT') { el.__pf131Pend = html; return; }
+    if (el.__pf131 !== html) { el.innerHTML = html; el.__pf131 = html; }
+  }
+  function pintarPipeline() {
+    var tela = $('pfScreenPipeline'), cont = $('pfPipelineConteudo'), os = osTela();
+    var host = $('pf131Pecas');
+    if (!host && cont && cont.parentNode) { host = document.createElement('div'); host.id = 'pf131Pecas'; host.className = 'pf131'; cont.parentNode.insertBefore(host, cont); }
+    if (!host) return;
+    if (!os || !tela || tela.style.display === 'none') { host.style.display = 'none'; return; }
+    var x = dadosDe(os), vazio = x && x.d && !(x.d.pecas || []).length && !(x.d.antigas || []).length;
+    host.style.display = '';
+    host.setAttribute('data-os', os);
+    pintarEm(host, cartaoHtml(os, null, null));
+    host.classList.toggle('pf131-vazio', !!vazio);
+  }
+  function maqDe(i) { try { return typeof pfHorimMachineId === 'function' ? String(pfHorimMachineId(i) || '') : ''; } catch (e) { return ''; } }
+  function pintarColeta() {
+    var os = osColeta();
+    document.querySelectorAll('[id^="panel-"]').forEach(function (p) {
+      var i = parseInt(String(p.id).replace('panel-', ''), 10); if (!isFinite(i)) return;
+      var box = $('pf131Box' + i), x = os ? dadosDe(os) : null;
+      var mid = maqDe(i);
+      var tem = x && x.d && (x.d.pecas || []).some(function (q) { return !mid || !q.maquina_id || q.maquina_id === mid; });
+      var mostrar = !!os && (tem || (!x && (PF131.voo[os] || PF131.erro[os])));
+      if (!mostrar) { if (box) box.remove(); return; }
+      if (!box) { box = document.createElement('div'); box.id = 'pf131Box' + i; box.className = 'pf131 pf131-box'; }
+      // lugar: logo depois do hub do Visual novo (se houver) ou antes da 1ª etapa — nunca disputa com o PF130
+      var hub = p.querySelector(':scope > .pf130-hub');
+      if (hub) { if (hub.nextElementSibling !== box) p.insertBefore(box, hub.nextSibling); }
+      else { var s1 = p.querySelector(':scope > .section'); if (s1 && box.nextElementSibling !== s1) p.insertBefore(box, s1); else if (!s1 && box.parentNode !== p) p.appendChild(box); }
+      box.setAttribute('data-os', os); box.setAttribute('data-idx', String(i));
+      pintarEm(box, cartaoHtml(os, i, mid));
+    });
+  }
+  var _raf = 0;
+  function pintar() { if (_raf) return; _raf = setTimeout(function () { _raf = 0; try { pintarPipeline(); } catch (e) { nota(e, 'pipeline'); } try { pintarColeta(); } catch (e) { nota(e, 'coleta'); } }, 30); }
+  PF131.pintar = pintar;
+  PF131.t = { numBR: function (x) { return numBR(x); }, qtdCampo: qtdCampo, estEfetivo: estEfetivo };   // para a bancada
+
+  // ── 6 · os toques ───────────────────────────────────────────────────────────────────────────────────────
+  function achar(key) {
+    var i = key.indexOf('|'), os = key.slice(0, i), ch = key.slice(i + 1), x = dadosDe(os);
+    var p = x && x.d ? (x.d.pecas || []).filter(function (q) { return q.chave === ch; })[0] : null;
+    return { os: os, chave: ch, p: p };
+  }
+  function numBR(s) {   // "1,5" · "1.000" (milhar) · "1.000,5" · "1.5"
+    s = String(s || '').trim().replace(/\s/g, '');
+    if (/,/.test(s)) s = s.replace(/\./g, '').replace(',', '.'); else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');
+    var n = Number(s); return isFinite(n) && s !== '' ? n : NaN; }
+  document.addEventListener('input', function (ev) {
+    var t = ev.target; if (!t || !t.getAttribute || !t.getAttribute('data-pf131-campo')) return;
+    var f = t.closest('.pf131-f'); if (!f) return;
+    var key = f.getAttribute('data-k'); var st = PF131.form[key] || (PF131.form[key] = {});
+    st[t.getAttribute('data-pf131-campo')] = t.value;
+  }, true);
+  document.addEventListener('focusout', function (ev) {
+    var box = ev.target && ev.target.closest && ev.target.closest('.pf131');
+    if (box && box.__pf131Pend) setTimeout(function () { if (!box.contains(document.activeElement)) { var h = box.__pf131Pend; box.__pf131Pend = null; if (box.__pf131 !== h) { box.innerHTML = h; box.__pf131 = h; } } }, 0);
+  }, true);
+  document.addEventListener('click', function (ev) {
+    var b = ev.target && ev.target.closest && ev.target.closest('[data-pf131]'); if (!b) return;
+    if (!b.closest('.pf131')) return;
+    ev.preventDefault(); ev.stopPropagation();
+    if (b.disabled) return;
+    var a = b.getAttribute('data-pf131'), key = b.getAttribute('data-k') || '';
+    // o toque num botão do cartão ENCERRA a digitação (no celular o campo pode ficar com o foco): sem isso o desenho novo esperaria
+    try { var fo = document.activeElement; if (fo && fo !== b && fo.tagName === 'INPUT' && b.closest('.pf131').contains(fo)) fo.blur(); } catch (e) {}
+    try {
+      if (a === 'atualizar') { carregar(b.getAttribute('data-os'), 'toque'); return; }
+      if (a === 'ok-rc') { var os0 = b.getAttribute('data-os'), eu0 = dono(); gravarJ(RECUSA_KEY, recusados().filter(function (r) { return r.os !== os0 || (r.sub && r.sub !== eu0); })); pintar(); return; }
+      if (a === 'fechar') { PF131.aberto = ''; pintar(); return; }
+      if (a === 'chk') {   // a peça é linha do checklist da preventiva: a resposta é a pílula "Trocada" da linha
+        var pk = b.getAttribute('data-pk'); if (pk && typeof pgpSetAcao === 'function') { PF131.toque = { pk: pk, em: Date.now() }; pgpSetAcao(pk, 'trocada'); try { pgpSaveDraftBreve(); } catch (e) {} aviso('✅ Marcada "Trocada" no checklist — sobe com a preventiva.'); }
+        pintar(); return;
+      }
+      var o = achar(key); if (!o.p) { aviso('⚠ Esta peça não está mais na lista — toque em ↻ Atualizar.'); return; }
+      if (a === 'trocada' || a === 'mudar') { PF131.aberto = key + '|t'; pintar(); return; }
+      if (a === 'nao') { PF131.aberto = key + '|n'; pintar(); return; }
+      if (a === 'mot') { var f = PF131.form[key] || (PF131.form[key] = {}); f.motivo = b.getAttribute('data-v'); pintar(); return; }
+      if (a === 'limpar') { b.disabled = true; enfileirar({ os: o.os, chave: o.chave, estado: 'limpar' }); return; }
+      if (a === 'ok-t') {
+        var ft = PF131.form[key] || {}, q = String(ft.qtd == null ? '' : ft.qtd).trim(), n = q === '' ? null : numBR(q);
+        if (q !== '' && (!(n > 0) || n > 100000)) { aviso('⚠ Quantidade inválida — use um número maior que zero.'); return; }
+        var ref = String(ft.ref || '').trim();
+        b.disabled = true;
+        if (enfileirar({ os: o.os, chave: o.chave, estado: 'trocada', qtd: n, ref_usada: ref || null })) { aviso('✅ Trocada — guardada no celular; o ☁️ aparece quando o servidor confirmar.'); delete PF131.form[key]; }
+        else b.disabled = false;
+        return;
+      }
+      if (a === 'ok-n') {
+        var fn = PF131.form[key] || {}, mot = fn.motivo || '';
+        if (!mot) { aviso('⚠ Escolha o motivo.'); return; }
+        if (mot === 'outro') { var tx = String(fn.outro || '').trim(); if (tx.length < 3) { aviso('⚠ Escreva o motivo (pelo menos 3 letras).'); return; } mot = 'outro: ' + tx; }
+        b.disabled = true;
+        if (enfileirar({ os: o.os, chave: o.chave, estado: 'nao_trocada', motivo: mot })) { aviso('⏸ Não trocada — guardada no celular; o ☁️ aparece quando o servidor confirmar.'); delete PF131.form[key]; }
+        else b.disabled = false;
+        return;
+      }
+    } catch (e) { nota(e, 'toque ' + a); aviso('⚠ Não consegui registrar — tente de novo.'); }
+  }, true);
+
+  // ── 7 · ganchos no app (por window[nome], a regra dos embrulhos do PCF) ─────────────────────────────────
+  function embrulhar(nome, fazer) {
+    try { var o = window[nome]; if (typeof o !== 'function' || o.__pf131) return; var n = fazer(o); n.__pf131 = true; window[nome] = n; } catch (e) { nota(e, 'embrulhar ' + nome); }
+  }
+  // abrir/atualizar a OS: a lista vem junto (em paralelo; o cache pinta antes)
+  embrulhar('pfLoadPipeline', function (orig) {
+    return function () {
+      var os = osTela(), r = orig.apply(this, arguments);
+      try { if (os) { pintar(); if (!PF131.voo[os]) carregar(os, 'pipeline'); } } catch (e) { nota(e, 'pfLoadPipeline'); }
+      return r;
+    };
+  });
+  // "Trocada" na linha do checklist = a resposta da peça (desfaz um "não trocada" dado antes a ela)
+  embrulhar('pgpSetAcao', function (orig) {
+    return function (pk, acao) {
+      var r = orig.apply(this, arguments);
+      try {
+        var m = String(pk || '').match(/^m(\d+)_(.+)$/), os = osColeta(), t = PF131.toque;
+        var doTecnico = !!(t && t.pk === pk && Date.now() - t.em < 2500); if (doTecnico) PF131.toque = null;
+        if (m && os && doTecnico) {
+          var i = parseInt(m[1], 10), part = (pgpPartIdMapDe(i) || {})[m[2]], mid = maqDe(i), x = dadosDe(os);
+          if (part && x && x.d) (x.d.pecas || []).forEach(function (p) {
+            if (p.part_id !== part || (mid && p.maquina_id && p.maquina_id !== mid)) return;
+            var pen = pendenteDe(os, p.chave), est = pen ? pen.estado : p.estado;
+            if (acao === 'trocada' && est === 'nao_trocada') enfileirar({ os: os, chave: p.chave, estado: 'limpar' });
+          });
+        }
+      } catch (e) { nota(e, 'pgpSetAcao'); }
+      pintar();
+      return r;
+    };
+  });
+  // o toque de verdade nas pílulas da AÇÃO da peça (Conferida/Trocada/N/A) — só ele conta como resposta do técnico
+  document.addEventListener('click', function (ev) {
+    try {
+      var b = ev.target && ev.target.closest && ev.target.closest('button[id$="_acao_trocada"],button[id$="_acao_conferida"],button[id$="_acao_na"]');
+      if (b && ev.isTrusted) PF131.toque = { pk: String(b.id).replace(/_acao_(trocada|conferida|na)$/, ''), em: Date.now() };
+    } catch (e) {}
+  }, true);
+  window.addEventListener('online', function () { subir(); });
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') { subir(); pintar(); } });
+  function iniciar() {
+    pintar(); subir();
+    setInterval(function () { try { if (Object.keys(fila()).length && navigator.onLine !== false) subir(); } catch (e) {} }, 30000);
+    // coleta aberta: a lista da OS dela (uma vez por OS; ↻ e a volta à tela da OS releem)
+    setInterval(function () {
+      try {
+        var os = osColeta(); if (os && !PF131.dados[os] && !PF131.voo[os] && !(PF131.erro[os] && Date.now() - PF131.erro[os].em < 60000)) carregar(os, 'coleta');
+        [osColeta(), osTela()].forEach(function (o) {   // "a OS ainda não chegou ao banco": relê a cada 20 s enquanto for isso
+          var x = o && PF131.dados[o]; if (x && x.d && x.d.sem_os && !PF131.voo[o] && Date.now() - x.ts > 20000) carregar(o, 'sem_os');
+        });
+      } catch (e) {}
+      pintar();
+    }, 2500);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else setTimeout(iniciar, 0);
+})();
+</script>
+<!-- ████ FIM PCF_V131 (PF131) ████ -->
 
 </body>
 </html>

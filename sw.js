@@ -9,7 +9,8 @@
  * O activate abaixo apaga qualquer cache antigo com prefixo 'propertech-'.
  */
 const CACHE_BASE = 'propertech-';
-const CACHE = CACHE_BASE + 'v132';  // 08/10/2026 — par do PCF_V130 (hub de cartões da coleta, atrás do Visual novo). Sem bump, o celular serve o V129 do cache.
+const CACHE = CACHE_BASE + 'v133';  // 08/10/2026 — par do PCF_V131 (peças da OS: as peças da proposta aceita chegam marcadas). Sem bump, o celular serve o V130 do cache.
+// antes: 'v132'  // 08/10/2026 — par do PCF_V130 (hub de cartões da coleta, atrás do Visual novo). Sem bump, o celular serve o V129 do cache.
 // antes: 'v131'  // 08/10/2026 — par do PCF_V129 (visual novo por aparelho: Minhas OS, cartões, tema claro). Sem bump, o celular serve o V128 do cache.
 // antes: 'v130'  // 07/10/2026 — par do PCF_V128 (base do Hub de Cartões: exportar/importar, trava do horímetro, histórico pelo Postgres). Sem bump, o celular serve o V127 do cache.
 // antes: 'v129'  // 07/10/2026 — par do PCF_V127 (estabilidade do campo: foto/coleta/abertura do cache). Sem bump, o celular serve o V126 do cache.
@@ -61,6 +62,7 @@ const CACHE = CACHE_BASE + 'v132';  // 08/10/2026 — par do PCF_V130 (hub de ca
 //        PCF_V108 ↔  propertech-v110  (11/09 — a rodada Campo e Documentos)
 //        PCF_V110 ↔  propertech-v112  (17/09 — os motores CFX + PWAIT, front puro)
 //        PCF_V109 ↔  propertech-v111  (11/09 — o PDF da preventiva: compress:true + PDF na fila do IndexedDB)
+//        PCF_V131 ↔  propertech-v133  (08/10 — peças da OS: proposta aceita → marcadas Trocar)
 //        PCF_V130 ↔  propertech-v132  (08/10 — hub de cartões da coleta)
 //        PCF_V129 ↔  propertech-v131  (08/10 — visual novo por aparelho)
 //        PCF_V128 ↔  propertech-v130  (07/10 — base do Hub de Cartões; o V127 da pcf_estabilidade vai antes)
