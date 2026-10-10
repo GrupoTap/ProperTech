@@ -9,7 +9,9 @@
  * O activate abaixo apaga qualquer cache antigo com prefixo 'propertech-'.
  */
 const CACHE_BASE = 'propertech-';
-const CACHE = CACHE_BASE + 'v136';  // 09/10/2026 — par do PCF_V134 (câmera dentro do PCF: o Android não fecha mais o app ao fotografar). Sem bump, o celular serve o V131 do cache.
+const CACHE = CACHE_BASE + 'v138';  // 09/10/2026 — par do PCF_V136 (uma assinatura por OS). Sem bump, o celular serve o V135 (ou o V134) do cache.
+// antes: 'v137'  // 09/10/2026 — par do PCF_V135 (miniaturas com apagar + versão no topo, Visual novo). Sem bump, o celular serve o V134 do cache.
+// antes: 'v136'  // 09/10/2026 — par do PCF_V134 (câmera dentro do PCF: o Android não fecha mais o app ao fotografar). Sem bump, o celular serve o V131 do cache.
 // antes: 'v133'  // 08/10/2026 — par do PCF_V131 (peças da OS: as peças da proposta aceita chegam marcadas). Sem bump, o celular serve o V130 do cache.
 // antes: 'v132'  // 08/10/2026 — par do PCF_V130 (hub de cartões da coleta, atrás do Visual novo). Sem bump, o celular serve o V129 do cache.
 // antes: 'v131'  // 08/10/2026 — par do PCF_V129 (visual novo por aparelho: Minhas OS, cartões, tema claro). Sem bump, o celular serve o V128 do cache.
@@ -63,6 +65,8 @@ const CACHE = CACHE_BASE + 'v136';  // 09/10/2026 — par do PCF_V134 (câmera d
 //        PCF_V108 ↔  propertech-v110  (11/09 — a rodada Campo e Documentos)
 //        PCF_V110 ↔  propertech-v112  (17/09 — os motores CFX + PWAIT, front puro)
 //        PCF_V109 ↔  propertech-v111  (11/09 — o PDF da preventiva: compress:true + PDF na fila do IndexedDB)
+//        PCF_V136 ↔  propertech-v138  (09/10 — uma assinatura por OS)
+//        PCF_V135 ↔  propertech-v137  (09/10 — miniaturas com apagar + versão no topo)
 //        PCF_V134 ↔  propertech-v136  (09/10 — câmera dentro do PCF; V132/V133 eram de rodadas paralelas)
 //        PCF_V131 ↔  propertech-v133  (08/10 — peças da OS: proposta aceita → marcadas Trocar)
 //        PCF_V130 ↔  propertech-v132  (08/10 — hub de cartões da coleta)

@@ -1682,8 +1682,22 @@ html[data-boot="pipeline"] #pf113Splash{display:flex;position:fixed;inset:0;z-in
   celular como antes. Chave por aparelho no menu. Se o app cair mesmo assim, volta sozinho para a coleta (o
   Continuar do cartao do V127, uma vez). Zero SQL, zero GAS. Bloco PF134 no fim do body.
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V134</title>
-<meta name="app-build" content="PCF_V134" data-date="2026-10-09">
+<!--
+  PCF_V135 · MINIATURAS COM APAGAR + VERSAO NO TOPO · 09/10/2026 · feito SOBRE o PCF_V134 no ar · par sw propertech-v137.
+  Pedido do Fernando (print do Visual novo): a vaga do horimetro dizia "FEITA (2/3)" sem mostrar as fotos, e o topo nao
+  dizia a versao. Agora a vaga mostra as miniaturas (o mesmo conteiner que o app pinta); toda miniatura desta visita abre a
+  foto grande com Excluir e o ✕ maior pergunta antes de apagar (removePhotoDoStore de sempre). "V135 ·" no topo das telas
+  de OS e da coleta do Visual novo, derivado do meta app-build. Zero SQL, zero GAS. Bloco PF135 no fim do body.
+-->
+<!--
+  PCF_V136 · UMA ASSINATURA POR OS · 09/10/2026 · feito SOBRE o PCF_V135 (2026-10-09_pcf_fotos_versao) · par sw propertech-v138.
+  Pedido do Fernando (09/10, prints do Vitor; decisao 20h19): tecnico + responsavel valem para TODAS as maquinas da OS.
+  Busca nas visitas de qualquer maquina da MESMA OS (getPreventivaDaOS de sempre, zero GAS) e completa so o papel que
+  falta; a pergunta do PDF pede so o que falta; status "valem para todas as maquinas desta OS". Outra OS nunca empresta.
+  Zero SQL, zero GAS. Bloco PF136 no fim do body.
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V136</title>
+<meta name="app-build" content="PCF_V136" data-date="2026-10-09">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -14954,6 +14968,7 @@ async function pgpCarregarMaquinaOS(eq, idx, dbPre, osObj){
 async function pgpRestaurarColetaGravada(midx, eq){
   try{
     if(!window._PGP_OS_ID) return;                 // só dentro de OS
+    const _pf136Os = String(window._PGP_OS_ID || '');   /* PCF_V136: a OS desta leitura */
     if(!_pgpGsConnected) return;                   // offline: nada a pedir
     const idx = pgpGetMachineIndex(midx);
     const p = `m${idx}_`;
@@ -14975,6 +14990,7 @@ async function pgpRestaurarColetaGravada(midx, eq){
         incluir_assinaturas: true               // V87 (P3) — GAS v93 ignora e não devolve; aditivo
       }, 1);
     }catch(e){ return; }                            // GAS v92 ou rede ruim
+    if(String(window._PGP_OS_ID || '') !== _pf136Os) return;   /* PCF_V136: a OS mudou durante a leitura — nada desta resposta entra */
     if(!d || d.status !== 'ok' || !d.encontrada || !d.visita){
       // V95 (A6) — ate aqui a funcao desistia MUDA e o tecnico via a tela em
       // branco sem saber se o app tinha tentado. Nao ha coleta gravada nesta OS
@@ -39851,6 +39867,603 @@ html.pf134-aberta,html.pf134-aberta body{overflow:hidden!important}
 })();
 </script>
 <!-- ████ FIM PCF_V134 (PF134) ████ -->
+
+<!-- ████ PCF_V135 (PF135) · MINIATURAS COM APAGAR + VERSAO NO TOPO · 09/10/2026 ████
+     🕳 Pedido do Fernando (09/10 20h16, print do Visual novo, etapa 03): "nao temos mais as thumbs das fotos, seria muito bom
+        manter e ainda ter um x pra apagar a foto ou clicar nela e ter a opcao de excluir. Essa versao nova, nao mostra a versao
+        do app, seria bom aparecer no topo da tela principal e em outras que julgar importante".
+        · A vaga "Foto do display do horimetro" do hub (PF130, etapa 03) dizia "✓ FEITA (2/3)" sem mostrar foto nenhuma: a
+          miniatura so existia na etapa 05 e no campo antigo, escondido no hub.
+        · Nas vagas da etapa 05 a miniatura existia, mas com 50 px e um ✕ de 17 px — e o ✕ apagava SEM perguntar (C6).
+        · O topo do Visual novo (Minhas OS, Todas, OS, coleta) nao dizia a versao; so o ☰ Menu dizia.
+     🔑 · A vaga do horimetro ganha a fileira de miniaturas (o MESMO conteiner `.photo-thumbs-mini` que o app ja pinta pelo
+          renderPhotoThumbs — nenhuma lista nova de fotos). Ela fica FORA do innerHTML que o PF130 reescreve e volta sozinha.
+        · Toda miniatura de foto DESTA visita (os dois visuais): toque abre a foto grande, com ◀ ▶, "🗑 Excluir foto" e Fechar;
+          o ✕ fica maior e PERGUNTA antes de apagar. Quem apaga e o removePhotoDoStore de sempre (foto ja no Drive: a pergunta
+          dele, que avisa do registro no servidor). Miniatura da visita ANTERIOR (↩) segue com o comportamento dela.
+        · Versao: "V135 · …" na linha de baixo do cabecalho das telas de OS (Minhas OS, Todas, tela da OS) e "PCF V135" no
+          cartao do hub da coleta do Visual novo (no titulo do topo cortava o nome da maquina), DERIVADA do
+          <meta name="app-build"> (regra CARIMBO: nunca digitada).
+        · Um apagar por vez (foto do Drive espera o servidor; 2o toque no meio apagava a foto errada) e a foto e achada por
+          IDENTIDADE na hora de apagar. (Auditoria 1: M1/M2/B1–B3.)
+     Zero SQL, zero GAS. -->
+<style id="pf135css">
+#pfOsLabel[data-pf135ver]::before{content:attr(data-pf135ver) " · ";font-weight:700}
+.pf130-hub .pf135-ver{margin:8px 0 0;text-align:right;font:600 11.5px Inter,system-ui,sans-serif;color:#475569;letter-spacing:.3px}
+.photo-thumbs-mini .photo-thumb-mini:not(.photo-thumb-prev){cursor:zoom-in;width:60px;height:60px}   /* 50 → 60 px: cabe o ✕ maior sem cobrir o meio (que abre a foto) */
+.photo-thumbs-mini:has(.photo-thumb-mini:not(.photo-thumb-prev)){padding-top:14px;padding-right:14px;gap:14px}   /* o ✕ sai 14 px pela quina: nao invade o vizinho nem o de cima */
+.photo-thumbs-mini .photo-thumb-mini:not(.photo-thumb-prev){overflow:visible!important}
+.photo-thumbs-mini .photo-thumb-mini:not(.photo-thumb-prev) img{border-radius:8px}
+.photo-thumbs-mini .photo-thumb-mini:not(.photo-thumb-prev) .photo-thumb-del{width:26px;height:26px;line-height:26px;font-size:14px;top:-8px;right:-8px;background:#0f172a!important;color:#fff!important;border:2px solid #fff;box-sizing:content-box;z-index:2;font-weight:700}
+.photo-thumbs-mini .photo-thumb-mini:not(.photo-thumb-prev) .photo-thumb-del::after{content:"";position:absolute;top:-6px;right:-6px;bottom:0;left:0}   /* cresce para FORA (cima/direita): o meio da miniatura continua abrindo a foto */
+.photo-thumbs-mini .photo-thumb-mini:not(.photo-thumb-prev) .photo-thumb-del:active{background:#dc2626!important}
+.photo-thumbs-mini .photo-thumb-mini.pf135-removendo{opacity:.4;pointer-events:none}
+html.pf129 .photo-thumbs-mini .photo-thumb-mini:not(.photo-thumb-prev){width:68px;height:68px;border-radius:10px;border-width:2px}
+html.pf129 .pf129-vagas .photo-thumbs-mini img{width:100%!important;height:100%!important}
+html.pf129 .pf129-vagas .photo-thumbs-mini{margin-left:0!important;width:auto!important}
+html.pf129 .pf129-vagas .photo-thumbs-mini .photo-thumb-mini:not(.photo-thumb-prev){width:52px;height:52px}   /* 2 por linha na vaga a 320 px */
+html.pf129 .pf129-vagas .photo-thumbs-mini{padding-right:0!important}
+.pf130-hvaga .pf135-tira{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:10px 0 2px}
+.pf130-hvaga .pf135-tira:empty{display:none}
+#pf135Foto{position:fixed;inset:0;z-index:99990;background:rgba(2,6,23,.96);color:#fff;display:flex;flex-direction:column;font-family:Inter,system-ui,sans-serif}
+#pf135Foto[hidden]{display:none!important}
+#pf135Foto .pf135-tp{display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top,0px)) 12px 10px}
+#pf135Foto .pf135-tt{flex:1;min-width:0}
+#pf135Foto .pf135-tt b{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#pf135Foto .pf135-tt span{display:block;font-size:12.5px;color:#cbd5e1}
+#pf135Foto .pf135-pc{flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;position:relative;padding:0 6px}
+#pf135Foto .pf135-pc img{position:relative;z-index:1;max-width:100%;max-height:100%;object-fit:contain;border-radius:6px;background:#111}
+#pf135Foto .pf135-nv{position:absolute;z-index:3;top:50%;margin-top:-26px;width:52px;height:52px;border-radius:50%;border:1.5px solid rgba(255,255,255,.5);background:rgba(0,0,0,.55);color:#fff;font-size:22px;cursor:pointer}
+#pf135Foto .pf135-nv[hidden]{display:none}
+#pf135Foto .pf135-nv.e{left:8px}#pf135Foto .pf135-nv.d{right:8px}
+#pf135Foto .pf135-pe{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px 12px calc(14px + env(safe-area-inset-bottom,0px))}
+#pf135Foto button{font-family:inherit;-webkit-tap-highlight-color:rgba(255,255,255,.25)}
+#pf135Foto .pf135-b{min-height:54px;border-radius:14px;border:1.5px solid rgba(255,255,255,.55);background:rgba(255,255,255,.08);color:#fff;font-size:16px;font-weight:700;cursor:pointer;transition:transform .08s,background .08s}
+#pf135Foto .pf135-b:active,#pf135Foto .pf135-nv:active{transform:scale(.95);background:rgba(255,255,255,.25)}
+#pf135Foto .pf135-b.x{background:#b91c1c;border-color:#b91c1c}
+#pf135Foto .pf135-b.x:active{background:#991b1b}
+#pf135Foto .pf135-fx{width:52px;height:52px;border-radius:26px;border:1.5px solid rgba(255,255,255,.55);background:rgba(0,0,0,.4);color:#fff;font-size:20px;cursor:pointer;flex-shrink:0}
+html.pf135-foto,html.pf135-foto body{overflow:hidden!important}
+html.pf135-foto .app-dlg-backdrop{z-index:99995!important}   /* a pergunta de apagar aparece POR CIMA da foto grande */
+@media print{#pf135Foto{display:none!important}}
+</style>
+<script>
+(function () {
+  'use strict';
+  if (window.PF135) return;
+  var PF135 = window.PF135 = { versao: 'PCF_V135', log: [], apagadas: 0, abertas: 0 };
+  function $(id) { return document.getElementById(id); }
+  function log() { try { PF135.log.push([new Date().toISOString().slice(11, 19)].concat([].slice.call(arguments)).join(' ')); if (PF135.log.length > 60) PF135.log.shift(); } catch (e) {} }
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function store() { try { return (typeof photoStore !== 'undefined') ? photoStore : null; } catch (e) { return null; } }
+  function fotos(midx, k) { var ps = store(); return (ps && ps[midx] && Array.isArray(ps[midx][k])) ? ps[midx][k] : []; }
+
+  // ═══ 1 · VERSAO NO TOPO (derivada do meta app-build) ═══════════════════════════════════════════════
+  function versao() {
+    try { var m = document.querySelector('meta[name="app-build"]'); var v = m ? String(m.getAttribute('content') || '') : ''; var r = /V(\d+)/i.exec(v); return r ? 'V' + r[1] : ''; } catch (e) { return ''; }
+  }
+  PF135.ver = versao();
+  function carimbar() {
+    if (!PF135.ver) return;
+    var el = $('pfOsLabel'); if (el && el.getAttribute('data-pf135ver') !== PF135.ver) el.setAttribute('data-pf135ver', PF135.ver);
+    // coleta do Visual novo: no cartao do hub (o PF130 o reescreve; a linha volta). No titulo do topo cortava o nome da maquina.
+    try { document.querySelectorAll('.machine-panel > .pf130-hub').forEach(function (h) {
+      if (!h.querySelector(':scope > .pf135-ver')) { var d = document.createElement('div'); d.className = 'pf135-ver'; d.textContent = 'PCF ' + PF135.ver; h.appendChild(d); }
+      if (!h.__pf135) { h.__pf135 = true; try { new MutationObserver(function () { if (!h.querySelector(':scope > .pf135-ver')) carimbar(); }).observe(h, { childList: true }); } catch (e) {} }
+    }); } catch (e) {}
+  }
+
+  // ═══ 2 · A VAGA DO HORIMETRO (etapa 03 do hub) MOSTRA AS FOTOS ═════════════════════════════════════
+  function tiraNaVaga(v) {
+    try {
+      if (!v || !v.id) return;
+      var i = parseInt(String(v.id).replace('pf130HVaga', ''), 10); if (isNaN(i)) return;
+      if (v.querySelector(':scope > .pf135-tira')) return;
+      var t = document.createElement('div');
+      t.className = 'photo-thumbs-mini pf135-tira'; t.setAttribute('data-midx', String(i)); t.setAttribute('data-pkey', 'horimetro');
+      var dica = v.querySelector(':scope > .tip');
+      if (dica) v.insertBefore(t, dica); else v.appendChild(t);
+      if (typeof window.renderPhotoThumbs === 'function') window.renderPhotoThumbs(i, 'horimetro');
+    } catch (e) { log('tira', e && e.message); }
+  }
+  function vigiarVagas() {
+    try {
+      document.querySelectorAll('.pf130-hvaga').forEach(function (v) {
+        if (!v.__pf135) {
+          v.__pf135 = true;
+          try { new MutationObserver(function () { tiraNaVaga(v); }).observe(v, { childList: true }); } catch (e) {}
+        }
+        tiraNaVaga(v);
+      });
+    } catch (e) {}
+  }
+  PF135.vigiarVagas = vigiarVagas;
+
+  // ═══ 3 · MINIATURA: toque abre a foto · ✕ pergunta antes de apagar ══════════════════════════════════
+  // a posicao da foto e lida do proprio ✕ que o renderPhotoThumbs desenha: removePhotoDoStore(midx,'chave',i)
+  var RE_DEL = /removePhotoDoStore\(\s*(\d+)\s*,\s*'([^']*)'\s*,\s*(\d+)\s*\)/;
+  function alvoDaMiniatura(mini) {
+    if (!mini || mini.classList.contains('photo-thumb-prev')) return null;
+    var del = mini.querySelector(':scope > .photo-thumb-del'); if (!del) return null;
+    var m = RE_DEL.exec(del.getAttribute('onclick') || ''); if (!m) return null;
+    return { midx: parseInt(m[1], 10), key: m[2], i: parseInt(m[3], 10) };
+  }
+  PF135.alvoDaMiniatura = alvoDaMiniatura;
+  function rotulo(midx, k) {
+    try {
+      var ph = (typeof pgpPhotosDe === 'function' ? pgpPhotosDe(midx) : []).find(function (p) { return p && p.photoKey === k; });
+      if (ph && ph.label) return ph.label;
+      var L = (typeof HORI_PHOTO_LABELS !== 'undefined' && HORI_PHOTO_LABELS[k]) || (typeof PART_PHOTO_LABELS !== 'undefined' && PART_PHOTO_LABELS[k]);
+      if (L) return L;
+      var f = fotos(midx, k)[0]; if (f && f.label) return f.label;
+    } catch (e) {}
+    return k === 'horimetro' ? 'Horímetro' : (k === 'geral' ? 'Foto geral' : 'Foto');
+  }
+  // UM apagar por vez: o removePhotoDoStore de foto do Drive espera o servidor (~3,5 s) e so depois faz splice(i).
+  // Um 2o toque nesse meio apagava a foto ERRADA (indice velho). Enquanto apaga: tudo travado e a miniatura esmaecida.
+  PF135.apagando = null;
+  function marcarRemovendo(midx, k, i, sim) {
+    try { document.querySelectorAll('.photo-thumbs-mini[data-midx="' + midx + '"] .photo-thumb-mini:not(.photo-thumb-prev)').forEach(function (m) { var a = alvoDaMiniatura(m); if (a && a.key === k && (i < 0 || a.i === i)) m.classList.toggle('pf135-removendo', sim); }); } catch (e) {}
+  }
+  async function apagar(midx, k, i, ja) {
+    if (PF135.apagando) { try { if (typeof showNotification === 'function') showNotification('⏳ Removendo a outra foto — aguarde.'); } catch (e) {} log('apagar ignorado: outro em curso'); return false; }
+    var f = fotos(midx, k)[i]; if (!f) return false;
+    PF135.apagando = { midx: midx, key: k, foto: f };
+    try { return await apagarUm(midx, k, f, ja); } finally { PF135.apagando = null; marcarRemovendo(midx, k, -1, false); }
+  }
+  async function apagarUm(midx, k, f, ja) {
+    // foto ja no Drive: o removePhotoDoStore de sempre pergunta (e explica o registro no servidor); senao, pergunta aqui
+    if (!f.origemDrive && !ja) {
+      var ok = false;
+      var pos = fotos(midx, k).indexOf(f) + 1, tot = fotos(midx, k).length;
+      try { ok = await AppDialog.confirm('Apagar a foto ' + pos + ' de ' + tot + ' de "' + rotulo(midx, k) + '"?\n\nEla sai deste relatório e deste aparelho.', { title: 'Apagar foto', okLabel: 'Apagar', cancelLabel: 'Manter', danger: true }); } catch (e) { ok = false; }
+      if (!ok) { log('apagar: manteve', k); return false; }
+    }
+    var i = fotos(midx, k).indexOf(f);          // por IDENTIDADE: a posicao pode ter mudado enquanto a pergunta estava aberta
+    if (i < 0) { log('apagar: a foto ja nao esta la'); return false; }
+    log('apagar', k, i);
+    var antes = fotos(midx, k).length;
+    marcarRemovendo(midx, k, i, true);
+    try { await window.removePhotoDoStore(midx, k, i); } catch (e) { log('apagar falhou', e && e.message); return false; }
+    var foi = fotos(midx, k).length < antes && fotos(midx, k).indexOf(f) < 0;
+    if (foi) { PF135.apagadas++; log('apagada', k, i); try { if (typeof PF130 !== 'undefined' && PF130.pintar) PF130.pintar(); } catch (e) {} }
+    return foi;
+  }
+  PF135.apagar = apagar;
+  document.addEventListener('click', function (e) {
+    var t = e.target; if (!t || !t.closest) return;
+    var del = t.closest('.photo-thumbs-mini .photo-thumb-mini:not(.photo-thumb-prev) > .photo-thumb-del');
+    if (del) {
+      var a = alvoDaMiniatura(del.parentNode); if (!a) return;
+      e.preventDefault(); e.stopImmediatePropagation();
+      apagar(a.midx, a.key, a.i);
+      return;
+    }
+    var mini = t.closest('.photo-thumbs-mini .photo-thumb-mini:not(.photo-thumb-prev)');
+    if (mini) {
+      var b = alvoDaMiniatura(mini); if (!b) return;
+      e.preventDefault(); e.stopImmediatePropagation();
+      abrirFoto(b.midx, b.key, b.i);
+    }
+  }, true);
+
+  // ── a foto grande ────────────────────────────────────────────────────────────────────────────────
+  var ver = null, atual = null;
+  function montar() {
+    if (ver && document.body.contains(ver)) return;
+    ver = document.createElement('div'); ver.id = 'pf135Foto'; ver.hidden = true;
+    ver.setAttribute('role', 'dialog'); ver.setAttribute('aria-modal', 'true'); ver.setAttribute('aria-label', 'Foto');
+    ver.innerHTML =
+      '<div class="pf135-tp"><div class="pf135-tt"><b></b><span></span></div><button type="button" class="pf135-fx" data-pf135="fechar" aria-label="Fechar">✕</button></div>' +
+      '<div class="pf135-pc"><img alt="Foto"><button type="button" class="pf135-nv e" data-pf135="ant" aria-label="Foto anterior">◀</button><button type="button" class="pf135-nv d" data-pf135="prox" aria-label="Próxima foto">▶</button></div>' +
+      '<div class="pf135-pe"><button type="button" class="pf135-b" data-pf135="fechar">Fechar</button><button type="button" class="pf135-b x" data-pf135="excluir">🗑 Excluir foto</button></div>';
+    document.body.appendChild(ver);
+    ver.addEventListener('click', async function (e) {
+      var b = e.target && e.target.closest ? e.target.closest('button[data-pf135]') : null; if (!b || b.disabled || !atual) return;
+      e.stopPropagation();
+      var a = b.getAttribute('data-pf135');
+      if (a === 'fechar') return fecharFoto();
+      if (a === 'ant') return mostrar(atual.i - 1);
+      if (a === 'prox') return mostrar(atual.i + 1);
+      if (a === 'excluir') {
+        b.disabled = true;
+        try {
+          var c = atual, foi = await apagar(c.midx, c.key, c.i);
+          if (!foi) return;
+          var n = fotos(c.midx, c.key).length;
+          if (!n) return fecharFoto();
+          mostrar(Math.min(c.i, n - 1));
+        } finally { b.disabled = false; }
+      }
+    });
+  }
+  function mostrar(i) {
+    if (!atual) return;
+    var l = fotos(atual.midx, atual.key);
+    if (!l.length) return fecharFoto();
+    i = Math.max(0, Math.min(i, l.length - 1)); atual.i = i;
+    var f = l[i] || {};
+    ver.querySelector('img').src = f.dataUrl || '';
+    ver.querySelector('.pf135-tt b').textContent = rotulo(atual.midx, atual.key);
+    var st = f.origemDrive ? 'já no Drive desta OS' : (f.driveStatus === 'ok' || f.driveStatus === 'done' ? 'enviada ao Drive' : (f.driveStatus === 'error' || f.driveStatus === 'failed' ? 'cópia no Drive falhou — a foto está no relatório' : (f.driveStatus ? 'enviando ao Drive…' : 'guardada no aparelho')));
+    ver.querySelector('.pf135-tt span').textContent = 'Foto ' + (i + 1) + ' de ' + l.length + ' · ' + st;
+    ver.querySelector('[data-pf135="ant"]').hidden = i <= 0;
+    ver.querySelector('[data-pf135="prox"]').hidden = i >= l.length - 1;
+  }
+  function abrirFoto(midx, key, i) {
+    if (!fotos(midx, key)[i]) return;
+    montar();
+    atual = { midx: midx, key: key, i: i };
+    mostrar(i);
+    ver.hidden = false; document.documentElement.classList.add('pf135-foto');
+    PF135.abertas++; log('abrir', key, i);
+  }
+  function fecharFoto() {
+    atual = null;
+    if (ver) { ver.hidden = true; try { ver.querySelector('img').removeAttribute('src'); } catch (e) {} }
+    document.documentElement.classList.remove('pf135-foto');
+  }
+  PF135.abrirFoto = abrirFoto; PF135.fecharFoto = fecharFoto;
+  PF135.aberta = function () { return !!(ver && !ver.hidden); };
+  // Voltar do Android fecha a foto (uma camada por toque)
+  try {
+    var _vc = window._pgpVoltarUmaCamada;
+    if (typeof _vc === 'function' && !_vc.__pf135) {
+      window._pgpVoltarUmaCamada = function () { if (PF135.aberta()) { fecharFoto(); return true; } return _vc.apply(this, arguments); };
+      window._pgpVoltarUmaCamada.__pf135 = true;
+    }
+  } catch (e) { log('embrulho voltar', e && e.message); }
+
+  // ═══ rotina leve: carimbo + vagas (as telas do PF129/PF130 se redesenham sozinhas) ═══════════════════
+  function passo() { carimbar(); vigiarVagas(); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', passo); else setTimeout(passo, 0);
+  setInterval(passo, 800);
+  log('pronto', PF135.ver || 'sem versão no meta');
+})();
+</script>
+<!-- ████ FIM PCF_V135 (PF135) ████ -->
+
+<!-- ████ PCF_V136 (PF136) · UMA ASSINATURA POR OS · 09/10/2026 ████
+     🕳 Pedido do Fernando (09/10 19h05 + decisao 20h19, prints do Vitor): numa OS com varias maquinas o tecnico assinou
+        na maquina 1 e, ao gerar o PDF da maquina 3, o app perguntou de novo "Coletar a assinatura do tecnico e do
+        responsavel do cliente agora?". DECISAO: UMA ASSINATURA POR OS — tecnico + responsavel valem para todas as
+        maquinas daquela OS (nunca para outra OS, nem do mesmo cliente/dia).
+        Diagnostico (V131/GAS v170): (b) pgpAssinaturasCompletas exige OS DOIS papeis — so o tecnico assinado e a pergunta
+        volta em TODA maquina, pedindo os dois de novo; (c) a assinatura so volta do servidor pela VISITA da maquina
+        reaberta (getPreventivaDaOS incluir_assinaturas) — maquina sem visita, outro celular ou app limpo = pede de novo.
+     🔑 · ASSINATURA DA OS: ao abrir a OS, ao trocar de maquina, antes da pergunta do PDF e quando a rede volta, se falta
+          algum papel DESTA OS, o app procura nas visitas de TODAS as maquinas da OS (as da coleta + as da OS no cache
+          getMaquinasByOS), pelo getPreventivaDaOS de sempre — ZERO GAS novo. Completa SO o papel que falta (mais recente
+          vence; nunca sobrescreve o colhido no aparelho), carimbo = a OS aberta, origem 'servidor', guarda maquina e hora.
+          A visita de onde veio fica marcada como "ja enviada" (nao sobe de volta para ela). Ao registrar OUTRA maquina, a
+          copia sobe para a visita dela como sempre subiu (assim o PDF regenerado no PCM daquela maquina sai assinado).
+        · PERGUNTAR SO O QUE FALTA: a pergunta do PDF diz o estado real ("Falta so a assinatura do responsavel do
+          cliente") e o fluxo pula o papel ja assinado (o ✍️ Coletar assinaturas continua pedindo os dois, para refazer).
+        · STATUS: "✓ Tecnico: Vitor (17:04 · Maq. 1) · ✓ Cliente: … — valem para todas as maquinas desta OS"; o que falta
+          aparece por CSS (atributo data-pf136-falta), para nao enganar a pilula do hub, que le o texto.
+        · Guardas intactos: outra OS nunca empresta (V91.1/V87: o carimbo e a OS; o que volta do servidor so entra se a
+          OS aberta ainda e a mesma da busca); coleta avulsa como antes; inspecao: o que veio do servidor nao e "colhido
+          nesta coleta" (pcf117) e nao sobe.
+     Zero SQL, zero GAS. -->
+<style id="pf136css">
+[data-pf136-falta]::after{content:attr(data-pf136-falta);display:block;margin-top:2px;color:#b45309;font-weight:600}
+html.pf129 [data-pf136-falta]::after{color:#b45309}
+</style>
+<script>
+(function () {
+  'use strict';
+  if (window.PF136) return;
+  var PF136 = window.PF136 = { versao: 'PCF_V136', log: [], buscas: 0, completadas: 0, ultimaBusca: null, emVoo: null };
+  var CACHE_MS = 5 * 60000, CACHE_FALHA_MS = 30000, PRAZO_PDF = 6000, LIMITE = 3;
+  function $(id) { return document.getElementById(id); }
+  function log() { try { PF136.log.push([new Date().toISOString().slice(11, 19)].concat([].slice.call(arguments)).join(' ')); if (PF136.log.length > 80) PF136.log.shift(); } catch (e) {} }
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function osAberta() { try { return String(window._PGP_OS_ID || ''); } catch (e) { return ''; } }
+  function ehPrev() { try { return _pgpTipoVisita === 'preventiva'; } catch (e) { return false; } }
+  function midxAtual() { try { return (typeof currentMachine === 'number') ? currentMachine : 0; } catch (e) { return 0; } }
+  function conj() { return window._PGP_ASSINATURAS || {}; }
+  function temPapel(s) { return !!(s && s.dataUrl); }
+  function ctxOk() { try { return pgpAssinaturasContextoOk(midxAtual()); } catch (e) { return false; } }
+  // dentro de uma OS so vale o conjunto carimbado com ESTA OS (o carimbo so por cliente — coleta avulsa de outro dia —
+  // passa no pgpAssinaturasContextoOk, mas nao e "a assinatura desta OS": auditoria 1, ALTA-1)
+  function daOS() { var os = osAberta(), a = conj(); return !!os && String(a.osId || '') === os && ctxOk(); }
+  // os papeis que valem AGORA para a OS aberta
+  function estado() {
+    var a = conj(), ok = osAberta() ? daOS() : ctxOk();
+    return { tecnico: ok && temPapel(a.tecnico), responsavel: ok && temPapel(a.responsavel) };
+  }
+  PF136.estado = estado;
+  function rotMaq(i) {
+    try {   // mesma numeracao da lista da OS (getMaquinasByOS em cache), quando a maquina esta nela
+      var e0 = (typeof pgpGetLoadedMachineForIndex === 'function') ? pgpGetLoadedMachineForIndex(i) : null, os = osAberta();
+      var c = os ? (JSON.parse(localStorage.getItem('pf_maqos_cache_v1') || '{}')[os] || {}).machines || [] : [];
+      var k = e0 ? c.findIndex(function (m) { return (m.id && String(m.id) === String(e0.id || '')) || (m.serial && String(m.serial) === String(e0.serial || '')); }) : -1;
+      if (k >= 0) { var md = c[k].model || c[k].modelo || ''; return 'Máq. ' + (k + 1) + (md ? ' · ' + md : ''); }
+    } catch (e) {}
+    try { var eq = (typeof pgpGetLoadedMachineForIndex === 'function') ? pgpGetLoadedMachineForIndex(i) : null; var m = (eq && (eq.model || eq.modelo)) || vg(i, 'modelo') || ''; return 'Máq. ' + (i + 1) + (m && m !== '—' ? ' · ' + m : ''); } catch (e) { return 'Máq. ' + (i + 1); }
+  }
+  function hhmm(sig) {
+    try {
+      if (sig.ts) { var d = new Date(Number(sig.ts)); if (!isNaN(d)) { var hoje = new Date().toDateString() === d.toDateString(); var p = function (n) { return (n < 10 ? '0' : '') + n; }; return (hoje ? '' : p(d.getDate()) + '/' + p(d.getMonth() + 1) + ' ') + p(d.getHours()) + ':' + p(d.getMinutes()); } }
+      var q = String(sig.quando || ''); var m = /(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\D+(\d{1,2}:\d{2})/.exec(q);
+      if (m) { var hj = new Date(), mesmo = Number(m[1]) === hj.getDate() && Number(m[2]) === hj.getMonth() + 1; return (mesmo ? '' : ('0' + m[1]).slice(-2) + '/' + ('0' + m[2]).slice(-2) + ' ') + m[4]; }
+      var m2 = /(\d{1,2}:\d{2})/.exec(q); return m2 ? m2[1] : '';
+    } catch (e) { return ''; }
+  }
+
+  // ═══ 1 · A ASSINATURA DA OS VEM DO SERVIDOR (qualquer maquina da MESMA OS) ════════════════════════════
+  function maquinasDaOS(os) {
+    var vistas = {}, lista = [];
+    function por(eq, rot) {
+      if (!eq) return; var id = String(eq.id || eq.machine_id || ''), sr = String(eq.serial || eq.ns || '');
+      var k = id || ('s:' + sr); if (!k || k === 's:' || vistas[k]) return; vistas[k] = 1;
+      lista.push({ id: id, serial: sr, rot: rot || ((eq.model || eq.modelo || 'Máquina') + (sr ? ' · ' + sr : '')) });
+    }
+    // a numeracao "Máq. N" e a da lista da OS (getMaquinasByOS, em cache); maquina fora dela usa a aba da coleta
+    try { var c = JSON.parse(localStorage.getItem('pf_maqos_cache_v1') || '{}')[os]; (c && c.machines || []).forEach(function (m, k) { var md = m.model || m.modelo || ''; por(m, 'Máq. ' + (k + 1) + (md ? ' · ' + md : '')); }); } catch (e) {}
+    try { for (var i = 0; i < machines.length; i++) por(pgpGetLoadedMachineForIndex(i), rotMaq(i)); } catch (e) {}
+    return lista;
+  }
+  function quandoMs(s) {
+    if (!s) return 0; if (s.ts) return Number(s.ts) || 0;
+    var q = String(s.quando || ''), m = /(\d{1,2})\/(\d{1,2})\/(\d{2,4})\D+(\d{1,2}):(\d{2})/.exec(q);
+    if (m) { var y = Number(m[3]); if (y < 100) y += 2000; return new Date(y, Number(m[2]) - 1, Number(m[1]), Number(m[4]), Number(m[5])).getTime(); }
+    var t = Date.parse(q); return isNaN(t) ? 0 : t;
+  }
+  function online() {
+    try { if (navigator.onLine === false) return false; } catch (e) {}
+    try { if (typeof pgpRedeBloqueada === 'function' && pgpRedeBloqueada()) return false; } catch (e) {}
+    return true;
+  }
+  PF136.ultimoResultado = {};
+  async function buscar(motivo, forcar) {
+    var os = osAberta();
+    if (!os || !ehPrev()) return false;
+    // o tecnico esta assinando: nao vai a rede agora; o fim da assinatura chama UMA busca (auditoria 2: sem varredura em laco)
+    try { if (_pgpAssinBusy) { PF136._pendente = os; log('busca: adiada para o fim da assinatura'); return false; } } catch (e) {}
+    var st = estado(); if (st.tecnico && st.responsavel) return false;
+    if (!online()) { log('busca: sem rede', motivo); return false; }
+    var ult = PF136.ultimoResultado[os];
+    if (!forcar && ult && Date.now() - ult.em < (ult.falhou ? CACHE_FALHA_MS : CACHE_MS)) return false;
+    if (PF136.emVoo && PF136.emVoo.os === os) return PF136.emVoo.p;
+    var maqs = maquinasDaOS(os);
+    if (!maqs.length) return false;
+    PF136.buscas++; log('busca', motivo, os, maqs.length + ' máquina(s)');
+    var achados = { tecnico: null, responsavel: null }, falhas = 0;
+    var p = (async function () {
+      var fila = maqs.slice(), ativos = [];
+      async function uma(m) {
+        var d = null;
+        try { d = await pgpPostJson('getPreventivaDaOS', { os_id: os, machine_id: m.id, serial: m.serial, tipo: '', incluir_assinaturas: true }, 1); } catch (e) { falhas++; log('busca falhou', m.rot, e && e.message); return; }
+        if (!d || d.status !== 'ok' || !d.assinaturas) return;
+        var vid = String((d.visita && d.visita.visit_id) || '');
+        ['tecnico', 'responsavel'].forEach(function (k) {
+          var s = d.assinaturas[k]; if (!s || !s.dataUrl) return;
+          var cand = { s: s, vid: vid, rot: m.rot, cli: String((d.visita && d.visita.client) || '') };
+          if (!achados[k] || quandoMs(s) > quandoMs(achados[k].s)) achados[k] = cand;   // a mais recente vence
+        });
+      }
+      while (fila.length) { ativos = fila.splice(0, LIMITE).map(uma); await Promise.all(ativos); }
+      return completar(os, achados, motivo);
+    })();
+    PF136.emVoo = { os: os, p: p };
+    try { return await p; } finally { if (PF136.emVoo && PF136.emVoo.p === p) PF136.emVoo = null; var u0 = PF136.ultimoResultado[os]; if (!(u0 && u0.em === 0)) PF136.ultimoResultado[os] = { em: Date.now(), achou: !!(achados.tecnico || achados.responsavel), falhou: falhas > 0 }; }
+  }
+  PF136.buscar = buscar;
+  function completar(os, achados, motivo) {
+    // a OS aberta mudou durante a busca: NADA entra (outra OS nunca empresta)
+    if (osAberta() !== os) { log('busca descartada: a OS mudou', os, '→', osAberta()); return false; }
+    if (!achados.tecnico && !achados.responsavel) { log('busca: nada no servidor', os); return false; }
+    // o tecnico esta assinando agora: nao mexe no conjunto no meio (tenta de novo depois)
+    try { if (_pgpAssinBusy) { log('busca: assinatura em curso — achados guardados para o fim dela'); PF136._achadosPendentes = { os: os, achados: achados, motivo: motivo }; return false; } } catch (e) {}
+    window._PGP_ASSINATURAS = window._PGP_ASSINATURAS || { tecnico: null, responsavel: null, osId: null, cliente: '' };
+    try { pgpDescartarAssinaturasForaDeContexto(os, midxAtual()); } catch (e) {}
+    var a = window._PGP_ASSINATURAS;
+    if ((a.tecnico || a.responsavel) && String(a.osId || '') !== os) {
+      // conjunto sem o carimbo DESTA OS (avulsa do mesmo cliente): nao e promovido — a OS fica com o que e dela
+      log('busca: conjunto local sem carimbo desta OS substituído pelo da OS');
+      a.tecnico = null; a.responsavel = null; a.origem = null; a.assinadoEm = null;
+    }
+    var mudou = false, env = {};
+    try { env = JSON.parse(localStorage.getItem(_PGP_ASSIN_ENVIADAS_KEY) || '{}') || {}; } catch (e) { env = {}; }
+    [['tecnico', 'Técnico responsável'], ['responsavel', 'Responsável pelo cliente']].forEach(function (par) {
+      var k = par[0], c = achados[k];
+      if (!c || temPapel(a[k])) return;           // nunca sobrescreve o que o aparelho ja tem desta OS
+      var tsq = quandoMs(c.s);   // a hora da ASSINATURA (a copia que sobe para outra visita leva esta hora, nao a do upload)
+      a[k] = { nome: c.s.nome || '', dataUrl: c.s.dataUrl, papel: par[1], quando: c.s.quando || '', origem: 'servidor', maqTxt: c.rot, vid: c.vid };
+      if (tsq) a[k].ts = tsq;
+      if (c.vid) env[c.vid + '|' + k] = Date.now();   // o que veio de uma visita nao volta para ela
+      mudou = true;
+    });
+    if (!mudou) return false;
+    a.osId = os;
+    if (!a.cliente) { var cli = (achados.tecnico || achados.responsavel).cli; if (cli) a.cliente = cli; }
+    try { localStorage.setItem(_PGP_ASSIN_ENVIADAS_KEY, JSON.stringify(env)); } catch (e) {}
+    try { pgpPersistAssinaturas(); } catch (e) {}
+    PF136.completadas++; log('completou', motivo, JSON.stringify(estado()));
+    repintar();
+    try { showNotification('✍️ Assinatura desta OS recuperada do servidor — vale para todas as máquinas.'); } catch (e) {}
+    return true;
+  }
+
+  // ═══ GUARDA: dentro de uma OS, na PREVENTIVA, so vale o conjunto carimbado com ESTA OS ════════════════════
+  // (auditoria 2, A9 pre-existente: a preventiva de uma OS aceitava, pelo nome do cliente, assinaturas de uma coleta
+  // avulsa de outro dia — e gerava o PDF sem perguntar. Na inspecao fica como esta: o pgpGarantirOSInspecaoAvulsa cria a
+  // OS no meio do _gerarPDF_ da avulsa e as assinaturas recem-colhidas dela ainda nao tem o carimbo.)
+  try {
+    var _cok = window.pgpAssinaturasContextoOk;
+    if (typeof _cok === 'function' && !_cok.__pf136) {
+      window.pgpAssinaturasContextoOk = function () {
+        try { var a = conj(), os = osAberta(); if (os && ehPrev() && (a.tecnico || a.responsavel) && String(a.osId || '') !== os) return false; } catch (e) {}
+        return _cok.apply(this, arguments);
+      };
+      window.pgpAssinaturasContextoOk.__pf136 = true;
+    }
+  } catch (e) { log('embrulho ctx', e && e.message); }
+
+  // ═══ 2 · PERGUNTAR SO O QUE FALTA ═════════════════════════════════════════════════════════════════
+  // a pergunta do _gerarPDF_ e o AppDialog com titulo 'Assinaturas': o texto passa a dizer o estado real e o fluxo
+  // seguinte pula o papel ja assinado (o tecnico nao assina de novo para colher so o cliente)
+  PF136._pularProx = null; PF136._pular = null;
+  function descr(s) { var h = hhmm(s); var x = [h, s.maqTxt].filter(Boolean).join(' · '); return (s.nome || '—') + (x ? ' (' + x + ')' : ''); }
+  try {
+    var _conf = AppDialog.confirm;
+    AppDialog.confirm = function (msg, opts) {
+      try {
+        if (opts && opts.title === 'Assinaturas' && osAberta() && /^Coletar a assinatura do técnico e do responsável/.test(String(msg || ''))) {
+          var st = estado(), a = conj(), os = !!osAberta();
+          var nota = os ? '\n\nValem para TODAS as máquinas desta OS: assina uma vez só.' : '';
+          if (st.tecnico && !st.responsavel) {
+            PF136._pularProx = { tecnico: true, em: Date.now() };
+            msg = 'Falta só a assinatura do responsável do cliente.\n\nA do técnico já está colhida: ' + descr(a.tecnico) + '.' + nota;
+            opts = Object.assign({}, opts, { okLabel: '✍️ Colher a do cliente', cancelLabel: 'Gerar sem a do cliente' });
+          } else if (st.responsavel && !st.tecnico) {
+            PF136._pularProx = { responsavel: true, em: Date.now() };
+            msg = 'Falta só a assinatura do técnico.\n\nA do responsável do cliente já está colhida: ' + descr(a.responsavel) + '.' + nota;
+            opts = Object.assign({}, opts, { okLabel: '✍️ Colher a do técnico', cancelLabel: 'Gerar sem a do técnico' });
+          } else {
+            PF136._pularProx = null;
+            msg = String(msg) + nota;
+          }
+          var pr = _conf.call(this, msg, opts);
+          return Promise.resolve(pr).then(function (v) { if (!v) PF136._pularProx = null; return v; });
+        }
+      } catch (e) { log('confirm', e && e.message); }
+      return _conf.apply(this, arguments);
+    };
+  } catch (e) { log('embrulho confirm', e && e.message); }
+  // o fluxo das duas assinaturas pergunta tecnico → cliente; no modo "so o que falta" o papel ja assinado volta
+  // na hora, sem tela (o MESMO objeto: a impressao do pcf117 nao muda e ele nao conta como colhido agora)
+  try {
+    var _uma = window.pgpColetarAssinatura;
+    if (typeof _uma === 'function' && !_uma.__pf136) {
+      window.pgpColetarAssinatura = function (o) {
+        var tit = String((o && o.titulo) || ''), a = conj(), P = PF136._pular;
+        var k = /Técnico/.test(tit) ? 'tecnico' : (/Responsável/.test(tit) ? 'responsavel' : '');
+        if (P && k && P[k] && temPapel(a[k]) && daOS()) { log('pulou (já assinado)', k); return Promise.resolve(a[k]); }
+        var mi = midxAtual();
+        return Promise.resolve(_uma.apply(this, arguments)).then(function (r) {
+          if (r && typeof r === 'object') { try { r.maqTxt = rotMaq(mi); r.origem = 'aparelho'; } catch (e) {} }
+          return r;
+        });
+      };
+      window.pgpColetarAssinatura.__pf136 = true;
+    }
+  } catch (e) { log('embrulho uma', e && e.message); }
+  try {
+    var _cap = window.pgpColetarAssinaturasPreventiva;
+    if (typeof _cap === 'function' && !_cap.__pf136) {
+      window.pgpColetarAssinaturasPreventiva = async function () {
+        var pp = PF136._pularProx; PF136._pularProx = null;
+        PF136._pular = (pp && Date.now() - pp.em < 120000) ? pp : null;
+        try { return await _cap.apply(this, arguments); }
+        finally {
+          PF136._pular = null;
+          // o que chegou (ou foi pedido) durante a assinatura entra agora — sem nova varredura se ja veio
+          var ap = PF136._achadosPendentes, pend = PF136._pendente; PF136._achadosPendentes = null; PF136._pendente = null;
+          try { if (ap && ap.os === osAberta()) completar(ap.os, ap.achados, ap.motivo + ' (depois da assinatura)'); else if (pend && pend === osAberta()) setTimeout(function () { buscar('depois da assinatura', true); }, 300); } catch (e) {}
+          repintar();
+        }
+      };
+      window.pgpColetarAssinaturasPreventiva.__pf136 = true;
+    }
+  } catch (e) { log('embrulho cap', e && e.message); }
+
+  // antes da pergunta do PDF: a OS pode ter a assinatura no servidor (outra maquina, outro celular)
+  try {
+    var _gp = window.gerarPDF;
+    if (typeof _gp === 'function' && !_gp.__pf136) {
+      window.gerarPDF = async function (btnEl) {
+        var self = this, args = arguments;
+        try {
+          var st = estado();
+          if (osAberta() && ehPrev() && !(st.tecnico && st.responsavel) && online()) {
+            try { showNotification('🔎 Conferindo as assinaturas desta OS…'); } catch (e) {}
+            try { if (btnEl) { btnEl.disabled = true; btnEl.classList.add('is-busy'); } } catch (e) {}
+            try { await Promise.race([buscar('pdf'), new Promise(function (r) { setTimeout(r, PRAZO_PDF); })]); }   // com cache: 2o toque nao varre de novo
+            finally { try { if (btnEl) { btnEl.disabled = false; btnEl.classList.remove('is-busy'); } } catch (e) {} }
+          }
+        } catch (e) { log('antes do pdf', e && e.message); }
+        return _gp.apply(self, args);
+      };
+      window.gerarPDF.__pf136 = true;
+    }
+  } catch (e) { log('embrulho pdf', e && e.message); }
+  // ao abrir a OS e ao trocar de maquina (em 2o plano: nao segura a tela)
+  try {
+    var _ini = window.pgpIniciarPreventivaDeOS;
+    if (typeof _ini === 'function' && !_ini.__pf136) {
+      window.pgpIniciarPreventivaDeOS = async function () {
+        var r = await _ini.apply(this, arguments);
+        setTimeout(function () { buscar('abrir OS'); }, 1500);
+        return r;
+      };
+      window.pgpIniciarPreventivaDeOS.__pf136 = true;
+    }
+  } catch (e) { log('embrulho ini', e && e.message); }
+  try {
+    var _sw = window.switchMachine;
+    if (typeof _sw === 'function' && !_sw.__pf136) {
+      window.switchMachine = function () { var r = _sw.apply(this, arguments); setTimeout(function () { repintar(); buscar('trocar máquina'); }, 300); return r; };
+      window.switchMachine.__pf136 = true;
+    }
+  } catch (e) { log('embrulho troca', e && e.message); }
+  // sem sinal: usa o que tem; quando a rede volta, o status se corrige sozinho
+  var tOnline = 0;
+  window.addEventListener('online', function () {   // a rede oscila: um aviso so, e no maximo uma varredura por minuto
+    clearTimeout(tOnline);
+    tOnline = setTimeout(function () { var u = PF136.ultimoResultado[osAberta()]; buscar('rede voltou', !(u && u.em && Date.now() - u.em < 60000 && !u.falhou)); }, 1500);
+  });
+
+  // ═══ 3 · STATUS ════════════════════════════════════════════════════════════════════════════════════
+  function textos() {
+    var a = conj(), st = estado(), os = !!osAberta(), partes = [], falta = [];
+    if (st.tecnico) partes.push('✓ Técnico: ' + descr(a.tecnico)); else falta.push('o técnico');
+    if (st.responsavel) partes.push('✓ Cliente: ' + descr(a.responsavel)); else falta.push('o responsável do cliente');
+    var txt = partes.length ? partes.join(' · ') + (os ? ' — valem para todas as máquinas desta OS' : '') : '';
+    var f = (partes.length && falta.length) ? ('⬜ Falta ' + falta.join(' e ') + (os ? ' (uma vez para a OS toda)' : '')) : '';
+    return { txt: txt, falta: f, algum: partes.length > 0 };
+  }
+  PF136.textos = textos;
+  function aplicar(el, t, base) {
+    if (!el) return;
+    if (t.algum) { if (el.textContent !== t.txt) el.textContent = t.txt; }
+    else if (base != null && el.textContent !== base && el.__pf136) el.textContent = base;
+    el.__pf136 = t.algum;
+    if (t.falta) { if (el.getAttribute('data-pf136-falta') !== t.falta) el.setAttribute('data-pf136-falta', t.falta); }
+    else if (el.hasAttribute('data-pf136-falta')) el.removeAttribute('data-pf136-falta');
+  }
+  function repintar() {
+    try {
+      if (!osAberta()) return;     // coleta avulsa: o status de sempre
+      var t = textos();
+      for (var i = 0; i < machines.length; i++) aplicar($('pcf117AssinSt' + i), t, null);
+      document.querySelectorAll('[data-pf130="assin-st"]').forEach(function (el) { aplicar(el, t, null); });
+      var ft = $('pgpAssinStatus'); if (ft && t.algum) { var w = t.txt + (t.falta ? ' · ' + t.falta : ''); if (ft.textContent !== w) ft.textContent = w; }
+      try { if (window.PF130 && PF130.pintar) PF130.pintar(); } catch (e) {}
+    } catch (e) { log('repintar', e && e.message); }
+  }
+  PF136.repintar = repintar;
+  try {
+    var _st = window.pgpAtualizarStatusAssinaturas;
+    if (typeof _st === 'function' && !_st.__pf136) {
+      window.pgpAtualizarStatusAssinaturas = function () { var r = _st.apply(this, arguments); try { setTimeout(repintar, 0); } catch (e) {} return r; };
+      window.pgpAtualizarStatusAssinaturas.__pf136 = true;
+    }
+  } catch (e) {}
+  try {
+    var _pp = window.pcf117Pintar;
+    if (typeof _pp === 'function' && !_pp.__pf136) {
+      window.pcf117Pintar = function () { var r = _pp.apply(this, arguments); try { repintar(); } catch (e) {} return r; };
+      window.pcf117Pintar.__pf136 = true;
+    }
+  } catch (e) {}
+  setInterval(function () { try { if (!osAberta()) return; var t = textos(); if (!t.algum) return; for (var i = 0; i < machines.length; i++) { var el = $('pcf117AssinSt' + i); if (el && el.textContent !== t.txt) { repintar(); break; } } } catch (e) {} }, 1500);
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { setTimeout(repintar, 500); }); else setTimeout(repintar, 500);
+  log('pronto');
+})();
+</script>
+<!-- ████ FIM PCF_V136 (PF136) ████ -->
 
 </body>
 </html>
