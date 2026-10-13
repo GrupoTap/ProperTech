@@ -1696,8 +1696,16 @@ html[data-boot="pipeline"] #pf113Splash{display:flex;position:fixed;inset:0;z-in
   falta; a pergunta do PDF pede so o que falta; status "valem para todas as maquinas desta OS". Outra OS nunca empresta.
   Zero SQL, zero GAS. Bloco PF136 no fim do body.
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V136</title>
-<meta name="app-build" content="PCF_V136" data-date="2026-10-09">
+<!--
+  PCF_V137 · CLIENTE DA OS NA RAZAO SOCIAL · 13/10/2026 · feito SOBRE o PCF_V136 no ar · par sw propertech-v139.
+  Caso real 13/10 (OS PGP-2026-0119, J.R. Ferragens, preventiva aberta SEM maquina): o tecnico digitou a maquina a mao, a
+  Razao Social ficou vazia (pgpLoadClientDataFromObj nunca a preenche; dentro da OS ela e travada pelo V74) e o guardiao
+  OS x cliente tratou "SemCliente" como OUTRO cliente: fotos sem OS e a preventiva oferecida como AVULSA.
+  Regra: dentro de OS de cliente conhecido, razao social VAZIA = cliente da OS (preenchida; valor existente nunca muda).
+  Maquina de outro cliente segue suprimindo o os_id; fora de OS nada muda. Zero SQL, zero GAS. Bloco PF137 no fim do body.
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V137</title>
+<meta name="app-build" content="PCF_V137" data-date="2026-10-13">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -40464,6 +40472,239 @@ html.pf129 [data-pf136-falta]::after{color:#b45309}
 })();
 </script>
 <!-- ████ FIM PCF_V136 (PF136) ████ -->
+
+<!-- ████ PCF_V137 (PF137) · CLIENTE DA OS NA RAZÃO SOCIAL · 13/10/2026 ████
+  Caso real (13/10, Paulo Mayer, OS PGP-2026-0119, J.R. Ferragens e Madeiras LTDA, preventiva aberta SEM máquina):
+  o técnico digitou a máquina direto na seção 2 e, ao concluir, o app disse "a máquina na tela é de SemCliente" e
+  ofereceu salvar a preventiva AVULSA, fora da OS. As 23 fotos já tinham subido sem a OS.
+  Causa (medida no V136):
+   1. Na OS sem máquina vinculada, pgpIniciarPreventivaDeOS cai em pgpSelectClient(cliente da OS). Ali o cadastro do
+      cliente é preenchido por pgpLoadClientDataFromObj, que NUNCA escreve razao_social — a razão social só nascia quando
+      o técnico ESCOLHIA uma máquina (pgpLoadMachine põe eq.client). Quem digita a máquina à mão fica com ela vazia.
+   2. Dentro da OS o campo é travado pelo V74 (o técnico não pode digitar o cliente) — então não havia saída.
+   3. pgpDriveClientName devolve 'SemCliente' para o campo vazio, e o guardião OS×cliente (pgpOsIdSeguro, v52) tratou
+      "SemCliente" como OUTRO cliente: suprimiu o os_id das fotos, do PDF e da preventiva.
+  Regra nova: razão social VAZIA num painel QUE É DESTA OS = o cliente da OS. Preenchida (nunca por cima de valor),
+  em quatro portas: modo OS (pgpAplicarTravaCadastro, dentro de pgpAtualizarModoOS — também ao restaurar rascunho e
+  coleta salva), depois de pgpLoadMachine, antes de montar o payload (pgpBuildPayload) e no nome do cliente das
+  fotos/PDF (pgpDriveClientName).
+  🔑 "Painel desta OS" é um CARIMBO que viaja com a coleta: o hidden data-key m<i>_pf137os_scenario (e
+     m<i>_pf137cli_scenario, o nome que este bloco pôs). Por ser data-key, captureState grava, restoreState repõe e o
+     fechar-aba do PCF_V121 remapeia — a 2ª auditoria mostrou que marca só na tela some quando os painéis são remontados.
+     ⚠ O sufixo _scenario é de propósito: o detector de "máquina com dado" do PCF_V123 (RX_PADRAO) trata como
+       pré-preenchido; um sufixo novo faria painel vazio parecer coleta.
+  Quem carimba: painel virgem ao abrir a OS (sem máquina, leitura, foto ou peça) · painel novo criado dentro da OS ·
+  escolher a máquina (pgpLoadMachine) · "Limpar máquina" num painel que ficou limpo. Digitar por cima NUNCA muda o dono
+  de um painel (auditoria 3: um dígito na série adotava a coleta de outra OS ou avulsa). Estado restaurado SEM carimbo (coletas do V136 e
+  rascunhos avulsos) recebe o carimbo da OS DELE (st.osId; avulso = nenhum) — a coleta do Paulo volta na OS-0119, e uma
+  coleta de outra OS (ou avulsa) restaurada com a OS errada aberta NÃO é adotada (o guardião suprime, como no V136).
+  Cliente "confiável" para a OS: o que o getMaquinasByOS devolveu para ELA, o canônico do pipeline para ELA ou o
+  osCliente gravado na coleta DELA. Cliente de OS anterior esperando a rede não vale (auditoria: offline sem cache).
+  OS de inspeção que o próprio app abre (pgpGarantirOSInspecaoAvulsa) não entra no "confiável" — não preenche.
+  Painel de outra OS (ou avulso) muda de dono só escolhendo a máquina na lista ou com "Limpar máquina".
+  Trocar de OS: a razão que ESTE bloco pôs para a OS anterior sai do painel que não é da nova.
+  Zero SQL, zero GAS, zero PCM. Nenhuma função renomeada; embrulhos por window[nome], na carga.
+-->
+<script>
+(function () {
+  'use strict';
+  var TAG = '[PCF_V137]';
+  function log() { try { console.log.apply(console, [TAG].concat([].slice.call(arguments))); } catch (e) {} }
+  function txt(v) { return String(v == null ? '' : v).trim(); }
+  var K_OS = 'pf137os_scenario', K_CLI = 'pf137cli_scenario';
+  var pausa = false;          // durante restoreState nada é preenchido (o carimbo ainda não é o do estado)
+  var confiavel = {};         // osId -> cliente de fonte desta OS
+
+  function osAtual() { return txt(window._PGP_OS_ID); }
+  // O cliente da OS aberta — só com a trava do V74 valendo e com fonte DESTA OS.
+  function cliOS() {
+    try {
+      if (pausa) return '';
+      var os = osAtual(); if (!os) return '';
+      if (typeof pgpCadTravado === 'function' && !pgpCadTravado()) return '';
+      var c = txt(window._PGP_OS_CLIENTE);
+      if (!c || txt(confiavel[os]) !== c) return '';
+      return c;
+    } catch (e) { return ''; }
+  }
+  function nPaineis() { try { return Math.max(1, (machines || []).length); } catch (e) { return 1; } }
+  function razao(i) { return document.querySelector('[data-key="m' + i + '_razao_social"]'); }
+  function oculto(i, k, criar) {
+    var el = document.querySelector('[data-key="m' + i + '_' + k + '"]');
+    if (el || !criar) return el;
+    var pn = document.getElementById('panel-' + i); if (!pn) return null;
+    el = document.createElement('input'); el.type = 'hidden'; el.setAttribute('data-key', 'm' + i + '_' + k); el.value = '';
+    pn.appendChild(el); return el;
+  }
+  function carimbo(i) { var el = oculto(i, K_OS, false); return el ? txt(el.value) : ''; }
+  function carimbar(i, os) { var el = oculto(i, K_OS, true); if (el) el.value = txt(os); }
+  function nomePosto(i) { var el = oculto(i, K_CLI, false); return el ? txt(el.value) : ''; }
+  // sem máquina, sem leitura, sem foto e sem peça marcada (auditoria 3: coleta começada antes de identificar a máquina
+  // NÃO é de ninguém — não pode ser adotada pela próxima OS)
+  function virgem(i) {
+    try { if (pgpGetLoadedMachineForIndex(i)) return false; } catch (e) {}
+    try { if (typeof pgpMaquinaTemConteudo === 'function' && pgpMaquinaTemConteudo(i)) return false; } catch (e) {}
+    return !['marca', 'modelo', 'ns', 'tag', 'horimetro'].some(function (k) { return txt((document.querySelector('[data-key="m' + i + '_' + k + '"]') || {}).value); });
+  }
+  function marcarItem(el, ligado) {
+    try {
+      var fi = el.closest('.field-item'); if (fi) fi.classList.toggle('checked', !!ligado);
+      var sec = el.closest('[data-section]'); if (sec && typeof refreshSection === 'function') refreshSection(sec);
+    } catch (e) {}
+  }
+
+  // Preenche a Razão Social VAZIA dos painéis DESTA OS. Nunca sobrescreve, nunca dispara 'input'
+  // (não é digitação do técnico — não marca pgpTocado nem vira "coleta").
+  function preencher(motivo, soIdx) {
+    var cli = cliOS(); if (!cli) return 0;
+    var os = osAtual(), n = 0, tot = nPaineis();
+    for (var i = 0; i < tot; i++) {
+      if (soIdx !== undefined && soIdx !== null && i !== soIdx) continue;
+      var el = razao(i);
+      if (!el || txt(el.value) || carimbo(i) !== os) continue;
+      el.value = cli; n++;
+      var ec = oculto(i, K_CLI, true); if (ec) ec.value = cli;
+      marcarItem(el, true);   // V71/FIX3: o ✓ é derivado do valor (pgpSyncCheckedComValores não opina em readOnly)
+    }
+    if (n) {
+      try { if (typeof updateProgress === 'function') updateProgress(); } catch (e) {}
+      log('razão social vazia = cliente da OS (' + cli + ') em ' + n + ' painel(is) · ' + (motivo || ''));
+    }
+    return n;
+  }
+  // a razão que ESTE bloco pôs e que não é mais do carimbo atual do painel sai
+  function soltarNome(i) {
+    var el = razao(i), posto = nomePosto(i); if (!el || !posto) return;
+    if (txt(el.value) === posto) { el.value = ''; marcarItem(el, false); }
+    var ec = oculto(i, K_CLI, false); if (ec) ec.value = '';
+  }
+
+  function embrulhar(nome, fazer) {
+    try {
+      var orig = window[nome];
+      if (typeof orig !== 'function' || orig.__pf137) return false;
+      var novo = fazer(orig); novo.__pf137 = true; window[nome] = novo; return true;
+    } catch (e) { log('embrulho falhou', nome, e && e.message); return false; }
+  }
+
+  // 1 · toda entrada/saída do modo OS
+  embrulhar('pgpAplicarTravaCadastro', function (orig) {
+    return function () { var r = orig.apply(this, arguments); try { preencher('modo OS'); } catch (e) {} return r; };
+  });
+  // 2 · escolher/carregar a máquina = o painel passa a ser da OS aberta (fora de OS: de nenhuma)
+  embrulhar('pgpLoadMachine', function (orig) {
+    return function (eq, localDb, midx) {
+      var r = orig.apply(this, arguments);
+      try {
+        var i = pgpGetMachineIndex(midx === undefined ? currentMachine : midx);
+        var os = osAtual();
+        if (carimbo(i) !== os) soltarNome(i);
+        carimbar(i, os); preencher('carga da máquina', i);
+      } catch (e) {}
+      return r;
+    };
+  });
+  // 3 · antes de montar QUALQUER payload (preventiva e inspeção passam por aqui)
+  embrulhar('pgpBuildPayload', function (orig) {
+    return function (midx) {
+      try { var i = pgpGetMachineIndex(arguments.length ? midx : currentMachine); preencher('envio', i); } catch (e) {}
+      return orig.apply(this, arguments);
+    };
+  });
+  // 4 · o nome do cliente que vai com foto/PDF e que o guardião OS×cliente compara
+  embrulhar('pgpDriveClientName', function (orig) {
+    return function (midx) {
+      var r = orig.apply(this, arguments);
+      if (r === 'SemCliente' && cliOS()) {
+        try { preencher('foto/PDF', pgpGetMachineIndex(midx === undefined ? 0 : midx)); } catch (e) {}
+        r = orig.apply(this, arguments);   // painel que não é desta OS continua 'SemCliente'
+      }
+      return r;
+    };
+  });
+  // painel novo criado DENTRO da OS (＋ Incluir outra máquina) é desta OS
+  embrulhar('createPanel', function (orig) {
+    return function (idx) {
+      var r = orig.apply(this, arguments);
+      try { carimbar(idx, osAtual()); oculto(idx, K_CLI, true); } catch (e) {}
+      return r;
+    };
+  });
+  // estado restaurado (rascunho "Continuar", "Coletas guardadas", fechar aba)
+  embrulhar('restoreState', function (orig) {
+    return function (st) {
+      var r; pausa = true;
+      try { r = orig.apply(this, arguments); }
+      finally {
+        pausa = false;
+        try {
+          var f = (st && st.fields) || {}, osDele = txt(st && st.osId);
+          if (osDele && txt(st.osCliente)) confiavel[osDele] = txt(st.osCliente);
+          for (var i = 0; i < nPaineis(); i++) {
+            // coleta SEM carimbo (V136, ou avulsa) leva o carimbo da OS DELA; com carimbo, o restoreState já repôs
+            if (!Object.prototype.hasOwnProperty.call(f, 'm' + i + '_' + K_OS)) carimbar(i, osDele);
+            if (!Object.prototype.hasOwnProperty.call(f, 'm' + i + '_' + K_CLI)) { var ec = oculto(i, K_CLI, true); if (ec) ec.value = ''; }
+          }
+        } catch (e) {}
+      }
+      return r;
+    };
+  });
+  // "Limpar máquina" (pgpClearMachine) e "Limpar e recomeçar" (resetCurrent) apagam todo data-key do painel — o carimbo
+  // junto. Painel limpo de verdade (sem máquina do cadastro, sem foto, sem peça) recomeça DESTA OS; senão volta o de antes.
+  function aposLimpar(i, antes) {
+    try {
+      var os = osAtual(), limpo = false;
+      try { limpo = !pgpGetLoadedMachineForIndex(i) && !(typeof pgpMaquinaTemConteudo === 'function' && pgpMaquinaTemConteudo(i)); } catch (e) {}
+      carimbar(i, (os && limpo) ? os : antes); oculto(i, K_CLI, true);
+      preencher('máquina limpa', i);
+    } catch (e) {}
+  }
+  embrulhar('pgpClearMachine', function (orig) {
+    return function () {
+      var i = 0; try { i = pgpGetMachineIndex(currentMachine); } catch (e) {}
+      var antes = carimbo(i), r = orig.apply(this, arguments); aposLimpar(i, antes); return r;
+    };
+  });
+  embrulhar('resetCurrent', function (orig) {
+    return async function () {
+      var i = 0; try { i = pgpGetMachineIndex(currentMachine); } catch (e) {}
+      var antes = carimbo(i), r = await orig.apply(this, arguments); aposLimpar(i, antes); return r;
+    };
+  });
+  // abrir uma OS (pipeline, deep link, reentrada)
+  embrulhar('pgpIniciarPreventivaDeOS', function (orig) {
+    return async function (osId) {
+      var nova = txt(osId);
+      try {
+        if (nova && nova !== txt(window._PGP_OS_ID_CARREGADA)) {
+          // o canônico do pipeline, quando ele é desta OS (V78/C1: _pfOsCliente é nome, não rótulo)
+          var doPipe = '';
+          try { if (typeof _pfOsId !== 'undefined' && txt(_pfOsId) === nova) doPipe = txt(_pfOsCliente); } catch (e) {}
+          if (doPipe) { confiavel[nova] = doPipe; window._PGP_OS_CLIENTE = doPipe; }
+          for (var i = 0; i < nPaineis(); i++) {
+            if (carimbo(i) === nova) continue;
+            if (virgem(i)) { soltarNome(i); carimbar(i, nova); continue; }   // vazio de máquina: é desta OS (o nome da anterior sai)
+            soltarNome(i);   // painel com máquina de outra OS: o nome que ESTE bloco pôs não vale aqui
+          }
+        }
+      } catch (e) {}
+      var r = await orig.apply(this, arguments);
+      try {
+        if (nova && txt(window._PGP_OS_ID_CARREGADA) === nova && osAtual() === nova && txt(window._PGP_OS_CLIENTE)) {
+          confiavel[nova] = txt(window._PGP_OS_CLIENTE);
+          preencher('OS carregada');
+        }
+      } catch (e) {}
+      return r;
+    };
+  });
+
+  window.PF137 = { preencher: preencher, cliOS: cliOS, carimbo: carimbo };
+  log('pronto');
+})();
+</script>
+<!-- ████ FIM PCF_V137 (PF137) ████ -->
 
 </body>
 </html>
