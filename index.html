@@ -1712,8 +1712,16 @@ html[data-boot="pipeline"] #pf113Splash{display:flex;position:fixed;inset:0;z-in
   E: marcar as EMPRESAS a visitar e baixar tudo para lancar sem sinal; Liberar tarefa e Cheguei/Sai respondem no toque.
   Chaves novas so com prefixo pf138; nenhuma chave antiga muda. Zero SQL, zero GAS. Bloco PF138 no fim do body.
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V138</title>
-<meta name="app-build" content="PCF_V138" data-date="2026-10-15">
+<!--
+  PCF_V139 · TROCAR DE OS LIMPA A TELA · 15/10/2026 · feito SOBRE o PCF_V138 no ar · par sw propertech-v141.
+  Caso real (Paulo Mayer, 15/10): depois da preventiva da SORRAG, a OS 117 da PLASGURT abriu com as fotos, as
+  referencias e o contador da Sorrag. Abrir uma OS diferente da que esta na tela nao limpava o painel; numa OS com
+  maquina o modo merge (V71) levava o horimetro e as observacoes da anterior para a maquina nova.
+  Agora: a coleta anterior que nao foi enviada e GUARDADA (Coletas guardadas, com prova) e a tela comeca limpa;
+  reabrir a OS dona oferece Trazer de volta; OS sem maquina vinculada avisa. Zero SQL, zero GAS. Bloco PF139 no fim.
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V139</title>
+<meta name="app-build" content="PCF_V139" data-date="2026-10-15">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -41646,6 +41654,444 @@ html.pf129 [data-pf136-falta]::after{color:#b45309}
 })();
 </script>
 <!-- ████ FIM PCF_V138 (PF138) ████ -->
+
+<!-- ████ PCF_V139 (PF139) · TROCAR DE OS LIMPA A TELA · 15/10/2026 ████
+  Caso real (15/10, Paulo Mayer, PCF V137): fez a preventiva da SORRAG e abriu a OS PGP-2026-0117 da PLASGURT (ATI 10hp).
+  A tela seguiu com as fotos, a referencia W7193, o contador 0019 e as fotos "visita anterior" da Sorrag.
+  Causa (medida no V138, bancada T_PCF_V139):
+   1. pgpIniciarPreventivaDeOS (o caminho UNICO de preventiva e inspecao de OS) zera o vinculo das maquinas (v47) e solta a
+      coleta salva (V103 D6), mas NAO limpa o painel.
+   2. OS SEM maquina vinculada: cai em pgpSelectClient e volta - o painel fica inteiro da OS anterior.
+   3. OS COM maquina: pgpLoadMachine entra em MODO MERGE (V71) porque a identidade ficou "inconclusiva" (o v47 zerou o
+      vinculo) e ha coleta na tela - o horimetro, as observacoes e as fotos da OS anterior entram na maquina nova.
+  Regra nova: abrir uma OS DIFERENTE da que esta na tela comeca com a tela LIMPA. Antes de limpar, a coleta anterior que nao
+  esta provadamente enviada (estado do PF138 "ok" ou "fila", na OS DELA) e GUARDADA em Coletas guardadas (pgp_sessions_v1, o
+  formato de sempre) com as fotos tambem no IndexedDB (ps::pf139::id), e o celular CONFERE relendo antes de limpar. Nao
+  conseguiu guardar = nao limpa (fica como no V138) e avisa. Reabrir a OS dona mostra "Ha uma coleta guardada desta OS" com
+  Trazer de volta. OS sem maquina vinculada ganha o aviso escrito.
+  Dono do painel: o carimbo do PF137 (m(i)_pf137os_scenario); sem carimbo, a OS que ESTE bloco viu na tela por ultimo; sem
+  isso, a OS carregada antes. Reabrir a MESMA OS nao mexe em nada (o guard V71 de reentrada segue igual).
+  Chaves novas: pf139_tela_v1 (localStorage) e ps::pf139::(id) (IndexedDB). Nenhuma chave existente muda de formato.
+  Zero SQL, zero GAS. Prefixo PF139 / pf139 / _pf139. Embrulhos por window[nome], na carga, DEPOIS do PF137/PF138.
+-->
+<style id="pf139Estilo">
+#pf139Faixa{margin:8px 0 10px;border-radius:12px;padding:10px 12px;font-size:13px;line-height:1.45;border:1px solid #f59e0b;background:#fffbeb;color:#78350f;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+#pf139Faixa .tx{flex:1 1 200px;min-width:0}
+#pf139Faixa .tx b{color:#78350f}
+#pf139Faixa button{min-height:44px;border-radius:10px;border:1px solid #b45309;background:#fff;color:#78350f;font-weight:800;padding:6px 12px;font-size:13px;cursor:pointer}
+#pf139Faixa button.prim{background:#b45309;color:#fff}
+#pf139Faixa button:active{transform:scale(.98);filter:brightness(.95)}
+#pf139Faixa.semmaq{border-color:#2563eb;background:#eff6ff;color:#1e3a8a}
+#pf139Faixa.semmaq b{color:#1e3a8a}
+</style>
+<script>
+/* PCF_V139 (PF139) — ver o comentário do bloco. */
+(function () {
+  'use strict';
+  if (window.PF139) return;
+  var PF139 = window.PF139 = { versao: 'PCF_V139', log: [], guardadas: 0, limpezas: 0 };
+  var SIG_KEY = 'pf139_envio_sig_v1';   // OS -> hash da tela no fim do último envio (auditoria 2, C2: sobrevive à recarga)
+  function log() { try { PF139.log.push([new Date().toISOString().slice(11, 19)].concat([].slice.call(arguments)).join(' ')); if (PF139.log.length > 80) PF139.log.shift(); } catch (e) {} }
+  function txt(v) { return String(v == null ? '' : v).trim(); }
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function $(id) { return document.getElementById(id); }
+  function aviso(m) { try { showNotification(m); } catch (e) {} }
+  function hhmm(ms) { var d = new Date(Number(ms) || Date.now()); var p = function (n) { return (n < 10 ? '0' : '') + n; };
+    var hoje = d.toDateString() === (new Date()).toDateString(); return (hoje ? '' : p(d.getDate()) + '/' + p(d.getMonth() + 1) + ' ') + p(d.getHours()) + ':' + p(d.getMinutes()); }
+  function nPaineis() { try { return Math.max(1, (machines || []).length); } catch (e) { return 1; } }
+
+  // ── a OS que ESTÁ NA TELA (o pfAbrirForm troca _PGP_OS_ID ANTES de abrir a OS nova; por isso guardamos a nossa) ──
+  function telaGravar(origem) {
+    try {
+      var t = { os: txt(window._PGP_OS_ID), cli: txt(window._PGP_OS_CLIENTE), tipo: txt(typeof _pgpTipoVisita !== 'undefined' ? _pgpTipoVisita : ''), num: txt(window._PGP_OS_NUMERO),
+                tar: window._PGP_TAREFA_ID == null ? null : window._PGP_TAREFA_ID, ini: window._PGP_PREVENTIVA_INICIO_ISO || null, esp: window._PGP_TIPO_ESPERADO == null ? null : window._PGP_TIPO_ESPERADO,
+                obj: window._PGP_OS_OBJ || null, em: Date.now(), de: origem || '' };
+      PF139.tela = t;
+    } catch (e) {}
+  }
+  // auditoria 2 (J1): "a OS da tela" vive SÓ na memória desta abertura do app. Gravada no celular, a OS de ontem virava a
+  // dona de uma coleta AVULSA digitada hoje (guardada como Sorrag/preventiva, e o Trazer montava máquina fantasma na Sorrag).
+  // Na abertura a tela é de ninguém; restoreDraft/restaurarSessao/abrir OS/OS avulsa dizem de quem ela passa a ser.
+  PF139.tela = { os: '', cli: '', tipo: '', num: '', em: Date.now(), de: 'abertura' };
+  function carimbo(i) { var el = document.querySelector('[data-key="m' + i + '_pf137os_scenario"]'); return el ? txt(el.value) : ''; }
+  function campo(i, k) { var el = document.querySelector('[data-key="m' + i + '_' + k + '"]'); return el ? txt(el.value) : ''; }
+  function donoDe(i, antiga) {
+    var c = carimbo(i); if (c) return c;
+    var t = PF139.tela; if (t && t.os !== undefined && t.em) return txt(t.os);
+    return txt(antiga);
+  }
+  // o painel tem TRABALHO do técnico? Não serve "campo com valor": a data da visita, o técnico, os turnos e o cadastro
+  // nascem preenchidos (medido: pgpPainelTemColeta dá true numa tela recém-aberta por causa da data). Vale o zero da tela
+  // (V97/V103: temDadosPreenchidos compara com a assinatura do momento em que a OS carregou), foto, peça marcada,
+  // horímetro e observações.
+  function fotosDe(i) { var n = 0; try { var ps = photoStore[i] || {}; for (var k in ps) n += (ps[k] || []).length; } catch (e) {} return n; }
+  function temTrabalho(i) {
+    var ident = false; try { ident = !!pgpGetLoadedMachineForIndex(i); } catch (e) {}
+    if (!ident) ident = ['marca', 'modelo', 'ns'].some(function (k) { return !!campo(i, k); });
+    // auditoria 1: temDadosPreenchidos() é da TELA inteira — só vale para o painel que tem máquina identificada
+    try { if (ident && typeof temDadosPreenchidos === 'function' && temDadosPreenchidos()) return true; } catch (e) {}
+    try { if (typeof pgpMaquinaTemConteudo === 'function' && pgpMaquinaTemConteudo(i)) return true; } catch (e) {}
+    if (fotosDe(i)) return true;
+    return !!(campo(i, 'horimetro') || campo(i, 'obs_gerais'));
+  }
+  // sobra que não é trabalho, mas é da OS anterior (máquina do cadastro, identificação, fotos da visita anterior, cliente)
+  function temResto(i) {
+    try { if (pgpGetLoadedMachineForIndex(i)) return true; } catch (e) {}
+    try { if (Object.keys((window._pfItensAnteriores || {})[i] || {}).length) return true; } catch (e) {}
+    return ['marca', 'modelo', 'ns', 'tag', 'razao_social', 'cnpj', 'contato', 'cidade', 'endereco'].some(function (k) { return !!campo(i, k); });
+  }
+
+  // ── auditoria 1 (A5): o PF138 só vê edição por input/change; foto tirada ou N/D marcado DEPOIS do envio não contam
+  //    para ele. Guardamos a assinatura da tela no fim de cada envio (pcf116Enviar) e comparamos na troca de OS.
+  var SIG_FORA = /(_hora_?(inicio|fim)|_inicio_iso|_ts$|_carimbo|_assin_coletada|_pf137(os|cli)_scenario)$/;
+  function assinaturaTela() {
+    var partes = [];
+    try {
+      document.querySelectorAll('.machine-panel [data-key]').forEach(function (el) {
+        if (!('value' in el)) return; var k = el.getAttribute('data-key'); if (SIG_FORA.test(k)) return;
+        var v = String(el.value == null ? '' : el.value);
+        if (/_obs_gerais$/.test(k)) v = v.split('\n').filter(function (l) { return l.indexOf('[Horímetro · ') !== 0; }).join('\n').replace(/\s+$/, '');
+        partes.push(k + '=' + v);
+      });
+      partes.push('#chk=' + document.querySelectorAll('.machine-panel .field-item.checked').length);
+      partes.push('#foto=' + document.querySelectorAll('.machine-panel .photo-item.photo-checked, .machine-panel .photo-item.photo-nd').length);
+      partes.push('#na=' + document.querySelectorAll('.btn-pt-na.active').length);
+      var nf = 0; Object.keys(photoStore).forEach(function (m) { Object.keys(photoStore[m] || {}).forEach(function (pk) { nf += (photoStore[m][pk] || []).length; }); });
+      partes.push('#ps=' + nf);
+    } catch (e) {}
+    return partes.join('\u0001');
+  }
+  function hash(str) { var h1 = 0xdeadbeef, h2 = 0x41c6ce57; for (var i = 0, ch; i < str.length; i++) { ch = str.charCodeAt(i); h1 = Math.imul(h1 ^ ch, 2654435761); h2 = Math.imul(h2 ^ ch, 1597334677); }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909); h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16) + ':' + str.length; }
+  function sigLer() { try { var v = JSON.parse(localStorage.getItem(SIG_KEY) || '{}'); return (v && typeof v === 'object') ? v : {}; } catch (e) { return {}; } }
+  function sigGravar(os, valor) {
+    try { var o = sigLer(); o[os] = { h: hash(valor), em: Date.now() };
+      var ks = Object.keys(o).sort(function (a, b) { return (o[a].em || 0) - (o[b].em || 0); }); while (ks.length > 30) delete o[ks.shift()];
+      localStorage.setItem(SIG_KEY, JSON.stringify(o)); } catch (e) {}
+  }
+  PF139.envioSig = { ler: sigLer };
+  PF139.assinaturaTela = assinaturaTela;
+
+  // ── a coleta do painel i JÁ está a salvo fora da tela? (enviada e confirmada sem mudança depois, ou na fila de envio) ──
+  // Pergunta ao PF138 com a OS DONA do painel (o estado dele é por OS). Qualquer dúvida = NÃO está a salvo (guarda).
+  function aSalvo(i, dono, tipo) {
+    if (!window.PF138 || typeof PF138.estadoMaq !== 'function') return { ok: false, e: 'sem PF138' };
+    var sOs = window._PGP_OS_ID, sCli = window._PGP_OS_CLIENTE, t = PF139.tela || {};
+    try {
+      window._PGP_OS_ID = dono || null;
+      window._PGP_OS_CLIENTE = (txt(t.os) === txt(dono) && t.cli) ? t.cli : campo(i, 'razao_social');
+      var st = PF138.estadoMaq(i, tipo) || {};
+      var sig = sigLer()[txt(dono)];
+      if ((st.e === 'ok' || st.e === 'fila') && sig && sig.h !== hash(assinaturaTela())) return { ok: false, e: st.e + '+mudou depois do envio' };
+      return { ok: st.e === 'ok' || st.e === 'fila', e: st.e };
+    } catch (e) { return { ok: false, e: 'erro: ' + (e && e.message) }; }
+    finally { window._PGP_OS_ID = sOs; window._PGP_OS_CLIENTE = sCli; }
+  }
+
+  // ── GUARDAR a tela inteira como uma Coleta guardada (o formato do saveCurrentSession), com PROVA ──
+  async function guardar(dono, tipo, nova) {
+    var t = PF139.tela || {};
+    var st = captureState();
+    st.osId = dono || null;                                   // o captureState leria a OS NOVA (o pfAbrirForm já trocou)
+    st.osCliente = (txt(t.os) === txt(dono) && t.cli) ? t.cli : (st.fields && st.fields.m0_razao_social) || '';
+    st.tipoVisita = tipo || st.tipoVisita;
+    var nome = (st.fields && txt(st.fields.m0_razao_social)) || st.osCliente || '';
+    st.clientName = nome || '—';
+    st.label = nome || 'Sem nome';
+    st.date = new Date().toLocaleDateString('pt-BR');
+    var sid = txt(_currentSessionId) || ('ses-' + Date.now());
+    st.sessionId = sid;
+    // auditoria 1 (A1): o autoSaveSession e o saveCurrentSession casam coleta por ASSINATURA (cliente|marca|modelo|série) e
+    // sobrescrevem; a mesma máquina de volta na tela apagava a guardada em 30 s. Assinatura própria = só por id.
+    st.sessionSignature = 'pf139:' + sid + ':' + (st.sessionSignature || '');
+    st.pf139 = { motivo: 'troca de OS', de: dono || '', para: nova, osNumero: (txt(t.os) === txt(dono) && t.num) ? t.num : '', em: Date.now() };
+    // fotos também no IndexedDB, numa chave SÓ desta coleta (a lista no localStorage pode cair para "sem fotos" por cota)
+    var nFotos = 0; try { Object.keys(st.photoStore || {}).forEach(function (m) { Object.keys(st.photoStore[m] || {}).forEach(function (pk) { nFotos += (st.photoStore[m][pk] || []).length; }); }); } catch (e) {}
+    var idbOk = true;
+    if (nFotos) { try { idbOk = !!(await pgpPersistPhotosIDB('pf139::' + sid)); } catch (e) { idbOk = false; } }
+    var sessions = getSessions();
+    var ix = sessions.findIndex(function (s) { return s && s.sessionId === sid; });
+    // auditoria 1 (A11): a mesma coleta já guardada com OS (inspeção avulsa que virou OS) não perde a OS dela
+    if (ix >= 0 && !st.osId && sessions[ix] && sessions[ix].osId) { st.osId = sessions[ix].osId; st.osCliente = sessions[ix].osCliente || st.osCliente; st.pf139.de = st.osId; }
+    // auditoria 1 (A2): ESTE caminho não expulsa ninguém da lista (o corte em 10 é dos salvamentos antigos)
+    if (ix >= 0) sessions[ix] = st; else sessions.unshift(st);
+    var antesIds = sessions.map(function (s) { return s && s.sessionId; });
+    persistSessionsSafely(sessions);
+    // PROVA: relê o que ficou gravado
+    var relida = null; try { relida = getSessions().filter(function (s) { return s && s.sessionId === sid; })[0] || null; } catch (e) {}
+    var textoOk = !!(relida && relida.fields && JSON.stringify(relida.fields) === JSON.stringify(st.fields));
+    try { var depoisIds = getSessions().map(function (s) { return s && s.sessionId; }); if (antesIds.some(function (x) { return depoisIds.indexOf(x) < 0; })) textoOk = false; } catch (e) {}
+    var fotosOk = true;
+    if (nFotos) {
+      var naLista = 0; try { Object.keys(relida.photoStore || {}).forEach(function (m) { Object.keys(relida.photoStore[m] || {}).forEach(function (pk) { naLista += (relida.photoStore[m][pk] || []).length; }); }); } catch (e) {}
+      var noIdb = 0; try { var rec = await pgpIdbGet(_pgpPhotoKeyFor('pf139::' + sid)); noIdb = (rec && rec.count) || 0; } catch (e) {}
+      fotosOk = idbOk && (naLista >= nFotos || noIdb >= nFotos);
+    }
+    log('guardar', sid, 'dono', dono, 'texto', textoOk, 'fotos', nFotos, fotosOk);
+    return { ok: textoOk && fotosOk, sid: sid, fotos: nFotos, nome: nome };
+  }
+
+  // ── LIMPAR a tela (o miolo do novaColeta, SEM desligar a OS nova que o pfAbrirForm já pôs) ──
+  function limpar(apagarRascunho) {
+    document.querySelectorAll('.machine-panel').forEach(function (p) { p.remove(); });
+    machines = [{}];
+    currentMachine = 0;
+    _pgpLoadedMachine = null;
+    _pgpLoadedMachinesByIndex = {};
+    try { pgpRenderLoadedCard(0); } catch (e) {}
+    try { var lc = $('pgpLoadedCard'); if (lc) lc.classList.remove('show'); var hp = $('machineHistoryPanel'); if (hp) hp.style.display = 'none'; } catch (e) {}
+    Object.keys(photoStore).forEach(function (k) { delete photoStore[k]; });
+    // auditoria 1 (A3): o rascunho (pgp_draft_v1 + ps::draft) pode ser de OUTRA coleta (app reaberto sem "Continuar"):
+    // só sai quando a tela foi guardada ou está a salvo — no caminho "só sobra" ele fica intocado
+    if (apagarRascunho) { try { pgpIdbDel(_pgpPhotoKeyFor('draft')); } catch (e) {} try { _pgpDraftFotosPendentes = 0; } catch (e) {} }
+    try { window._pfItensAnteriores = {}; } catch (e) {}
+    try { _pfItensAnteriores = {}; } catch (e) {}
+    try { if (window.PF138 && PF138._editEm) Object.keys(PF138._editEm).forEach(function (k) { delete PF138._editEm[k]; }); } catch (e) {}
+    // auditoria externa (BAIXA 1): a prova do 💾 Salvar (PF122) era da coleta anterior — "📝 Salvo no celular às HH:MM (com 1 foto)"
+    // aparecia na tela limpa da OS nova
+    try { if (window.PF122) { PF122.prova = null; PF122.falha = null; PF122.fotosProvadas = -1; PF122.assinProvada = null; } var pm = $('pf122Msg'); if (pm) { pm.className = 'pf122-msg'; pm.textContent = ''; } } catch (e) {}
+    createPanel(0);
+    renderTabs();
+    try { updateProgress(); } catch (e) {}
+    if (apagarRascunho) { try { localStorage.removeItem(DRAFT_KEY); } catch (e) {} }
+    try { var rb = $('restoreBanner'); if (rb) rb.style.display = 'none'; } catch (e) {}
+    _editingSessionIndex = -1;
+    _currentSessionId = null;
+    // auditoria 2 (F1): a tela limpa não é mais da OS carregada antes. Se a OS nova falhar ao carregar (rede), voltar à
+    // anterior tem de RECARREGAR (sem isto o guard V71 de reentrada dizia "seus dados foram mantidos" num painel em branco)
+    try { window._PGP_OS_ID_CARREGADA = ''; } catch (e) {}
+    try { pgpRearmarZeroColeta('vazio'); } catch (e) {}
+    PF139.limpezas++;
+  }
+
+  // ── a faixa (uma por vez): coleta guardada desta OS · OS sem máquina vinculada ──
+  function faixa(html, cls) {
+    try {
+      var f = $('pf139Faixa');
+      if (!html) { if (f) f.remove(); return null; }
+      if (!f) {
+        f = document.createElement('div'); f.id = 'pf139Faixa';
+        var ancora = $('pgpOsMaquinasBar') || $('pgpStep2') || $('pgpStep1');
+        if (ancora && ancora.parentNode) ancora.parentNode.insertBefore(f, ancora.nextSibling); else document.body.insertBefore(f, document.body.firstChild);
+      }
+      f.className = cls || ''; f.innerHTML = html; return f;
+    } catch (e) { return null; }
+  }
+  PF139.faixa = faixa;
+  // auditoria 2 (C1): depois que a OS dona teve um ENVIO (registro do PF138) mais novo que a guarda, a guardada é a versão
+  // velha — a faixa não a oferece mais (ela continua em ☰ → Coletas guardadas)
+  function superada(s) {
+    try {
+      var tudo = JSON.parse(localStorage.getItem('pf138_envios_v1') || '{}') || {}, os = txt(s.osId), em = (s.pf139 && s.pf139.em) || 0;
+      return Object.keys(tudo).some(function (k) {
+        if (k.split('|')[0] !== os) return false;
+        var r = tudo[k] || {};
+        return (r.tent || []).some(function (x) { return x && x.estado !== 'subst' && (x.t || 0) > em; });
+      });
+    } catch (e) { return false; }
+  }
+  PF139.superada = superada;
+  function guardadasDa(os) {
+    var cur = ''; try { cur = txt(_currentSessionId); } catch (e) {}
+    var out = []; try { getSessions().forEach(function (s) { if (s && s.pf139 && txt(s.osId) === txt(os) && txt(os) && s.sessionId !== cur && !superada(s)) out.push(s); }); } catch (e) {}
+    return out;
+  }
+  function pintarDepois(nova) {
+    try {
+      var g = guardadasDa(nova);
+      if (g.length) {
+        var s0 = g[0];
+        var f = faixa('<div class="tx">💾 <b>Há uma coleta guardada desta OS</b> (' + esc(s0.label || '') + ', guardada às ' + esc(hhmm(s0.pf139.em)) +
+          ' quando outra OS foi aberta). Ela não está na tela.</div><button type="button" class="prim" data-pf139="trazer">↩ Trazer de volta</button><button type="button" data-pf139="fechar">✕</button>');
+        if (f) { f.querySelector('[data-pf139="trazer"]').onclick = function () { trazer(s0.sessionId, this); }; f.querySelector('[data-pf139="fechar"]').onclick = function () { faixa(null); }; }
+        return;
+      }
+      var cache = null; try { cache = (JSON.parse(localStorage.getItem('pf_maqos_cache_v1') || '{}') || {})[nova] || null; } catch (e) {}
+      var semMaq = cache && Array.isArray(cache.machines) && cache.machines.length === 0 && !pgpGetLoadedMachineForIndex(0);
+      if (semMaq) {
+        var num = txt(window._PGP_OS_NUMERO) || nova, falt = PF139.faltando[txt(nova)] || 0;
+        var txtF = falt
+          ? 'ℹ️ <b>A OS ' + esc(num) + ' tem ' + falt + ' máquina(s) vinculada(s) que não foram achadas no cadastro.</b> Avise o escritório; enquanto isso, escolha a máquina na lista abaixo (ou cadastre).'
+          : 'ℹ️ <b>A OS ' + esc(num) + ' não tem máquina vinculada no PCM.</b> Escolha a máquina na lista abaixo (ou cadastre). Se a máquina devia vir com a OS, avise o escritório.';
+        var f2 = faixa('<div class="tx">' + txtF + '</div><button type="button" data-pf139="fechar">✕</button>', 'semmaq');
+        if (f2) f2.querySelector('[data-pf139="fechar"]').onclick = function () { faixa(null); };
+        return;
+      }
+      faixa(null);
+    } catch (e) { log('pintarDepois', e && e.message); }
+  }
+  PF139.pintarDepois = pintarDepois;
+  async function trazer(sid, btn) {
+    try {
+      var lista = getSessions(), ix = lista.findIndex(function (s) { return s && s.sessionId === sid; });   // por IDENTIDADE, nunca posição (V103 D3)
+      if (ix < 0) { aviso('⚠ A coleta guardada não está mais neste celular (☰ → Coletas guardadas).'); faixa(null); return; }
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ Trazendo…'; }
+      await restaurarSessao(ix, null);
+      faixa(null);
+    } catch (e) { aviso('⚠ Não consegui trazer a coleta: ' + (e && e.message)); if (btn) { btn.disabled = false; btn.textContent = '↩ Trazer de volta'; } }
+  }
+  PF139.trazer = trazer;
+
+  // ── A REGRA: abrir uma OS DIFERENTE da que está na tela começa com a tela limpa ──
+  PF139.antesDeAbrir = async function (osId) {
+    var nova = txt(osId), antiga = txt(window._PGP_OS_ID_CARREGADA);
+    if (!nova) return 'sem OS';
+    var n = nPaineis(), outros = [], resto = false;
+    for (var i = 0; i < n; i++) {
+      var dono = donoDe(i, antiga);
+      if (dono === nova) continue;
+      if (temTrabalho(i)) outros.push({ i: i, dono: dono });
+      else if (temResto(i) && (dono || antiga)) resto = true;
+    }
+    if (!outros.length && !resto) return 'nada';
+    var tipo = txt((PF139.tela || {}).tipo) || txt(typeof _pgpTipoVisita !== 'undefined' ? _pgpTipoVisita : '') || 'inspecao';
+    var precisa = outros.filter(function (o) { var s = aSalvo(o.i, o.dono, tipo); o.estado = s.e; return !s.ok; });
+    var r = null;
+    if (precisa.length) {
+      try { r = await guardar(precisa[0].dono, tipo, nova); } catch (e) { r = { ok: false, erro: e && e.message }; }
+      if (!r || !r.ok) {
+        // não deu para guardar com prova: NÃO limpa (fica como no V138) e diz
+        aviso('⚠ Não consegui guardar a coleta anterior neste celular — nada foi apagado. Ela continua na tela: confira antes de usar nesta OS.');
+        log('NAO limpou: guardar falhou', JSON.stringify(r));
+        return 'nao guardou';
+      }
+      PF139.guardadas++;
+    }
+    limpar(outros.length > 0);
+    // o aviso sai DEPOIS da carga da OS (o "⏳ Carregando máquinas…" da carga cobria o nosso)
+    if (r && r.ok) PF139.avisoPendente = '💾 A coleta anterior' + (r.nome ? ' (' + r.nome + ')' : '') + ' foi guardada em ☰ → Coletas guardadas' + (r.fotos ? ', com ' + r.fotos + ' foto(s)' : '') + '. A tela começa limpa para esta OS. Para continuar aquela, abra a OS dela de novo e toque em ↩ Trazer de volta.';
+    log('limpou', nova, 'antes', antiga, 'guardou', !!(r && r.ok), outros.map(function (o) { return o.i + ':' + o.dono + ':' + o.estado; }).join(','));
+    return r && r.ok ? 'guardou e limpou' : 'limpou';
+  };
+
+  // ── NÃO deu para guardar com prova: a OS nova NÃO abre (abrir faria o modo merge do V71 misturar as duas coletas) ──
+  function barrar(nova) {
+    var t = PF139.tela || {}, numNova = '';
+    try { var o = ((typeof _pfOsList !== 'undefined' && _pfOsList) || []).filter(function (x) { return txt(x.id_os) === txt(nova); })[0]; numNova = o ? txt(o.numero_os) : ''; } catch (e) {}
+    var msg = 'Não consegui guardar neste celular a coleta que está na tela' + (t.num ? ' (OS ' + t.num + ')' : '') + ', então a OS ' + (numNova || nova) +
+      ' NÃO foi aberta — abrir agora misturaria as duas coletas.\n\nEnvie a coleta da tela (✅ Concluir coleta) ou toque em 💾 Salvar, e depois abra a outra OS de novo.';
+    try { AppDialog.alert(msg, { variant: 'warn', title: 'OS não aberta' }); } catch (e) { aviso('⚠ ' + msg); }
+    log('BARROU a abertura de', nova);
+  }
+  // devolve o contexto da OS da tela quando a abertura é barrada DEPOIS de o pfAbrirForm já ter trocado os globais (deep link etc.)
+  function devolverContexto() {
+    var t = PF139.tela || {};
+    try {
+      window._PGP_OS_ID = t.os || null; window._PGP_OS_CLIENTE = t.cli || null; window._PGP_OS_NUMERO = t.num || '';
+      window._PGP_TAREFA_ID = t.tar == null ? null : t.tar; window._PGP_PREVENTIVA_INICIO_ISO = t.ini || null; window._PGP_TIPO_ESPERADO = t.esp == null ? null : t.esp;
+      window._PGP_OS_OBJ = t.obj || null;
+      if (t.tipo) { try { pgpSetTipoVisita(t.tipo); pgpAtualizarAcoesPorTipoVisita(); } catch (e) {} }
+      try { pgpAtualizarModoOS(); } catch (e) {}
+    } catch (e) { log('devolverContexto', e && e.message); }
+  }
+
+  function embrulhar(nome, fazer) {
+    try { var orig = window[nome]; if (typeof orig !== 'function' || orig.__pf139) return false;
+      var novo = fazer(orig); novo.__pf139 = true; window[nome] = novo; return true; } catch (e) { log('embrulho', nome, e && e.message); return false; }
+  }
+  embrulhar('pgpIniciarPreventivaDeOS', function (orig) {
+    return async function (osId) {
+      try { PF139.ultimo = await PF139.antesDeAbrir(osId); } catch (e) { log('antesDeAbrir', e && e.message); }
+      if (PF139.ultimo === 'nao guardou') { devolverContexto(); barrar(txt(osId)); return; }
+      var r;
+      try { r = await orig.apply(this, arguments); }
+      finally {
+        try { if (txt(window._PGP_OS_ID) === txt(osId)) { telaGravar('abrir OS'); pintarDepois(txt(osId)); } } catch (e) {}
+        try { if (PF139.avisoPendente) { var m = PF139.avisoPendente; PF139.avisoPendente = ''; setTimeout(function () { aviso(m); }, 400); } } catch (e) {}
+      }
+      return r;
+    };
+  });
+  // os outros caminhos que trocam o que está na tela também atualizam "a OS da tela"
+  ['restoreDraft', 'novaColeta', 'pgpSetTipoVisitaUsuario', 'pgpAplicarRetomada'].forEach(function (nome) {
+    embrulhar(nome, function (orig) {
+      return function () {
+        var r = orig.apply(this, arguments);
+        var depois = function () { try { telaGravar(nome); if (nome === 'novaColeta') faixa(null); } catch (e) {} };
+        if (r && typeof r.then === 'function') return r.then(function (v) { depois(); return v; }, function (e) { depois(); throw e; });
+        depois(); return r;
+      };
+    });
+  });
+  // auditoria externa (MÉDIA 3): tarefa do próprio app com Tipo que não é preventiva nem inspeção (ex.: auto:coleta + ?modo=inspecao)
+  // não chama pgpIniciarPreventivaDeOS — a coleta da OS anterior ficava na tela. A regra roda aqui, ANTES de o pfAbrirForm trocar
+  // os globais da OS: se não der para guardar, nada muda e a OS nova não abre.
+  embrulhar('pfAbrirForm', function (orig) {
+    return async function (tarefaId, formUrl, btn) {
+      try {
+        var proprio = String(formUrl || '').indexOf('ProperTech/index.html') >= 0;
+        var nova = ''; try { nova = txt(typeof _pfOsId !== 'undefined' ? _pfOsId : ''); } catch (e) {}
+        if (proprio && nova && nova !== txt(window._PGP_OS_ID_CARREGADA)) {
+          PF139.ultimo = await PF139.antesDeAbrir(nova);
+          if (PF139.ultimo === 'nao guardou') { barrar(nova); return; }
+        }
+      } catch (e) { log('pfAbrirForm', e && e.message); }
+      try { return await orig.apply(this, arguments); }
+      finally { try { if (PF139.avisoPendente) { var m = PF139.avisoPendente; PF139.avisoPendente = ''; setTimeout(function () { aviso(m); }, 400); } } catch (e) {} }
+    };
+  });
+  // a faixa "sem máquina" separa OS SEM vínculo de vínculo que o servidor não achou no cadastro (auditoria externa, BAIXA 2)
+  PF139.faltando = {};
+  embrulhar('pfGet', function (orig) {
+    return async function (action, params) {
+      var r = await orig.apply(this, arguments);
+      try { if (action === 'getMaquinasByOS' && r && params) PF139.faltando[txt(params.id_os || params.os_id)] = (r.missing_machine_ids || []).length; } catch (e) {}
+      return r;
+    };
+  });
+  // o salvamento automático antigo corta a lista em 10 e expulsava a coleta GUARDADA não enviada (auditoria externa, ALTA 2).
+  // A guardada pela troca de OS que ainda vale (não superada) não sai por corte — só se o técnico a excluir.
+  var _apagando = 0;
+  embrulhar('deletarSessao', function (orig) {
+    return async function () { _apagando++; try { return await orig.apply(this, arguments); } finally { _apagando--; } };
+  });
+  embrulhar('persistSessionsSafely', function (orig) {
+    return function (arr) {
+      try {
+        if (!_apagando && Array.isArray(arr)) {
+          var ids = {}; arr.forEach(function (s) { if (s && s.sessionId) ids[s.sessionId] = 1; });
+          var salvar = getSessions().filter(function (s) { return s && s.pf139 && s.sessionId && !ids[s.sessionId] && !superada(s); });
+          if (salvar.length) { arr = arr.concat(salvar); log('protegeu do corte', salvar.length); }
+        }
+      } catch (e) {}
+      return orig.call(this, arr);
+    };
+  });
+  embrulhar('pgpGarantirOSInspecaoAvulsa', function (orig) {
+    return function () {
+      var r = orig.apply(this, arguments);
+      try { Promise.resolve(r).then(function () { try { if (txt(window._PGP_OS_ID)) telaGravar('OS avulsa'); } catch (e) {} }, function () {}); } catch (e) {}
+      return r;
+    };
+  });
+  embrulhar('pcf116Enviar', function (orig) {
+    return async function () {
+      var os = txt(window._PGP_OS_ID), antes = null;
+      try { antes = localStorage.getItem('pf138_envios_v1'); } catch (e) {}
+      try { return await orig.apply(this, arguments); }
+      finally {
+        // só quando HOUVE tentativa de envio (o PF138 registrou): janela cancelada não vira "a tela = o que foi enviado"
+        try { if (localStorage.getItem('pf138_envios_v1') !== antes) { var o2 = txt(window._PGP_OS_ID) || os; sigGravar(o2, assinaturaTela()); } } catch (e) {}
+      }
+    };
+  });
+  // restaurar uma coleta guardada: atualiza "a OS da tela" e, se ela foi guardada por ESTE bloco, completa as fotos que o
+  // localStorage não aguentou (pgpRestaurarFotosIDB só preenche o que falta)
+  embrulhar('restaurarSessao', function (orig) {
+    return async function (idx) {
+      var s = null; try { s = getSessions()[idx] || null; } catch (e) {}
+      var r = await orig.apply(this, arguments);
+      try { if (s && s.pf139 && s.sessionId && typeof pgpRestaurarFotosIDB === 'function') await pgpRestaurarFotosIDB('pf139::' + s.sessionId); } catch (e) {}
+      try { if (s && s.pf139) faixa(null); } catch (e) {}
+      try { telaGravar('restaurarSessao'); } catch (e) {}
+      return r;
+    };
+  });
+  log('pronto');
+})();
+</script>
+<!-- ████ FIM PCF_V139 (PF139) ████ -->
 
 </body>
 </html>
