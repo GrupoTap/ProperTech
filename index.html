@@ -1704,8 +1704,16 @@ html[data-boot="pipeline"] #pf113Splash{display:flex;position:fixed;inset:0;z-in
   Regra: dentro de OS de cliente conhecido, razao social VAZIA = cliente da OS (preenchida; valor existente nunca muda).
   Maquina de outro cliente segue suprimindo o os_id; fora de OS nada muda. Zero SQL, zero GAS. Bloco PF137 no fim do body.
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V137</title>
-<meta name="app-build" content="PCF_V137" data-date="2026-10-13">
+<!--
+  PCF_V138 · CAMPO RAPIDO E OFF-LINE · 15/10/2026 · feito SOBRE o PCF_V137 no ar · par sw propertech-v140.
+  Pedido do Fernando 15/10 (prints da OS-000155 e INS-2026-0031, Laac, G11P BQR133806): o Concluir coleta continuava com
+  cara de pronto depois do envio; a alteracao feita DEPOIS do envio ficava so no celular (a janela deixava a maquina
+  desmarcada como "Ja enviada"); o "ja enviada" nao sabia de qual OS; o botao desligado da janela era verde.
+  E: marcar as EMPRESAS a visitar e baixar tudo para lancar sem sinal; Liberar tarefa e Cheguei/Sai respondem no toque.
+  Chaves novas so com prefixo pf138; nenhuma chave antiga muda. Zero SQL, zero GAS. Bloco PF138 no fim do body.
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V138</title>
+<meta name="app-build" content="PCF_V138" data-date="2026-10-15">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -40705,6 +40713,939 @@ html.pf129 [data-pf136-falta]::after{color:#b45309}
 })();
 </script>
 <!-- ████ FIM PCF_V137 (PF137) ████ -->
+
+<!-- ████ PCF_V138 (PF138) · CAMPO RÁPIDO E OFF-LINE · 15/10/2026 ████
+  O que este bloco faz (só ACRESCENTA; nenhuma função, id ou chave de armazenamento existente muda de nome ou de formato):
+   C · o botão e a janela de envio — o "✅ Concluir coleta" vira "✅ Coleta enviada às HH:MM" depois do envio; alteração feita
+       DEPOIS do envio é detectada pela ASSINATURA dos dados da máquina e a máquina volta MARCADA na janela; "já enviada" vale
+       só para a MESMA OS; o botão desligado da janela fica cinza.
+   V · Liberar tarefa e 📍 Cheguei / 🚪 Saí do cliente respondem no toque (o servidor confirma atrás; recusa desfaz e diz o motivo).
+   O · 📦 Preparar visitas off-line — o técnico marca as EMPRESAS; o PCF baixa as OS de campo ativas delas (pipeline e máquinas,
+       pelo laço de sempre), o histórico da última visita de cada máquina, as miniaturas das fotos anteriores e o catálogo.
+   R · regra de preservação: chaves NOVAS só com prefixo pf138 (localStorage pf138_envios_v1 · pf138_pacotes_v1; IndexedDB
+       pf138h::<máquina>); nada que existia é apagado ou reescrito por este bloco; tudo em try/catch, e o que falha cai no
+       comportamento do V137.
+  Zero SQL, zero GAS. Base: PCF_V137 no ar (0e57b53c).
+-->
+<style id="pf138Estilo">
+/* C4 · botão desligado tem cara de desligado (janelas de baixo do V116) */
+.pcf116-sheet .pcf116-ok:disabled,.pcf116-sheet .pcf116-ok[disabled]{background:#cbd5e1!important;color:#475569!important;box-shadow:none!important;cursor:not-allowed;opacity:1}
+/* C1 · coleta já enviada: o botão deixa de ter o verde de ação */
+#pcf116BtnEnviar.pf138-enviada,#pf130Concluir.pf138-enviada{background:#fff!important;color:#15803d!important;border:2px solid #16a34a!important;box-shadow:none!important}
+#pcf116BtnEnviar.pf138-fila,#pf130Concluir.pf138-fila{background:#fff!important;color:#b45309!important;border:2px solid #f59e0b!important;box-shadow:none!important}
+#pcf116BtnEnviar.pf138-alterada,#pf130Concluir.pf138-alterada{background:#b45309!important;color:#fff!important;border-color:#b45309!important}
+#pcf116BtnEnviar.pf138-mantida,#pf130Concluir.pf138-mantida{background:#fff!important;color:#b91c1c!important;border:2px solid #dc2626!important;box-shadow:none!important}
+.pcf116-sheet .pf138-est{font-size:12.5px;font-weight:700;margin-top:2px;line-height:1.35}
+.pcf116-sheet .pf138-est.alt{color:#b45309}.pcf116-sheet .pf138-est.man{color:#b91c1c}.pcf116-sheet .pf138-est.out{color:#1d4ed8}
+.pf138-reglinha{display:block;margin:6px 2px 0;padding:7px 10px;border-radius:8px;font-size:12.5px;font-weight:600;line-height:1.4}
+.pf138-reglinha.alt{color:#b45309;border:1px solid #f59e0b;background:rgba(245,158,11,.08)}
+.pf138-reglinha.man{color:#b91c1c;border:1px solid #dc2626;background:rgba(220,38,38,.06)}
+/* O · janela "Preparar visitas off-line" e a faixa */
+.pf138-emp{display:flex;align-items:flex-start;gap:12px;min-height:56px;padding:10px 4px;border-bottom:1px solid #e2e8f0;cursor:pointer}
+.pf138-emp input{width:22px;height:22px;flex:0 0 auto;margin-top:2px}
+.pf138-emp .n{font-weight:800;font-size:15px;color:#0f172a;line-height:1.25}
+.pf138-emp .s{font-size:12.5px;color:#475569;margin-top:2px;line-height:1.35}
+.pf138-chip{display:inline-block;border-radius:6px;padding:1px 7px;font-size:11.5px;font-weight:700;margin:3px 4px 0 0;white-space:nowrap}
+.pf138-chip.minha{background:#cffafe;color:#155e75}.pf138-chip.hoje{background:#fef3c7;color:#92400e}.pf138-chip.ok{background:#dcfce7;color:#166534}.pf138-chip.av{background:#fee2e2;color:#991b1b}
+.pf138-prog{font-size:13px;color:#0f172a;padding:10px 0;line-height:1.5}
+.pf138-res{font-size:13px;line-height:1.45;padding:8px 0;border-bottom:1px solid #e2e8f0}
+.pf138-res b{color:#0f172a}.pf138-res .f{color:#b45309}
+.pf138-aviso{font-size:12.5px;color:#b45309;padding:6px 0}
+#pf138Faixa,#pf138Faixa2{margin:8px 0 10px;border-radius:12px;padding:10px 12px;font-size:13px;line-height:1.4;border:1px solid #16a34a;background:#f0fdf4;color:#14532d;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+#pf138Faixa.av,#pf138Faixa2.av{border-color:#f59e0b;background:#fffbeb;color:#78350f}
+#pf138Faixa .tx,#pf138Faixa2 .tx{flex:1 1 200px;min-width:0}
+#pf138Faixa .tx small,#pf138Faixa2 .tx small{display:block;font-size:12px;opacity:.9;margin-top:2px}
+#pf138Faixa button,#pf138Faixa2 button{min-height:40px;border-radius:10px;border:1px solid currentColor;background:#fff;color:inherit;font-weight:800;padding:6px 12px;font-size:13px;cursor:pointer}
+</style>
+<script>
+/* PCF_V138 (PF138) — ver o comentário do bloco. Prefixo PF138 / pf138 / _pf138. */
+(function () {
+  'use strict';
+  var PF138 = window.PF138 = { versao: 'PCF_V138', log: [] };
+  function nota(e, onde) { try { PF138.log.push({ onde: onde, msg: String(e && e.message || e), em: Date.now() }); if (PF138.log.length > 60) PF138.log.shift(); } catch (x) {} }
+  function $(id) { return document.getElementById(id); }
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function hhmm(t) { var d = new Date(t || Date.now()); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+  function lerJ(k, def) { try { var v = JSON.parse(localStorage.getItem(k) || 'null'); return (v && typeof v === 'object') ? v : def; } catch (e) { return def; } }
+  function gravarJ(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { nota(e, 'gravar ' + k); return false; } }
+  function hash(s) { var h = 5381; s = String(s); for (var i = 0; i < s.length; i++) { h = ((h << 5) + h + s.charCodeAt(i)) | 0; } return (h >>> 0).toString(36) + ':' + s.length; }
+  function ck(x) { try { return compactKey(String(x || '')); } catch (e) { return String(x || '').toLowerCase().replace(/[^a-z0-9]/g, ''); } }
+  function campo(i, k) { try { return String(pgpFieldVal(i, k) || ''); } catch (e) { var el = document.querySelector('[data-key="m' + i + '_' + k + '"]'); return el ? String(el.value || '') : ''; } }
+  function nMaq() { try { return (typeof machines !== 'undefined' && machines && machines.length) ? machines.length : document.querySelectorAll('#machineContent > .machine-panel').length; } catch (e) { return 1; } }
+  function tipoAtual() { try { return String(_pgpTipoVisita || 'inspecao'); } catch (e) { return 'inspecao'; } }
+  function osDaTela(i) { try { return String(pgpOsIdSeguro(pgpDriveClientName(i || 0)) || ''); } catch (e) { return String(window._PGP_OS_ID || ''); } }
+
+  // ════════════════════════════════════════════════════════════════════════════════
+  // C · ENVIOS POR OS — a memória nova (pf138_envios_v1). O registro antigo (pgp_registro_v1) continua sendo gravado e lido
+  //     como sempre; este é um registro AO LADO, com a OS na chave e a assinatura dos dados enviados.
+  // ════════════════════════════════════════════════════════════════════════════════
+  var ENV_KEY = 'pf138_envios_v1', ENV_MAX = 80;
+  function envTudo() { return lerJ(ENV_KEY, {}); }
+  function envChave(os, tipo, mid) { return String(os || '') + '|' + String(tipo || 'inspecao') + '|' + String(mid || ''); }
+  function envGravarTudo(o) {
+    try { var ks = Object.keys(o).sort(function (a, b) { return (o[a].em || 0) - (o[b].em || 0); }); while (ks.length > ENV_MAX) delete o[ks.shift()]; } catch (e) {}
+    gravarJ(ENV_KEY, o);
+  }
+  // as chaves de uma máquina da tela: as MESMAS que o V116 usa para o registro (id do banco compatível, chave montada, série)
+  function chaves(i) {
+    var ks = [];
+    try {
+      var eq = null; try { eq = pgpGetLoadedMachineForIndex(i); } catch (e) {}
+      var compat = function (a, b) { var ka = ck(a), kb = ck(b); return !ka || !kb || ka === kb; };
+      if (eq && eq.id && compat(eq.brand, campo(i, 'marca')) && compat(eq.model, campo(i, 'modelo')) && compat(eq.serial, campo(i, 'ns'))) ks.push(String(eq.id));
+      try { ks.push(String(pgpMachineKey(campo(i, 'razao_social'), campo(i, 'marca'), campo(i, 'modelo'), campo(i, 'ns')))); } catch (e) {}
+      if (eq && (eq.id || eq.machine_id)) ks.push(String(eq.id || eq.machine_id));
+      var ns = campo(i, 'ns'); if (ns) ks.push(ns);
+    } catch (e) {}
+    return ks.filter(function (k, j) { return k && ks.indexOf(k) === j; });
+  }
+  // a máquina da tela que corresponde a um payload enviado
+  function indiceDoPayload(p) {
+    var mid = String((p && (p.machine_id || p.serial)) || ''); if (!mid) return -1;
+    var n = nMaq();
+    for (var i = 0; i < n; i++) { if (chaves(i).indexOf(mid) >= 0) return i; }
+    var s = ck(p && p.serial);
+    if (s) for (var j = 0; j < n; j++) { if (ck(campo(j, 'ns')) === s) return j; }
+    return -1;
+  }
+  // ════════════════════════════════════════════════════════════════════════════════
+  // O MODELO (refeito depois das duas auditorias): nada de deduzir "o que o servidor tem" comparando telas.
+  //  · cada envio da coleta é uma TENTATIVA da visita (os|tipo|máquina|data da visita), com a hora do toque e o visit_id;
+  //  · a REGRA do servidor (GAS v172) é fixa: da mesma visita (mesmo visit_id) ele fica com a 1ª tentativa que chega;
+  //    a inspeção nunca é regravada; a preventiva só com a OS reaberta no PCM;
+  //  · a fila diz o que aconteceu com cada tentativa: substituída antes de subir (some), subiu (ok / "já tinha"),
+  //    parada em "Para revisar" (precisa de ação) — e sem resposta (subiu pelo service worker) = "não confirmada";
+  //  · "alterada" = o técnico MEXEU (evento de edição) depois do toque da última tentativa.
+  // ════════════════════════════════════════════════════════════════════════════════
+  var SIG_FORA = /(_hora_?(inicio|fim)|_inicio_iso|_ts$|_carimbo|_assin_coletada)/;
+  var CAMPOS_ID = /_(data_visita|ns|marca|modelo|razao_social|tag)$/;
+  function semLinhasAuto(v) { return String(v || '').split('\n').filter(function (l) { return l.indexOf('[Horímetro · ') !== 0; }).join('\n').replace(/\s+$/, ''); }
+  function dataISO(v) { var s = String(v || '').trim(); return /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 10) : new Date().toISOString().slice(0, 10); }   // o MESMO padrão do PCF/GAS
+  function dataTela(i) { return dataISO(campo(i, 'data_visita')); }
+  function hoje(ts) { return !!ts && (new Date(ts)).toDateString() === (new Date()).toDateString(); }
+  function recChave(os, tipo, mid, data) { return envChave(os, tipo, mid) + '|' + String(data || ''); }
+  function recDaMaq(i, tipo, tudo) {
+    var os = osDaTela(i), d = dataTela(i), rec = null; tudo = tudo || envTudo();
+    chaves(i).forEach(function (k) { var r = tudo[recChave(os, tipo, k, d)]; if (r && (!rec || (r.em || 0) > (rec.em || 0))) rec = r; });
+    return rec;
+  }
+  function filaVids() {   // visit_id → { vivo: na fila ativa, parado: em "Para revisar" }
+    var o = {};
+    try { (JSON.parse(localStorage.getItem('pgp_pending_sync') || '[]') || []).forEach(function (x) { var v = x && x.body && x.body.visit_id; if (v) { o[v] = o[v] || {}; o[v].vivo = (o[v].vivo || 0) + 1; } }); } catch (e) {}
+    try { (JSON.parse(localStorage.getItem('pgp_pending_dead_v1') || '[]') || []).forEach(function (x) { var v = x && x.body && x.body.visit_id; if (v) { o[v] = o[v] || {}; o[v].parado = (o[v].parado || 0) + 1; } }); } catch (e) {}
+    return o;
+  }
+
+  // EDIÇÃO DO TÉCNICO (eventos de edição nos campos m<i>_*; abrir/restaurar coleta não dispara evento — conferido)
+  var _editEm = PF138._editEm = {};
+  var _novaVisita = {};   // índice da máquina → hora em que o técnico mudou data/identificação
+  function marcarEdicao(ev) {
+    try {
+      var el = ev.target, k = el && el.dataset && el.dataset.key; if (!k) return;
+      var m = /^m(\d+)_/.exec(k); if (!m || SIG_FORA.test(k)) return;
+      var i = +m[1];
+      // durante o envio a trava do horímetro (PF128) reescreve SOZINHA as linhas "[Horímetro · …]" das Observações: isso não é edição
+      if (_enviando && k === 'm' + i + '_obs_gerais' && semLinhasAuto(el.value) === (_ini.obs[i] || '')) return;
+      var agora = Date.now(); _editEm[i] = agora;
+      if (CAMPOS_ID.test(k)) _novaVisita[i] = agora;
+      var tudo = envTudo(), tp = tipoAtual(), os = osDaTela(i), d = dataTela(i), mudou = false;
+      chaves(i).forEach(function (kk) { var r = tudo[recChave(os, tp, kk, d)]; if (r) { r.editadoEm = agora; if (CAMPOS_ID.test(k)) r.editouId = agora; mudou = true; } });
+      if (mudou) envGravarTudo(tudo);
+    } catch (e) { nota(e, 'edicao'); }
+  }
+  document.addEventListener('input', marcarEdicao, true);
+  document.addEventListener('change', marcarEdicao, true);
+
+  // o que o servidor tem desta visita, pelas tentativas
+  function analisar(rec) {
+    var fv = filaVids(), tents = (rec.tent || []).filter(function (x) { return x.estado !== 'subst'; }).sort(function (a, b) { return a.t - b.t; });
+    var vivas = [], paradas = [], conf = [];
+    tents.forEach(function (x) {
+      if (x.estado === 'fila') { var f = fv[x.vid] || {}; if (f.vivo) vivas.push(x); else if (f.parado) paradas.push(x); }   // nem na fila nem parada = descartada: não conta
+      else conf.push(x);
+    });
+    var ultimo = tents.length ? tents[tents.length - 1] : null;
+    var serv = null, incerta = false, desconhecida = false;
+    if (conf.length) {
+      var p = conf[0];
+      if (p.estado === 'dup') {   // a 1ª resposta já foi "já tinha": o servidor tem uma versão ANTERIOR a esta
+        var antes = tents.filter(function (x) { return x.t < p.t; })[0];
+        if (antes) serv = antes; else if (rec.antigo) desconhecida = true; else serv = p;   // sem nada antes: era a mesma versão (resposta perdida e reenvio)
+      } else serv = p;
+      conf.slice(1).forEach(function (x) {
+        if (x.estado === 'ok') serv = x;                                    // o servidor disse que GRAVOU esta (preventiva com OS reaberta)
+        else if (x.estado === 'okSR' && rec.tipo === 'preventiva') incerta = true;   // subiu sem resposta: pode ou não ter regravado
+      });
+    }
+    return { tents: tents, vivas: vivas, paradas: paradas, conf: conf, ultimo: ultimo, serv: serv, incerta: incerta, desconhecida: desconhecida };
+  }
+  // o estado de uma máquina da tela, para ESTA OS, ESTE tipo e ESTA data da visita:
+  //   nada · fila · parada · ok · alterada · mantida · semAssinatura (enviada por versão anterior do app) · outraOS
+  function estadoMaq(i, tipo) {
+    tipo = tipo || tipoAtual();
+    var os = osDaTela(i), rec = recDaMaq(i, tipo);
+    var reg = null; try { reg = window.pcf116RegistroDe ? window.pcf116RegistroDe(i, tipo) : null; } catch (e) {}
+    if (!rec || !(rec.tent || []).length) {
+      // este celular já mandou esta máquina nesta OS com OUTRA data da visita (ou o técnico acabou de mudar a data/identificação):
+      // é uma visita NOVA para o servidor — vai, e a anterior continua lá
+      var outra = null;
+      try { var tudo2 = envTudo(), pre = chaves(i).map(function (kk) { return envChave(os, tipo, kk) + '|'; });
+        Object.keys(tudo2).forEach(function (kk) { if (pre.some(function (p0) { return kk.indexOf(p0) === 0; }) && (tudo2[kk].tent || []).length && (!outra || (tudo2[kk].em || 0) > (outra.em || 0))) outra = tudo2[kk]; }); } catch (e) {}
+      if (outra || (_novaVisita[i] && reg && hoje(reg.quando) && _novaVisita[i] > reg.quando)) return { e: 'novaVisita', rec: outra, reg: reg };
+      if (reg && hoje(reg.quando)) {
+        if (String(reg.os_id || '') !== os) return { e: 'outraOS', reg: reg };
+        return { e: 'semAssinatura', reg: reg };
+      }
+      return { e: 'nada' };
+    }
+    var a = analisar(rec), out = { rec: rec, a: a, reg: reg };
+    var editou = a.ultimo && (rec.editadoEm || 0) > a.ultimo.t;
+    if (editou && (a.conf.length || a.vivas.length || a.paradas.length || rec.antigo)) { out.e = 'alterada'; out.novaVisita = (rec.editouId || 0) > a.ultimo.t; return out; }
+    if (a.paradas.length && !a.vivas.length && !a.conf.length) { out.e = 'parada'; return out; }
+    if (a.vivas.length) { out.e = 'fila'; return out; }
+    if (a.paradas.length) { out.e = 'parada'; return out; }
+    if (!a.conf.length) { if (reg && hoje(reg.quando) && String(reg.os_id || '') === os) { out.e = 'semAssinatura'; return out; } out.e = 'nada'; return out; }
+    if (a.desconhecida || a.incerta || (a.serv && a.ultimo && a.serv !== a.ultimo)) { out.e = 'mantida'; return out; }
+    out.e = 'ok'; return out;
+  }
+  PF138.estadoMaq = estadoMaq;
+  function quandoServ(st) {
+    var a = st && st.a, rec = st && st.rec;
+    if (a && a.serv) return a.serv.conf || a.serv.t;
+    if (rec && rec.quandoAntigo) return rec.quandoAntigo;
+    if (st && st.reg && st.reg.quando) return st.reg.quando;
+    return 0;
+  }
+
+  // ── o registro das tentativas ──────────────────────────────────────────────────────────────────────────────────
+  var _enviando = 0, _ini = PF138._ini = { ts: 0, obs: {} };
+  var _resp = PF138._resp = {};   // visit_id → { dup, em } — a resposta que a PÁGINA viu (o service worker não conta a dele)
+  function tentDe(rec, vid, t) { var l = rec.tent || (rec.tent = []); for (var k = 0; k < l.length; k++) if (l[k].t === t && l[k].vid === vid) return l[k]; return null; }
+  function confirmar(x, estado) { x.estado = estado; x.conf = Date.now(); }
+  try {
+    var _rg = window.pgpRegistroGravar;
+    if (typeof _rg === 'function' && !_rg.__pf138) {
+      window.pgpRegistroGravar = function (payload, estado, tipo) {
+        var antes = null, idx = -1, tp0 = String(tipo || (payload && payload.tipo) || tipoAtual());
+        try { idx = indiceDoPayload(payload); if (idx >= 0 && window.pcf116RegistroDe) antes = window.pcf116RegistroDe(idx, tp0); } catch (e) {}
+        var r = _rg.apply(this, arguments);
+        try {
+          if (payload && payload.visit_id) {
+            var tp = tp0, mid = String(payload.machine_id || payload.serial || ''), os = String(payload.os_id || ''), vid = String(payload.visit_id);
+            var d = dataISO(payload.visitDate || payload.data_visita);
+            var k = recChave(os, tp, mid, d), tudo = envTudo(), rec = tudo[k] || { os: os, tipo: tp, mid: mid, data: d, tent: [] };
+            if (!(rec.tent || []).length && antes && hoje(antes.quando) && String(antes.os_id || '') === os && String(antes.visit_id || '') === vid) { rec.antigo = true; rec.quandoAntigo = antes.quando; }
+            var rs = _resp[vid];
+            var est = estado === 'fila' ? 'fila' : (estado === 'duplicado' || (rs && rs.dup)) ? 'dup' : 'ok';
+            var x = null;
+            if (_enviando && idx >= 0 && osDaTela(idx) === os) {   // tentativa DESTE toque
+              x = tentDe(rec, vid, _ini.ts);
+              if (!x) { x = { t: _ini.ts, vid: vid, estado: 'fila' }; rec.tent.push(x); }
+              if ((_editEm[idx] || 0) > _ini.ts) rec.editadoEm = Math.max(rec.editadoEm || 0, _editEm[idx]);   // mexeu DURANTE o envio
+            } else {                                               // desfecho de algo que já estava na fila (recuperação do V122)
+              x = (rec.tent || []).filter(function (y) { return y.vid === vid && y.estado === 'fila'; })[0] || null;
+              if (!x) { x = { t: Date.now(), vid: vid, estado: 'fila', semTela: true }; rec.tent.push(x); }
+            }
+            if (est === 'fila') {
+              x.estado = 'fila'; x.filaEm = Date.now(); delete _resp[vid];
+              // a fila do aparelho TROCA o item da mesma visita quando a versão nova é igual na assinatura dela: a anterior não sobe
+              var fv = filaVids()[vid] || {};
+              if ((fv.vivo || 0) <= 1) (rec.tent || []).forEach(function (y) { if (y !== x && y.vid === vid && y.estado === 'fila') y.estado = 'subst'; });
+            } else confirmar(x, est);
+            while (rec.tent.length > 12) rec.tent.shift();
+            rec.em = Date.now(); tudo[k] = rec; envGravarTudo(tudo);
+          }
+        } catch (e) { nota(e, 'registro'); }
+        try { pintarBotao(); } catch (e) {}
+        return r;
+      };
+      window.pgpRegistroGravar.__pf138 = true;
+    }
+  } catch (e) { nota(e, 'embrulho registro'); }
+  try {
+    var _pj = window.pgpPostJson;
+    if (typeof _pj === 'function' && !_pj.__pf138) {
+      window.pgpPostJson = async function (action, body) {
+        var r = await _pj.apply(this, arguments);
+        try { if ((action === 'saveVisit' || action === 'savePreventiva') && body && body.visit_id && r && typeof r === 'object') _resp[String(body.visit_id)] = { dup: !!r.duplicate, em: Date.now() }; } catch (e) {}
+        return r;
+      };
+      window.pgpPostJson.__pf138 = true;
+    }
+  } catch (e) { nota(e, 'embrulho post'); }
+  // a fila sobe (só o visit_id chega aqui): a tentativa MAIS ANTIGA ainda na fila daquela visita é a que subiu (a fila é em ordem)
+  try {
+    var _rv = window.pgpRegistroPorVisitId;
+    if (typeof _rv === 'function' && !_rv.__pf138) {
+      window.pgpRegistroPorVisitId = function (visitId, estado) {
+        var r = _rv.apply(this, arguments);
+        try {
+          if (visitId && (estado === 'ok' || estado === 'duplicado')) {
+            var vid = String(visitId), rs = _resp[vid], tudo = envTudo(), mudou = false;
+            Object.keys(tudo).forEach(function (k) {
+              var rec = tudo[k]; if (!rec || !Array.isArray(rec.tent)) return;
+              var fila = rec.tent.filter(function (y) { return y.vid === vid && y.estado === 'fila'; }).sort(function (a, b) { return a.t - b.t; });
+              if (!fila.length) return;
+              var x = fila[0], valeResp = rs && (rs.em || 0) >= (x.filaEm || x.t || 0);
+              confirmar(x, estado === 'duplicado' || (valeResp && rs.dup) ? 'dup' : (valeResp ? 'ok' : 'okSR'));
+              if (valeResp) delete _resp[vid];   // uma resposta, uma tentativa
+              rec.em = Date.now(); mudou = true;
+            });
+            if (mudou) envGravarTudo(tudo);
+          }
+        } catch (e) { nota(e, 'registro visit'); }
+        try { pintarBotao(); } catch (e) {}
+        return r;
+      };
+      window.pgpRegistroPorVisitId.__pf138 = true;
+    }
+  } catch (e) { nota(e, 'embrulho registro visit'); }
+  // o toque no envio: a hora do TOQUE é a da tentativa (edição depois dela = "alterada", inclusive durante o envio)
+  try {
+    var _env = window.pcf116Enviar;
+    if (typeof _env === 'function' && !_env.__pf138) {
+      window.pcf116Enviar = async function () {
+        if (!_enviando) { _ini.ts = Date.now(); _ini.obs = {}; for (var q = 0; q < nMaq(); q++) _ini.obs[q] = semLinhasAuto(campo(q, 'obs_gerais')); }
+        _enviando++;
+        try { return await _env.apply(this, arguments); }
+        finally { _enviando = Math.max(0, _enviando - 1); try { pintarBotao(); } catch (e) {} }
+      };
+      window.pcf116Enviar.__pf138 = true;
+    }
+  } catch (e) { nota(e, 'embrulho enviar'); }
+
+  // a linha "✅ Inspeção registrada hoje" da máquina aberta: só vale o registro DESTA OS
+  try {
+    var _ra = window.pgpRegistroDaMaquinaAtiva;
+    if (typeof _ra === 'function' && !_ra.__pf138) {
+      window.pgpRegistroDaMaquinaAtiva = function () {
+        var r = _ra.apply(this, arguments);
+        try { if (r) { var i = 0; try { i = pgpGetMachineIndex(currentMachine); } catch (e) {} if (String(r.os_id || '') !== osDaTela(i)) return null; } } catch (e) {}
+        return r;
+      };
+      window.pgpRegistroDaMaquinaAtiva.__pf138 = true;
+    }
+    var _rp = window.pgpRegistroPintar;
+    if (typeof _rp === 'function' && !_rp.__pf138) {
+      window.pgpRegistroPintar = function () {
+        var r = _rp.apply(this, arguments);
+        try {
+          var box = $('pgpRegistroLinha'); if (!box) return r;
+          var old = $('pf138RegLinha'); if (old) old.remove();
+          var i = 0; try { i = pgpGetMachineIndex(currentMachine); } catch (e) {}
+          var st = estadoMaq(i), t = textoEstado(st, true);
+          if (st.e === 'novaVisita') st.e = 'alterada';   // a cor da linha
+          if (t) box.insertAdjacentHTML('afterend', '<div id="pf138RegLinha" class="pf138-reglinha ' + (st.e === 'alterada' ? 'alt' : 'man') + '">' + esc(t) + '</div>');
+        } catch (e) { nota(e, 'linha registro'); }
+        return r;
+      };
+      window.pgpRegistroPintar.__pf138 = true;
+    }
+  } catch (e) { nota(e, 'embrulho linha'); }
+  // os textos (longo = a linha da máquina; curto = a janela de envio)
+  function textoEstado(st, longo) {
+    var q = quandoServ(st), qq = q ? hhmm(q) : '—', prev = st.rec ? st.rec.tipo === 'preventiva' : tipoAtual() === 'preventiva';
+    if (st.e === 'alterada') {
+      if (st.novaVisita) return longo ? '✏️ Você mudou a data ou a identificação da máquina depois do envio' + (q ? ' das ' + qq : '') + '. O reenvio vira OUTRA visita no sistema — a anterior continua lá.' : '✏️ Data/identificação mudada depois do envio — vai como OUTRA visita';
+      var base = '✏️ ' + (longo ? 'Você mudou esta máquina depois do envio' : 'Alterada depois do envio') + (q ? ' das ' + qq : '');
+      if (!st.a || !st.a.conf.length) return base + (longo ? '. O envio novo substitui o que está na fila.' : ' — o envio novo vai no lugar');
+      return prev ? base + (longo ? '. A preventiva já gravada só é trocada se o escritório reabrir a OS no PCM — avise o escritório; depois da reabertura, toque em ✅ Concluir coleta.' : ' — só entra se o escritório reabrir a OS no PCM')
+                  : base + (longo ? '. A inspeção já gravada não é trocada pelo celular: o reenvio leva só as peças a trocar e os itens adicionados — o resto, avise o escritório.' : ' — a inspeção gravada não é trocada: vão só peças a trocar e itens adicionados');
+    }
+    if (st.e === 'mantida') {
+      if (st.a && st.a.incerta) return longo ? '⚠ A alteração subiu, mas o servidor não confirmou se aceitou. Pela regra, a preventiva já gravada só é trocada se o escritório reabrir a OS no PCM — confira com o escritório. O que você mudou continua salvo neste celular.' : '⚠ Alteração enviada sem confirmação — confira com o escritório';
+      var d = st.a && st.a.desconhecida ? 'o envio anterior' + (q ? ' (' + qq + ')' : '') : 'o envio das ' + qq;
+      return longo ? (prev ? '⚠ O sistema manteve ' + d + '. A alteração só entra se o escritório reabrir a OS no PCM — depois disso, toque em ✅ Concluir coleta de novo. O que você mudou continua salvo neste celular.'
+                           : '⚠ O sistema manteve ' + d + ' e não troca uma inspeção já gravada pelo celular. Avise o escritório do que mudou. O que você mudou continua salvo neste celular.')
+                   : '⚠ O sistema manteve ' + d + ' — ' + (prev ? 'para corrigir, o escritório reabre a OS no PCM' : 'avise o escritório do que mudou');
+    }
+    if (st.e === 'parada') return longo ? '⚠ O envio desta máquina parou em "Para revisar" — abra ☰ → Fila de envios e toque em Reenviar (ou fale com o escritório).' : '⚠ Envio parado em "Para revisar" (☰ → Fila de envios)';
+    if (st.e === 'novaVisita') { var qn = (st.rec && st.rec.tent && st.rec.tent.length) ? hhmm(st.rec.tent[st.rec.tent.length - 1].conf || st.rec.tent[st.rec.tent.length - 1].t) : (st.reg && st.reg.quando ? hhmm(st.reg.quando) : '—');
+      return longo ? '✏️ A data ou a identificação desta máquina mudou depois do envio das ' + qn + '. O envio vira OUTRA visita no sistema — a anterior continua lá.' : '✏️ Data/identificação mudada depois do envio das ' + qn + ' — vai como OUTRA visita'; }
+    if (!longo && st.e === 'outraOS') return '↪ Enviada às ' + (st.reg && st.reg.quando ? hhmm(st.reg.quando) : '—') + ' em OUTRA OS — nesta OS ainda não foi';
+    if (!longo && st.e === 'semAssinatura') return '✅ Enviada às ' + qq + ' (versão anterior do app). Se mudou algo depois, avise o escritório — o sistema não troca o que já foi gravado';
+    return '';
+  }
+
+  // ── C1 · o rótulo do botão (o rodapé do V116 e o do visual novo, que copia o texto dele) ──────────────────────────────
+  function resumo() {
+    var n = nMaq(), tp = tipoAtual(), out = { comDado: 0, nada: 0, fila: 0, parada: 0, ok: 0, alterada: 0, mantida: 0, incerta: 0, ultimo: 0 };
+    for (var i = 0; i < n; i++) {
+      var td = false; try { td = pgpHasMachineData(i); } catch (e) {}
+      if (!td) continue; out.comDado++;
+      var st = estadoMaq(i, tp), q = quandoServ(st);
+      if (st.e === 'ok' || st.e === 'semAssinatura') { out.ok++; out.ultimo = Math.max(out.ultimo, q); }
+      else if (st.e === 'fila') out.fila++;
+      else if (st.e === 'parada') out.parada++;
+      else if (st.e === 'alterada') out.alterada++;
+      else if (st.e === 'mantida') { out.mantida++; if (st.a && st.a.incerta) out.incerta++; }
+      else out.nada++;   // nada · outraOS
+    }
+    return out;
+  }
+  PF138.resumo = resumo;
+  function rotulo(base) {
+    try {
+      if (!base || /^⏳/.test(base)) return { t: base, c: '' };   // enviando: o texto do V116/V121 manda
+      var r = resumo(); if (!r.comDado) return { t: base, c: '' };
+      if (r.parada) return { t: '⚠ Envio parado — ☰ → Fila de envios', c: 'pf138-mantida' };
+      if (r.nada) return { t: base, c: '' };
+      if (r.alterada) return { t: '📤 Enviar alteração' + (r.alterada > 1 ? ' (' + r.alterada + ' máquinas)' : ''), c: 'pf138-alterada' };
+      if (r.mantida) return { t: r.incerta ? '⚠ Alteração não confirmada — veja a máquina' : '⚠ Alteração não aceita — veja a máquina', c: 'pf138-mantida' };
+      if (r.fila) return { t: '⏳ Coleta na fila — sobe sozinha', c: 'pf138-fila' };
+      if (r.ok) return { t: '✅ Coleta enviada às ' + (r.ultimo ? hhmm(r.ultimo) : '—'), c: 'pf138-enviada' };
+    } catch (e) { nota(e, 'rotulo'); }
+    return { t: base, c: '' };
+  }
+  var CLS = ['pf138-enviada', 'pf138-fila', 'pf138-alterada', 'pf138-mantida'];
+  var TXT = Object.getOwnPropertyDescriptor(Node.prototype, 'textContent');
+  var _pintando = false;
+  function aplicarClasse(el, c) { if (!el) return; CLS.forEach(function (x) { if (x !== c) el.classList.remove(x); }); if (c) el.classList.add(c); }
+  function baseV116() {
+    var n = nMaq(), c = 0; for (var j = 0; j < n; j++) { try { if (pgpHasMachineData(j)) c++; } catch (e) {} }
+    var prev = false; try { prev = tipoAtual() === 'preventiva'; } catch (e) {}
+    return (prev ? '🔧 Registrar preventiva' : '📤 Enviar inspeção') + (c > 1 ? ' das ' + c + ' máquinas' : '') + ' e gerar PDF';
+  }
+  function prender(be) {
+    if (!be || !TXT) return;
+    var atual = Object.getOwnPropertyDescriptor(be, 'textContent');
+    if (atual && atual.set && atual.set.__pf138) return;
+    var d = atual || TXT;
+    var setter = function (v) {
+      var base = String(v == null ? '' : v);
+      if (!_pintando) this._pf138Base = base;
+      var r = rotulo(this._pf138Base || base);
+      d.set.call(this, r.t);
+      aplicarClasse(this, r.c); aplicarClasse($('pf130Concluir'), r.c);
+    };
+    setter.__pf138 = true;
+    Object.defineProperty(be, 'textContent', { configurable: true, get: function () { return d.get.call(this); }, set: setter });
+  }
+  function pintarBotao() {
+    var be = $('pcf116BtnEnviar'); if (!be) return;
+    prender(be);
+    if (be.classList.contains('is-busy')) return;
+    _pintando = true;
+    try { be.textContent = be._pf138Base || baseV116(); } catch (e) {} finally { _pintando = false; }
+    try { var bc = $('pf130Concluir'); if (bc && bc.textContent !== TXT.get.call(be)) bc.textContent = TXT.get.call(be); } catch (e) {}
+  }
+  PF138.pintarBotao = pintarBotao;
+  var _tPinta = 0;
+  function agendarPintura() { if (_tPinta) return; _tPinta = setTimeout(function () { _tPinta = 0; try { pintarBotao(); } catch (e) {} }, 250); }
+  ['input', 'change'].forEach(function (ev) { document.addEventListener(ev, function (e) { var t = e.target; if (t && t.dataset && /^m\d+_/.test(t.dataset.key || '')) agendarPintura(); }, true); });
+  document.addEventListener('click', function (e) { var t = e.target; if (t && t.closest && t.closest('.machine-panel')) agendarPintura(); }, true);
+  ['pcf:estado', 'pcf:secao'].forEach(function (ev) { document.addEventListener(ev, agendarPintura); });
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') agendarPintura(); });
+  setInterval(function () { try { pintarBotao(); } catch (e) {} }, 4000);
+
+  // ── C2/C3 · a janela "Enviar inspeção / Registrar preventiva" ───────────────────────────────────────────────────────
+  function tratarJanela(ov) {
+    if (!ov || ov.__pf138) return;
+    var cbs = ov.querySelectorAll('.pcf116-cb'); if (!cbs.length) return;
+    ov.__pf138 = true;
+    var tp = tipoAtual(), noSistema = {};
+    [].forEach.call(cbs, function (cb) {
+      try {
+        var i = parseInt(cb.getAttribute('data-idx'), 10); if (isNaN(i)) return;
+        var st = estadoMaq(i, tp), lin = cb.closest('label') || cb.parentNode, info = lin && lin.querySelector('.ja');
+        var txt = textoEstado(st, false), cls = (st.e === 'alterada' || st.e === 'novaVisita' || st.e === 'semAssinatura') ? 'alt' : st.e === 'outraOS' ? 'out' : 'man';
+        if (st.e === 'ok' || st.e === 'mantida' || st.e === 'semAssinatura' || st.e === 'fila') noSistema[i] = 1;
+        if (txt) {
+          if (info) info.style.display = 'none';
+          var d = document.createElement('div'); d.className = 'pf138-est ' + cls; d.textContent = txt;
+          var alvo = (lin && lin.querySelector('.s')) || (lin && lin.querySelector('.n')); if (alvo && alvo.parentNode) alvo.parentNode.appendChild(d);
+        }
+        var travada = !!(lin && /🔒/.test(lin.textContent || ''));   // o visual novo desmarcou por falta da foto do horímetro: fica desmarcada
+        var marcar = (st.e === 'alterada' || st.e === 'outraOS' || st.e === 'novaVisita');
+        if (marcar && !travada && !cb.disabled && !cb.checked) { cb.checked = true; try { cb.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) {} }
+      } catch (e) { nota(e, 'janela'); }
+    });
+    try {
+      var ok = ov.querySelector('.pcf116-ok');
+      var rotNada = function () {
+        var marc = [].some.call(cbs, function (c) { return c.checked; });
+        var tudoNoSistema = [].every.call(cbs, function (c) { return c.checked || c.disabled || noSistema[parseInt(c.getAttribute('data-idx'), 10)]; });
+        if (ok && !marc && tudoNoSistema) ok.textContent = 'Nada novo para enviar';
+      };
+      rotNada();
+      [].forEach.call(cbs, function (c) { c.addEventListener('change', function () { setTimeout(rotNada, 0); }); });
+    } catch (e) {}
+  }
+  try {
+    new MutationObserver(function (ms) {
+      for (var k = 0; k < ms.length; k++) for (var j = 0; j < ms[k].addedNodes.length; j++) {
+        var nd = ms[k].addedNodes[j];
+        if (nd && nd.nodeType === 1 && nd.classList && nd.classList.contains('pcf116-ov')) { (function (ov) { tratarJanela(ov); setTimeout(function () { ov.__pf138 = false; [].forEach.call(ov.querySelectorAll('.pf138-est'), function (x) { x.remove(); }); tratarJanela(ov); }, 60); })(nd); }
+      }
+    }).observe(document.body, { childList: true });
+  } catch (e) { nota(e, 'observer janela'); }
+
+  // ════════════════════════════════════════════════════════════════════════════════
+  // V · O TOQUE NÃO ESPERA O SERVIDOR
+  // ════════════════════════════════════════════════════════════════════════════════
+  function eu() { var t = (window.PROPER_SESSION && window.PROPER_SESSION.tecnico) || {}; return String(t.id || t.nome || ''); }
+  function repintarPipeline() { try { return Promise.resolve(pfLoadPipeline({ _warmData: { tarefas: _pfTarefas } })).catch(function () {}); } catch (e) { return Promise.resolve(); } }
+  function toast(m) { try { if (typeof pfToast === 'function') pfToast(m); else showNotification(m); } catch (e) {} }
+  // Liberar tarefa: o card solta NA TELA na hora (só em memória — o cache off-line continua com o dono até o servidor
+  // confirmar); recusa do servidor devolve o dono e diz o motivo; falha de rede vai para a fila e só então o cache muda
+  var _lib138 = {};   // Tarefa_ID → o dono antes do toque (enquanto o servidor não confirma)
+  function sanearLib() {
+    try {
+      if (!Object.keys(_lib138).length) return;
+      var c = JSON.parse(localStorage.getItem('pf_pipeline_cache_v1') || '{}'), mudou = false;
+      Object.keys(c).forEach(function (os) { var e = c[os]; if (!e || !Array.isArray(e.tarefas)) return;
+        e.tarefas.forEach(function (t) { if (t && Object.prototype.hasOwnProperty.call(_lib138, String(t.Tarefa_ID)) && t.Lock_Por !== _lib138[String(t.Tarefa_ID)]) { t.Lock_Por = _lib138[String(t.Tarefa_ID)]; mudou = true; } }); });
+      if (mudou) localStorage.setItem('pf_pipeline_cache_v1', JSON.stringify(c));
+    } catch (e) { nota(e, 'sanear liberar'); }
+  }
+  try {
+    var _cgp = window.pfCacheGravarPipeline;
+    if (typeof _cgp === 'function' && !_cgp.__pf138) {
+      window.pfCacheGravarPipeline = function () { var r = _cgp.apply(this, arguments); sanearLib(); return r; };
+      window.pfCacheGravarPipeline.__pf138 = true;
+    }
+    var _llo = window.pfLockLocalOffline;
+    if (typeof _llo === 'function' && !_llo.__pf138) {
+      window.pfLockLocalOffline = function () { var r = _llo.apply(this, arguments); sanearLib(); return r; };
+      window.pfLockLocalOffline.__pf138 = true;
+    }
+  } catch (e) { nota(e, 'embrulho cache'); }
+  var _ger = PF138._ger = {};   // Tarefa_ID → geração da última ação do técnico nela
+  try {
+    var _ass = window.pfAssumirTarefa;
+    if (typeof _ass === 'function' && !_ass.__pf138) {
+      window.pfAssumirTarefa = function (tarefaId) { var id = String(tarefaId); _ger[id] = (_ger[id] || 0) + 1; delete _lib138[id]; return _ass.apply(this, arguments); };
+      window.pfAssumirTarefa.__pf138 = true;
+    }
+  } catch (e) { nota(e, 'embrulho assumir'); }
+  try {
+    var _lib = window.pfLiberarTarefa;
+    if (typeof _lib === 'function' && !_lib.__pf138) {
+      window.pfLiberarTarefa = async function (tarefaId, btn) {
+        var usuario = eu(), body = { os_id: _pfOsId, tarefa_id: tarefaId, usuario: usuario }, antes = '', id = String(tarefaId), t0 = null;
+        try { t0 = (_pfTarefas || []).find(function (x) { return String(x.Tarefa_ID) === id; }); antes = (t0 && t0.Lock_Por) || ''; } catch (e) {}
+        var offline = false; try { offline = (!_pgpGsConnected && navigator.onLine === false) || (typeof pgpRedeBloqueada === 'function' && pgpRedeBloqueada()); } catch (e) {}
+        if (offline) {   // sem rede: o caminho de sempre (fila primeiro, depois o lock local)
+          try { pgpQueueRequest('liberarTarefa', body); } catch (e) {}
+          pfLockLocalOffline(tarefaId, ''); await repintarPipeline();
+          toast('📴 Liberada neste celular — sobe quando houver sinal'); return;
+        }
+        var g = _ger[id] = (_ger[id] || 0) + 1;
+        _lib138[id] = antes;
+        if (t0) t0.Lock_Por = '';
+        await repintarPipeline();
+        toast('🔓 Tarefa liberada — confirmando com o servidor…');
+        PF138.ultimaLiberacao = pgpPostJson('liberarTarefa', body, 1, null, { timeoutMs: 25000 }).then(function () {
+          if (_ger[id] !== g) return 'superada';   // o técnico já fez outra coisa na tarefa (ex.: Assumir): a releitura dela manda
+          delete _lib138[id];
+          try { pfLockLocalOffline(tarefaId, ''); } catch (e) {}
+          try { pfLoadPipeline({ soft: true }).catch(function () {}); } catch (e) {}
+          return 'ok';
+        }).catch(function (e) {
+          if (e && e.message && String(e.message).indexOf('AUTH_GOOGLE') >= 0) { delete _lib138[id]; try { pfHubLogout(); } catch (x) {} return 'auth'; }
+          if (_ger[id] !== g) return 'superada';   // um Liberar velho não vai para a fila nem escreve o dono por cima de uma ação nova
+          var veredito = false; try { veredito = pfEhVeredicto_(e); } catch (x) {}
+          delete _lib138[id];
+          if (veredito) {
+            try { var t1 = (_pfTarefas || []).find(function (x) { return String(x.Tarefa_ID) === id; }); if (t1) t1.Lock_Por = antes; } catch (x) {}
+            repintarPipeline();
+            try { pfMostrarVeredicto_(e, 'Não foi possível liberar a tarefa.'); } catch (x) {}
+            try { pfLoadPipeline({ soft: true }).catch(function () {}); } catch (x) {}
+            return 'recusa';
+          }
+          try { pgpQueueRequest('liberarTarefa', body); } catch (x) {}
+          try { pfLockLocalOffline(tarefaId, ''); } catch (x) {}
+          toast('⏳ Sem resposta do servidor — a liberação está na fila e sobe sozinha.');
+          return 'fila';
+        });
+        return;
+      };
+      window.pfLiberarTarefa.__pf138 = true;
+    }
+  } catch (e) { nota(e, 'embrulho liberar'); }
+
+  // 📍 Cheguei / 🚪 Saí do cliente: a hora registrada é a do TOQUE e aparece na hora. O GPS (até 9 s) e o envio seguem atrás.
+  // Antes de esperar o GPS, o toque fica guardado (pf138_presenca_pend_v1): se o app fechar nessa janela, a próxima abertura
+  // manda o registro SEM GPS, com a hora do toque — a chegada nunca some.
+  var PRES_PEND = 'pf138_presenca_pend_v1';
+  var _presVoo = {};   // toques desta página ainda no fluxo (GPS/envio)
+  var _presUlt = {};   // osId → o último toque de presença desta página
+  function presPend() { return lerJ(PRES_PEND, {}); }
+  function presPendGravar(o) { gravarJ(PRES_PEND, o); }
+  function corpoPresenca(osId, tipo, pos, emTs, uid, obs) {
+    var o = {}, me = { id: '', nome: '' };
+    try { o = _pf108Os(osId) || {}; } catch (e) {}
+    try { me = _pf108Eu(); } catch (e) {}
+    var c = pos && pos.coords, dest = null, dist = null;
+    try { dest = _pf108Destino(o); dist = (c && _pf108TemPonto(dest)) ? _pf108Haversine(c.latitude, c.longitude, Number(dest.lat), Number(dest.lng)) : null; } catch (e) {}
+    return { dist: dist, sem_gps: !c, body: {
+      os_id: osId, tipo: tipo, origem: 'manual', client_uid: uid, tarefa_id: 'presenca:' + uid,
+      lat: c ? c.latitude : '', lng: c ? c.longitude : '', precisao_m: c ? Math.round(c.accuracy) : '',
+      hora_aparelho: new Date(emTs).toISOString(), hora_gps: pos ? new Date(pos.timestamp).toISOString() : '',
+      usuario_id: me.id, usuario_nome: me.nome, obs: obs || '' } };
+  }
+  async function presencaRapida(osId, tipo) {
+    var em = Date.now(), uid = ''; try { uid = _pf108Uid(); } catch (e) { uid = 'pf138-' + em.toString(36) + '-' + Math.random().toString(36).slice(2, 8); }
+    var pend = presPend(); pend[uid] = { os: osId, tipo: tipo, em: em, vivo: em }; presPendGravar(pend); _presVoo[uid] = 1;   // 1º: o toque guardado
+    // sinal de vida enquanto espera o GPS/envio: outra aba/janela do PCF não drena um toque que ainda está no fluxo
+    var vida = setInterval(function () { try { var q = presPend(); if (q[uid]) { q[uid].vivo = Date.now(); presPendGravar(q); } } catch (e) {} }, 3000);
+    try { _pf108PresGravar(osId, tipo, { ts: em, origem: 'manual', provisorio: true }); } catch (e) {}
+    try { _pf108PintarCampo(); } catch (e) {}
+    var rot = tipo === 'CHEGADA' ? '📍 Chegada' : '🚪 Saída do cliente';
+    try { _pf108Toast(rot + ' às ' + hhmm(em) + ' — o local (GPS) e o envio seguem sozinhos.'); } catch (e) { toast(rot + ' às ' + hhmm(em)); }
+    var pos = null; try { pos = await _pf108Gps(tipo === 'CHEGADA' ? 9000 : 7000); } catch (e) {}
+    var x = corpoPresenca(osId, tipo, pos, em, uid, '');
+    try { _pf108PresGravar(osId, tipo, { ts: em, origem: 'manual', dist: x.dist, sem_gps: x.sem_gps }); } catch (e) {}
+    var r = null; try { r = await _pf108Enviar('presencaRegistrar', x.body); } catch (e) { r = { status: 'error', error: e && e.message }; }
+    clearInterval(vida);
+    pend = presPend(); delete pend[uid]; presPendGravar(pend); delete _presVoo[uid];                 // enviado ou na fila: sai do pendente
+    try {
+      if (tipo === 'CHEGADA') {
+        var o = _pf108Os(osId) || {}, d = _pf108Destino(o), raio = (d && Number(d.raio_m)) || 300;
+        if (x.sem_gps) _pf108Toast('📍 Chegada das ' + hhmm(em) + ' registrada sem GPS (fica marcado).');
+        else if (x.dist !== null && x.dist > raio * 2) _pf108Toast('📍 Chegada das ' + hhmm(em) + ' registrada a ' + _pf108Dist(x.dist) + ' do cliente (longe: fica marcado).');
+      }
+    } catch (e) {}
+    try { _pf108PintarCampo(); } catch (e) {}
+    return r;
+  }
+  // a próxima abertura manda o toque que ficou sem envio (app fechado antes do GPS)
+  async function presPendDrenar() {
+    try {
+      var pend = presPend(), ks = Object.keys(pend); if (!ks.length) return;
+      for (var k = 0; k < ks.length; k++) {
+        var p = pend[ks[k]]; if (!p || !p.os || _presVoo[ks[k]] || (Date.now() - (p.vivo || p.em || 0)) < 15000) continue;   // ainda vivo em alguma aba
+        var x = corpoPresenca(p.os, p.tipo, null, p.em, ks[k], 'sem GPS: o app fechou antes de ler o local (toque às ' + hhmm(p.em) + ')');
+        try { _pf108PresGravar(p.os, p.tipo, { ts: p.em, origem: 'manual', sem_gps: true }); } catch (e) {}
+        try { await _pf108Enviar('presencaRegistrar', x.body); } catch (e) {}
+        var atual = presPend(); delete atual[ks[k]]; presPendGravar(atual);
+      }
+      try { _pf108PintarCampo(); } catch (e) {}
+    } catch (e) { nota(e, 'presenca pendente'); }
+  }
+  PF138.presPendDrenar = presPendDrenar;
+  setTimeout(presPendDrenar, 2500); setTimeout(presPendDrenar, 18000); setTimeout(presPendDrenar, 50000);
+  [['_pf108Cheguei', 'CHEGADA'], ['_pf108SaiDoCliente', 'SAIDA_CLIENTE']].forEach(function (par) {
+    try {
+      var orig = window[par[0]];
+      if (typeof orig !== 'function' || orig.__pf138) return;
+      window[par[0]] = function (osId) {
+        var ult = _presUlt[String(osId)];
+        if (ult && ult.tipo !== par[1] && Date.now() - ult.em < 8000) {   // o 2º toque caiu no botão que acabou de nascer no mesmo lugar
+          try { _pf108Toast((ult.tipo === 'CHEGADA' ? '📍 A chegada' : '🚪 A saída') + ' acabou de ser registrada às ' + hhmm(ult.em) + '. Para registrar ' + (par[1] === 'CHEGADA' ? 'a chegada' : 'a saída') + ', toque de novo daqui a alguns segundos.'); } catch (e) {}
+          return Promise.resolve(null);
+        }
+        if (ult && ult.tipo === par[1] && Date.now() - ult.em < 8000) return ult.pr;   // o mesmo toque repetido: um registro só
+        var pr = presencaRapida(osId, par[1]); _presUlt[String(osId)] = { tipo: par[1], em: Date.now(), pr: pr }; PF138['ultima_' + par[1]] = pr; return pr;
+      };
+      window[par[0]].__pf138 = true;
+    } catch (e) { nota(e, 'embrulho ' + par[0]); }
+  });
+
+  // ════════════════════════════════════════════════════════════════════════════════
+  // O · 📦 PREPARAR VISITAS OFF-LINE (por EMPRESA)
+  // ════════════════════════════════════════════════════════════════════════════════
+  var PAC_KEY = 'pf138_pacotes_v1', PAC_DIAS = 7, FOTOS_MAQ = 24;
+  function pacotes() { var p = lerJ(PAC_KEY, null); return (p && p.empresas && typeof p.empresas === 'object') ? p : { v: 1, empresas: {} }; }
+  function ativa(o) { try { return pfOsEhAtiva(o); } catch (e) { var s = String(o && o.status || '').toLowerCase(); return s === 'aberta' || s === 'em_andamento'; } }
+  function externa(o) { try { return pfOsEhExterna(o); } catch (e) { return false; } }
+  function lista() { try { return (typeof _pfOsList !== 'undefined' && Array.isArray(_pfOsList)) ? _pfOsList : []; } catch (e) { return []; } }
+  function nomeEmp(o) { return String((o && o.cliente) || '—').trim() || '—'; }
+  function hojeISO() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function minha(o) { try { return !!(o.designada_para_mim || o.minha_tarefa || (typeof _pfEhMinha === 'function' && _pfEhMinha(o))); } catch (e) { return !!(o && (o.designada_para_mim || o.minha_tarefa)); } }
+  // empresas candidatas = as que têm OS de campo ATIVA (a mesma regra do "Preparar o dia")
+  function empresas() {
+    var m = {}, hoje = hojeISO();
+    lista().forEach(function (o) {
+      if (!ativa(o) || !externa(o) || !o.id_os) return;
+      var n = nomeEmp(o), e = m[n] || (m[n] = { nome: n, os: [], hoje: 0, minhas: 0, cidade: '' });
+      e.os.push(o); if (String(o.data_prevista || '').slice(0, 10) === hoje) e.hoje++; if (minha(o)) e.minhas++;
+      if (!e.cidade) e.cidade = String(o.cliente_cidade || o.cidade || '');
+    });
+    return Object.keys(m).map(function (k) { return m[k]; }).sort(function (a, b) { return (b.hoje - a.hoje) || (b.minhas - a.minhas) || a.nome.localeCompare(b.nome, 'pt-BR'); });
+  }
+  PF138.empresas = empresas;
+  function valido(rec) { return !!(rec && rec.ts && (Date.now() - rec.ts) < PAC_DIAS * 86400000); }
+  // as OS que nenhum corte de cache pode tirar do celular: as de pacote válido que ainda estão ativas
+  function osProtegidas() {
+    var p = pacotes(), ids = {}, viva = {};
+    lista().forEach(function (o) { if (ativa(o)) viva[String(o.id_os)] = 1; });
+    var temLista = lista().length > 0;
+    Object.keys(p.empresas).forEach(function (n) { var r = p.empresas[n]; if (!valido(r)) return; (r.os || []).forEach(function (id) { if (!temLista || viva[String(id)]) ids[String(id)] = 1; }); });
+    return ids;
+  }
+  PF138.osProtegidas = osProtegidas;
+  // o corte dos caches do pipeline e das máquinas (teto 25) passa a pular as OS de pacote
+  try {
+    var _trim = window._pfCacheTrim;
+    if (typeof _trim === 'function' && !_trim.__pf138) {
+      window._pfCacheTrim = function (c, max) {
+        try {
+          var prot = osProtegidas(), guard = {}, n = 0;
+          Object.keys(c || {}).forEach(function (k) { if (prot[k]) { guard[k] = c[k]; delete c[k]; n++; } });
+          var r = _trim.call(this, c, Math.max(5, (max || 25) - n));
+          Object.keys(guard).forEach(function (k) { c[k] = guard[k]; });
+          return r;
+        } catch (e) { nota(e, 'corte'); return _trim.apply(this, arguments); }
+      };
+      window._pfCacheTrim.__pf138 = true;
+    }
+  } catch (e) { nota(e, 'embrulho corte'); }
+  // o histórico da última visita sem sinal: o que o pacote guardou
+  try {
+    var _fh = window.fetchMachineHistory;
+    if (typeof _fh === 'function' && !_fh.__pf138) {
+      window.fetchMachineHistory = async function (machineId) {
+        var r = null;
+        try { r = await _fh.apply(this, arguments); } catch (e) { r = { erro: true, motivo: 'rede' }; }
+        try {
+          if (r && !r.erro && machineId) { if (PF138._maqPacote && PF138._maqPacote[machineId]) pgpIdbSet('pf138h::' + machineId, { ts: Date.now(), h: r }); return r; }
+          if (machineId) {
+            var g = await pgpIdbGet('pf138h::' + machineId);
+            if (g && g.h && (Date.now() - (g.ts || 0)) < 30 * 86400000) return Object.assign({}, g.h, { _pf138: g.ts });   // NÃO vai para o _pgpHistCache: com sinal, a próxima leitura busca o atual
+          }
+        } catch (e) { nota(e, 'historico'); }
+        return r;
+      };
+      window.fetchMachineHistory.__pf138 = true;
+    }
+  } catch (e) { nota(e, 'embrulho historico'); }
+  function maqPacote() { var m = {}; try { var p = pacotes(); Object.keys(p.empresas).forEach(function (n) { var r = p.empresas[n]; if (valido(r)) (r.maqs || []).forEach(function (x) { m[x] = 1; }); }); } catch (e) {} PF138._maqPacote = m; return m; }
+  maqPacote();
+  // vencidos: some o pacote e o histórico guardado dele (nunca coleta, fila, fotos de coleta ou reservas)
+  function limparVencidos() {
+    try {
+      var p = pacotes(), mudou = false, vivas = maqPacote();
+      Object.keys(p.empresas).forEach(function (n) {
+        var r = p.empresas[n]; if (valido(r)) return;
+        (r.maqs || []).forEach(function (mid) { if (!vivas[mid]) { try { pgpIdbDel('pf138h::' + mid); } catch (e) {} } });
+        delete p.empresas[n]; mudou = true;
+      });
+      if (mudou) gravarJ(PAC_KEY, p);
+    } catch (e) { nota(e, 'limpar'); }
+  }
+  setTimeout(limparVencidos, 4000);
+
+  function maquinasDaOS(id) { try { var c = JSON.parse(localStorage.getItem('pf_maqos_cache_v1') || '{}')[id]; return (c && c.machines) || []; } catch (e) { return []; } }
+  function temPipeline(id) { try { return !!(JSON.parse(localStorage.getItem('pf_pipeline_cache_v1') || '{}')[id]); } catch (e) { return false; } }
+  function temMaq(id) { try { return !!(JSON.parse(localStorage.getItem('pf_maqos_cache_v1') || '{}')[id]); } catch (e) { return false; } }
+  function comPrazo(p, ms) { return Promise.race([p, new Promise(function (_, rej) { setTimeout(function () { rej(new Error('demorou mais de ' + Math.round(ms / 1000) + ' s')); }, ms); })]); }
+  async function baixarHistorico(mid) {
+    try { if (window._pgpHistCache) delete window._pgpHistCache[mid]; } catch (e) {}
+    var h = await comPrazo(window.fetchMachineHistory(mid), 40000);
+    if (h && !h.erro && !h._pf138) { await pgpIdbSet('pf138h::' + mid, { ts: Date.now(), h: h }); return true; }
+    return false;
+  }
+  async function baixarFotos(m, osNum) {
+    if (!window.P121 || typeof P121.rpc !== 'function') return { n: 0, motivo: 'leitura de fotos indisponível' };
+    var mid = String(m.id || m.machine_id || ''), ser = String(m.serial || m.ns || ''), ident = mid || ser;
+    if (!ident) return { n: 0, motivo: 'máquina sem identificação' };
+    var r = await P121.rpc('pc_fotos_anteriores', { p_maquina_id: mid, p_serie: ser || null, p_excluir_os: osNum || null, p_chaves: null }, 15000);
+    var l = ((r && r.itens) || []).slice(0, FOTOS_MAQ);
+    if (!l.length) { await pgpIdbSet('pa121::' + ident, { ts: Date.now(), itens: {} }); return { n: 0 }; }
+    var falta = {};
+    for (var k = 0; k < l.length; k++) {
+      var f = l[k]; f.thumb = '';
+      try { var c = await pgpIdbGet('pft::' + f.file_id); if (c && c.u) f.thumb = c.u; } catch (e) {}
+      if (!f.thumb && f.os_numero) (falta[f.os_numero] = falta[f.os_numero] || []).push(f);
+    }
+    for (var os in falta) {
+      try {
+        var ids = falta[os].map(function (x) { return x.file_id; });
+        var rv = await pgpPostJson('getFotosDaVisita', { numero_os: os, file_ids: ids.join(','), thumb: true, max_fotos: FOTOS_MAQ }, 0, null, { timeoutMs: 45000 });
+        ((rv && rv.fotos) || []).forEach(function (ft) { falta[os].forEach(function (x) { if (x.file_id === ft.file_id && ft.dataUrl) { x.thumb = ft.dataUrl; pgpIdbSet('pft::' + x.file_id, { u: ft.dataUrl, ts: Date.now() }); } }); });
+      } catch (e) { nota(e, 'miniaturas ' + os); }
+    }
+    var itens = {}, n = 0; l.forEach(function (x) { if (itens[x.photo_key]) return; itens[x.photo_key] = [x]; if (x.thumb) n++; });
+    await pgpIdbSet('pa121::' + ident, { ts: Date.now(), itens: itens });
+    return { n: n, total: Object.keys(itens).length };
+  }
+  // espaço no aparelho: pede "não apagar" ao navegador e confere a folga
+  async function espaco() {
+    var out = { ok: true, livreMB: null };
+    try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (e) {}
+    try { if (navigator.storage && navigator.storage.estimate) { var e = await navigator.storage.estimate(); if (e && e.quota) { out.livreMB = Math.round((e.quota - (e.usage || 0)) / 1048576); if (out.livreMB < 15) out.ok = false; } } } catch (e) {}
+    return out;
+  }
+
+  var _sheetFechar = null, _baixando = false;
+  function abrirFolha(html, montar) {
+    var ov = document.createElement('div'); ov.className = 'pcf116-ov'; ov.id = 'pf138Ov';
+    ov.innerHTML = '<div class="pcf116-sheet" role="dialog" aria-modal="true" aria-label="Preparar visitas off-line">' + html + '</div>';
+    document.body.appendChild(ov);
+    var fechado = false;
+    function fechar() { if (fechado || _baixando) return; fechado = true; try { ov.remove(); } catch (e) {} _sheetFechar = null; try { pintarFaixa(); } catch (e) {} }
+    ov.addEventListener('click', function (e) { if (e.target === ov) fechar(); });
+    _sheetFechar = fechar;
+    if (montar) montar(ov, fechar);
+    return ov;
+  }
+  PF138.abrirPreparar = async function () {
+    if (_baixando) return;
+    try { if ($('pf138Ov')) $('pf138Ov').remove(); } catch (e) {}
+    if (!lista().length) { try { await pfLoadOS(); } catch (e) {} }
+    var emps = empresas(), p = pacotes();
+    if (!emps.length) {
+      abrirFolha('<h3>📦 Preparar visitas off-line</h3><div class="pcf116-sub">' + (lista().length ? 'Nenhuma empresa com OS de campo ativa agora.' : 'A lista de OS ainda não carregou. Abra a lista com sinal e tente de novo.') + '</div>' +
+        '<div class="pcf116-pe"><button type="button" class="pcf116-cancel">Fechar</button></div>', function (ov, fechar) { ov.querySelector('.pcf116-cancel').onclick = fechar; });
+      return;
+    }
+    var marcadas = {};
+    var ult = null; try { ult = JSON.parse(localStorage.getItem('pf138_preparar_sel_v1') || 'null'); } catch (e) {}
+    emps.forEach(function (e) { if ((ult && ult.indexOf && ult.indexOf(e.nome) >= 0) || (!ult && (e.hoje || e.minhas))) marcadas[e.nome] = 1; });
+    var linhas = emps.map(function (e, k) {
+      var rec = p.empresas[e.nome], chips = '';
+      if (e.hoje) chips += '<span class="pf138-chip hoje">📅 ' + e.hoje + ' hoje</span>';
+      if (e.minhas) chips += '<span class="pf138-chip minha">👤 ' + e.minhas + ' sua(s)</span>';
+      if (valido(rec)) chips += '<span class="pf138-chip ' + ((rec.faltou || []).length ? 'av' : 'ok') + '">📦 ' + ((rec.faltou || []).length ? 'incompleto' : 'pronto') + ' · ' + hhmm(rec.ts) + '</span>';
+      var tipos = {}; e.os.forEach(function (o) { var t = String(o.tipo_os || '').trim(); if (t) tipos[t] = 1; });
+      return '<label class="pf138-emp"><input type="checkbox" class="pf138-cb" data-k="' + k + '"' + (marcadas[e.nome] ? ' checked' : '') + '>' +
+        '<span style="flex:1;min-width:0"><span class="n">' + esc(e.nome) + '</span>' +
+        '<span class="s" style="display:block">' + esc([e.cidade, e.os.length + ' OS de campo', Object.keys(tipos).join(', ')].filter(Boolean).join(' · ')) + '</span>' +
+        '<span class="s" style="display:block">' + esc(e.os.map(function (o) { return o.numero_os || o.id_os; }).join(' · ')) + '</span>' + (chips ? '<span style="display:block">' + chips + '</span>' : '') + '</span></label>';
+    }).join('');
+    abrirFolha('<h3>📦 Preparar visitas off-line</h3>' +
+      '<div class="pcf116-sub">Marque as empresas que você vai visitar. O celular baixa as OS de campo delas, as máquinas, a última visita, as miniaturas das fotos anteriores e o catálogo — para lançar a coleta sem sinal. A coleta e o envio usam a fila de sempre.</div>' +
+      '<div class="pcf116-corpo" id="pf138Corpo">' + linhas + '</div>' +
+      '<div class="pcf116-pe"><button type="button" class="pcf116-cancel">Voltar</button><button type="button" class="pcf116-ok" id="pf138Baixar"></button></div>',
+      function (ov, fechar) {
+        var ok = ov.querySelector('#pf138Baixar');
+        function sel() { return [].slice.call(ov.querySelectorAll('.pf138-cb')).filter(function (c) { return c.checked; }).map(function (c) { return emps[parseInt(c.dataset.k, 10)]; }); }
+        function rot() {
+          var s = sel(), nos = s.reduce(function (a, e) { return a + e.os.length; }, 0), teto = (typeof PF_CACHE_MAX_OS !== 'undefined') ? PF_CACHE_MAX_OS : 25;
+          ok.disabled = !s.length || nos > teto;
+          ok.textContent = !s.length ? 'Marque ao menos uma empresa' : (nos > teto ? 'Máximo ' + teto + ' OS — desmarque alguma' : '📦 Baixar ' + s.length + (s.length > 1 ? ' empresas' : ' empresa') + ' (' + nos + ' OS)');
+        }
+        ov.querySelectorAll('.pf138-cb').forEach(function (c) { c.addEventListener('change', rot); });
+        rot();
+        ov.querySelector('.pcf116-cancel').onclick = fechar;
+        ok.onclick = function () { var s = sel(); if (s.length) baixar(s, ov, fechar); };
+      });
+  };
+  async function baixar(emps, ov, fechar) {
+    if (_baixando) return;
+    var corpo = ov.querySelector('#pf138Corpo'), pe = ov.querySelector('.pcf116-pe');
+    try { localStorage.setItem('pf138_preparar_sel_v1', JSON.stringify(emps.map(function (e) { return e.nome; }))); } catch (e) {}
+    var esp = await espaco();
+    if (!esp.ok) { corpo.insertAdjacentHTML('afterbegin', '<div class="pf138-aviso">⚠ Pouco espaço livre no celular (' + esp.livreMB + ' MB). Libere espaço (☰ → Coletas guardadas ou apague fotos antigas da galeria) e tente de novo. Nada foi baixado.</div>'); return; }
+    _baixando = true;
+    pe.innerHTML = '<button type="button" class="pcf116-ok" disabled>⏳ Baixando… não feche o app</button>';
+    var prog = function (t) { corpo.innerHTML = '<div class="pf138-prog">' + t + '</div>'; };
+    var ids = []; emps.forEach(function (e) { e.os.forEach(function (o) { ids.push(String(o.id_os)); }); });
+    var resultado = [];
+    try {
+      // 1 · o laço de sempre (pipeline + máquinas de cada OS), pela função do V85 — com a seleção destas OS
+      prog('📥 Baixando as OS e as máquinas… (' + ids.length + ' OS)');
+      var selAntes = null; try { selAntes = Object.assign({}, _pfPrepararSel); } catch (e) {}
+      try { _pfPrepararSel = {}; ids.forEach(function (id) { _pfPrepararSel[id] = true; }); await _origConfirmar(null); } catch (e) { nota(e, 'laço V85'); }
+      try { if (selAntes) { _pfPrepararSel = selAntes; } } catch (e) {}
+      // 2 · catálogo (peças e checklist de cada modelo)
+      prog('📚 Atualizando o catálogo de peças…');
+      var catOk = false; try { var cat = await comPrazo(pgpEnsureCatalogCache(), 60000); catOk = !!(cat && cat.models && cat.models.length); } catch (e) { nota(e, 'catalogo'); }
+      // 3 · por empresa: histórico e miniaturas de cada máquina
+      var p = pacotes(), feitas = {};
+      for (var k = 0; k < emps.length; k++) {
+        var e = emps[k], faltou = [], maqs = [], nh = 0, nf = 0, semFoto = 0;
+        for (var j = 0; j < e.os.length; j++) {
+          var o = e.os[j], id = String(o.id_os), rotOs = String(o.numero_os || id);
+          if (!temPipeline(id)) faltou.push('tarefas da OS ' + rotOs);
+          if (!temMaq(id)) { faltou.push('máquinas da OS ' + rotOs); continue; }
+          var ms = maquinasDaOS(id);
+          for (var q = 0; q < ms.length; q++) {
+            var m = ms[q], mid = String(m.id || m.machine_id || m.serial || ''), nomeM = [m.model || m.modelo, m.serial ? 'série ' + m.serial : ''].filter(Boolean).join(' ') || 'máquina';
+            if (!mid || feitas[mid]) continue; feitas[mid] = 1; maqs.push(mid);
+            prog('📥 ' + esc(e.nome) + ' — ' + esc(nomeM) + '<br><small>empresa ' + (k + 1) + ' de ' + emps.length + '</small>');
+            try { if (await baixarHistorico(mid)) nh++; else faltou.push('última visita: ' + nomeM); } catch (x) { faltou.push('última visita: ' + nomeM); }
+            try { var rf = await comPrazo(baixarFotos(m, rotOs), 70000); nf += rf.n || 0; if ((rf.total || 0) > (rf.n || 0)) semFoto += (rf.total - rf.n); if (rf.motivo) faltou.push('fotos anteriores: ' + rf.motivo); } catch (x) { faltou.push('fotos anteriores: ' + nomeM); }
+          }
+        }
+        if (!catOk) faltou.push('catálogo de peças');
+        if (semFoto) faltou.push(semFoto + ' miniatura(s) que o servidor não devolveu');
+        p = pacotes();
+        p.empresas[e.nome] = { ts: Date.now(), os: e.os.map(function (o) { return String(o.id_os); }), maqs: maqs, hist: nh, fotos: nf, faltou: faltou };
+        gravarJ(PAC_KEY, p); maqPacote();
+        resultado.push({ e: e, r: p.empresas[e.nome] });
+      }
+    } finally { _baixando = false; }
+    corpo.innerHTML = resultado.map(function (x) {
+      var r = x.r, f = r.faltou || [];
+      return '<div class="pf138-res">' + (f.length ? '⚠' : '✅') + ' <b>' + esc(x.e.nome) + '</b> — ' + r.os.length + ' OS · ' + r.maqs.length + ' máquina(s) · ' + r.hist + ' com última visita · ' + r.fotos + ' miniatura(s)' +
+        (f.length ? '<div class="f">Faltou: ' + esc(f.slice(0, 6).join(' · ')) + (f.length > 6 ? ' · +' + (f.length - 6) : '') + '. Repita num lugar com sinal melhor.</div>' : '') + '</div>';
+    }).join('') + '<div class="pf138-prog">Baixado às ' + hhmm(Date.now()) + '. Vale por ' + PAC_DIAS + ' dias ou até as OS fecharem.</div>';
+    pe.innerHTML = '<button type="button" class="pcf116-ok">Fechar</button>';
+    pe.querySelector('.pcf116-ok').onclick = fechar;
+    try { pintarFaixa(); } catch (e) {}
+    try { if (typeof PF129 !== 'undefined' && PF129.render) PF129.render(); } catch (e) {}
+    try { showNotification('📦 ' + resultado.length + ' empresa(s) prontas para usar sem sinal.'); } catch (e) {}
+  }
+  PF138.baixar = baixar;
+  // o "📥 Preparar o dia" (botão da tela de OS e o "Baixar" do visual novo) abre a janela nova; o laço de download
+  // continua sendo o do V85 (pfPrepararConfirmar), chamado por ela
+  var _origConfirmar = window.pfPrepararConfirmar;
+  try {
+    var _prep = window.pfPrepararODia;
+    if (typeof _prep === 'function' && !_prep.__pf138) {
+      window.pfPrepararODia = function () { try { PF138.abrirPreparar(); } catch (e) { nota(e, 'abrir'); return _prep.apply(this, arguments); } };
+      window.pfPrepararODia.__pf138 = true;
+    }
+  } catch (e) { nota(e, 'embrulho preparar'); }
+  // a faixa: o que está pronto para usar sem sinal (tela de OS clássica e Minhas OS do visual novo)
+  function textoFaixa() {
+    var p = pacotes(), ns = Object.keys(p.empresas).filter(function (n) { return valido(p.empresas[n]); });
+    if (!ns.length) return null;
+    var ts = Math.max.apply(null, ns.map(function (n) { return p.empresas[n].ts || 0; }));
+    var inc = ns.filter(function (n) { return (p.empresas[n].faltou || []).length; });
+    return { av: inc.length > 0, html: '<div class="tx">📦 <b>' + ns.length + (ns.length > 1 ? ' empresas prontas' : ' empresa pronta') + ' para usar sem sinal</b> · baixado às ' + hhmm(ts) +
+      '<small>' + esc(ns.slice(0, 4).join(' · ')) + (ns.length > 4 ? ' · +' + (ns.length - 4) : '') + (inc.length ? ' — ⚠ incompleto: ' + esc(inc.join(', ')) : '') + '</small></div>' +
+      '<button type="button" onclick="PF138.abrirPreparar()">🔄 Atualizar</button>' };
+  }
+  function pintarFaixa() {
+    var f = textoFaixa();
+    var alvos = [];
+    var cl = $('pfOsLista'); if (cl && cl.parentNode) alvos.push({ pai: cl.parentNode, antes: cl, id: 'pf138Faixa' });
+    var bx = $('pf129Os'); if (bx && bx.offsetParent !== null) alvos.push({ pai: bx, antes: null, id: 'pf138Faixa2' });   // o visual novo (Minhas OS e Todas)
+    alvos.forEach(function (a) {
+      var el = $(a.id);
+      if (!f) { if (el) el.remove(); return; }
+      if (!el || el.parentNode !== a.pai) { if (el) el.remove(); el = document.createElement('div'); el.id = a.id; a.pai.insertBefore(el, a.antes || a.pai.firstChild); }
+      el.className = f.av ? 'av' : '';
+      if (el.innerHTML !== f.html) el.innerHTML = f.html;
+    });
+  }
+  PF138.pintarFaixa = pintarFaixa;
+  try {
+    var _ro = window.pfRenderOS;
+    if (typeof _ro === 'function' && !_ro.__pf138) { window.pfRenderOS = function () { var r = _ro.apply(this, arguments); try { pintarFaixa(); } catch (e) {} return r; }; window.pfRenderOS.__pf138 = true; }
+  } catch (e) { nota(e, 'embrulho lista'); }
+  try {
+    if (typeof PF129 !== 'undefined' && PF129 && typeof PF129.render === 'function' && !PF129.render.__pf138) {
+      var _r129 = PF129.render;
+      PF129.render = function () { var r = _r129.apply(this, arguments); try { pintarFaixa(); } catch (e) {} return r; };
+      PF129.render.__pf138 = true;
+    }
+  } catch (e) { nota(e, 'embrulho 129'); }
+  // ☰ → 📦 Preparar visitas off-line
+  try {
+    var _menu = window.pcf116AbrirMenu;
+    if (typeof _menu === 'function' && !_menu.__pf138) {
+      window.pcf116AbrirMenu = function () {
+        var r = _menu.apply(this, arguments);
+        try {
+          var ovs = document.querySelectorAll('.pcf116-ov'), ov = ovs[ovs.length - 1], corpo = ov && ov.querySelector('.pcf116-corpo');
+          if (corpo && !corpo.querySelector('[data-o="pf138prep"]')) {
+            corpo.insertAdjacentHTML('afterbegin', '<button type="button" class="pcf116-item" data-o="pf138prep"><span class="ic">📦</span><span>Preparar visitas off-line<small>marque as empresas e baixe tudo para lançar sem sinal</small></span></button>');
+            corpo.querySelector('[data-o="pf138prep"]').onclick = function () { var c = ov.querySelector('.pcf116-pe .pcf116-cancel'); if (c) c.click(); else try { ov.remove(); } catch (e) {} PF138.abrirPreparar(); };
+          }
+        } catch (e) { nota(e, 'menu'); }
+        return r;
+      };
+      window.pcf116AbrirMenu.__pf138 = true;
+    }
+  } catch (e) { nota(e, 'embrulho menu'); }
+  setTimeout(function () { try { pintarFaixa(); pintarBotao(); } catch (e) {} }, 1500);
+})();
+</script>
+<!-- ████ FIM PCF_V138 (PF138) ████ -->
 
 </body>
 </html>
