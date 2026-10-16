@@ -1720,8 +1720,15 @@ html[data-boot="pipeline"] #pf113Splash{display:flex;position:fixed;inset:0;z-in
   Agora: a coleta anterior que nao foi enviada e GUARDADA (Coletas guardadas, com prova) e a tela comeca limpa;
   reabrir a OS dona oferece Trazer de volta; OS sem maquina vinculada avisa. Zero SQL, zero GAS. Bloco PF139 no fim.
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V139</title>
-<meta name="app-build" content="PCF_V139" data-date="2026-10-15">
+<!--
+  PCF_V140 · UMA OS POR VISITA: MAQUINA NAO ATENDIDA · 15/10/2026 · feito SOBRE o PCF_V139 no ar · par sw propertech-v142.
+  Par do GAS v177 + SQL OS_MAQ_NAO_ATENDIDA (decisao do Fernando 15/10 21h43: preventiva e inspecao externas = uma OS
+  por cliente por dia). O servidor so fecha a OS de 2+ maquinas quando todas estao atendidas ou nao atendidas.
+  Na janela de envio, maquina sem dados ganha Nao atendida com motivo (gravado no aparelho antes; sem sinal, fila);
+  no rodape, a faixa Situacao da OS diz quantas faltam e quais. Zero SQL/GAS aqui. Bloco PF140 no fim.
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V140</title>
+<meta name="app-build" content="PCF_V140" data-date="2026-10-15">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -42092,6 +42099,364 @@ html.pf129 [data-pf136-falta]::after{color:#b45309}
 })();
 </script>
 <!-- ████ FIM PCF_V139 (PF139) ████ -->
+
+<!-- ████ PCF_V140 (PF140) · UMA OS POR VISITA: MAQUINA NAO ATENDIDA · 15/10/2026 ████
+  Par do GAS v177 (e do SQL OS_MAQ_NAO_ATENDIDA). Decisao do Fernando (15/10 21h43): preventiva e inspecao externas
+  = uma OS por cliente por dia; a maquina que nao deu para atender fica marcada como nao atendida, com motivo, e a OS
+  fecha com as outras. O servidor so conclui a Coleta quando todas as maquinas estao atendidas ou nao atendidas.
+  Aqui: (1) na janela de envio (folha do V116), cada maquina SEM dados ganha o botao Nao atendida, com o motivo ali
+  mesmo (linha que se abre, sem janela sobre janela); (2) a resposta do servidor (campo v177) vira a faixa
+  Situacao da OS no rodape: quantas faltam, quais, e o mesmo botao para cada uma; a OS fechada aparece como fechada.
+  Persist-first: a marca e gravada no aparelho ANTES do envio; sem sinal vai para a fila do app (sai sozinha).
+  Recusa do servidor (maquina ja com coleta, OS encerrada) aparece na linha, com o texto do servidor.
+  So acrescenta: nenhum id, funcao ou botao antigo muda. Funciona nos dois visuais (classico e Visual novo).
+-->
+<style>
+.pf140-na{margin-top:8px}
+.pf140-bt{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:8px 14px;border-radius:10px;border:1.5px solid #b45309;background:#fff7ed;color:#7c2d12;font-weight:700;font-size:14px;cursor:pointer}
+.pf140-bt:active{transform:scale(.98);background:#ffedd5}
+.pf140-bt.sec{border-color:#94a3b8;background:#fff;color:#334155}
+.pf140-bt:disabled{opacity:.55;cursor:default}
+.pf140-st{font-size:13.5px;font-weight:700;color:#7c2d12;line-height:1.35}
+.pf140-st small{display:block;font-weight:600;color:#475569;margin-top:2px}
+.pf140-pk{margin-top:8px;padding:10px;border:1.5px solid #fdba74;border-radius:12px;background:#fffbeb}
+.pf140-pk .t{font-size:13.5px;font-weight:700;color:#0f172a;margin-bottom:6px}
+.pf140-chips{display:flex;flex-wrap:wrap;gap:6px}
+.pf140-chip{min-height:44px;padding:8px 12px;border-radius:999px;border:1.5px solid #cbd5e1;background:#fff;color:#0f172a;font-size:13.5px;font-weight:600;cursor:pointer}
+.pf140-chip.on{border-color:#b45309;background:#ffedd5;color:#7c2d12}
+.pf140-pk textarea{width:100%;box-sizing:border-box;min-height:52px;margin-top:8px;padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:10px;font:500 14px Inter,system-ui,sans-serif;color:#0f172a;resize:vertical}
+.pf140-pk .acoes{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.pf140-erro{margin-top:6px;font-size:13px;font-weight:700;color:#b91c1c}
+.pf140-nota{margin:0 0 8px;padding:8px 10px;border-radius:10px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;font-size:13px;font-weight:600;line-height:1.35}
+#pf140Faixa{margin:8px 0;padding:10px 12px;border-radius:12px;border:1.5px solid #fdba74;background:#fff7ed;color:#7c2d12;font-size:14px;line-height:1.4}
+#pf140Faixa.ok{border-color:#86efac;background:#f0fdf4;color:#14532d}
+#pf140Faixa .h{font-weight:800;margin-bottom:4px}
+#pf140Faixa .li{padding:8px 0;border-top:1px dashed #fed7aa}
+#pf140Faixa .li:first-of-type{border-top:0}
+#pf140Faixa .li b{color:#0f172a}
+</style>
+<script>
+/* PCF_V140 · PF140 — maquina nao atendida + situacao da OS (par do GAS v177) */
+(function () {
+  'use strict';
+  var PF140 = window.PF140 = { versao: 'PCF_V140' };
+  var LS_MARCAS = 'pf140_na_v1', LS_RES = 'pf140_resumo_v1';
+  var MOTIVOS = [['desligada', 'Máquina desligada / parada'], ['producao', 'Em produção — não pôde parar'],
+                 ['sem_acesso', 'Sem acesso à máquina'], ['cliente', 'Cliente não liberou'], ['outro', 'Outro']];
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function nota(e, onde) { try { console.warn('[PF140] ' + onde + ': ' + (e && e.message || e)); } catch (x) {} }
+  function lsLer(k) { try { var o = JSON.parse(localStorage.getItem(k) || '{}'); return (o && typeof o === 'object') ? o : {}; } catch (e) { return {}; } }
+  function lsGravar(k, o) { try { localStorage.setItem(k, JSON.stringify(o)); return true; } catch (e) { return false; } }
+  function osAtual() { try { return String(window._PGP_OS_ID || '').trim(); } catch (e) { return ''; } }
+  function hhmm(t) { try { var d = new Date(t); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); } catch (e) { return ''; } }
+  function nomeMotivo(c) { for (var i = 0; i < MOTIVOS.length; i++) if (MOTIVOS[i][0] === c) return MOTIVOS[i][1]; return c || ''; }
+  function sessao() { try { var s = window.PROPER_SESSION || JSON.parse(localStorage.getItem('proper_session') || '{}') || {}; var t = s.tecnico || {}; return { id: String(t.id || s.id_tecnico || ''), nome: String(t.nome || s.nome_tecnico || '') }; } catch (e) { return { id: '', nome: '' }; } }
+  function tipoVisita() { try { return (typeof _pgpTipoVisita !== 'undefined' && _pgpTipoVisita === 'preventiva') ? 'preventiva' : 'inspecao'; } catch (e) { return 'inspecao'; } }
+
+  // chaves da máquina da aba i — a MESMA regra do payload (id do banco quando a tela confere; senão a chave montada)
+  function campo(i, k) { try { var e = document.querySelector('[data-key="m' + i + '_' + k + '"]'); return e ? String(e.value || '').trim() : ''; } catch (e2) { return ''; } }
+  function chavesDe(i) {
+    var ks = [];
+    try {
+      var eq = (typeof pgpGetLoadedMachineForIndex === 'function') ? pgpGetLoadedMachineForIndex(i) : null;
+      var ck = function (x) { try { return compactKey(String(x || '')); } catch (e) { return String(x || '').toLowerCase(); } };
+      var compat = function (a, b) { var ka = ck(a), kb = ck(b); return !ka || !kb || ka === kb; };
+      if (eq && eq.id && compat(eq.brand, campo(i, 'marca')) && compat(eq.model, campo(i, 'modelo')) && compat(eq.serial, campo(i, 'ns'))) ks.push(String(eq.id));
+      try { ks.push(pgpMachineKey(campo(i, 'razao_social'), campo(i, 'marca'), campo(i, 'modelo'), campo(i, 'ns'))); } catch (e) {}
+      if (eq && (eq.id || eq.machine_id)) ks.push(String(eq.id || eq.machine_id));
+    } catch (e) {}
+    return ks.filter(function (k, j) { return k && ks.indexOf(k) === j; });
+  }
+  function rotuloDe(i) {
+    var mod = campo(i, 'modelo') || campo(i, 'marca'), ns = campo(i, 'ns'), tag = campo(i, 'tag');
+    return 'Máq. ' + (i + 1) + (mod ? ' — ' + mod : '') + (ns ? ' · série ' + ns : (tag ? ' · TAG ' + tag : ''));
+  }
+
+  // ── marcas no aparelho (persist-first) ────────────────────────────────────────────────────────────────────
+  // { uid: { os, chaves:[], rotulo, motivo, texto, desfazer, estado: enviando|fila|ok|recusada, quando, msg } }
+  function marcas() { return lsLer(LS_MARCAS); }
+  function podar(o) {
+    var ks = Object.keys(o), lim = Date.now() - 14 * 864e5;
+    ks.forEach(function (k) { if ((o[k].quando || 0) < lim) delete o[k]; });
+    ks = Object.keys(o).sort(function (a, b) { return (o[a].quando || 0) - (o[b].quando || 0); });
+    while (ks.length > 80) delete o[ks.shift()];
+    return o;
+  }
+  // a decisão VIGENTE de uma máquina nesta OS = o registro mais novo que casa por alguma chave (recusado não vale)
+  function ultimo(os, chaves) {
+    var o = marcas(), melhor = null;
+    Object.keys(o).forEach(function (k) {
+      var m = o[k]; if (!m || m.os !== os || m.estado === 'recusada') return;
+      if (!(m.chaves || []).some(function (c) { return chaves.indexOf(c) >= 0; })) return;
+      if (!melhor || (m.quando || 0) > (melhor.quando || 0)) melhor = Object.assign({ uid: k }, m);
+    });
+    return melhor;
+  }
+  function vigente(os, chaves) { var u = ultimo(os, chaves); return u && !u.desfazer ? u : null; }
+  function recusaRecente(os, chaves) {
+    var o = marcas(), r = null;
+    Object.keys(o).forEach(function (k) { var m = o[k]; if (m && m.os === os && m.estado === 'recusada' && (m.chaves || []).some(function (c) { return chaves.indexOf(c) >= 0; }) && (!r || m.quando > r.quando)) r = m; });
+    return r && Date.now() - (r.quando || 0) < 10 * 60000 ? r : null;
+  }
+  function marcar(uid, patch) { var o = marcas(); if (!o[uid]) return false; Object.assign(o[uid], patch); return lsGravar(LS_MARCAS, o); }
+
+  // ── situação da OS que o servidor devolveu (campo v177) ───────────────────────────────────────────────────
+  function resumos() { return lsLer(LS_RES); }
+  function gravarResumo(os, v, numero) {
+    if (!os || !v || typeof v !== 'object' || !v.multi) return;
+    var o = resumos(), ant = o[os];
+    o[os] = { v: v, em: Date.now(), numero: numero || (ant && ant.numero) || '' };
+    var ks = Object.keys(o).sort(function (a, b) { return (o[a].em || 0) - (o[b].em || 0); });
+    while (ks.length > 30) delete o[ks.shift()];
+    lsGravar(LS_RES, o);
+    // aviso só quando a situação MUDA (não a cada envio)
+    try {
+      var assin = function (x) { return x ? [x.os_fechada ? 1 : 0, (x.faltam || []).length, x.atendidas || 0, x.nao_atendidas || 0].join('|') : ''; };
+      if (assin(ant && ant.v) !== assin(v) && typeof showNotification === 'function') {
+        var num = o[os].numero ? 'OS ' + o[os].numero : 'A OS';
+        if (v.os_fechada) showNotification('✅ ' + num + ' completa: ' + (v.atendidas || 0) + ' atendida(s)' + (v.nao_atendidas ? ', ' + v.nao_atendidas + ' não atendida(s)' : '') + ' — a OS foi fechada.');
+        else if ((v.faltam || []).length) showNotification('⚠ ' + num + ': falta(m) ' + v.faltam.length + ' máquina(s) para fechar — envie a coleta ou marque 🚫 Não atendida.');
+        else if (v.pronto === false && !(v.atendidas > 0)) showNotification('⚠ ' + num + ': nenhuma máquina atendida — a OS fica aberta para o escritório decidir.');
+      }
+    } catch (e) { nota(e, 'aviso'); }
+    pintarFaixa();
+  }
+  PF140.resumo = function (os) { var r = resumos()[os || osAtual()]; return r ? r.v : null; };
+
+  // Recusa de NEGÓCIO (o servidor disse não — repetir não muda) × falha passageira (trava ocupada, tempo esgotado, servidor fora):
+  // só a 1ª vira "recusada"; a 2ª vai para a fila e sobe sozinha (auditoria 1, achado 9).
+  var RECUSA_NEGOCIO = /já está encerrada|não está vinculada|já tem coleta|Escolha o motivo|Escreva o motivo|não encontrada|obrigatóri|Ação desconhecida|não autorizado/i;
+  function ehRecusa(e) { return !!(e && e.permanent && RECUSA_NEGOCIO.test(String(e.message || ''))); }
+  PF140.ehRecusa = ehRecusa;
+
+  // ── envio da marca ────────────────────────────────────────────────────────────────────────────────────────
+  var _voo = {};
+  async function enviar(os, chaves, rotulo, motivo, texto, desfazer) {
+    var chave = chaves[0];
+    if (_voo[os + '|' + chave]) return { ok: false, msg: 'Aguarde — já está enviando.' };
+    var uid = 'NA-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+    var s = sessao();
+    var body = { os_id: os, os_numero: String(window._PGP_OS_NUMERO || ''), machine_key: chave, machine_id: chave, chaves: chaves,
+                 motivo: desfazer ? '' : motivo, motivo_texto: desfazer ? '' : texto, desfazer: !!desfazer, tipo: tipoVisita(),
+                 tarefa_id: String(window._PGP_TAREFA_ID || ''), tecnico: s.nome, tecnico_id: s.id, client_uid: uid };
+    // 1º no aparelho: sem guardar, não envia
+    var o = podar(marcas());
+    o[uid] = { os: os, chaves: chaves, rotulo: rotulo, motivo: motivo, texto: texto, desfazer: !!desfazer, estado: 'enviando', quando: Date.now() };
+    if (!lsGravar(LS_MARCAS, o)) return { ok: false, msg: 'Não consegui guardar no aparelho (memória cheia?). Nada foi enviado — libere espaço em ☰ → Coletas guardadas.' };
+    _voo[os + '|' + chave] = true;
+    try {
+      var r = await pgpPostJson('v177MaquinaNaoAtendida', body, 1, null, { timeoutMs: 30000 });
+      marcar(uid, { estado: 'ok', msg: '' });
+      if (r && r.v177) gravarResumo(os, r.v177, r.numero_os);
+      return { ok: true, estado: 'ok', r: r };
+    } catch (e) {
+      if (ehRecusa(e)) {
+        marcar(uid, { estado: 'recusada', msg: String(e.message || 'o servidor recusou') });
+        return { ok: false, recusada: true, msg: String(e.message || 'o servidor recusou') };
+      }
+      // sem sinal / servidor fora: a fila do app (persistente) leva quando voltar
+      var q = null;
+      try { q = pgpQueueRequest('v177MaquinaNaoAtendida', body); } catch (eq) { q = null; }
+      if (q && q.saved) { marcar(uid, { estado: 'fila' }); return { ok: true, estado: 'fila' }; }
+      marcar(uid, { estado: 'recusada', msg: 'Sem sinal e a fila do aparelho está cheia — tente de novo quando tiver sinal.' });
+      return { ok: false, msg: 'Sem sinal e a fila do aparelho está cheia — tente de novo quando tiver sinal.' };
+    } finally { delete _voo[os + '|' + chave]; }
+  }
+  PF140.enviar = enviar;
+
+  // a resposta do servidor (envio direto OU a fila subindo) atualiza a situação e a marca
+  try {
+    var _pj = window.pgpPostJson;
+    if (typeof _pj === 'function' && !_pj.__pf140) {
+      window.pgpPostJson = async function (action, body) {
+        var r;
+        try { r = await _pj.apply(this, arguments); }
+        catch (e) {
+          try {
+            if (action === 'v177MaquinaNaoAtendida' && ehRecusa(e) && body && body.client_uid)
+              marcar(String(body.client_uid), { estado: 'recusada', msg: String(e.message || '') });
+          } catch (x) {}
+          throw e;
+        }
+        try {
+          if (r && typeof r === 'object' && body && body.os_id && (action === 'savePreventiva' || action === 'saveVisit' || action === 'v177MaquinaNaoAtendida')) {
+            if (r.v177) gravarResumo(String(body.os_id), r.v177, r.numero_os || body.os_numero || '');
+            if (action === 'v177MaquinaNaoAtendida' && body.client_uid) { var m = marcas()[String(body.client_uid)]; if (m && m.estado !== 'ok') marcar(String(body.client_uid), { estado: 'ok', msg: '' }); }
+          }
+        } catch (e2) { nota(e2, 'resposta'); }
+        return r;
+      };
+      window.pgpPostJson.__pf140 = true;
+      Object.keys(_pj).forEach(function (k) { if (!(k in window.pgpPostJson)) window.pgpPostJson[k] = _pj[k]; });
+    }
+  } catch (e) { nota(e, 'embrulho post'); }
+
+  // ── o controle (botão → linha que se abre com os motivos) ─────────────────────────────────────────────────
+  // alvo = elemento onde o controle mora; dados = { os, chaves, rotulo }
+  function montarControle(alvo, d, aoMudar) {
+    var box = document.createElement('div');
+    box.className = 'pf140-na';
+    box.setAttribute('data-pf140', d.chaves[0]);
+    alvo.appendChild(box);
+    var escolhido = '', aberto = false, erro = '';
+    function parar(e) { try { e.preventDefault(); e.stopPropagation(); } catch (x) {} }
+    function pintar() {
+      var u = ultimo(d.os, d.chaves), v = u && !u.desfazer ? u : null, rc = recusaRecente(d.os, d.chaves), h = '';
+      if (!v && !u && d.srvMotivo && !aberto) {
+        h = '<div class="pf140-st">🚫 Não atendida — ' + esc(String(d.srvMotivo).replace(/^Não atendida:\s*/, '')) +
+            '<small>✅ registrada no sistema.</small></div>' +
+            '<div style="margin-top:6px"><button type="button" class="pf140-bt sec" data-a="desfazer">↩ Desfazer (vou atender)</button></div>';
+      } else if (v && !aberto) {
+        var est = v.estado === 'ok' ? '✅ registrada' : (v.estado === 'fila' ? '⏳ na fila — sobe sozinha com sinal' : '⏳ enviando…');
+        h = '<div class="pf140-st">🚫 Não atendida — ' + esc(nomeMotivo(v.motivo)) + (v.texto ? ' · ' + esc(v.texto) : '') +
+            '<small>' + est + ' · ' + hhmm(v.quando) + '.</small></div>' +
+            '<div class="pf140-pk-acoes" style="margin-top:6px"><button type="button" class="pf140-bt sec" data-a="desfazer">↩ Desfazer (vou atender)</button></div>';
+      } else if (!aberto) {
+        h = (u && u.desfazer && u.estado !== 'ok' ? '<div class="pf140-st"><small>↩ Desfeita — ' + (u.estado === 'fila' ? '⏳ na fila, sobe sozinha com sinal' : '⏳ enviando…') + '</small></div>' : '') +
+            '<button type="button" class="pf140-bt" data-a="abrir">🚫 Não atendida</button>' +
+            (rc ? '<div class="pf140-erro">⚠ ' + esc(rc.msg || 'o servidor recusou') + '</div>' : '');
+      } else {
+        h = '<div class="pf140-pk"><div class="t">Por que ' + esc(d.rotulo) + ' não foi atendida?</div><div class="pf140-chips">' +
+            MOTIVOS.map(function (m) { return '<button type="button" class="pf140-chip' + (escolhido === m[0] ? ' on' : '') + '" data-a="motivo" data-m="' + m[0] + '">' + esc(m[1]) + '</button>'; }).join('') +
+            '</div><textarea data-a="texto" maxlength="300" placeholder="' + (escolhido === 'outro' ? 'Escreva o motivo (obrigatório em Outro)' : 'Detalhe (opcional)') + '"></textarea>' +
+            (erro ? '<div class="pf140-erro">⚠ ' + esc(erro) + '</div>' : '') +
+            '<div class="acoes"><button type="button" class="pf140-bt" data-a="confirmar"' + (escolhido ? '' : ' disabled') + '>Confirmar não atendida</button>' +
+            '<button type="button" class="pf140-bt sec" data-a="cancelar">Cancelar</button></div></div>';
+      }
+      var txtAnt = box.querySelector('textarea') ? box.querySelector('textarea').value : '';
+      box.innerHTML = h;
+      var ta = box.querySelector('textarea'); if (ta && txtAnt) ta.value = txtAnt;
+    }
+    box.addEventListener('click', async function (e) {
+      var b = e.target.closest ? e.target.closest('[data-a]') : null;
+      if (!b || !box.contains(b)) return;
+      var a = b.getAttribute('data-a');
+      if (a === 'texto') { e.stopPropagation(); return; }
+      parar(e);
+      if (b.disabled) return;
+      if (a === 'abrir') { aberto = true; erro = ''; pintar(); return; }
+      if (a === 'cancelar') { aberto = false; escolhido = ''; erro = ''; pintar(); return; }
+      if (a === 'motivo') { escolhido = b.getAttribute('data-m'); erro = ''; pintar(); return; }
+      if (a === 'confirmar' || a === 'desfazer') {
+        var txt = '';
+        if (a === 'confirmar') {
+          var ta = box.querySelector('textarea'); txt = ta ? String(ta.value || '').replace(/\s+/g, ' ').trim() : '';
+          if (!escolhido) { erro = 'Escolha o motivo.'; pintar(); return; }
+          if (escolhido === 'outro' && !txt) { erro = 'Escreva o motivo (opção "Outro").'; pintar(); return; }
+        }
+        b.disabled = true; b.textContent = '⏳ Enviando…';
+        var res = await enviar(d.os, d.chaves, d.rotulo, escolhido, txt, a === 'desfazer');
+        if (res.ok) { aberto = false; escolhido = ''; erro = ''; }
+        else erro = res.msg || 'não foi possível';
+        if (!res.ok && !aberto) aberto = a === 'confirmar';
+        pintar();
+        try { if (aoMudar) aoMudar(res); } catch (x) {}
+        try { pintarFaixa(); } catch (x) {}
+      }
+    });
+    box.addEventListener('input', function (e) { e.stopPropagation(); }, true);
+    box.addEventListener('keydown', function (e) { e.stopPropagation(); }, true);
+    pintar();
+    return { pintar: pintar };
+  }
+  PF140.montarControle = montarControle;
+
+  // ── 1 · a folha de envio do V116 (.pcf116-ov) ─────────────────────────────────────────────────────────────
+  function enviadaHoje(i) {
+    var tp = tipoVisita();
+    try {
+      var r = typeof window.pcf116RegistroDe === 'function' ? window.pcf116RegistroDe(i, tp) : null;
+      return !!(r && r.quando && (new Date(r.quando)).toDateString() === (new Date()).toDateString());
+    } catch (e) { return false; }
+  }
+  function tratarFolha(ov) {
+    if (!ov || ov.__pf140) return;
+    var cbs = ov.querySelectorAll('.pcf116-cb'); if (!cbs.length) return;
+    var os = osAtual(); if (!os || cbs.length < 2) return;
+    ov.__pf140 = true;
+    var corpo = ov.querySelector('.pcf116-corpo');
+    if (corpo) {
+      var n = document.createElement('div'); n.className = 'pf140-nota';
+      n.textContent = 'Esta OS fecha quando todas as máquinas estiverem enviadas ou marcadas como 🚫 não atendidas. Máquina que você não conseguiu atender: toque em 🚫 Não atendida nela e escolha o motivo (ela sai deste envio).';
+      corpo.insertBefore(n, corpo.firstChild);
+    }
+    [].forEach.call(cbs, function (cb) {
+      var i = parseInt(cb.getAttribute('data-idx'), 10); if (isNaN(i)) return;
+      // máquina já enviada HOJE (ou na fila) não ganha o botão: ela já tem coleta.
+      // ⚠ "tem dados" não serve de critério: a máquina que veio do cadastro já chega com marca/modelo/série (16 %).
+      if (enviadaHoje(i)) return;
+      var ch = chavesDe(i); if (!ch.length) return;
+      var lab = cb.closest('label') || cb.parentNode, alvo = lab.querySelector('div') || lab;
+      // marcada como não atendida ⇒ sai do envio desta vez (o técnico pode marcar de novo se mudar de ideia)
+      var desmarcar = function () { try { if (cb.checked) { cb.checked = false; cb.dispatchEvent(new Event('change', { bubbles: true })); } } catch (e) {} };
+      if (vigente(os, ch)) desmarcar();
+      montarControle(alvo, { os: os, chaves: ch, rotulo: rotuloDe(i) }, function (res) { if (res && res.ok && vigente(os, ch)) desmarcar(); });
+    });
+  }
+  PF140.tratarFolha = tratarFolha;
+  try {
+    new MutationObserver(function (ms) {
+      ms.forEach(function (m) { [].forEach.call(m.addedNodes || [], function (nd) { if (nd.nodeType === 1 && nd.classList && nd.classList.contains('pcf116-ov')) setTimeout(function () { try { tratarFolha(nd); } catch (e) { nota(e, 'folha'); } }, 0); }); });
+    }).observe(document.body, { childList: true });
+  } catch (e) { nota(e, 'observer'); }
+
+  // ── 2 · a faixa "Situação da OS" no rodapé ────────────────────────────────────────────────────────────────
+  var _faixaAssin = '';
+  function pintarFaixa() {
+    var rod = $('pcf116Rodape'); if (!rod) return;
+    var f = $('pf140Faixa');
+    if (!f) {
+      f = document.createElement('div'); f.id = 'pf140Faixa'; f.setAttribute('role', 'status'); f.style.display = 'none';
+      var ref = $('pcf116BtnProxima') || $('pcf116BtnEnviar');
+      if (ref && ref.parentNode === rod) rod.insertBefore(f, ref); else rod.appendChild(f);
+    }
+    var os = osAtual(), r = os ? resumos()[os] : null, v = r && r.v;
+    if (!v || !v.multi) { f.style.display = 'none'; f.innerHTML = ''; _faixaAssin = ''; return; }
+    var itens = (v.faltam || []).map(function (x) { return { chave: x.chave, rotulo: x.rotulo, srv: '' }; })
+      .concat((v.nao_atendidas_lista || []).map(function (x) { return { chave: x.chave, rotulo: x.rotulo, srv: x.motivo || 'Não atendida' }; }));
+    // defesa do aparelho (auditoria 1, achado 2): item cujo "nome" é a própria chave interna (MK-…/EQ-…) não é máquina que o
+    // técnico consiga ver — não vira botão nem conta como falta; o escritório confere (o GAS v177 já não manda esses).
+    var interna = function (x) { return /^(MK|EQ)-/.test(String(x.rotulo || '')); };
+    itens.forEach(function (x) { if (!String(x.rotulo || '').trim()) x.rotulo = 'Máquina sem identificação no cadastro'; });
+    var internas = itens.filter(interna);
+    itens = itens.filter(function (x) { return !interna(x); });
+    var faltam = itens.filter(function (x) { return !x.srv && !vigente(os, [x.chave]); });
+    var assin = JSON.stringify([os, v, marcas()]);
+    if (assin === _faixaAssin && f.innerHTML) return;   // nada mudou: não repinta (não apaga o que está sendo digitado)
+    if (f.querySelector('.pf140-pk')) return;              // escolhendo motivo: espera terminar
+    _faixaAssin = assin;
+    f.className = v.os_fechada ? 'ok' : '';
+    var h;
+    if (v.os_fechada) h = '<div class="h">✅ OS completa — fechada</div>' + (v.atendidas || 0) + ' máquina(s) atendida(s)' + (v.nao_atendidas ? ' · ' + v.nao_atendidas + ' não atendida(s)' : '') + '.';
+    else if (faltam.length) h = '<div class="h">⏳ Situação da OS: falta(m) ' + faltam.length + ' máquina(s)</div>A OS fecha quando todas estiverem enviadas ou marcadas como não atendidas. ' +
+      (v.atendidas || 0) + ' atendida(s)' + (v.nao_atendidas ? ' · ' + v.nao_atendidas + ' não atendida(s)' : '') + '.' +
+      itens.map(function (x, k) { return '<div class="li" data-k="' + k + '"><b>' + esc(x.rotulo || x.chave) + '</b></div>'; }).join('');
+    else if (!(v.atendidas > 0)) h = '<div class="h">⚠ Nenhuma máquina atendida</div>Todas foram marcadas como não atendidas: a OS fica aberta para o escritório decidir.';
+    else if (v.coleta_concluida) h = '<div class="h">✅ Coleta concluída</div>Todas as máquinas resolvidas. A OS continua aberta no escritório para as próximas etapas.' +
+      itens.map(function (x, k) { return '<div class="li" data-k="' + k + '"><b>' + esc(x.rotulo || x.chave) + '</b></div>'; }).join('');
+    else h = '<div class="h">⏳ Situação da OS</div>Todas as máquinas resolvidas — falta o servidor confirmar o fechamento.' +
+      itens.map(function (x, k) { return '<div class="li" data-k="' + k + '"><b>' + esc(x.rotulo || x.chave) + '</b></div>'; }).join('');
+    if (internas.length) h += '<div class="li" style="color:#475569;font-size:13px">ℹ ' + internas.length + ' vínculo(s) da OS sem máquina no cadastro — o escritório confere no PCM.</div>';
+    f.innerHTML = h; f.style.display = 'block';
+    if (!v.os_fechada) [].forEach.call(f.querySelectorAll('.li'), function (li) {
+      var x = itens[parseInt(li.getAttribute('data-k'), 10)]; if (!x) return;
+      montarControle(li, { os: os, chaves: [x.chave], rotulo: x.rotulo || x.chave, srvMotivo: x.srv }, function () { _faixaAssin = ''; });
+    });
+  }
+  PF140.pintarFaixa = pintarFaixa;
+  try {
+    var _at = window.pcf116Atualizar;
+    if (typeof _at === 'function' && !_at.__pf140) {
+      window.pcf116Atualizar = function () { var r = _at.apply(this, arguments); try { pintarFaixa(); } catch (e) { nota(e, 'faixa'); } return r; };
+      window.pcf116Atualizar.__pf140 = true;
+    }
+  } catch (e) { nota(e, 'embrulho atualizar'); }
+  setTimeout(function () { try { pintarFaixa(); } catch (e) {} }, 1500);
+  setInterval(function () { try { pintarFaixa(); } catch (e) {} }, 4000);
+})();
+</script>
+<!-- ████ FIM PCF_V140 (PF140) ████ -->
 
 </body>
 </html>
