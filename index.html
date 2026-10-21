@@ -1727,8 +1727,22 @@ html[data-boot="pipeline"] #pf113Splash{display:flex;position:fixed;inset:0;z-in
   Na janela de envio, maquina sem dados ganha Nao atendida com motivo (gravado no aparelho antes; sem sinal, fila);
   no rodape, a faixa Situacao da OS diz quantas faltam e quais. Zero SQL/GAS aqui. Bloco PF140 no fim.
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V140</title>
-<meta name="app-build" content="PCF_V140" data-date="2026-10-15">
+<!--
+  PCF_V141 · ASSUMIR TAREFA NAO JOGA A TELA PARA O TOPO · 21/10/2026 · feito SOBRE o PCF_V140 no ar · par sw propertech-v143.
+  Pedido do Fernando (21/10, print da PGP-2026-0069). Medido: OS rolada a 623 px voltava a 0 no Assumir, nos dois visuais.
+  Causa: a repintura local do pipeline (Assumir, Liberar, decidir, concluir) passava pelo Carregando pipeline curto, que zera a
+  rolagem. Com a mesma OS ja desenhada, toda repintura passa a ser soft (a lista fica ate a nova chegar). + guardiao ROLAGEM_V1
+  (o mesmo bloco do PCM V295) para os outros botoes. Zero SQL/GAS. Blocos ROLAGEM_V1 e PF141 no fim.
+-->
+<!--
+  PCF_V142 · HORA AGENDADA DA OS · 21/10/2026 · feito SOBRE o PCF_V141 · par sw propertech-v144.
+  Pedido do Fernando (21/10 11h03): mostrar o horario em que a OS foi agendada, nao so o dia. A hora que a planilha
+  devolve como data de 1899 passa a ser lida como o PCM le, no fuso da planilha (listas Minhas OS / A sua vez / Meu dia
+  mostram dia e hora e ordenam pela hora); na tela da OS, linha Agendada para (dia) as (hora). Zero SQL, zero GAS.
+  Bloco PF142 no fim. (Nasceu como V141; renumerado: o V141 e da rodada rolagem_e_gavetas.)
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V142</title>
+<meta name="app-build" content="PCF_V142" data-date="2026-10-21">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -42457,6 +42471,505 @@ html.pf129 [data-pf136-falta]::after{color:#b45309}
 })();
 </script>
 <!-- ████ FIM PCF_V140 (PF140) ████ -->
+
+<!-- ████ INICIO ROLAGEM_V1 · A TELA NAO PULA PARA O TOPO ████ -->
+<script>
+/* ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+   ROLAGEM_V1 — 21/10/2026 — rodada 2026-10-21_FERNANDO_rolagem_e_gavetas. O MESMO bloco, byte a byte, no PCM (V295) e no PCF (V141).
+   Pedido do Fernando (21/10): "clico em uma demanda e a tela sobe sozinha pro topo… acontece em outras telas também (desconto na
+   proposta)… no PCF, clico em Assumir tarefa e a tela sobe pro topo".
+   A causa é sempre a mesma família: a tela se REDESENHA (innerHTML) e, no meio, a área que rola fica curta por um instante (o
+   navegador zera a rolagem) ou é trocada por outra área igual, que nasce no topo. Medido na bancada: Agenda 600 → 0 px ao abrir a
+   demanda; PCF 623 → 0 px no Assumir (o "Carregando pipeline…" curto entre as duas pinturas).
+   O GUARDIÃO (mecanismo, não conserto de tela — os consertos de raiz estão nos blocos PCM V295 / PCF V141):
+   1 · a cada gesto de verdade (toque/clique, Enter/Espaço, troca de valor de campo) fotografa as áreas que estão roladas e, em cada
+       uma, ÂNCORAS: o próprio elemento tocado (e os pais dele com identidade: id, data-*, onclick) e o que está visível no alto,
+       com a distância de cada um ao topo da área;
+   2 · por 2,5 s (até 8 s enquanto a área ainda está curta demais para voltar), se uma área PERDEU rolagem (30 px ou mais) sem a mão
+       da pessoa (roda, dedo, barra de rolagem, teclas de rolar) e sem o código ter pedido (scrollTop menor, scrollTo, scrollBy,
+       scrollIntoView), devolve: a âncora volta para o mesmo lugar; sem âncora, o mesmo número — só na MESMA área, ou numa área
+       com altura parecida (±25%);
+   3 · trocou de tela (ROLAGEM_V1.tela(), que cada app define) ⇒ não faz nada.
+   Regras de mecanismo (núcleo §4.1): o que o código pede explicitamente vale — o guardião não disputa com o dono da tela; só
+   desfaz o que o redesenho desfez e nunca prende (prazo fixo; a mão da pessoa encerra na hora). Inteiro em try/catch.
+   Opt-out: atributo data-rolagem-livre no elemento tocado (ou num pai). Chave de volta: localStorage rolagem_v1 = off.
+   ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+(function () {
+  if (window.ROLAGEM_V1) return;
+  var R = window.ROLAGEM_V1 = { versao: 'ROLAGEM_V1', devolvidas: 0, gestos: 0, log: [], janela: null,
+    tela: function () { try { return typeof currentView !== 'undefined' ? String(currentView) : ''; } catch (e) { return ''; } } };
+  function off() { try { return localStorage.getItem('rolagem_v1') === 'off'; } catch (e) { return false; } }
+  R.off = off;
+  function agora() { try { return performance.now(); } catch (e) { return Date.now(); } }
+  function doc() { return document.scrollingElement || document.documentElement; }
+  function alvoDe(el) { return (el === document.documentElement || el === document.body) ? doc() : el; }
+  function anotar(o) { try { o.q = Date.now(); R.log.push(o); if (R.log.length > 40) R.log.shift(); } catch (e) {} }
+
+  // ── 1 · o que o CÓDIGO pediu (vale sempre) ─────────────────────────────────────────────────────────────────────────
+  var pedidos = (typeof WeakMap === 'function') ? new WeakMap() : null;
+  var proprio = false;
+  function marcar(el, v) { try { if (!proprio && pedidos && el) pedidos.set(alvoDe(el), { t: agora(), v: v }); } catch (e) {} }
+  R._marcar = marcar;
+  function rolavel(el) {
+    try {
+      if (!el || el.nodeType !== 1) return false;
+      if (el === doc()) return el.scrollHeight > el.clientHeight + 1;
+      if (el.scrollHeight <= el.clientHeight + 1) return false;
+      var oy = getComputedStyle(el).overflowY;
+      return oy === 'auto' || oy === 'scroll' || oy === 'overlay';
+    } catch (e) { return false; }
+  }
+  try {
+    var dTop = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollTop');
+    if (dTop && dTop.set && dTop.configurable) {
+      Object.defineProperty(Element.prototype, 'scrollTop', { configurable: true, enumerable: dTop.enumerable,
+        get: function () { return dTop.get.call(this); },
+        set: function (v) { marcar(this, Number(v)); return dTop.set.call(this, v); } });
+      R._setTop = function (el, v) { proprio = true; try { dTop.set.call(el, v); } finally { proprio = false; } };
+    }
+  } catch (e) {}
+  if (!R._setTop) R._setTop = function (el, v) { proprio = true; try { el.scrollTop = v; } finally { proprio = false; } };
+  function vDe(el, args, soma) {
+    try {
+      var a = args[0], top;
+      if (a && typeof a === 'object') top = a.top; else if (args.length > 1) top = args[1];
+      if (top === undefined || top === null || isNaN(Number(top))) return null;
+      return soma ? (alvoDe(el).scrollTop + Number(top)) : Number(top);
+    } catch (e) { return -1; }
+  }
+  function embrulhar(dono, nome, fn) {
+    try { var o = dono[nome]; if (typeof o !== 'function' || o.__rolagemV1) return; var n = fn(o); n.__rolagemV1 = true; dono[nome] = n; } catch (e) {}
+  }
+  ['scrollTo', 'scroll', 'scrollBy'].forEach(function (nm) {
+    embrulhar(Element.prototype, nm, function (o) { return function () { var v = vDe(this, arguments, nm === 'scrollBy'); if (v !== null) marcar(this, v); return o.apply(this, arguments); }; });
+    embrulhar(window, nm, function (o) { return function () { var v = vDe(doc(), arguments, nm === 'scrollBy'); if (v !== null) marcar(doc(), v); return o.apply(this, arguments); }; });
+  });
+  // focus() sem preventScroll que ROLOU alguma área também é pedido do código: o navegador rolou até o campo (a validação que mostra
+  //   o campo errado — auditoria 1, A2). Só marca a área que de fato mudou (auditoria 1, O1: foco em coisa já visível não desliga o guardião).
+  embrulhar(HTMLElement.prototype, 'focus', function (o) {
+    return function (op) {
+      var antes = null;
+      try {
+        if (!(op && op.preventScroll)) {
+          antes = [];
+          for (var n = this.parentElement; n; n = n.parentElement) if (n === doc() || rolavel(n)) antes.push([n, n.scrollTop]);
+          antes.push([doc(), doc().scrollTop]);
+        }
+      } catch (e) { antes = null; }
+      var r = o.apply(this, arguments);
+      try { if (antes) antes.forEach(function (x) { if (Math.abs(x[0].scrollTop - x[1]) > 1) marcar(x[0], -1); }); } catch (e) {}
+      return r;
+    };
+  });
+  embrulhar(Element.prototype, 'scrollIntoView', function (o) {
+    return function () {
+      try { for (var n = this.parentElement; n; n = n.parentElement) if (n === doc() || rolavel(n)) marcar(n, -1); marcar(doc(), -1); } catch (e) {}
+      return o.apply(this, arguments);
+    };
+  });
+
+  // ── 2 · a MÃO da pessoa (vale sempre: encerra a janela na hora) ─────────────────────────────────────────────────────
+  R.mao = 0;
+  function mao() { R.mao = agora(); }
+  try {
+    window.addEventListener('wheel', mao, { capture: true, passive: true });
+    window.addEventListener('touchmove', mao, { capture: true, passive: true });
+    // teclado: tudo que não é "apertar" (Enter, ou Espaço num botão) é a pessoa agindo — rolar, Tab até outro campo, Ctrl+Home num texto
+    //   longo… o navegador rola por causa dela, e o guardião não devolve (auditoria 1, A3)
+    window.addEventListener('keydown', function (ev) {
+      try {
+        if (!ev.isTrusted) return;
+        var k = ev.key, t = ev.target;
+        if (k === 'Enter' || k === 'Escape' || k === 'Esc' || k === 'Shift' || k === 'Control' || k === 'Alt' || k === 'Meta') return;
+        if ((k === ' ' || k === 'Spacebar') && t && t.closest && t.closest('button,a,[role="button"],summary,[role="checkbox"],[role="radio"]')) return;
+        mao();
+      } catch (e) {}
+    }, true);
+    window.addEventListener('mousedown', function (ev) {
+      try {
+        if (ev.button === 1) { mao(); return; }
+        var t = ev.target; if (!t || t.nodeType !== 1) return;
+        var el = alvoDe(t);
+        if (el === doc()) { if (ev.clientX >= document.documentElement.clientWidth || ev.clientY >= document.documentElement.clientHeight) mao(); return; }
+        if ((ev.offsetX >= t.clientWidth && t.offsetWidth > t.clientWidth) || (ev.offsetY >= t.clientHeight && t.offsetHeight > t.clientHeight)) mao();   // na barra de rolagem
+      } catch (e) {}
+    }, true);
+  } catch (e) {}
+
+  // ── 3 · a fotografia do gesto ───────────────────────────────────────────────────────────────────────────────────────
+  function caminho(el) {      // endereço estável da área: #id, ou o caminho a partir do 1º pai com id (tag + posição)
+    try {
+      if (el === doc()) return 'doc';
+      if (el.id) return '#' + el.id;
+      var p = [], n = el;
+      while (n && n.nodeType === 1 && !n.id && n !== document.body) {
+        var i = 1, s = n; while ((s = s.previousElementSibling)) if (s.tagName === n.tagName) i++;
+        p.unshift(n.tagName + ':' + i); n = n.parentElement;
+      }
+      return (n && n.id ? '#' + n.id : 'body') + '>' + p.join('>');
+    } catch (e) { return ''; }
+  }
+  function acharCaminho(c) {
+    try {
+      if (!c) return null;
+      if (c === 'doc') return doc();
+      var partes = c.split('>'), raiz = partes.shift();
+      var n = raiz === 'body' ? document.body : document.getElementById(raiz.slice(1));
+      for (var k = 0; n && k < partes.length; k++) {
+        var x = partes[k].split(':'), tag = x[0], i = Number(x[1]), m = null, c2 = 0;
+        for (var f = n.firstElementChild; f; f = f.nextElementSibling) if (f.tagName === tag && ++c2 === i) { m = f; break; }
+        n = m;
+      }
+      return n || null;
+    } catch (e) { return null; }
+  }
+  function chave(n) {         // identidade de um elemento para achá-lo de novo depois do redesenho
+    try {
+      if (!n || n.nodeType !== 1) return null;
+      if (n.id && !/^[0-9]/.test(n.id)) return { id: n.id };
+      var a = [];
+      for (var i = 0; i < n.attributes.length; i++) {
+        var at = n.attributes[i], nm = at.name;
+        if (/^data-/.test(nm) && !/^data-(pw|pcm-enviando|v230-tot|j1|cfx)/.test(nm) && at.value.length < 120) a.push([nm, at.value]);
+        else if (nm === 'onclick' && at.value.length < 240) a.push([nm, at.value]);
+      }
+      if (!a.length) return null;
+      return { tag: n.tagName, at: a };
+    } catch (e) { return null; }
+  }
+  function acharChave(area, k) {
+    try {
+      if (!k) return null;
+      if (k.id) { var e = document.getElementById(k.id); return e && (area === doc() || area.contains(e)) && e.getClientRects().length ? e : null; }
+      var sel = k.tag.toLowerCase() + '[' + k.at[0][0] + ']';
+      var cs = (area === doc() ? document : area).querySelectorAll(sel);
+      for (var i = 0; i < cs.length; i++) {
+        var c = cs[i], ok = true;
+        for (var j = 0; j < k.at.length && ok; j++) if (c.getAttribute(k.at[j][0]) !== k.at[j][1]) ok = false;
+        if (ok && c.getClientRects().length) return c;
+      }
+      return null;
+    } catch (e) { return null; }
+  }
+  function topoDa(area) { try { return area === doc() ? 0 : area.getBoundingClientRect().top; } catch (e) { return 0; } }
+  function ancoras(area, alvo) {
+    var out = [], visto = [];
+    function por(n) {
+      for (var x = n; x && x !== area && x !== document.body && out.length < 6; x = x.parentElement) {
+        if (visto.indexOf(x) >= 0) return;
+        visto.push(x);
+        var k = chave(x); if (k) { out.push({ k: k, off: x.getBoundingClientRect().top - topoDa(area) }); return; }
+      }
+    }
+    try {
+      if (alvo && (area === doc() || area.contains(alvo))) {
+        for (var n = alvo, c = 0; n && n !== area && c < 4; n = n.parentElement) {
+          var k = chave(n); if (k && visto.indexOf(n) < 0) { visto.push(n); out.push({ k: k, off: n.getBoundingClientRect().top - topoDa(area) }); c++; }
+        }
+      }
+      var r = area === doc() ? { left: 0, top: 0, width: innerWidth, height: innerHeight } : area.getBoundingClientRect();
+      [0.15, 0.45].forEach(function (f) {
+        var y = Math.max(r.top + 4, Math.min(r.top + r.height * f, innerHeight - 4)), x = Math.max(4, Math.min(r.left + r.width / 2, innerWidth - 4));
+        var e = document.elementFromPoint(x, y); if (e && (area === doc() || area.contains(e))) por(e);
+      });
+    } catch (e) {}
+    return out;
+  }
+  function fotografar(alvo) {
+    var areas = [], vistas = [];
+    function poe(el) {
+      try {
+        el = alvoDe(el);
+        if (!el || vistas.indexOf(el) >= 0 || !rolavel(el) || el.scrollTop < 40) return;
+        if (el !== doc() && !el.getClientRects().length) return;
+        vistas.push(el);
+        areas.push({ el: el, cam: caminho(el), top: el.scrollTop, alt: el.scrollHeight, anc: ancoras(el, alvo), parou: false });
+      } catch (e) {}
+    }
+    try { for (var n = alvo; n && n.nodeType === 1; n = n.parentElement) poe(n); } catch (e) {}
+    poe(doc());
+    try { R.rolados.forEach(function (el) { if (areas.length < 12 && el.isConnected) poe(el); }); } catch (e) {}
+    return areas;
+  }
+  R.rolados = [];
+  try {
+    document.addEventListener('scroll', function (ev) {
+      try {
+        var el = ev.target === document ? doc() : ev.target; if (!el || el.nodeType !== 1) return;
+        var i = R.rolados.indexOf(el); if (i >= 0) R.rolados.splice(i, 1);
+        R.rolados.unshift(el); if (R.rolados.length > 16) R.rolados.length = 16;
+      } catch (e) {}
+    }, true);
+  } catch (e) {}
+
+  function armar(ev) {
+    try {
+      if (!ev || !ev.isTrusted || off()) return;
+      var t = ev.target; if (!t || t.nodeType !== 1) t = t && t.parentElement; if (!t) return;
+      if (t.closest && t.closest('[data-rolagem-livre],a[href^="#"]')) return;
+      try { R.rolados = R.rolados.filter(function (e) { return e.isConnected; }); } catch (e) {}   // sem guardar nó desligado (auditoria 1, O4)
+      var areas = fotografar(t);
+      R.gestos++;
+      if (!areas.length) { R.janela = null; return; }
+      R.janela = { t: agora(), ate: agora() + 2500, teto: agora() + 8000, tela: R.tela(), areas: areas, tipo: ev.type };
+      girar();
+    } catch (e) {}
+  }
+  R._armar = armar;
+  try {
+    document.addEventListener('pointerdown', function (ev) { if (ev.button === 0 || ev.pointerType === 'touch') armar(ev); }, true);
+    document.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' || ev.key === ' ') armar(ev); }, true);
+    document.addEventListener('change', armar, true);
+  } catch (e) {}
+
+  // ── 4 · a vigia (só durante a janela do gesto) ─────────────────────────────────────────────────────────────────────
+  var girando = 0;
+  function girar() { if (!girando) girando = requestAnimationFrame(vigiar); }
+  function vigiar() {
+    girando = 0;
+    var J = R.janela; if (!J) return;
+    try {
+      var t = agora();
+      if (R.mao > J.t || t > J.ate || R.tela() !== J.tela || off()) { R.janela = null; return; }
+      J.areas.forEach(function (a) {
+        if (a.parou) return;
+        var el = a.el.isConnected ? a.el : acharCaminho(a.cam);
+        if (!el) return;
+        var p = pedidos && pedidos.get(el);
+        if (p && p.t >= J.t && (p.v < 0 || p.v < a.top - 30)) { a.parou = true; return; }   // o código pediu: vale
+        var cur = el.scrollTop;
+        if (cur >= a.top - 30) return;
+        var alvo = null, como = '';
+        for (var i = 0; i < a.anc.length; i++) {
+          var n = acharChave(el, a.anc[i].k);
+          if (n) { alvo = cur + (n.getBoundingClientRect().top - topoDa(el)) - a.anc[i].off; como = 'âncora'; break; }
+        }
+        if (alvo === null && Math.abs(el.scrollHeight - a.alt) <= Math.max(80, a.alt * 0.25)) { alvo = a.top; como = 'número'; }   // conteúdo de altura parecida (auditoria 1, O2)
+        if (alvo === null || alvo <= cur + 30) return;
+        var max = el.scrollHeight - el.clientHeight;
+        if (max < alvo - 2) { J.ate = Math.min(J.teto, Math.max(J.ate, t + 600)); return; }   // ainda curta: espera o resto chegar
+        R._setTop(el, Math.round(alvo));
+        R.devolvidas++;
+        anotar({ area: a.cam, de: cur, para: Math.round(alvo), como: como, gesto: J.tipo });
+      });
+    } catch (e) {}
+    if (R.janela) girar();
+  }
+})();
+</script>
+<!-- ████ FIM ROLAGEM_V1 ████ -->
+<!-- ████ PCF_V141 (PF141) · ASSUMIR TAREFA NAO JOGA A TELA PARA O TOPO ████ -->
+<script>
+/* ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+   PCF_V141 — 21/10/2026 — rodada 2026-10-21_FERNANDO_rolagem_e_gavetas (sobre o PCF_V140 no ar; par sw propertech-v143).
+   Pedido do Fernando (print da PGP-2026-0069): "clico em ASSUMIR TAREFA e a tela sobe pro topo".
+   🔎 MEDIDO na bancada (OS de oficina com 14 tarefas, rolada a 623 px): 623 → 0 no toque, nos dois visuais.
+   CAUSA: o Assumir (e Liberar, decidir, concluir, a volta do servidor, o vigia do V122…) repinta o pipeline com o estado local —
+   pfLoadPipeline({_warmData}). Esse caminho NÃO é "soft": antes de desenhar, ele troca a lista pelo "Carregando pipeline…" (uma linha),
+   a área #pfScreenPipeline fica curta e o navegador zera a rolagem; o desenho chega no mesmo instante, mas a rolagem já foi.
+   CONSERTO: com a MESMA OS já desenhada na tela (cartões à vista), toda repintura vira "soft" — a lista velha fica até a nova estar
+   pronta (é o que o V67 já fazia para a releitura do servidor). Abrir uma OS (pfSelecionarOS), voltar à lista (pfVoltarOS) ou uma
+   tela sem cartões (erro, vazio, carregando) continuam como antes: aí o "Carregando…" é a verdade.
+   + o guardião ROLAGEM_V1 (bloco anterior), para os botões que não passam pelo pfLoadPipeline: ele sabe qual tela está aberta.
+   Embrulhos por window[nome] (regra dos embrulhos do PCF), por FORA de todos. Chave de volta: localStorage pf141 = off.
+   ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+var PF141 = window.PF141 = { versao: 'PCF_V141', pintada: '', suaves: 0, chamadas: 0 };
+(function () {
+  function off() { try { return localStorage.getItem('pf141') === 'off'; } catch (e) { return false; } }
+  PF141.off = off;
+  function osAtual() { try { return String(_pfOsId || ''); } catch (e) { return ''; } }
+  function temCards() { try { var c = document.getElementById('pfPipelineConteudo'); return !!(c && c.querySelector('.pf-card')); } catch (e) { return false; } }
+  function embrulhar(nome, fazer) {
+    try { var o = window[nome]; if (typeof o !== 'function' || o.__pf141) return; var n = fazer(o); n.__pf141 = true; window[nome] = n; } catch (e) { try { console.warn('[PF141] embrulhar ' + nome, e); } catch (x) {} }
+  }
+  embrulhar('pfLoadPipeline', function (orig) {
+    return function (opts) {
+      var os = osAtual(), o = opts;
+      PF141.chamadas++;
+      try {
+        if (!off() && os && PF141.pintada === os && temCards() && !(o && o.soft)) { o = Object.assign({}, o || {}, { soft: true }); PF141.suaves++; }
+      } catch (e) {}
+      var r = orig.call(this, o);
+      var depois = function () { try { if (os && osAtual() === os && temCards()) PF141.pintada = os; } catch (e) {} };
+      try { if (r && typeof r.then === 'function') r.then(depois, depois); else depois(); } catch (e) {}
+      return r;
+    };
+  });
+  embrulhar('pfSelecionarOS', function (orig) { return function () { PF141.pintada = ''; return orig.apply(this, arguments); }; });
+  embrulhar('pfVoltarOS', function (orig) { return function () { PF141.pintada = ''; return orig.apply(this, arguments); }; });
+  try {
+    if (window.ROLAGEM_V1) ROLAGEM_V1.tela = function () {
+      var t = '';
+      try {
+        var a = document.getElementById('pfScreenOS'), b = document.getElementById('pfScreenPipeline');
+        if (b && b.getClientRects().length) t = 'pipeline'; else if (a && a.getClientRects().length) t = 'lista';
+      } catch (e) {}
+      try { t += '|' + String(_pfOsId || ''); } catch (e) {}
+      try { t += '|' + String(typeof currentMachine !== 'undefined' ? currentMachine : ''); } catch (e) {}
+      return t;
+    };
+  } catch (e) {}
+})();
+</script>
+<!-- ████ FIM PCF_V141 (PF141) ████ -->
+
+<!-- ████ PCF_V142 (PF142) · HORA AGENDADA DA OS · 21/10/2026 ████
+  Pedido do Fernando (21/10 11h03, print da OS PGP-2026-0119): mostrar o HORARIO em que a OS foi agendada, nao so o dia.
+  Causa: o PCM grava a hora como texto HH:MM, mas a planilha transforma o texto em HORA e o servidor devolve a celula
+  como data do ano 1899 (1899-12-30T11:36:28.000Z). O PCF so aceitava HH:MM: a hora era descartada e as listas
+  (Minhas OS, A sua vez, Meu dia) mostravam so o dia - e ordenavam a OS como se fosse 23h59.
+  Aqui: (1) antes de cada pintura da lista, a hora de cada OS e lida como o PCM le (_v151Hora): HH:MM, H:MM, data do
+  Sheets, fracao do dia; a data do Sheets e lida SEMPRE no fuso de Sao Paulo (o da planilha), nunca no do aparelho;
+  o valor cru fica em _pf142_hora_bruta; valor que nao da para ler NAO e apagado; (2) na tela da OS, uma linha no topo:
+  Agendada para hoje (qua, 21/10) as 08:30 - "sem horario marcado" so quando o campo veio VAZIO.
+  Sem a OS na lista do aparelho a linha nao aparece (ausencia de dado nao vira fato). Zero GAS, zero SQL.
+  So acrescenta: nenhum id, funcao ou botao antigo muda. Funciona nos dois visuais (classico e Visual novo).
+-->
+<style>
+#pf142Agenda{display:none;margin:0 0 12px;padding:9px 12px;border-radius:10px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;font-size:14px;line-height:1.35}
+#pf142Agenda b{color:#ffffff;font-weight:800}
+#pf142Agenda .s{display:block;color:#94a3b8;font-size:12.5px;margin-top:2px}
+html.pf129 #pf142Agenda{background:#ffffff;border-color:#cbd5e1;color:#0f172a}
+html.pf129 #pf142Agenda b{color:#0f172a}
+html.pf129 #pf142Agenda .s{color:#475569}
+</style>
+<script>
+/* PCF_V142 · PF142 — hora agendada da OS (lista + tela da OS) */
+(function () {
+  'use strict';
+  var PF142 = window.PF142 = { versao: 'PCF_V142', normalizadas: 0, pinturas: 0, log: [] };
+  function nota(e, onde) { try { PF142.log.push(onde + ': ' + String(e && e.message || e)); if (PF142.log.length > 30) PF142.log.shift(); } catch (x) {} }
+  function p2(n) { return ('0' + n).slice(-2); }
+  function ehData(v) { return Object.prototype.toString.call(v) === '[object Date]'; }
+  // Hora de uma data no fuso da PLANILHA (Sao Paulo), arredondada ao minuto. Em 1899 cada cidade tinha a sua hora
+  // local media: lida no fuso do aparelho (Fortaleza, Manaus, UTC) a 08:30 virava 09:02, 07:36, 11:36 (auditoria 1).
+  var FMT = null;
+  try { FMT = new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }); } catch (e) { FMT = null; }
+  function horaSP(d) {
+    if (isNaN(d.getTime()) || !FMT) return '';                     // sem Intl com fuso: melhor nada que hora errada
+    var m = /(\d{1,2})\D(\d{2})\D(\d{2})/.exec(FMT.format(d));
+    if (!m) return '';
+    // arredonda ao minuto JA no horario de Sao Paulo (11:36:28Z = 08:30:00; arredondar em UTC dava 08:29)
+    var tot = (Number(m[1]) % 24) * 60 + Number(m[2]) + (Number(m[3]) >= 30 ? 1 : 0);
+    tot = tot % 1440;
+    return p2(Math.floor(tot / 60)) + ':' + p2(tot % 60);
+  }
+
+  // Mesma leitura do PCM (_v151Hora) e do GAS (_horaPrevistaNorm_): a celula pode voltar como texto, data ou numero.
+  function hora(v) {
+    if (v === null || v === undefined || v === '') return '';
+    if (ehData(v)) return horaSP(v);
+    if (typeof v === 'number') {
+      if (!isFinite(v)) return '';
+      var tot = Math.round((v - Math.floor(v)) * 1440);          // serial do Sheets: so a fracao e hora
+      return p2(Math.floor(tot / 60) % 24) + ':' + p2(tot % 60);
+    }
+    var s = String(v).trim();
+    if (!s) return '';
+    var m = /^(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(s);
+    if (m) { var h = Number(m[1]), mi = Number(m[2]); return (h > 23 || mi > 59) ? '' : p2(h) + ':' + p2(mi); }
+    if (/^\d{4}-\d{2}-\d{2}T.*(Z|[+-]\d{2}:?\d{2})$/.test(s)) {   // data do Sheets serializada (1899-12-30T...Z)
+      return horaSP(new Date(s));
+    }
+    if (/^\d*[.,]\d+$/.test(s)) return hora(Number(s.replace(',', '.')));   // fracao do dia que chegou como texto
+    return '';
+  }
+  PF142.hora = hora;
+
+  function normalizarOS(o) {
+    if (!o || typeof o !== 'object') return false;
+    var v = o.hora_prevista;
+    if (v === null || v === undefined || v === '') return false;
+    if (typeof v === 'string' && /^\d{2}:\d{2}$/.test(v)) return false;
+    var h = hora(v);
+    if (!h) return false;                                          // nao deu para ler: o valor fica como veio
+    if (h === v) return false;
+    if (o._pf142_hora_bruta === undefined) o._pf142_hora_bruta = v;
+    o.hora_prevista = h;
+    PF142.normalizadas++;
+    return true;
+  }
+  function normalizarLista() {
+    try {
+      var l = (typeof _pfOsList !== 'undefined' && Array.isArray(_pfOsList)) ? _pfOsList : null;
+      if (l) for (var i = 0; i < l.length; i++) normalizarOS(l[i]);
+    } catch (e) { nota(e, 'normalizar'); }
+  }
+  PF142.normalizarLista = normalizarLista;
+
+  var DIAS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+  function diaDaOS(o) {
+    try { if (typeof _pf113DiaOS === 'function') return _pf113DiaOS(o); } catch (e) { nota(e, 'dia'); }
+    var s = String((o && (o.data_prevista_ymd || o.data_prevista)) || '').slice(0, 10);
+    return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : '';
+  }
+  function ymd(d) { return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()); }
+  // { dia: 'hoje (qua, 21/10)', hora: '08:30' | '' } ou null sem data
+  function agenda(o) {
+    var d = diaDaOS(o);
+    if (!d) return null;
+    var p = d.split('-').map(Number), dt = new Date(p[0], p[1] - 1, p[2]);
+    var base = DIAS[dt.getDay()] + ', ' + p2(p[2]) + '/' + p2(p[1]);
+    var hoje = new Date(), amanha = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + 1), ontem = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - 1);
+    var rel = d === ymd(hoje) ? 'hoje' : d === ymd(amanha) ? 'amanhã' : d === ymd(ontem) ? 'ontem' : '';
+    return { dia: rel ? rel + ' (' + base + ')' : base, hora: hora(o && o.hora_prevista) };
+  }
+  PF142.agenda = agenda;
+
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function caixa() {
+    var el = document.getElementById('pf142Agenda');
+    if (el) return el;
+    var pip = document.getElementById('pfScreenPipeline'), pw = document.getElementById('pfProgressWrap');
+    if (!pip || !pw || pw.parentNode !== pip) return null;
+    el = document.createElement('div');
+    el.id = 'pf142Agenda'; el.setAttribute('role', 'status');
+    pip.insertBefore(el, pw);
+    return el;
+  }
+  function pintar() {
+    try {
+      var pip = document.getElementById('pfScreenPipeline');
+      var os = (typeof _pfOsId !== 'undefined' && _pfOsId) ? String(_pfOsId) : '';
+      var el = caixa();
+      if (!el) return;
+      var o = (os && pip && pip.style.display !== 'none' && typeof _pf113OsObj === 'function') ? _pf113OsObj(os) : null;
+      var a = o ? agenda(o) : null;
+      if (!a) { el.style.display = 'none'; el.removeAttribute('data-pf142-os'); el.innerHTML = ''; return; }
+      var cru = o.hora_prevista, vazio = (cru === null || cru === undefined || String(cru).trim() === '');
+      var html = '📅 Agendada para <b>' + esc(a.dia) + '</b>' +
+        (a.hora ? ' às <b>' + esc(a.hora) + '</b>' : (vazio ? '<span class="s">Sem horário marcado no agendamento.</span>' : ''));
+      if (el.innerHTML !== html) el.innerHTML = html;
+      el.setAttribute('data-pf142-os', os);
+      el.style.display = 'block';
+      PF142.pinturas++;
+    } catch (e) { nota(e, 'pintar'); }
+  }
+  PF142.pintar = pintar;
+
+  function embrulhar(nome, fab) {
+    var orig = window[nome];
+    if (typeof orig !== 'function') { nota('nao achei ' + nome, 'embrulho'); return false; }
+    window[nome] = fab(orig);
+    return true;
+  }
+  // a lista: a hora entra certa ANTES de qualquer pintura (Minhas OS, A sua vez, Meu dia, Visual novo)
+  embrulhar('pfRenderOS', function (orig) {
+    return function () { normalizarLista(); return orig.apply(this, arguments); };
+  });
+  // a tela da OS: toda vez que o cabecalho da OS e repintado (abrir, voltar, lista nova, pipeline lido)
+  embrulhar('_pf113Cabecalho', function (orig) {
+    return function () {
+      var r;
+      try { r = orig.apply(this, arguments); } finally { normalizarLista(); pintar(); }
+      return r;
+    };
+  });
+  normalizarLista();
+  pintar();
+})();
+</script>
+<!-- ████ FIM PCF_V142 (PF142) ████ -->
 
 </body>
 </html>
