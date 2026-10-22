@@ -9,7 +9,8 @@
  * O activate abaixo apaga qualquer cache antigo com prefixo 'propertech-'.
  */
 const CACHE_BASE = 'propertech-';
-const CACHE = CACHE_BASE + 'v144';  // 21/10/2026 — par do PCF_V142 (hora agendada da OS). Sem bump, o celular serve o V141 do cache.
+const CACHE = CACHE_BASE + 'v145';  // 22/10/2026 — par do PCF_V143 (motor de leitura do GAS v177). Sem bump, o celular serve o V142 do cache.
+// antes: 'v144'  // 21/10/2026 — par do PCF_V142 (hora agendada da OS). Sem bump, o celular serve o V141 do cache.
 // antes: 'v143'  // 21/10/2026 — par do PCF_V141 (Assumir tarefa não joga a tela para o topo). Sem bump, o celular serve o V140 do cache.
 // antes: 'v142'  // 15/10/2026 — par do PCF_V140 (uma OS por visita: máquina não atendida). Sem bump, o celular serve o V139 do cache.
 // antes: 'v141'  // 15/10/2026 — par do PCF_V139 (trocar de OS limpa a tela). Sem bump, o celular serve o V138 do cache.
@@ -71,6 +72,7 @@ const CACHE = CACHE_BASE + 'v144';  // 21/10/2026 — par do PCF_V142 (hora agen
 //        PCF_V108 ↔  propertech-v110  (11/09 — a rodada Campo e Documentos)
 //        PCF_V110 ↔  propertech-v112  (17/09 — os motores CFX + PWAIT, front puro)
 //        PCF_V109 ↔  propertech-v111  (11/09 — o PDF da preventiva: compress:true + PDF na fila do IndexedDB)
+//        PCF_V143 ↔  propertech-v145  (22/10 — motor de leitura do GAS v177, o mesmo do PCM V297: ajudante vê a tarefa; lista de OS pelo banco)
 //        PCF_V142 ↔  propertech-v144  (21/10 — hora agendada da OS: listas com dia e hora; linha "Agendada para" na tela da OS)
 //        PCF_V141 ↔  propertech-v143  (21/10 — Assumir tarefa e as repinturas do pipeline não jogam a tela para o topo; guardião ROLAGEM_V1)
 //        PCF_V140 ↔  propertech-v142  (15/10 — uma OS por visita: máquina não atendida com motivo; situação da OS no rodapé)

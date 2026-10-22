@@ -1741,8 +1741,15 @@ html[data-boot="pipeline"] #pf113Splash{display:flex;position:fixed;inset:0;z-in
   mostram dia e hora e ordenam pela hora); na tela da OS, linha Agendada para (dia) as (hora). Zero SQL, zero GAS.
   Bloco PF142 no fim. (Nasceu como V141; renumerado: o V141 e da rodada rolagem_e_gavetas.)
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V142</title>
-<meta name="app-build" content="PCF_V142" data-date="2026-10-21">
+<!--
+  PCF_V143 · O MODO RAPIDO DO PCF COM AS LEITURAS DO SERVIDOR DE HOJE · 22/10/2026 · feito SOBRE o PCF_V142 no ar · par sw propertech-v145.
+  O motor que le do banco no aparelho era a copia do GAS v161; o servidor esta no v177. Com ajudante na OS (GAS v171) o motor velho
+  dizia ao tecnico ajudante que a tarefa nao era dele, e a sentinela mandava a lista de OS de volta ao Apps Script por 24 h (8 a 14 s
+  por leitura, medido 22/10 05h40). Bloco PC_LEITURA trocado pelo do PCM V297 (motor v177, sentinela por instante e so empate livre).
+  Zero SQL/GAS. Medido contra a producao: 16 leituras do PCF iguais ao servidor (o motor velho errava a do Fernando como ajudante).
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V143</title>
+<meta name="app-build" content="PCF_V143" data-date="2026-10-22">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -24286,9 +24293,9 @@ PF113.ok = true;
 
 </script>
 
-<!-- ████ INICIO PC_LEITURA (PC_LEITURA_V1 · v161 · 9aefa7c71c) — gerado por gerar_bloco.js; NÃO EDITAR À MÃO ████ -->
+<!-- ████ INICIO PC_LEITURA (PC_LEITURA_V1 · v177 · 8773ad38be · PCF_V143 = o bloco do PCM V297; runtime v161 + V217) — motor gerado por gerar_bloco.js do GAS v177; NÃO EDITAR À MÃO ████ -->
 <script>
-/* PC_LEITURA · motor extraído de GAS_properCare_v161.js (243 KB) — NÃO EDITAR À MÃO.
+/* PC_LEITURA · motor extraído de GAS_properCare_v177.js (254 KB, PCM V297) — NÃO EDITAR À MÃO.
    Roda em modo NÃO estrito de propósito: é código do Apps Script, escrito para o modo
    do Apps Script (função declarada dentro de bloco, etc.). Uma instância por leitura. */
 var __PCL_MOTOR = function (S) {
@@ -29108,7 +29115,8 @@ function frotaForaDeCasa(params) {
 HEADERS.DOCS_INTERNOS = [
   'Doc_ID', 'Client_UID', 'OS_ID', 'OS_Numero', 'Cliente', 'Maquina_ID', 'Maquina_Label',
   'Categoria', 'Descricao', 'File_ID', 'File_URL', 'File_Name', 'Mime', 'Bytes',
-  'Folder_ID', 'Folder_URL', 'Created_At', 'Created_By', 'Ativo', 'Removido_Em', 'Removido_Por'
+  'Folder_ID', 'Folder_URL', 'Created_At', 'Created_By', 'Ativo', 'Removido_Em', 'Removido_Por',
+  'Card_ID'   // v172: interno de card SEM OS (OPO-…)
 ];
 HEADERS.CAT_TIPOS_MEDIDA = [
   'Tipo_ID','Nome','Campos_JSON','Palavras_Chave','Ordem',
@@ -29250,6 +29258,240 @@ function _v152EmbrulharSS_(real) {
     getActiveSheet: function () { return real.getActiveSheet(); }
   };
 }
+var _v169FrotaForaDeCasaOriginal_ = frotaForaDeCasa;
+frotaForaDeCasa = function (params) {
+  var r = _v169FrotaForaDeCasaOriginal_(params);
+  try {
+    if (r && r.status === 'ok') { try { getSheetData('CUSTODIA_FROTA'); } catch (e) { r.erro_leitura = String(e.message || e); } }
+  } catch (e2) {}
+  return r;
+};
+var V171_COL_OS = 'ajudantes';
+var V171_COL_TAR = 'Ajudantes';
+function _v171Lista_(raw) {
+  var s = String(raw === null || raw === undefined ? '' : raw).trim();
+  if (!s) return [];
+  var arr = null;
+  try { var p = JSON.parse(s); if (Array.isArray(p)) arr = p; } catch (e) { arr = null; }
+  var out = [];
+  if (arr) {
+    arr.forEach(function (x) {
+      if (typeof x !== 'string' && typeof x !== 'number') return;
+      var t = String(x).trim(); if (t) out.push(t);
+    });
+    return out;
+  }
+  s.split(/[;,]/).forEach(function (x) { var t = String(x).trim(); if (t) out.push(t); });
+  return out;
+}
+function _v171Explicita_(raw) { return String(raw === null || raw === undefined ? '' : raw).trim() !== ''; }
+function _v171Nomes_(lista, mapa, tirar) {
+  var vistos = {}, out = [];
+  (tirar || []).forEach(function (x) { var k = String(x || '').trim().toLowerCase(); if (k) vistos[k] = 1; });
+  (lista || []).forEach(function (x) {
+    var t = String(x || '').trim(); if (!t) return;
+    var n = mapa[t.toLowerCase()] || t, k = n.toLowerCase();
+    if (vistos[k]) return; vistos[k] = 1; out.push(n);
+  });
+  return out;
+}
+function _v171Ler_(aba) {
+  var v = _getRawSheetValues_(aba) || [];
+  var h = (v[0] || []).map(function (x) { return String(x === null || x === undefined ? '' : x); });
+  return { h: h, v: v, i: function (n) { return h.lastIndexOf(n); } };   // cabeçalho repetido: o último vale (getSheetData)
+}
+function _v171MapaOS_() {
+  var L = _v171Ler_('ORDENS_SERVICO'), out = {};
+  var iId = L.i('id_os'), iAj = L.i(V171_COL_OS), iSt = L.i('status'), iAt = L.i('Ativo'), iUa = L.i('usuario_atual');
+  if (iId < 0) return out;
+  for (var r = 1; r < L.v.length; r++) {
+    var row = L.v[r], k = String(row[iId] === null || row[iId] === undefined ? '' : row[iId]).trim();
+    if (!k) continue;
+    out[k] = { aj: iAj >= 0 ? row[iAj] : '', st: iSt >= 0 ? row[iSt] : '', at: iAt >= 0 ? row[iAt] : '', ua: iUa >= 0 ? row[iUa] : '' };
+  }
+  return out;
+}
+function _v171MapaTarefas_() {
+  var L = _v171Ler_('PIPELINE_TAREFAS'), out = {};
+  var iOs = L.i('OS_ID'), iT = L.i('Tarefa_ID'), iAj = L.i(V171_COL_TAR), iAt = L.i('Ativo'), iSt = L.i('Status');
+  if (iOs < 0 || iT < 0 || iAj < 0) return out;
+  for (var r = 1; r < L.v.length; r++) {
+    var row = L.v[r];
+    var at = String(row[iAt] || 'SIM').trim().toUpperCase();          // getSheetDataActive + o filtro de ARQUIVADO
+    if (at === 'NÃO' || at === 'ARQUIVADO') continue;
+    var st = String(row[iSt] || '').trim();
+    if (st === 'completo' || st === 'dispensado') continue;
+    var k = String(row[iOs] === null || row[iOs] === undefined ? '' : row[iOs]).trim() + '|' +
+            String(row[iT] === null || row[iT] === undefined ? '' : row[iT]).trim();
+    out[k] = row[iAj];
+  }
+  return out;
+}
+function _v171Conflitos_(tarefas) {
+  var comHora = tarefas.filter(function (x) { return !x.sem_hora && x.fim_previsto; });
+  // ordenação ESTÁVEL pelo início (empate = a ordem do balde: as próprias, depois as de ajudante)
+  comHora = comHora.map(function (x, i) { return { x: x, i: i }; })
+    .sort(function (a, b) { return a.x.inicio_previsto < b.x.inicio_previsto ? -1 : (a.x.inicio_previsto > b.x.inicio_previsto ? 1 : a.i - b.i); })
+    .map(function (o) { return o.x; });
+  var out = [];
+  for (var i = 0; i < comHora.length; i++) {
+    for (var j = i + 1; j < comHora.length; j++) {
+      var a = comHora[i], c = comHora[j];
+      if (c.inicio_previsto >= a.fim_previsto) break;
+      out.push({ tarefa_a: a.tarefa_id, tarefa_b: c.tarefa_id,
+                 inicio: a.inicio_previsto > c.inicio_previsto ? a.inicio_previsto : c.inicio_previsto,
+                 fim: a.fim_previsto < c.fim_previsto ? a.fim_previsto : c.fim_previsto });
+    }
+  }
+  return out;
+}
+function _v171AplicarAgenda_(r) {
+  if (!r || r.status !== 'ok' || !Array.isArray(r.agenda) || !Array.isArray(r.usuarios)) return r;
+  var mapa = _satMapaUsuarios_();
+  var osMap = _v171MapaOS_(), tarMap = _v171MapaTarefas_();
+  var agendaAj = [], ajOs = {}, ajTar = {};
+
+  // ajudantes_os: OS ativa (Ativo ≠ NÃO) e aberta, com lista não vazia (sem o responsável da OS)
+  Object.keys(osMap).forEach(function (k) {
+    var o = osMap[k];
+    if (String(o.at || 'SIM').trim().toUpperCase() === 'NÃO') return;
+    if (isOsClosed_(o.st)) return;
+    var ua = String(o.ua === null || o.ua === undefined ? '' : o.ua).trim();
+    var ns = _v171Nomes_(_v171Lista_(o.aj), mapa, ua ? [mapa[ua.toLowerCase()] || ua] : []);
+    if (ns.length) ajOs[k] = ns;
+  });
+  // ajudantes_tarefas: só as listas EXPLÍCITAS (vazia explícita '[]' também: a tela precisa saber que NÃO herda)
+  Object.keys(tarMap).forEach(function (k) {
+    if (_v171Explicita_(tarMap[k])) ajTar[k] = _v171Nomes_(_v171Lista_(tarMap[k]), mapa, []);
+  });
+
+  // baldes existentes, na ordem da lista (a chave do balde é o texto do dono, como no v112)
+  var porNome = {}, ordem = [];
+  r.usuarios.forEach(function (u) { porNome[u.usuario] = u; ordem.push(u); });
+  var tocados = {};
+  function balde(nome) {
+    if (Object.prototype.hasOwnProperty.call(porNome, nome)) return porNome[nome];
+    var kl = nome.toLowerCase();
+    for (var i = 0; i < ordem.length; i++) if (String(ordem[i].usuario).toLowerCase() === kl) return ordem[i];
+    var b = { usuario: nome, total_tarefas: 0, total_estimado_min: 0, total_estimado_min_informado: 0, total_sem_estimativa: 0,
+              em_execucao_agora: 0, tarefas: [], conflitos: [] };
+    porNome[nome] = b; ordem.push(b);
+    return b;
+  }
+
+  r.agenda.forEach(function (ln) {
+    if (!String(ln.dia || '')) return;                                       // sem dia não ocupa ninguém
+    var osk = String(ln.os_id === null || ln.os_id === undefined ? '' : ln.os_id).trim();
+    var key = osk + '|' + String(ln.tarefa_id === null || ln.tarefa_id === undefined ? '' : ln.tarefa_id).trim();
+    var raw = Object.prototype.hasOwnProperty.call(tarMap, key) ? tarMap[key] : '';
+    var lista;
+    if (_v171Explicita_(raw)) lista = _v171Lista_(raw);
+    else if (String(ln.executor || '') === 'adm') lista = [];               // a tarefa de adm não herda
+    else lista = osMap[osk] ? _v171Lista_(osMap[osk].aj) : [];
+    if (!lista.length) return;
+    var dono = String(ln.usuario || '');
+    var ajs = _v171Nomes_(lista, mapa, [mapa[dono.toLowerCase()] || dono]);
+    ajs.forEach(function (n) {
+      var b = balde(n);
+      var c = {};
+      for (var kk in ln) if (Object.prototype.hasOwnProperty.call(ln, kk)) c[kk] = ln[kk];
+      c.usuario = b.usuario; c.ajudante = true; c.principal = dono; c.origem = 'ajudante';
+      var est = Number(ln.tempo_estimado_min) || 0;
+      b.total_tarefas += 1;
+      b.total_estimado_min += (est || 60);
+      b.total_estimado_min_informado += est;
+      if (!est) b.total_sem_estimativa += 1;
+      if (ln.em_execucao) b.em_execucao_agora += 1;
+      b.tarefas.push(c);
+      agendaAj.push(c);
+      tocados[b.usuario] = b;
+    });
+  });
+
+  var cap = r.capacidade_diaria_min;
+  Object.keys(tocados).forEach(function (k) {
+    var b = tocados[k];
+    b.conflitos = _v171Conflitos_(b.tarefas);
+    b.dias_de_fila = cap > 0 ? Math.round((b.total_estimado_min / cap) * 10) / 10 : null;
+  });
+  if (agendaAj.length) {
+    // sort ESTÁVEL por carga sobre (a lista de antes + os baldes novos) — com nada novo, nada muda
+    r.usuarios = ordem.map(function (u, i) { return { u: u, i: i }; })
+      .sort(function (a, b) { return (b.u.total_estimado_min - a.u.total_estimado_min) || (a.i - b.i); })
+      .map(function (o) { return o.u; });
+  }
+  r.agenda_ajudantes = agendaAj;
+  r.ajudantes_os = ajOs;
+  r.ajudantes_tarefas = ajTar;
+  return r;
+}
+var _v171SaturacaoOriginal_ = getSaturacaoUsuarios;
+getSaturacaoUsuarios = function () {
+  var r = _v171SaturacaoOriginal_.apply(this, arguments);
+  try { return _v171AplicarAgenda_(r); }
+  catch (e) {
+    Logger.log('[v171] ajudantes na agenda: ' + (e && e.message));
+    // ⚠ nunca derruba a agenda: sem a chave nova o PCM V264 DIZ que os ajudantes não vieram
+    try { delete r.agenda_ajudantes; r.ajudantes_erro = String((e && e.message) || e); } catch (e2) {}
+    return r;
+  }
+};
+function _v171AjudantesDaLinha_(osId, linha, headers, osMap, mapaEx) {
+  var iAj = headers.indexOf(V171_COL_TAR);
+  var raw = iAj >= 0 ? linha[iAj] : '';
+  if (_v171Explicita_(raw)) return _v171Lista_(raw);
+  var iEx = headers.indexOf('Executor'), iPf = headers.indexOf('Perfil_Responsavel');
+  var ex = 'campo';
+  try { ex = _executorEfetivo_(iEx >= 0 ? linha[iEx] : '', iPf >= 0 ? linha[iPf] : '', mapaEx || _mapaExecutorPorPerfil_()); } catch (e) {}
+  if (ex === 'adm') return [];
+  var o = (osMap || _v171MapaOS_())[String(osId).trim()];
+  return o ? _v171Lista_(o.aj) : [];
+}
+var _v171MinhasOriginal_ = _minhasTarefasPorOS_;
+_minhasTarefasPorOS_ = function (usuario) {
+  var mapa = _v171MinhasOriginal_.apply(this, arguments);
+  try {
+    var u = String(usuario || '').trim(); if (!u) return mapa;
+    var tr = _usuIdNome_(), osMap = _v171MapaOS_(), mapaEx = _mapaExecutorPorPerfil_();
+    var L = _v171Ler_('PIPELINE_TAREFAS'), h = L.h;
+    var iOs = h.indexOf('OS_ID'), iT = h.indexOf('Tarefa_ID'), iAt = h.indexOf('Ativo'), iSt = h.indexOf('Status'), iUd = h.indexOf('Usuario_Designado');
+    if (h.indexOf(V171_COL_TAR) < 0) return mapa;
+    for (var r = 1; r < L.v.length; r++) {
+      var row = L.v[r];
+      if (!isActive_(iAt >= 0 && row[iAt] !== undefined ? row[iAt] : 'SIM')) continue;
+      var st = String(row[iSt] || '').trim(); if (_PIPE_ABERTOS_.indexOf(st) < 0) continue;
+      var des = String(row[iUd] || '').trim(); if (!des || _usuMesmo_(des, u, tr)) continue;   // só tarefa COM dono (e que não é minha)
+      var oid = String(row[iOs] || '').trim(); if (!oid) continue;
+      var ajs = _v171AjudantesDaLinha_(oid, row, h, osMap, mapaEx);
+      if (!ajs.some(function (a) { return _usuMesmo_(a, u, tr); })) continue;
+      var tid = String(row[iT] || '');
+      if ((mapa[oid] || []).some(function (t) { return t.tarefa_id === tid; })) continue;
+      var iF = h.indexOf('Fase'), iC = h.indexOf('Camada_Ordem'), iN = h.indexOf('Nome'), iLp = h.indexOf('Lock_Por');
+      (mapa[oid] = mapa[oid] || []).push({
+        tarefa_id: tid, nome: String(row[iN] || ''), fase: String(iF >= 0 ? row[iF] || '' : ''),
+        camada: parseInt(iC >= 0 ? row[iC] : 1, 10) || 1, status: st, lock_por: String(iLp >= 0 ? row[iLp] || '' : ''),
+        ajudante: true
+      });
+    }
+  } catch (e) { Logger.log('[v171] minhas tarefas: ' + (e && e.message)); }
+  return mapa;
+};
+var _v171KanbanOriginal_ = getKanbanOficina;
+getKanbanOficina = function () {
+  var r = _v171KanbanOriginal_.apply(this, arguments);
+  try {
+    if (!r || r.status !== 'ok' || !Array.isArray(r.cards)) return r;
+    var osMap = _v171MapaOS_(), mapa = _satMapaUsuarios_();
+    r.cards.forEach(function (c) {
+      var o = osMap[String(c.id_os === null || c.id_os === undefined ? '' : c.id_os).trim()];
+      var ua = o ? String(o.ua === null || o.ua === undefined ? '' : o.ua).trim() : '';
+      var resp = ua ? (mapa[ua.toLowerCase()] || ua) : '';
+      c.responsavel_nome = resp;
+      c.ajudantes_nomes = o ? _v171Nomes_(_v171Lista_(o.aj), mapa, resp ? [resp] : []) : [];
+    });
+  } catch (e) { Logger.log('[v171] quadro da oficina: ' + (e && e.message)); }
+  return r;
+};
 function __pcGET(action, params) {
   var e = { parameter: params };
   var result;
@@ -29432,7 +29674,7 @@ function __pcPOST(action, body) {
 /* ════════════════════════════════════════════════════════════════════════════
    PC_LEITURA — o motor de leitura do ProperCare no navegador (rodada TURBO, 28/09/2026)
    ────────────────────────────────────────────────────────────────────────────
-   GERADO por gerar_bloco.js a partir do GAS v161. NÃO EDITAR À MÃO.
+   GERADO por gerar_bloco.js a partir do GAS v161 (runtime + META); o MOTOR foi regerado do GAS v177 no PCM V297. NÃO EDITAR À MÃO.
 
    O QUE É: as funções de LEITURA do Apps Script (getOS, getTarefasAdm, getKanbanOficina,
    getSaturacaoUsuarios, …) COPIADAS do próprio GAS e executadas aqui, sobre uma
@@ -29461,7 +29703,7 @@ function __pcPOST(action, body) {
 (function (G) {
   'use strict';
   if (G.PCL) return;
-  var BUILD = 'PC_LEITURA_V1 · v161 · 9aefa7c71c · PCF_V128';
+  var BUILD = 'PC_LEITURA_V1 · v177 · 8773ad38be · PCF_V128 · PCF_V143';
   var M = {
   abas: {"MODELOS":{"tabela":"modelos","pk":"id"},"PARTS_MASTER":{"tabela":"parts_master","pk":"part_id"},"PART_SIMILARITIES":{"tabela":"part_similarities","pk":"sim_id"},"SUBSISTEMAS_LIB":{"tabela":"subsistemas_lib","pk":"sub_lib_id"},"SUBSISTEMA_LIB_PARTS":{"tabela":"subsistema_lib_parts","pk":"part_id"},"MODELO_SUBSISTEMA_LIB":{"tabela":"modelo_subsistema_lib","pk":"link_id"},"CLIENTES":{"tabela":"clientes","pk":"id"},"MAQUINAS":{"tabela":"maquinas","pk":"id"},"MACHINE_PARTS":{"tabela":"machine_parts","pk":"machine_id,part_id"},"PIPELINE_TEMPLATES":{"tabela":"pipeline_templates","pk":"template_id"},"ORDENS_SERVICO":{"tabela":"ordens_servico","pk":"id_os"},"PIPELINE_TAREFAS":{"tabela":"pipeline_tarefas","pk":"os_id,tarefa_id"},"AGENDA_DEMANDAS":{"tabela":"agenda_demandas","pk":"demanda_id"},"OS_MAQUINAS":{"tabela":"os_maquinas","pk":"id_link"},"TECH_ATTACHMENTS":{"tabela":"tech_attachments","pk":"attachment_id"},"UNIDADES":{"tabela":"unidades","pk":"id"},"CAT_TIPOS_OS":{"tabela":"cat_tipos_os","pk":"tipo_id"},"CUSTODIA_FROTA":{"tabela":"frota_custodia","pk":"custodia_id"},"CAT_PERFIS":{"tabela":"cat_perfis","pk":"id_perfil"},"PARAMETROS_TURNO":{"tabela":"parametros_turno","pk":"id"},"CAT_USUARIOS":{"tabela":"usuarios_publico","pk":"id"},"FORMULARIOS":{"tabela":"formularios","pk":"id"},"VISITAS":{"tabela":"visitas","pk":"id"},"PIPELINE_NOTIF":{"tabela":"pipeline_notif","pk":"notif_id"},"HORIMETRO_CALIB":{"tabela":"horimetro_calib","pk":"machine_id"},"HORIMETRO_HIST":{"tabela":"horimetro_hist","pk":"id"},"PRESENCA_OS":{"tabela":"presenca_os","pk":"evento_id"},"GEO_LOCAIS":{"tabela":"geo_locais","pk":"geo_id"},"SOLICITACOES_CADASTRO":{"tabela":"solicitacoes_cadastro","pk":"solic_id"},"CAT_TIPOS_MEDIDA":{"tabela":"cat_tipos_medida","pk":"tipo_id"},"PECAS_LOG":{"tabela":"pecas_log","pk":"pc_linha"},"ROTORES_MODELOS":{"tabela":"rotores_modelos","pk":"pc_linha"}},
   override: {"OS_MAQUINAS":{"machineKey":"machine_key"}},
@@ -30019,15 +30261,29 @@ function __pcPOST(action, body) {
   }
 
   // ── a SENTINELA ───────────────────────────────────────────────────────────
-  function normalizar(v, ign) {
-    if (Array.isArray(v)) return v.map(function (x) { return normalizar(x, ign); });
+  // PCM V297 — (a) data é o INSTANTE (ao segundo): a aba graduada (custódia da frota) devolve ISO onde a planilha tem o texto do
+  //   Apps Script (linhas antigas) ou ISO (linhas novas) — o mesmo instante não é divergência; (b) SEM_ORDEM: leituras cujo empate
+  //   de ordenação depende da ordem das linhas da fonte (MAQUINAS graduada não tem a ordem da planilha): a ordem não conta.
+  //   Medido contra a produção em 21/10 23h40: sem (a)+(b) estas 3 rebaixavam; com elas, 0 diferenças, e a sabotagem de um valor aparece.
+  var SEM_ORDEM = { getHorimetroPendencias: 1, getItensNaOficina: 1, frotaDisponivel: 1 };
+  //   a chave de ordenação que o GAS usa (frotaDisponivel não ordena: a ordem é a da fonte, nenhuma conta)
+  var CHAVE_ORDEM = { getItensNaOficina: { itens: function (x) { return x && x.dias_na_oficina; } },
+                      getHorimetroPendencias: { pendentes: function (x) { return Math.abs(Number(x && x.desvio_pct) || 0); }, sem_regime: function (x) { return String(x && x.cliente); } } };
+  function instante297(v) { var t = Date.parse(v); return isFinite(t) ? '\u24b9' + Math.floor(t / 1000) : null; }
+  function normalizar(v, ign, semOrd) {
+    if (Array.isArray(v)) {
+      var arr = v.map(function (x) { return normalizar(x, ign, semOrd); });
+      if (semOrd) arr = arr.map(function (x) { return [JSON.stringify(x), x]; }).sort(function (p, q) { return p[0] < q[0] ? -1 : (p[0] > q[0] ? 1 : 0); }).map(function (p) { return p[1]; });
+      return arr;
+    }
     if (v && typeof v === 'object') {
       var o = {};
-      Object.keys(v).sort().forEach(function (k) { if (!ign[k]) o[k] = normalizar(v[k], ign); });
+      Object.keys(v).sort().forEach(function (k) { if (!ign[k]) o[k] = normalizar(v[k], ign, semOrd); });
       return o;
     }
-    if (typeof v === 'string' && /^[\[{]/.test(v)) { try { return normalizar(JSON.parse(v), ign); } catch (e) {} }
-    if (typeof v === 'string' && /^[A-Z][a-z]{2} [A-Z][a-z]{2} \d{2} \d{4} \d{2}:\d{2}:\d{2} GMT[+-]\d{4} \([^)]*\)$/.test(v)) return v.replace(/ \([^)]*\)$/, '');   // V217
+    if (typeof v === 'string' && /^[\[{]/.test(v)) { try { return normalizar(JSON.parse(v), ign, semOrd); } catch (e) {} }
+    if (typeof v === 'string' && /^[A-Z][a-z]{2} [A-Z][a-z]{2} \d{2} \d{4} \d{2}:\d{2}:\d{2} GMT[+-]\d{4}( \([^)]*\))?$/.test(v)) { var i297 = instante297(v.replace(/ \([^)]*\)$/, '')); return i297 || v.replace(/ \([^)]*\)$/, ''); }   // V217 + V297
+    if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/.test(v)) { var j297 = instante297(v); if (j297) return j297; }   // V297
     if (typeof v === 'number' || typeof v === 'boolean') return String(v);
     return v === null || v === undefined ? '' : v;
   }
@@ -30065,7 +30321,12 @@ function __pcPOST(action, body) {
       var lift = await executarLift(verbo, action, params);
       if (!gas || gas.status !== 'ok') return;          // GAS falhou: nada a julgar
       var ign = ignorados(action);
-      var d = diferencas(normalizar(lift, ign), normalizar(gas, ign), action, []);
+      var so297 = !!SEM_ORDEM[action];   // PCM V297
+      var d = diferencas(normalizar(lift, ign, so297), normalizar(gas, ign, so297), action, []);
+      // PCM V297 (auditoria 1, M3): no SEM_ORDEM só o EMPATE é livre — a sequência da CHAVE de ordenação do GAS tem de ser a mesma
+      var ch297 = CHAVE_ORDEM[action] || {};
+      Object.keys(ch297).forEach(function (k) { var f = ch297[k], la = (lift && lift[k]) || [], ga = (gas && gas[k]) || [];
+        if (Array.isArray(la) && Array.isArray(ga) && JSON.stringify(la.map(f)) !== JSON.stringify(ga.map(f))) d.unshift(action + '.' + k + ' (ordem pela chave de ordenação)'); });
       var reg = { quando: agora(), ok: !d.length, diferencas: d, build: BUILD };
       ls('pc_sentinela_' + action, JSON.stringify(reg));
       if (!d.length) { log('sentinela ok', action); return; }
