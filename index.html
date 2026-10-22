@@ -1748,8 +1748,16 @@ html[data-boot="pipeline"] #pf113Splash{display:flex;position:fixed;inset:0;z-in
   por leitura, medido 22/10 05h40). Bloco PC_LEITURA trocado pelo do PCM V297 (motor v177, sentinela por instante e so empate livre).
   Zero SQL/GAS. Medido contra a producao: 16 leituras do PCF iguais ao servidor (o motor velho errava a do Fernando como ajudante).
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V143</title>
-<meta name="app-build" content="PCF_V143" data-date="2026-10-22">
+<!--
+  PCF_V144 · CADASTRO DO CLIENTE PELA INSPECAO DE CAMPO · 22/10/2026 · feito SOBRE o PCF_V143 no ar · par sw propertech-v146 · par do GAS v178.
+  Na inspecao avulsa o PCF abre sozinho a OS INS- e, a partir dai, a trava V74 (cadastro e do escritorio) descartava CNPJ, contato,
+  telefone, e-mail, cidade e filial digitados em campo, sem aviso (ACS Macharia, INS-2026-0034, 16/10). Agora a INS aberta pelo PCF
+  nao trava o cadastro: o corpo do saveClient sai com origem campo_ins e o GAS v178 preenche o que esta vazio e transforma o que e
+  diferente em pedido de correcao (faixa amarela de Clientes). Faixa verde na secao 1, aviso pos-envio com o resultado, DV do
+  CNPJ/CPF conferido antes de enviar. OS aberta pelo escritorio: V74 igual. Zero SQL. Bloco PF144 no fim; 2 remendos no corpo do saveClient.
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V144</title>
+<meta name="app-build" content="PCF_V144" data-date="2026-10-22">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -6682,6 +6690,11 @@ function buildPanelHTML(idx) {
           O que estiver errado não se corrige aqui — mande um pedido.</span>
         <button type="button" class="pgp-cad-lock-btn"
                 onclick="event.stopPropagation();pgpAbrirSolicitacaoCadastro(${idx})">✏️ Solicitar correção</button>
+      </div>
+      <!-- PCF_V144: na inspeção avulsa / INS aberta pelo PCF o cadastro É digitável — o GAS v178 preenche o vazio e pede
+           correção do diferente. PF144.pintarFaixa() liga/desliga (fica escondida dentro de OS do escritório). -->
+      <div class="pf144-ins-bar" id="${p}ins_bar" data-pf144-ins-slot style="display:none">
+        <span class="pf144-txt"></span><span class="pf144-res" style="display:none"></span>
       </div>
       <div class="field-item" onclick="toggleField(this,${idx})">
         <div class="field-label"><div class="checkbox">✓</div>
@@ -17437,6 +17450,10 @@ async function pgpEnviarGS(srcBtn){
   //   chip piscando e do rodapé "sem conexão". Sabendo que está offline, o
   //   caminho correto já existe: enfileira e o flush recarimba o os_id.
   if (_pgpGsConnected) { try { await pgpGarantirOSInspecaoAvulsa(i); } catch(e){} }
+  // PCF_V144 — o payload foi montado ANTES de a INS existir (pgpBuildPayload no topo do laço): sem foto/PDF antes do envio,
+  // a visita saía com os_id vazio mesmo com a INS recém-aberta (achado da bancada, 22/10). Recarimba SÓ o os_id, pela
+  // mesma régua de sempre (pgpOsIdSeguro: só quando o cliente da tela é o da OS). visit_id/client_uid não mudam.
+  if (!payload.os_id && window._PGP_OS_ID) { try { payload.os_id = pgpOsIdSeguro(pgpDriveClientName(i)) || ''; } catch (e144) {} }
 
   const visitBody = pgpBuildVisitRequest(payload);
 
@@ -17509,35 +17526,11 @@ async function pgpEnviarGS(srcBtn){
           // NENHUM campo cadastral — só as datas de visita, que são operação.
           // O GAS v82 recusa INSERT e descarta cadastro nessa origem (defesa
           // final: fila antiga e aparelho em versão velha não passam pelo cadeado).
-          const _cadTravado = (typeof pgpCadTravado === 'function') ? pgpCadTravado() : false;
-          const _clientBody = _cadTravado
-            ? {
-                nome:      clientNome,
-                nextVisit: payload.nextVisit || '',
-                lastVisit: payload.lastVisit || '',
-                origem:    'campo_os'
-              }
-            : {
-                nome:      clientNome,
-                cnpj:      payload.cnpj    || '',
-                telefone:  payload.phone   || '',
-                email:     payload.email   || '',
-                cidade:    payload.city    || '',
-                // v8.4.4:
-                contato:   payload.contact  || '',
-                filial:    payload.branch   || '',
-                nextVisit: payload.nextVisit|| '',
-                lastVisit: payload.lastVisit|| '',
-                // v10: endereço e UF
-                endereco:  payload.endereco || '',
-                uf:        payload.uf       || '',
-                origem:    'campo'
-              };
-          const _respCli = await pgpPostJson('saveClient', {
-            client: _clientBody,
-            origem: _clientBody.origem,
-            os_id:  String(window._PGP_OS_ID || '')
-          });
+          // PCF_V144 — corpo ÚNICO do saveClient (pf144CorpoCliente, bloco PF144 no fim do body): dentro de OS do escritório
+          // só nome + datas ('campo_os', V74); na INS aberta pelo PCF e no avulso, tudo com origem 'campo_ins' — o GAS v178
+          // preenche o vazio e pede correção do diferente. O envelope leva client_uid da visita, usuário e número da OS.
+          const _clientBody = pf144CorpoCliente(payload, clientNome);
+          const _respCli = await pgpPostJson('saveClient', pf144EnvelopeCliente(_clientBody, payload, true));
           if (_respCli && _respCli.action === 'blocked') {
             console.warn('[V74] saveClient bloqueado pelo GAS (origem campo_os):', _respCli.motivo);
           }
@@ -34053,12 +34046,9 @@ input.pcf121-dt-nativo::-webkit-calendar-picker-indicator{filter:invert(1) brigh
   window.pcf121FilaCliente = function (payload) {
     if (!payload || !(payload.client || payload.cnpj || payload.phone || payload.email || payload.city || payload.contact || payload.branch || payload.nextVisit || payload.lastVisit)) return false;
     var nome = payload.client || ''; if (!nome) return false;
-    var trav = false; try { trav = (typeof pgpCadTravado === 'function') ? pgpCadTravado() : false; } catch (e) {}
-    var c = trav ? { nome: nome, nextVisit: payload.nextVisit || '', lastVisit: payload.lastVisit || '', origem: 'campo_os' }
-      : { nome: nome, cnpj: payload.cnpj || '', telefone: payload.phone || '', email: payload.email || '', cidade: payload.city || '',
-          contato: payload.contact || '', filial: payload.branch || '', nextVisit: payload.nextVisit || '', lastVisit: payload.lastVisit || '',
-          endereco: payload.endereco || '', uf: payload.uf || '', origem: 'campo' };
-    var q = pgpQueueRequest('saveClient', { client: c, origem: c.origem, os_id: String(window._PGP_OS_ID || ''), machine_id: payload.machine_id || '' });
+    // PCF_V144 — o mesmo corpo do envio direto (pf144CorpoCliente / pf144EnvelopeCliente): a fila sobe com origem 'campo_ins' fora de OS do escritório
+    var c = pf144CorpoCliente(payload, nome);
+    var q = pgpQueueRequest('saveClient', pf144EnvelopeCliente(c, payload));
     return !!(q && q.saved);
   };
 
@@ -43231,6 +43221,289 @@ html.pf129 #pf142Agenda .s{color:#475569}
 })();
 </script>
 <!-- ████ FIM PCF_V142 (PF142) ████ -->
+
+<!-- ████ PCF_V144 (PF144) · CADASTRO DO CLIENTE PELA INSPECAO DE CAMPO (par do GAS v178) ████ -->
+<style>
+/* PF144 — faixa da seção 1 na inspeção avulsa / INS aberta pelo PCF (irmã da .pgp-cad-lock-bar do V74, verde: aqui o campo PODE digitar) */
+.pf144-ins-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:#ecfdf5;border-left:4px solid #16a34a;
+  border-radius:0 8px 8px 0;padding:8px 10px;margin:0 0 10px;font-size:11.5px;color:#14532d;line-height:1.45}
+.pf144-ins-bar b{font-weight:800}
+.pf144-ins-bar .pf144-res{display:block;width:100%;margin-top:4px;color:#1e3a8a;font-weight:700}
+.pf144-ins-bar .pf144-res.pf144-warn{color:#9a3412}
+</style>
+<script>
+/* ═════ PCF_V144 (PF144) — CADASTRO DO CLIENTE PELA INSPEÇÃO DE CAMPO · 22/10/2026 · par do GAS v178 ═════
+   Rodada 2026-10-22_FERNANDO_cadastro_pela_inspecao. Caso real: ACS Macharia e Usinagem, INS-2026-0034 (16/10) — o CNPJ coletado foi
+   para o PDF e para VISITAS, mas não para o cadastro; a emissão da proposta v1 pediu o CNPJ.
+   O DEFEITO: na inspeção AVULSA o PCF abre sozinho a OS INS- (pgpGarantirOSInspecaoAvulsa) e, a partir daí, pgpCadTravado()
+   (= pgpEmOS() && _PGP_OS_CLIENTE) ficava verdadeiro como se a OS fosse do escritório: o saveClient saía como 'campo_os' e o GAS
+   (trava V74) descartava CNPJ, contato, telefone, e-mail, cidade e filial — sem aviso, porque a tela nem travava os campos.
+   REGRA (Fernando, 22/10): na INS aberta pelo PCF (e no avulso sem OS), o que vier de campo PREENCHE O VAZIO do cadastro; o que vier
+   DIFERENTE vira solicitação de correção automática (faixa amarela de Clientes no PCM). Na OS aberta pelo ESCRITÓRIO a trava V74
+   continua igual (campos 🔒, só datas passam, "✏️ Solicitar correção" manual). Quem decide é o SERVIDOR (GAS v178); o aparelho só
+   manda a origem certa ('campo_ins') e mostra o resultado.
+   O QUE ESTE BLOCO FAZ (só embrulhos por window[nome] + 3 remendos feitos pelo builder: os 2 corpos do saveClient e o os_id da visita):
+   1 · pgpPostJson: a resposta de abrirOSInspecao marca a INS como "aberta por este PCF" (guardado em localStorage pf144_ins_pcf —
+       sobrevive à recarga da página; o Android fecha o app com a câmera aberta);
+   2 · pgpCadTravado: a INS aberta pelo PCF NÃO trava o cadastro (a OS do escritório continua travando — nada muda no V74);
+   3 · pgpAplicarTravaCadastro: além da barra 🔒 do V74, liga/desliga a faixa verde da seção 1 ("O que estiver vazio no cadastro será
+       preenchido; o que for diferente vai para o escritório conferir") — nos dois visuais (é o mesmo DOM da seção 1);
+   4 · pf144CorpoCliente / pf144EnvelopeCliente: o corpo ÚNICO do saveClient (antes escrito à mão em 2 lugares: pgpEnviarGS e
+       pcf121FilaCliente) — dentro de OS do escritório só nome + datas ('campo_os'); fora, tudo com origem 'campo_ins' + client_uid da
+       visita, usuário e número da OS (a solicitação automática nasce com eles);
+   5 · pgpPostJson: a resposta do saveClient (envio direto OU a fila subindo pela página) vira aviso: "Cadastro do cliente: CNPJ e
+       telefone preenchidos · 1 diferença enviada ao escritório para conferir" — toast + linha na faixa da seção 1 + status do envio;
+   6 · pgpEnviarGS: antes de enviar, CNPJ/CPF com dígito verificador inválido pergunta (AppDialog.confirm): enviar SEM o documento
+       (o campo fica na tela, no PDF e em VISITAS; só não viaja no cadastro) ou voltar e corrigir. Só janela própria (AppDialog).
+   7 · (remendo do builder) a visita enviada SEM foto/PDF antes entrava com os_id vazio mesmo com a INS recém-aberta (o payload
+       nascia antes da INS): o os_id é recarimbado depois de a INS abrir, pela régua de sempre (pgpOsIdSeguro).
+   Auditoria 1 (22/10): cliente da INS vem da OS (GAS); só a INS que o servidor diz ter sido aberta pelo PCF é marcada; aviso por cliente
+   e linha persistente no rodapé; saveClient direto que falha vai para a fila; DV só nas máquinas selecionadas; o campo do CNPJ inválido fica.
+   Limites: a fila que o service worker sobe em 2º plano não tem resposta na página (o aviso sai quando a própria página envia);
+   o PDF da inspeção continua imprimindo o que está na tela. Zero SQL. Chave de volta: localStorage pf144 = off (volta ao V143). */
+(function () {
+  if (window.PF144) return;
+  var PF144 = window.PF144 = { versao: 'PCF_V144', ins: {}, ultimo: null, avisos: 0, docIgnorado: {}, log: [] };
+  function nota(e, onde) { try { PF144.log.push(onde + ': ' + String(e && e.message || e)); if (PF144.log.length > 30) PF144.log.shift(); } catch (x) {} }
+  function ligado() { try { return localStorage.getItem('pf144') !== 'off'; } catch (e) { return true; } }
+  var CHAVE = 'pf144_ins_pcf';
+  function txt(v) { return String(v === undefined || v === null ? '' : v).trim(); }
+  function esc(v) { return txt(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+  // ── 1 · a INS aberta por ESTE PCF (ids guardados; sobrevivem à recarga) ────────────────────────────────────────────
+  function lerIns() { try { var o = JSON.parse(localStorage.getItem(CHAVE) || '{}'); return (o && typeof o === 'object') ? o : {}; } catch (e) { return {}; } }
+  function marcarIns(id) {
+    id = txt(id); if (!id) return;
+    try {
+      var o = lerIns(); o[id] = Date.now();
+      var ks = Object.keys(o).sort(function (a, b) { return o[a] - o[b]; }); while (ks.length > 200) delete o[ks.shift()];
+      localStorage.setItem(CHAVE, JSON.stringify(o));
+    } catch (e) { nota(e, 'marcarIns'); }
+    PF144.ins[id] = true;
+  }
+  function insPeloPCF() {
+    var id = txt(window._PGP_OS_ID); if (!id) return false;
+    if (PF144.ins[id]) return true;
+    var o = lerIns(); if (o[id]) { PF144.ins[id] = true; return true; }
+    return false;
+  }
+  PF144.insPeloPCF = insPeloPCF; PF144.marcarIns = marcarIns;
+  // regime do cadastro na tela: 'escritorio' (OS do escritório: trava V74) · 'ins' (INS aberta pelo PCF) · 'avulso' (sem OS)
+  function regime() {
+    var emOS = false; try { emOS = typeof pgpEmOS === 'function' && pgpEmOS(); } catch (e) {}
+    if (!emOS) return 'avulso';
+    return insPeloPCF() ? 'ins' : 'escritorio';
+  }
+  PF144.regime = regime;
+
+  function embrulhar(nome, fab) {
+    var orig = window[nome];
+    if (typeof orig !== 'function') { nota('nao achei ' + nome, 'embrulho'); return false; }
+    var w = fab(orig); w.__pf144 = true; window[nome] = w; return true;
+  }
+
+  // ── 2 · a INS aberta pelo PCF não trava o cadastro (a OS do escritório continua travando) ──────────────────────────
+  embrulhar('pgpCadTravado', function (orig) {
+    return function () {
+      var t = orig.apply(this, arguments);
+      if (!t || !ligado()) return t;
+      try { return !insPeloPCF(); } catch (e) { nota(e, 'cadTravado'); return t; }
+    };
+  });
+
+  // ── 3 · a faixa verde da seção 1 (irmã da barra 🔒 do V74) ─────────────────────────────────────────────────────────
+  var TXT_INS = 'O que estiver <b>vazio</b> no cadastro será preenchido; o que for <b>diferente</b> vai para o escritório conferir.';
+  function pintarFaixa() {
+    try {
+      var r = regime(), mostrar = ligado() && r !== 'escritorio' && (typeof _pgpTipoVisita === 'undefined' || _pgpTipoVisita === 'inspecao');
+      document.querySelectorAll('[data-pf144-ins-slot]').forEach(function (el) {
+        el.style.display = mostrar ? '' : 'none';
+        var t = el.querySelector('.pf144-txt'); if (t) t.innerHTML = (r === 'ins' ? '📋 <b>Inspeção ' + esc(window._PGP_OS_NUMERO || '') + '</b> · ' : '📋 <b>Cadastro do cliente:</b> ') + TXT_INS;
+      });
+    } catch (e) { nota(e, 'pintarFaixa'); }
+  }
+  PF144.pintarFaixa = pintarFaixa;
+  embrulhar('pgpAplicarTravaCadastro', function (orig) {
+    return function () {
+      var r; try { r = orig.apply(this, arguments); } finally { pintarFaixa(); }
+      // (T4, auditoria 1 item 15) dentro da INS do PCF o cadastro rápido de máquina continua preso ao cliente da OS — só a seção 1 destrava
+      try { if (regime() === 'ins') { var nmc = document.getElementById('nm_client'); if (nmc && window._PGP_OS_CLIENTE) { nmc.value = String(window._PGP_OS_CLIENTE); nmc.readOnly = true; nmc.classList.add('pgp-cad-lock'); } } } catch (e) { nota(e, 't4'); }
+      return r;
+    };
+  });
+  embrulhar('pgpSetTipoVisita', function (orig) {
+    return function () { var r = orig.apply(this, arguments); try { if (typeof pgpAplicarTravaCadastro === 'function') pgpAplicarTravaCadastro(); } catch (e) {} return r; };
+  });
+
+  // ── 4 · o corpo ÚNICO do saveClient ───────────────────────────────────────────────────────────────────────────────
+  function sessao() { try { return (window.PROPER_SESSION && window.PROPER_SESSION.tecnico) || {}; } catch (e) { return {}; } }
+  window.pf144CorpoCliente = function (payload, nome) {
+    payload = payload || {}; nome = txt(nome || payload.client);
+    var trav = false; try { trav = (typeof pgpCadTravado === 'function') ? pgpCadTravado() : false; } catch (e) {}
+    if (trav) return { nome: nome, nextVisit: payload.nextVisit || '', lastVisit: payload.lastVisit || '', origem: 'campo_os' };   // V74 (T2): OS do escritório
+    var cnpj = txt(payload.cnpj); if (cnpj && PF144.docIgnorado[cnpj]) cnpj = '';   // "Enviar sem o CNPJ": o campo fica (rascunho/VISITAS/PDF), só não viaja no cadastro
+    return { nome: nome, cnpj: cnpj, telefone: payload.phone || '', email: payload.email || '', cidade: payload.city || '',
+             contato: payload.contact || '', filial: payload.branch || '', nextVisit: payload.nextVisit || '', lastVisit: payload.lastVisit || '',
+             endereco: payload.endereco || '', uf: payload.uf || '', origem: ligado() ? 'campo_ins' : 'campo' };
+  };
+  window.pf144EnvelopeCliente = function (c, payload, direto) {
+    payload = payload || {}; var s = sessao();
+    var env = { client: c, origem: c.origem, os_id: txt(window._PGP_OS_ID), os_numero: txt(window._PGP_OS_NUMERO),
+             client_uid: txt(payload.client_uid), machine_id: payload.machine_id || '',
+             usuario: txt(s.id), usuario_nome: txt(s.nome || (typeof pgpNomeSessao === 'function' ? pgpNomeSessao() : '')) };
+    if (direto) env.pf144_direto = true;   // marca do envio DIRETO: se falhar, o embrulho do pgpPostJson põe na fila (a fila não leva a marca)
+    return env;
+  };
+
+  // ── 5 · a resposta do servidor vira aviso (envio direto e fila subindo pela página) ─────────────────────────────────
+  var ROT = { nome: 'razão social', cnpj: 'CNPJ/CPF', contato: 'contato', telefone: 'telefone', email: 'e-mail', cidade: 'cidade', filial: 'filial', endereco: 'endereço', uf: 'UF' };
+  function lista(a) { return (a || []).map(function (k) { return ROT[k] || k; }).join(', '); }
+  function frase(v) {
+    var p = [];
+    if (v.preenchidos && v.preenchidos.length) p.push(lista(v.preenchidos) + (v.preenchidos.length > 1 ? ' preenchidos' : ' preenchido'));
+    var n = (v.diferentes || []).length;
+    if (n) p.push(n + (n > 1 ? ' diferenças enviadas' : ' diferença enviada') + ' ao escritório para conferir (' + lista(v.diferentes) + ')');
+    if (v.cnpj_outro && v.cnpj_outro.nome) p.push('CNPJ já é de "' + v.cnpj_outro.nome + '" — o escritório decide');
+    if (v.cnpj_invalido) p.push('CNPJ/CPF inválido — não gravado');
+    if (v.regime === 'escritorio') p.push('OS do escritório: o cadastro não muda pelo campo (pedido enviado)');
+    if (v.duplicado && v.duplicado.minimo) p.push('a inspeção ficou num cadastro novo ("' + v.duplicado.minimo.nome + '")' + (v.duplicado.real ? ' parecido com este — o escritório confere e junta' : ' com nome parecido de outros — o escritório confere'));
+    if (!p.length) p.push((v.iguais && v.iguais.length) ? 'nada a mudar (já estava igual)' : 'nada enviado');
+    return 'Cadastro ' + (v.cliente ? 'de ' + v.cliente : 'do cliente') + ': ' + p.join(' · ');
+  }
+  function painelDoCliente(nome) {   // os painéis cuja razão social é o cliente da resposta (clientKey local: sem acento/caixa)
+    var k = chave(nome); if (!k) return [];
+    return Array.prototype.filter.call(document.querySelectorAll('[data-pf144-ins-slot]'), function (el) {
+      var p = el.closest('.machine-panel'); var inp = p && p.querySelector('[data-key$="_razao_social"]');
+      return inp && chave(inp.value) === k;
+    });
+  }
+  function chave(v) { return txt(v).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\b(ltda|s\.?a\.?|eireli|me|epp)\b/g, '').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim(); }
+  function limparRodape() { try { var el = document.getElementById('pf144Rodape'); if (el) { el.style.display = 'none'; el.textContent = ''; } } catch (e) {} }
+  PF144.limparRodape = limparRodape;
+  function linhaRodape(texto, warn) {   // a linha que o técnico olha (rodapé "Concluir coleta" / "Situação do envio" no Visual novo)
+    var rod = document.getElementById('pcf116Rodape'); if (!rod) return;
+    var el = document.getElementById('pf144Rodape');
+    if (!el) { el = document.createElement('div'); el.id = 'pf144Rodape'; el.style.cssText = 'margin:8px 0 0;padding:8px 10px;border-radius:10px;font:600 12.5px Inter,sans-serif;line-height:1.4'; rod.appendChild(el); }
+    el.style.background = warn ? '#fff7ed' : '#f0fdf4'; el.style.color = warn ? '#9a3412' : '#166534'; el.style.border = '1px solid ' + (warn ? '#fdba74' : '#bbf7d0');
+    el.textContent = texto; el.style.display = 'block';
+  }
+  PF144.frase = frase;
+  function avisar(v) {
+    var f = frase(v), warn = !!(v.cnpj_invalido || v.cnpj_outro || v.regime === 'escritorio' || v.duplicado);
+    PF144.ultimo = { v: v, frase: f, em: Date.now() }; PF144.avisos++;
+    try { if (typeof showNotification === 'function') showNotification((warn ? '⚠ ' : '✅ ') + f); } catch (e) {}
+    try {
+      // só o painel DESTE cliente recebe a linha (a fila pode subir o cadastro de outra visita enquanto outro cliente está na tela)
+      painelDoCliente(v.cliente).forEach(function (slot) { var el = slot.querySelector('.pf144-res'); if (!el) return; el.textContent = (warn ? '⚠ ' : '✅ ') + f; el.className = 'pf144-res' + (warn ? ' pf144-warn' : ''); el.style.display = 'block'; });
+      linhaRodape((warn ? '⚠ ' : '✅ ') + f, warn);
+    } catch (e) { nota(e, 'avisar'); }
+  }
+  PF144.avisar = avisar;
+  try {
+    var _pj = window.pgpPostJson;
+    if (typeof _pj === 'function' && !_pj.__pf144) {
+      window.pgpPostJson = async function (action, body) {
+        var r;
+        try { r = await _pj.apply(this, arguments); }
+        catch (e) {
+          // (auditoria 1, item 5) o saveClient do envio DIRETO falhou (lock do cadastro, banco recusou, rede): o cadastro de campo
+          // não some em silêncio — vai para a fila (o mesmo corpo) e o técnico vê
+          try {
+            if (action === 'saveClient' && body && body.pf144_direto && ligado() && typeof pgpQueueRequest === 'function') {
+              // (auditoria 2, item 3) só erro PASSAGEIRO vai para a fila: rede, ou o "servidor ocupado gravando o cadastro" do lock V166.
+              // Veredito do servidor (permanent: CNPJ/telefone recusados, banco recusou) NÃO vai — a fila o mandaria direto para "Conferir"
+              // dizendo "sobe sozinho"; o técnico vê o motivo na hora.
+              var em = String(e && e.message || e || '');
+              var passageiro = !(e && e.permanent) || /servidor ocupado|tente de novo em instantes/i.test(em);
+              var msg;
+              if (passageiro) {
+                var b2 = {}; Object.keys(body).forEach(function (k) { if (k !== 'pf144_direto') b2[k] = body[k]; });
+                var q = pgpQueueRequest('saveClient', b2);
+                msg = (q && q.saved) ? '⏳ Cadastro do cliente não gravado agora (' + em.slice(0, 80) + ') — guardado na fila, sobe sozinho.' : '⚠ Cadastro do cliente NÃO gravado: ' + em.slice(0, 120);
+              } else msg = '⚠ Cadastro do cliente NÃO gravado: ' + em.slice(0, 140) + ' — corrija e envie de novo.';
+              try { if (typeof showNotification === 'function') showNotification(msg); } catch (x) {}
+              linhaRodape(msg, true);
+            }
+          } catch (x) { nota(x, 'post-erro'); }
+          throw e;
+        }
+        try {
+          if (action === 'abrirOSInspecao' && r && r.status === 'ok' && r.id_os && r.ins_pcf !== false) marcarIns(r.id_os);   // auditoria 1 (2): a INS do ESCRITÓRIO reaproveitada não é marcada
+          if (action === 'saveClient' && r && typeof r === 'object' && r.v178 && ligado()) avisar(r.v178);
+        } catch (e) { nota(e, 'post'); }
+        return r;
+      };
+      window.pgpPostJson.__pf144 = true;
+    }
+  } catch (e) { nota(e, 'embrulho post'); }
+  // a INS aberta antes desta versão (recarga/rascunho) e já guardada: repinta a faixa quando o contexto da OS muda
+  embrulhar('pgpAtualizarModoOS', function (orig) {
+    return function () {
+      var r; try { r = orig.apply(this, arguments); } finally {
+        // (auditoria 2, item 4) a linha do rodapé é da coleta que a disparou: outra OS/cliente na tela ⇒ some
+        try { var k = txt(window._PGP_OS_ID) + '|' + chave((document.querySelector('[data-key="m0_razao_social"]') || {}).value); if (PF144._ctx !== undefined && PF144._ctx !== k) limparRodape(); PF144._ctx = k; } catch (e) {}
+        pintarFaixa();
+      }
+      return r;
+    };
+  });
+  embrulhar('pgpGarantirOSInspecaoAvulsa', function (orig) {
+    return async function () { var r = await orig.apply(this, arguments); try { if (r && window._PGP_OS_ID && txt(r) === txt(window._PGP_OS_ID) && insPeloPCF()) pintarFaixa(); } catch (e) {} return r; };
+  });
+
+  // ── 6 · CNPJ/CPF com dígito verificador inválido: pergunta ANTES de enviar ─────────────────────────────────────────
+  function dvCnpj(d) {
+    if (d.length !== 14 || /^(\d)\1{13}$/.test(d)) return false;
+    function dv(b, p) { var s = 0; for (var i = 0; i < p.length; i++) s += parseInt(b.charAt(i), 10) * p[i]; var r = s % 11; return r < 2 ? 0 : 11 - r; }
+    return dv(d.substring(0, 12), [5,4,3,2,9,8,7,6,5,4,3,2]) === parseInt(d.charAt(12), 10) && dv(d.substring(0, 13), [6,5,4,3,2,9,8,7,6,5,4,3,2]) === parseInt(d.charAt(13), 10);
+  }
+  function dvCpf(d) {
+    if (d.length !== 11 || /^(\d)\1{10}$/.test(d)) return false;
+    function dv(n) { var s = 0; for (var i = 0; i < n; i++) s += parseInt(d.charAt(i), 10) * (n + 1 - i); var r = (s * 10) % 11; return r === 10 ? 0 : r; }
+    return dv(9) === parseInt(d.charAt(9), 10) && dv(10) === parseInt(d.charAt(10), 10);
+  }
+  function docValido(v) { var d = txt(v).replace(/\D/g, ''); return d.length === 14 ? dvCnpj(d) : (d.length === 11 ? dvCpf(d) : false); }
+  PF144.docValido = docValido;
+  // devolve true para seguir com o envio, false para parar
+  async function conferirDocs() {
+    if (!ligado() || regime() === 'escritorio') return true;   // dentro de OS do escritório o campo nem viaja (V74)
+    try { if (typeof _pgpEnviarGSBusy !== 'undefined' && _pgpEnviarGSBusy) return true; } catch (e) {}   // envio em curso: o original recusa o 2º toque
+    var idxs = [];
+    try { var ms = (typeof machines !== 'undefined' && machines) ? machines : []; idxs = ms.map(function (_, i) { return i; }).filter(function (i) { try { return pgpHasMachineData(i); } catch (e) { return false; } }); } catch (e) { nota(e, 'maquinas'); }
+    try { if (Array.isArray(window._pcf116Sel) && window._pcf116Sel.length) idxs = idxs.filter(function (i) { return window._pcf116Sel.indexOf(i) >= 0; }); } catch (e) {}   // só as máquinas que VÃO ser enviadas
+    for (var k = 0; k < idxs.length; k++) {
+      var i = idxs[k], el = document.querySelector('[data-key="m' + i + '_cnpj"]');
+      var v = el ? txt(el.value) : '';
+      if (!v || docValido(v)) continue;
+      var cli = ''; try { cli = pgpFieldVal(i, 'razao_social'); } catch (e) {}
+      var seguir = await AppDialog.confirm(
+        'O CNPJ/CPF "' + v + '"' + (cli ? ' de "' + cli + '"' : '') + ' não fecha o dígito verificador.\n\n' +
+        'Enviar SEM o documento (o cadastro não recebe este CNPJ; o campo fica como está) ou voltar e corrigir?',
+        { title: 'CNPJ/CPF inválido', okLabel: 'Enviar sem o CNPJ', cancelLabel: 'Voltar e corrigir' });
+      if (!seguir) {
+        try { el.focus(); el.scrollIntoView({ block: 'center' }); } catch (e) {}
+        try { if (typeof showNotification === 'function') showNotification('✏️ Corrija o CNPJ/CPF e envie de novo.'); } catch (e) {}
+        return false;
+      }
+      PF144.docIgnorado[v] = true;   // o campo fica como está; pf144CorpoCliente tira o documento do corpo
+    }
+    return true;
+  }
+  PF144.conferirDocs = conferirDocs;
+  embrulhar('pgpEnviarGS', function (orig) {
+    return async function () {
+      var args = arguments, self = this;
+      try { if (!(await conferirDocs())) return; } catch (e) { nota(e, 'conferirDocs'); }
+      limparRodape();   // (auditoria 2, item 4) o aviso velho não fica pendurado no envio novo
+      try { return await orig.apply(self, args); }
+      finally { PF144.docIgnorado = {}; }   // (auditoria 2, item 6) "Enviar sem o CNPJ" vale só para ESTE envio
+    };
+  });
+
+  try { pintarFaixa(); } catch (e) {}
+})();
+</script>
+<!-- ████ FIM PCF_V144 (PF144) ████ -->
 
 </body>
 </html>
