@@ -9,7 +9,8 @@
  * O activate abaixo apaga qualquer cache antigo com prefixo 'propertech-'.
  */
 const CACHE_BASE = 'propertech-';
-const CACHE = CACHE_BASE + 'v146';  // 22/10/2026 — par do PCF_V144 (cadastro do cliente pela inspeção de campo). Sem bump, o celular serve o V143 do cache.
+const CACHE = CACHE_BASE + 'v147';  // 27/10/2026 — par do PCF_V145 (peças e serviços da OS + acrescentar na mesma OS). Sem bump, o celular serve o V144 do cache.
+// antes: 'v146'  // 22/10/2026 — par do PCF_V144 (cadastro do cliente pela inspeção de campo). Sem bump, o celular serve o V143 do cache.
 // antes: 'v145'  // 22/10/2026 — par do PCF_V143 (motor de leitura do GAS v177). Sem bump, o celular serve o V142 do cache.
 // antes: 'v144'  // 21/10/2026 — par do PCF_V142 (hora agendada da OS). Sem bump, o celular serve o V141 do cache.
 // antes: 'v143'  // 21/10/2026 — par do PCF_V141 (Assumir tarefa não joga a tela para o topo). Sem bump, o celular serve o V140 do cache.
@@ -73,6 +74,7 @@ const CACHE = CACHE_BASE + 'v146';  // 22/10/2026 — par do PCF_V144 (cadastro 
 //        PCF_V108 ↔  propertech-v110  (11/09 — a rodada Campo e Documentos)
 //        PCF_V110 ↔  propertech-v112  (17/09 — os motores CFX + PWAIT, front puro)
 //        PCF_V109 ↔  propertech-v111  (11/09 — o PDF da preventiva: compress:true + PDF na fila do IndexedDB)
+//        PCF_V145 ↔  propertech-v147  (27/10 — peças E serviços da proposta na OS, ＋ peça/serviço pelo campo na mesma OS, aviso ao concluir)
 //        PCF_V144 ↔  propertech-v146  (22/10 — cadastro do cliente pela inspeção: a INS aberta pelo PCF não trava; o GAS v178 preenche o vazio e pede o diferente)
 //        PCF_V143 ↔  propertech-v145  (22/10 — motor de leitura do GAS v177, o mesmo do PCM V297: ajudante vê a tarefa; lista de OS pelo banco)
 //        PCF_V142 ↔  propertech-v144  (21/10 — hora agendada da OS: listas com dia e hora; linha "Agendada para" na tela da OS)

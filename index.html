@@ -1756,8 +1756,17 @@ html[data-boot="pipeline"] #pf113Splash{display:flex;position:fixed;inset:0;z-in
   diferente em pedido de correcao (faixa amarela de Clientes). Faixa verde na secao 1, aviso pos-envio com o resultado, DV do
   CNPJ/CPF conferido antes de enviar. OS aberta pelo escritorio: V74 igual. Zero SQL. Bloco PF144 no fim; 2 remendos no corpo do saveClient.
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V144</title>
-<meta name="app-build" content="PCF_V144" data-date="2026-10-22">
+<!--
+  PCF_V145 · PECAS E SERVICOS DA OS · 27/10/2026 · feito SOBRE o PCF_V144 no ar · par sw propertech-v147 · par do SQL OS_ITENS_DA_OS (roda ANTES).
+  O cartao "Pecas desta OS" (PF131) vira "Pecas e servicos desta OS" (PF145): as pecas de sempre (mesma resposta, mesma funcao do
+  banco), os SERVICOS da proposta aceita (Feito / Nao feito + motivo) e o + Acrescentar peca ou servico na MESMA OS (busca nas pecas
+  da maquina, produtos do Omie e servicos; nao achou, digita = a identificar; "ja troquei/fiz" ou "precisa aprovar"). Aviso ao
+  concluir a ultima tarefa ou a coleta com item aprovado sem resposta (avisa e deixa concluir). Fila propria persist-first.
+  Sem o SQL no servidor o PF145 se desliga e o PF131 volta. Chave de volta pcf145=off. Zero GAS. Bloco PF145 no fim do body;
+  3 remendos de uma linha no PF131 (carregar, pintar e o embrulho do pgpSetAcao ficam com o PF145 quando ele esta ligado).
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V145</title>
+<meta name="app-build" content="PCF_V145" data-date="2026-10-27">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -39150,6 +39159,7 @@ html.pf129 .pf131-c.on{background:#fffbeb;border-color:#b45309;color:#92400e}
   // ── 3 · ler do servidor ──────────────────────────────────────────────────────────────────────────────────
   async function carregar(os, porque) {
     if (!os || PF131.voo[os]) return;
+    if (window.PF145 && PF145.ativo && PF145.ativo()) return;   /* PCF_V145: com o PF145 ligado a lista é a dele */
     PF131.voo[os] = true; pintar();
     var g0 = PF131.ger[os] || 0;
     try {
@@ -39387,7 +39397,7 @@ html.pf129 .pf131-c.on{background:#fffbeb;border-color:#b45309;color:#92400e}
     });
   }
   var _raf = 0;
-  function pintar() { if (_raf) return; _raf = setTimeout(function () { _raf = 0; try { pintarPipeline(); } catch (e) { nota(e, 'pipeline'); } try { pintarColeta(); } catch (e) { nota(e, 'coleta'); } }, 30); }
+  function pintar() { if (_raf) return; _raf = setTimeout(function () { _raf = 0; if (window.PF145 && PF145.ativo && PF145.ativo()) { document.querySelectorAll('[id^="pf131Box"]').forEach(function (b) { b.remove(); }); return; }   /* PCF_V145 */ try { pintarPipeline(); } catch (e) { nota(e, 'pipeline'); } try { pintarColeta(); } catch (e) { nota(e, 'coleta'); } }, 30); }
   PF131.pintar = pintar;
   PF131.t = { numBR: function (x) { return numBR(x); }, qtdCampo: qtdCampo, estEfetivo: estEfetivo };   // para a bancada
 
@@ -39469,6 +39479,7 @@ html.pf129 .pf131-c.on{background:#fffbeb;border-color:#b45309;color:#92400e}
   embrulhar('pgpSetAcao', function (orig) {
     return function (pk, acao) {
       var r = orig.apply(this, arguments);
+      if (window.PF145 && PF145.ativo && PF145.ativo()) { pintar(); return r; }   /* PCF_V145: o PF145 responde */
       try {
         var m = String(pk || '').match(/^m(\d+)_(.+)$/), os = osColeta(), t = PF131.toque;
         var doTecnico = !!(t && t.pk === pk && Date.now() - t.em < 2500); if (doTecnico) PF131.toque = null;
@@ -43504,6 +43515,870 @@ html.pf129 #pf142Agenda .s{color:#475569}
 })();
 </script>
 <!-- ████ FIM PCF_V144 (PF144) ████ -->
+
+<!-- ████ PCF_V145 (PF145) · PEÇAS E SERVIÇOS DA OS — serviços da proposta, ＋ acrescentar na mesma OS, aviso ao concluir ████ -->
+<style>
+/* PF145 — o cartão "📋 Peças e serviços desta OS" usa as MESMAS classes visuais do PF131 (.pf131-*) e acrescenta só o que é novo.
+   Com o PF145 ligado, os cartões antigos do PF131 ficam escondidos (o PF131 segue vivo por baixo para subir respostas antigas). */
+html.pf145-on #pf131Pecas,html.pf145-on [id^="pf131Box"]{display:none!important}
+.pf145-tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.02em;padding:1px 7px;border-radius:10px;margin-right:6px;vertical-align:1px;border:1px solid #334155;color:#cbd5e1}
+.pf145-tag.pc{border-color:#1d4ed8;color:#93c5fd}.pf145-tag.sv{border-color:#7c3aed;color:#c4b5fd}.pf145-tag.cp{border-color:#b45309;color:#fcd34d}
+.pf145-tag.ap{border-color:#b45309;background:#2a1f0f;color:#fde68a}.pf145-tag.id{border-color:#9f1239;color:#fda4af}
+.pf145-add{padding:10px 12px;border-top:1px solid #1e293b}
+.pf145-add .pf131-b{width:100%}
+.pf145-novo textarea{width:100%;box-sizing:border-box;min-height:64px;padding:8px 10px;border:1px solid #475569;border-radius:8px;background:#0f172a;color:#e2e8f0;font:15px system-ui,sans-serif;resize:vertical}
+.pf145-novo .pf145-qu{display:flex;gap:8px}.pf145-novo .pf145-qu input:first-child{flex:1 1 auto}.pf145-novo .pf145-qu input:last-child{flex:0 0 76px}
+.pf145-res{margin-top:6px;display:flex;flex-direction:column;gap:6px}
+.pf145-op{display:block;width:100%;text-align:left;min-height:44px;padding:8px 10px;border:1px solid #475569;border-radius:8px;background:#0f172a;color:#e2e8f0;font-size:14px;cursor:pointer}
+.pf145-op small{display:block;color:#94a3b8;font-size:12px;margin-top:2px}
+.pf145-op.livre{border-style:dashed;color:#fcd34d}
+.pf145-op:active{filter:brightness(1.25)}
+.pf145-sel{margin-top:6px;padding:8px 10px;border:2px solid #16a34a;border-radius:8px;background:#0f2a1a;color:#bbf7d0;font-size:14px;display:flex;gap:8px;align-items:center;justify-content:space-between}
+.pf145-sel.livre{border-color:#b45309;background:#2a1f0f;color:#fde68a}
+.pf145-dica{font-size:12px;color:#94a3b8;margin-top:4px}
+.pf145-riscado .pf131-d{text-decoration:line-through;opacity:.7}
+#pf145Folha{position:fixed;inset:0;z-index:100050;background:rgba(2,6,23,.62);display:flex;align-items:flex-end;justify-content:center}
+#pf145Folha .pf145-fo{width:100%;max-width:560px;max-height:82vh;overflow:auto;background:#0f172a;color:#e2e8f0;border-radius:16px 16px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));box-shadow:0 -8px 30px rgba(0,0,0,.4)}
+#pf145Folha h3{margin:0 0 6px;font-size:17px}
+#pf145Folha .s{font-size:13px;color:#94a3b8;margin-bottom:10px;line-height:1.4}
+#pf145Folha .li{padding:8px 0;border-top:1px solid #1e293b;font-size:14px;line-height:1.35}
+#pf145Folha .li small{display:block;color:#94a3b8;font-size:12px}
+#pf145Folha .bt{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+html.pf129 .pf145-tag{background:#fff;border-color:#cbd5e1;color:#334155}
+html.pf129 .pf145-tag.pc{border-color:#1d4ed8;color:#1d4ed8}html.pf129 .pf145-tag.sv{border-color:#7c3aed;color:#6d28d9}html.pf129 .pf145-tag.cp{border-color:#b45309;color:#92400e}
+html.pf129 .pf145-tag.ap{background:#fffbeb;border-color:#b45309;color:#92400e}html.pf129 .pf145-tag.id{border-color:#be123c;color:#be123c}
+html.pf129 .pf145-add{border-top-color:#eef1f5}
+html.pf129 .pf145-novo textarea,html.pf129 .pf145-op{background:#fff;border-color:#cbd5e1;color:#0f172a}
+html.pf129 .pf145-op small,html.pf129 .pf145-dica{color:#475569}
+html.pf129 .pf145-op.livre{color:#92400e}
+html.pf129 .pf145-sel{background:#f0fdf4;border-color:#16a34a;color:#166534}html.pf129 .pf145-sel.livre{background:#fffbeb;border-color:#b45309;color:#92400e}
+html.pf129 #pf145Folha .pf145-fo{background:#fff;color:#0f172a}
+html.pf129 #pf145Folha .s,html.pf129 #pf145Folha .li small{color:#475569}
+html.pf129 #pf145Folha .li{border-top-color:#eef1f5}
+</style>
+<script>
+/* ════════════════════════════════════════════════════════════════════════════════════════════════════════
+   PCF_V145 (PF145) — 27/10/2026 · rodada 2026-10-27_FERNANDO_pcf_itens_da_os · par do SQL OS_ITENS_DA_OS (roda ANTES).
+   Pedido do Fernando: peças E SERVIÇOS da proposta no PCF, na MESMA OS; acrescentar peça ou serviço pelo PCF sem abrir
+   outra OS; aviso de aprovado e não trocado/feito.
+   · Cartão "📋 Peças e serviços desta OS" (tela da OS, acima das tarefas; e no painel de cada máquina da coleta) no lugar
+     do "🔩 Peças desta OS" do PF131: as PEÇAS de sempre (✅ Trocada / ⏸ Não trocada — a mesma resposta, a mesma função do
+     banco), os SERVIÇOS da proposta (✅ Feito / ⏸ Não feito + motivo) e os ACRÉSCIMOS do campo.
+   · ＋ Acrescentar peça ou serviço: busca nas peças da máquina, nos produtos do Omie e nos serviços cadastrados; não achou,
+     digita (fica "a identificar"). O técnico diz "✅ Já troquei/fiz agora" ou "⏳ Precisa aprovar" (o escritório faz o aditivo).
+     Só quem lançou muda ou retira o lançamento (o banco confere).
+   · Aviso ao concluir: ao confirmar a ÚLTIMA tarefa aberta da OS, ou ao tocar ✅ Concluir coleta, se houver peça ou serviço
+     aprovado ainda SEM resposta, uma folha lista o que falta: "Responder agora" ou "Concluir assim mesmo" (decisão D1 de 08/10:
+     avisa e deixa concluir).
+   · Tudo gravado no celular ANTES de subir (fila pf145_fila_v1); sai da fila só com o "ok" do servidor. A lista guardada
+     (pf145_itens_v1) só tem o que o servidor disse, com a HORA. Sem o SQL no servidor, o PF145 se desliga sozinho e o PF131
+     volta (as peças não somem). Chave de volta: localStorage pcf145 = off.
+   Zero GAS. Lê/grava só pelas RPCs do banco com o crachá do login com PIN.
+   ════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+  var PF145 = window.PF145 = { versao: 'PCF_V145', log: [], dados: {}, erro: {}, voo: {}, ger: {}, reler: {}, aberto: '', form: {}, novo: {},
+                               conf: '', subindo: false, toque: null, semSql: false, ack: null, buscaT: {}, legN: -1 };
+  var CACHE_KEY = 'pf145_itens_v1', FILA_KEY = 'pf145_fila_v1', RECUSA_KEY = 'pf145_recusados_v1', OFF_KEY = 'pcf145', LEG_FILA = 'pf131_fila_v1';
+  var HINTS_DEFINITIVOS = { fora_da_lista: 1, cancelada: 1, uid_reusado: 1, motivo: 1, qtd: 1, estado: 1, chave: 1, uid: 1, os: 1, ref: 1, formato: 1,
+                            natureza: 1, fonte: 1, descricao: 1, unidade: 1, situacao: 1, obs: 1, maquina: 1, os_fechada: 1, substitui: 1,
+                            nao_e_seu: 1, ja_retirado: 1, limite: 1 };
+  var MOT_PECA = [['cliente_desistiu', 'Cliente desistiu'], ['peca_nao_chegou', 'Peça não chegou'], ['nao_precisou', 'Não precisou'], ['outro', 'Outro…']];
+  var MOT_SERV = [['cliente_desistiu', 'Cliente desistiu'], ['nao_precisou', 'Não precisou'], ['faltou_material', 'Faltou material'], ['outro', 'Outro…']];
+  function $(id) { return document.getElementById(id); }
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function nota(e, onde) { try { PF145.log.push({ onde: onde, msg: String((e && e.message) || e), em: Date.now() }); if (PF145.log.length > 40) PF145.log.shift(); } catch (x) {} }
+  function lerJ(k, p) { try { var v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? p : v; } catch (e) { return p; } }
+  function gravarJ(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { nota(e, 'gravar ' + k); return false; } }
+  function aviso(m) { try { showNotification(m); } catch (e) {} }
+  function hhmm(ms) { var d = new Date(ms || 0); if (!ms || isNaN(d.getTime())) return ''; var p = function (n) { return (n < 10 ? '0' : '') + n; };
+    var hoje = new Date(); return (d.toDateString() === hoje.toDateString() ? '' : p(d.getDate()) + '/' + p(d.getMonth() + 1) + ' ') + p(d.getHours()) + ':' + p(d.getMinutes()); }
+  function num(v) { var n = Number(v); if (!isFinite(n)) return String(v == null ? '' : v); return (Math.round(n * 1000) / 1000).toLocaleString('pt-BR'); }
+  function dataBR(s) { s = String(s || ''); return /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(8, 10) + '/' + s.slice(5, 7) : s; }
+  function osTela() { try { return String(_pfOsId || ''); } catch (e) { return ''; } }
+  function osColeta() { try { return String(window._PGP_OS_ID || ''); } catch (e) { return ''; } }
+  function ehPrev() { try { return _pgpTipoVisita === 'preventiva'; } catch (e) { return false; } }
+  function uid() { return 'pf145-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10); }
+  function dono() { try { if (window.PF123 && typeof PF123.dono === 'function') return String(PF123.dono() || ''); } catch (e) {}
+    try { var s = window.PROPER_SESSION || JSON.parse(localStorage.getItem('proper_session') || 'null'); return String((s && (s.id_tecnico || (s.tecnico && s.tecnico.id))) || ''); } catch (e) { return ''; } }
+  function qtdCampo(v) { var n = Number(v); if (!isFinite(n)) return ''; return String(Math.round(n * 1000) / 1000).replace('.', ','); }
+  function numBR(s) {   // "1,5" · "1.000" (milhar) · "1.000,5" · "1.5"
+    s = String(s || '').trim().replace(/\s/g, '');
+    if (/,/.test(s)) s = s.replace(/\./g, '').replace(',', '.'); else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');
+    var n = Number(s); return isFinite(n) && s !== '' ? n : NaN; }
+  function semAcento(s) { return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+
+  // ── 0 · ligado? (chave de volta pcf145=off · sem o SQL no servidor o PF131 volta sozinho) ─────────────────────
+  function ativo() { if (PF145.semSql) return false; try { return localStorage.getItem(OFF_KEY) !== 'off'; } catch (e) { return true; } }
+  PF145.ativo = ativo;
+  function marcar() { try { document.documentElement.classList.toggle('pf145-on', ativo()); } catch (e) {} }
+  function desligarPorSemSql() {
+    if (PF145.semSql) return;
+    PF145.semSql = true; marcar();
+    ['pf145Itens'].forEach(function (id) { var e = $(id); if (e) e.style.display = 'none'; });
+    document.querySelectorAll('[id^="pf145Box"]').forEach(function (b) { b.remove(); });
+    // o PF131 volta: a lista de peças de antes (o servidor sem o SQL OS_ITENS_DA_OS ainda tem a PECAS_DA_OS)
+    try { if (window.PF131) { var o = osTela() || osColeta(); if (o && PF131.carregar) PF131.carregar(o, 'pf145 sem sql'); if (PF131.pintar) PF131.pintar(); } } catch (e) { nota(e, 'volta PF131'); }
+  }
+
+  // ── 1 · o servidor (o transporte do PF123, com o crachá do PIN) ─────────────────────────────────────────────
+  function erro(tipo, msg, st) { var e = new Error(msg || tipo); e.pf145 = tipo; e.status = st || 0; return e; }
+  async function rpc(fn, args) {
+    if (window.PF123 && typeof PF123.rpc === 'function') {
+      try { return await PF123.rpc(fn, args, 15000); }
+      catch (e) {
+        var t = e && e.pf123;
+        if (t === 'sem_sql') throw erro('sem_sql', 'o servidor ainda não tem a lista de peças e serviços (SQL OS_ITENS_DA_OS)', 404);
+        var ex2 = erro(t || 'rede', (e && e.message) || 'falhou', e && e.status); ex2.hint = (e && e.hint) || ''; throw ex2;
+      }
+    }
+    if (navigator.onLine === false) throw erro('rede', 'sem internet');
+    var tok = null; try { tok = await _pcfSupaToken(); } catch (e) { tok = null; }
+    if (!tok) throw erro('cracha', 'falta o login com PIN neste celular (entre de novo pelo Hub)');
+    var r, d = null, txt = '';
+    try {
+      r = await fetch(PCF_SUPA_URL + '/rest/v1/rpc/' + fn, { method: 'POST',
+        headers: { 'apikey': PCF_SUPA_ANON, 'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: JSON.stringify(args || {}) });
+      txt = await r.text();
+    } catch (e) { throw erro('rede', 'sem resposta do servidor'); }
+    try { d = JSON.parse(txt); } catch (e) { d = null; }
+    if (r.status === 404) throw erro('sem_sql', 'o servidor ainda não tem a lista de peças e serviços (SQL OS_ITENS_DA_OS)', 404);
+    if (r.status === 401 || r.status === 403) throw erro('cracha', (d && d.message) || 'o servidor recusou o crachá — entre de novo pelo Hub', r.status);
+    if (r.status >= 500 || !r.status) throw erro('rede', 'o servidor falhou (' + r.status + ')', r.status);
+    if (!r.ok) { var ex = erro('recusado', (d && (d.message || d.hint)) || ('HTTP ' + r.status), r.status); ex.hint = (d && d.hint) || ''; throw ex; }
+    return d;
+  }
+  PF145.rpc = rpc;
+
+  // ── 2 · a lista guardada no celular (SÓ o que o servidor disse, com a hora) ──────────────────────────────────
+  function cache() { var c = lerJ(CACHE_KEY, {}); return (c && typeof c === 'object') ? c : {}; }
+  function cacheGravar(os, d, ts) {
+    var c = cache(); c[os] = { d: d, ts: ts || Date.now() };
+    var ks = Object.keys(c); if (ks.length > 20) ks.sort(function (a, b) { return (c[a].ts || 0) - (c[b].ts || 0); }).slice(0, ks.length - 20).forEach(function (k) { delete c[k]; });
+    gravarJ(CACHE_KEY, c);
+  }
+  function dadosDe(os) {
+    if (!os) return null;
+    if (PF145.dados[os]) return PF145.dados[os];
+    var c = cache()[os]; if (c && c.d && c.d.ok && Array.isArray(c.d.servicos)) return { d: c.d, ts: c.ts, fonte: 'cache' };
+    return null;
+  }
+  // o que o servidor confirmou entra na lista JÁ (a releitura vem depois) — também no guardado
+  function aplicarConfirmada(it, r) {
+    var x = dadosDe(it.os); if (!x || !x.d) return;
+    var d = x.d;
+    if (it.tipo === 'peca') (d.pecas || []).forEach(function (p) {
+      if (p.chave !== r.chave) return;
+      p.estado = r.estado === 'prevista' ? (p.derivada_visita ? 'trocada' : 'prevista') : r.estado;
+      p.derivada = r.estado === 'prevista' && !!p.derivada_visita;
+      p.motivo = r.motivo || null; p.ref_usada = r.ref_usada || null; p.por_nome = r.por_nome || ''; p.em = r.em || null;
+      p.qtd_trocada = r.estado === 'trocada' ? (r.qtd != null ? r.qtd : p.qtd) : (p.derivada ? p.qtd : null);
+    });
+    if (it.tipo === 'servico') (d.servicos || []).forEach(function (s) {
+      if (s.chave !== r.chave) return;
+      s.estado = r.estado; s.motivo = r.motivo || null; s.por_nome = r.por_nome || ''; s.em = r.em || null;
+    });
+    if (it.tipo === 'incluir') {
+      var ac = (d.acrescimos || []).filter(function (a) { return !(it.item.substitui && a.id === it.item.substitui) && a.id !== r.id; });
+      if (!r.retirado) ac.push({ chave: r.chave, id: r.id, natureza: it.item.natureza, origem: 'campo', fonte: it.item.fonte, ref_id: it.item.ref_id || null,
+                                 codigo: it.item.codigo || null, descricao: r.descricao || it.item.descricao, qtd: it.item.qtd, unidade: it.item.unidade || 'un',
+                                 maquina_id: r.maquina_id || null, maquina_rotulo: rotuloMaq(d, r.maquina_id), situacao: r.situacao, estado: r.situacao,
+                                 a_identificar: it.item.fonte === 'texto', obs: it.item.obs || null, por: dono(), por_nome: nomeEu(), em: r.em, meu: true });
+      d.acrescimos = ac;
+    }
+    if (it.tipo === 'retirar') d.acrescimos = (d.acrescimos || []).filter(function (a) { return a.id !== it.id; });
+    PF145.ger[it.os] = (PF145.ger[it.os] || 0) + 1;   // uma leitura disparada ANTES desta confirmação não vale mais
+    PF145.dados[it.os] = { d: d, ts: x.ts, fonte: x.fonte };
+    if (!d.sem_os) cacheGravar(it.os, d, x.ts);   // a hora mostrada continua sendo a da LEITURA
+  }
+  function rotuloMaq(d, id) { if (!id) return null; var m = (d.maquinas || []).filter(function (q) { return q.id === id; })[0]; return m ? m.rotulo : id; }
+  function nomeEu() { try { var s = window.PROPER_SESSION || JSON.parse(localStorage.getItem('proper_session') || 'null'); return String((s && (s.nome_tecnico || (s.tecnico && s.tecnico.nome))) || ''); } catch (e) { return ''; } }
+
+  // ── 3 · ler do servidor ──────────────────────────────────────────────────────────────────────────────────
+  async function carregar(os, porque) {
+    if (!os || PF145.voo[os] || !ativo()) return;
+    PF145.voo[os] = true; pintar();
+    var g0 = PF145.ger[os] || 0;
+    try {
+      var d = await rpc('pc_os_itens', { p_os: os });
+      if (!d || d.ok !== true || !Array.isArray(d.pecas) || !Array.isArray(d.servicos) || !Array.isArray(d.acrescimos)) throw erro('recusado', 'resposta estranha do servidor');
+      if ((PF145.ger[os] || 0) !== g0) { PF145.reler[os] = true; return; }   // chegou uma confirmação no meio: esta foto é velha — relê
+      PF145.dados[os] = { d: d, ts: Date.now(), fonte: 'servidor' };
+      delete PF145.erro[os];
+      if (!d.sem_os) cacheGravar(os, d);   // "a OS ainda não chegou ao banco" nunca vira lista vazia guardada
+    } catch (e) {
+      if (e && e.pf145 === 'sem_sql') { delete PF145.voo[os]; desligarPorSemSql(); return; }
+      PF145.erro[os] = { tipo: e.pf145 || 'rede', msg: (e && e.message) || 'falhou', em: Date.now() };
+      nota(e, 'carregar ' + os + ' (' + (porque || '') + ')');
+    } finally { delete PF145.voo[os]; pintar(); if (PF145.reler[os]) { delete PF145.reler[os]; setTimeout(function () { carregar(os, 'releitura'); }, 0); } }
+  }
+  PF145.carregar = carregar;
+
+  // ── 4 · a fila (persist-first): respostas de peça e de serviço, acréscimos e retiradas ────────────────────────
+  function fila() { var f = lerJ(FILA_KEY, {}); return (f && typeof f === 'object') ? f : {}; }
+  function recusados() { var r = lerJ(RECUSA_KEY, []); return Array.isArray(r) ? r : []; }
+  function recusadosLegado() { var r = lerJ('pf131_recusados_v1', []); return Array.isArray(r) ? r : []; }   // as da fila antiga (PF131) aparecem aqui
+  function ordemFila(f) { return Object.keys(f).filter(function (k) { return f[k]; }).sort(function (a, b) { return (f[a].desde || 0) - (f[b].desde || 0); }); }
+  // a resposta mais NOVA ainda no celular para esta peça/serviço (de QUALQUER técnico — o desenho diz de quem); a fila antiga do PF131 conta
+  function pendenteDe(os, chave) {
+    var f = fila(), m = null;
+    Object.keys(f).forEach(function (k) { var it = f[k]; if (it && (it.tipo === 'peca' || it.tipo === 'servico') && it.os === os && it.chave === chave && (!m || it.desde > m.desde)) m = it; });
+    if (!m) { var g = lerJ(LEG_FILA, {}); if (g && typeof g === 'object') Object.keys(g).forEach(function (k) { var it = g[k]; if (it && it.os === os && it.chave === chave && (!m || it.desde > m.desde)) m = Object.assign({ tipo: 'peca', legado: true }, it); }); }
+    return m;
+  }
+  function legadoPendente(os, chave) { var g = lerJ(LEG_FILA, {}); return !!g && typeof g === 'object' && Object.keys(g).some(function (k) { var it = g[k]; return it && it.os === os && it.chave === chave; }); }
+  function inclusoesPendentes(os) { var f = fila(); return ordemFila(f).map(function (k) { return f[k]; }).filter(function (it) { return it.tipo === 'incluir' && it.os === os; }); }
+  function retiradaPendente(os, id) { var f = fila(); return Object.keys(f).some(function (k) { var it = f[k]; return it && it.os === os && ((it.tipo === 'retirar' && it.id === id) || (it.tipo === 'incluir' && it.item && it.item.substitui === id)); }); }
+  function estEfetivo(p, pen) {
+    if (!pen) return p.estado;
+    if (pen.estado === 'limpar') return p.natureza === 'servico' ? 'prevista' : (p.derivada_visita ? 'trocada' : 'prevista');
+    return pen.estado;
+  }
+  function enfileirar(it) {
+    it.client_uid = it.client_uid || uid(); it.desde = Date.now(); it.sub = dono();   // a fila é do TÉCNICO (celular compartilhado)
+    if (!it.sub) { aviso('⚠ Sem o login do técnico neste celular — entre de novo pelo ProperHub. NADA foi guardado.'); return false; }
+    PF145.ger[it.os] = (PF145.ger[it.os] || 0) + 1;
+    var f = fila(); f[it.client_uid] = it;
+    if (!gravarJ(FILA_KEY, f)) { aviso('⚠ O celular está sem espaço — NADA foi guardado. Libere espaço e toque de novo.'); return false; }
+    PF145.aberto = ''; PF145.conf = ''; pintar(); subir();
+    return true;
+  }
+  PF145.enfileirar = enfileirar;
+  function chamada(it) {
+    if (it.tipo === 'peca') return ['pc_os_peca_responder', { p: { os: it.os, chave: it.chave, estado: it.estado, motivo: it.motivo || null, qtd: it.qtd || null, ref_usada: it.ref_usada || null, client_uid: it.client_uid } }];
+    if (it.tipo === 'servico') return ['pc_os_servico_responder', { p: { os: it.os, chave: it.chave, estado: it.estado, motivo: it.motivo || null, client_uid: it.client_uid } }];
+    if (it.tipo === 'incluir') return ['pc_os_item_incluir', { p: Object.assign({}, it.item, { os: it.os, client_uid: it.client_uid }) }];
+    return ['pc_os_item_retirar', { p: { os: it.os, id: it.id, motivo: it.motivo || null } }];
+  }
+  function confirmou(it, r) {
+    if (!r || r.ok !== true) return false;
+    if (it.tipo === 'peca' || it.tipo === 'servico') return r.chave === it.chave;
+    if (it.tipo === 'incluir') return !!r.id && r.client_uid === it.client_uid;
+    return r.id === it.id;
+  }
+  function descDe(it) {
+    if (it.tipo === 'incluir') return (it.item && it.item.descricao) || 'item';
+    var x = dadosDe(it.os), d = x && x.d; if (!d) return '';
+    var todos = (d.pecas || []).concat(d.servicos || [], d.acrescimos || []);
+    var k = it.tipo === 'retirar' ? 'X:' + it.id : it.chave;
+    var p = todos.filter(function (q) { return q.chave === k; })[0]; return (p && p.descricao) || '';
+  }
+  async function subir() {
+    if (PF145.subindo || !ativo()) return; PF145.subindo = true;
+    var parou = false, feitos = {}, reler = {}, esperaLeg = false;
+    try {
+      var eu = dono();
+      var ks = ordemFila(fila()).filter(function (k) { var x = fila()[k]; return x && x.sub === eu; });   // o de outro técnico espera o login dele
+      for (var i = 0; i < ks.length; i++) {
+        var it = fila()[ks[i]]; if (!it) continue; feitos[ks[i]] = 1;
+        if (it.tipo === 'peca' && legadoPendente(it.os, it.chave)) { esperaLeg = true; continue; }   // a resposta antiga desta peça sobe primeiro (ordem)
+        try {
+          var c = chamada(it), r = await rpc(c[0], c[1]);
+          if (!confirmou(it, r)) throw erro('recusado', 'o servidor não confirmou');
+          var f = fila(); delete f[it.client_uid]; gravarJ(FILA_KEY, f);
+          aplicarConfirmada(it, r); delete PF145.erro[it.os]; reler[it.os] = 1;
+        } catch (e) {
+          if (e && e.pf145 === 'sem_sql') { parou = true; desligarPorSemSql(); break; }
+          if (e.pf145 === 'recusado' && e.status === 400 && HINTS_DEFINITIVOS[e.hint]) {
+            // o banco disse NÃO por regra: sai da fila, mas fica GUARDADO no celular com o conteúdo até o técnico ler
+            var rc = recusados(); rc.push({ os: it.os, tipo: it.tipo, chave: it.chave || (it.id ? 'X:' + it.id : ''), estado: it.estado || (it.item && it.item.situacao) || '',
+                                            motivo: it.motivo || '', descricao: descDe(it), msg: e.message, em: Date.now(), sub: it.sub });
+            if (!gravarJ(RECUSA_KEY, rc.slice(-200))) {   // sem espaço para guardar a recusa: NÃO tira da fila e PARA
+              it.erro = 'sem espaço no celular para guardar a recusa: ' + e.message; var h0 = fila(); if (h0[it.client_uid]) { h0[it.client_uid] = it; gravarJ(FILA_KEY, h0); } parou = true; break; }
+            var g = fila(); delete g[it.client_uid]; gravarJ(FILA_KEY, g);
+            aviso('⚠ Peças e serviços: o servidor recusou um envio — ' + e.message + ' (ficou anotado no cartão)');
+            reler[it.os] = 1;
+          } else {
+            it.erro = e.message; it.tent = (it.tent || 0) + 1; var h = fila(); if (h[it.client_uid]) { h[it.client_uid] = it; gravarJ(FILA_KEY, h); } nota(e, 'subir');
+            // sem rede, crachá, servidor fora (5xx) ou limite (429): para e tenta depois. Outro 4xx que não é regra: fica e os SEGUINTES seguem
+            if (e.pf145 !== 'recusado' || e.status === 429 || e.status >= 500 || !e.status) { parou = true; break; }
+          }
+        }
+      }
+    } finally {
+      PF145.subindo = false; pintar();
+      Object.keys(reler).forEach(function (os) { carregar(os, 'depois de subir'); });
+      if (!parou) { var eu2 = dono(); if (ordemFila(fila()).some(function (k) { var x = fila()[k]; return x && x.sub === eu2 && !feitos[k]; })) setTimeout(subir, 50); }
+      if (esperaLeg) setTimeout(subir, 3000);
+    }
+  }
+  PF145.subir = subir;
+
+  // ── 5 · o desenho ────────────────────────────────────────────────────────────────────────────────────────
+  function rotMotivo(m, lista) {
+    m = String(m || ''); for (var i = 0; i < lista.length; i++) if (lista[i][0] === m) return lista[i][1];
+    return m.indexOf('outro:') === 0 ? m.slice(6).trim() : m;
+  }
+  function linhaChecklist(p, idx) {   // a linha do checklist da preventiva que é esta peça (só na coleta, na máquina idx)
+    if (idx == null || !p.part_id || !ehPrev()) return null;
+    try {
+      var mp = pgpPartIdMapDe(idx) || {}, k = Object.keys(mp).filter(function (x) { return mp[x] === p.part_id; })[0];
+      if (!k) return null;
+      var pk = 'm' + idx + '_' + k, ac = $(pk + '_acao'); if (!ac) return null;
+      return { pk: pk, acao: String(ac.value || '') };
+    } catch (e) { return null; }
+  }
+  function origemLinha(p) {
+    var m = ['📋 ' + esc(p.proposta || 'Proposta') + (p.versao ? ' v' + esc(p.versao) : '') + (p.tipo === 'complementar' ? ' (complementar)' : '')];
+    if (p.codigo) m.push('Ref. ' + esc(p.codigo));
+    if (p.omie_codigo) m.push('Omie ' + esc(p.omie_codigo) + (p.omie_descricao && p.omie_descricao !== p.descricao ? ' · ' + esc(p.omie_descricao) : ''));
+    return '<div class="pf131-m">' + m.join(' · ') + '</div>';
+  }
+  function filaHtml(pen) {
+    if (!pen) return '';
+    var deOutro = pen.sub && pen.sub !== dono();
+    return '<div class="pf131-st fi">' + (deOutro ? '⏳ Guardado neste celular por ' + esc(pen.sub) + ' — sobe quando ' + esc(pen.sub) + ' entrar de novo'
+            : '⏳ Guardado no celular — sobe ao servidor quando houver sinal' + (pen.erro ? ' (' + esc(pen.erro) + ')' : '')) + '</div>';
+  }
+  function pecaHtml(os, p, idx) {
+    var key = os + '|' + p.chave, pen = pendenteDe(os, p.chave), ch = linhaChecklist(p, idx);
+    var est = estEfetivo(p, pen), deOutro = pen && pen.sub && pen.sub !== dono(), legado = pen && pen.legado;
+    var h = '<div class="pf131-it" data-pf145-chave="' + esc(p.chave) + '" data-pf145-nat="peca">' +
+      '<div class="pf131-l1"><span class="pf131-d"><span class="pf145-tag pc">🔩 Peça</span>' + esc(p.descricao) + '</span><span class="pf131-q">' + esc(num(p.qtd)) + ' ' + esc(p.unidade || 'un') + '</span></div>' +
+      origemLinha(p);
+    var st = '', cl = 'pv';
+    if (est === 'trocada') {
+      cl = 'tr';
+      if (pen) st = '✅ Trocada' + (pen.qtd ? ' · ' + esc(num(pen.qtd)) : '') + (pen.ref_usada ? ' · ref. ' + esc(pen.ref_usada) : '');
+      else if (p.derivada) st = '✅ Trocada na preventiva' + (p.derivada_data ? ' de ' + esc(dataBR(p.derivada_data)) : '') + (p.ref_usada ? ' · ref. ' + esc(p.ref_usada) : '');
+      else st = '✅ Trocada · ' + esc(num(p.qtd_trocada != null ? p.qtd_trocada : p.qtd)) + (p.ref_usada ? ' · ref. ' + esc(p.ref_usada) : '') + (p.por_nome ? ' · ' + esc(p.por_nome) : '') + (p.em ? ' ' + esc(hhmm(Date.parse(p.em))) : '') + ' ☁️';
+    } else if (est === 'nao_trocada') {
+      cl = 'nt'; st = '⏸ Não trocada — ' + esc(rotMotivo(pen ? pen.motivo : p.motivo, MOT_PECA)) + (!pen && p.por_nome ? ' · ' + esc(p.por_nome) : '') + (!pen && p.em ? ' ' + esc(hhmm(Date.parse(p.em))) + ' ☁️' : '');
+    } else if (ch && ch.acao === 'trocada') {
+      cl = 'tr'; st = '✅ Marcada "Trocada" no checklist — sobe com a preventiva';
+    } else st = '🔧 Trocar nesta visita';
+    h += '<div class="pf131-st ' + cl + '">' + st + '</div>' + filaHtml(pen);
+    if (deOutro || legado) h += '<div class="pf131-m">' + (legado && !deOutro ? 'Esta resposta é da versão anterior do app e está subindo — espere o ☁️ para mudar.' : 'Para não inverter a ordem das respostas, esta peça só pode ser mudada depois que a resposta de ' + esc(pen.sub) + ' subir.') + '</div>';
+    else if (PF145.aberto === key + '|t' || PF145.aberto === key + '|n') h += formHtml(os, p, PF145.aberto.slice(-1), 'peca');
+    else {
+      h += '<div class="pf131-bts">';
+      if (ch) {
+        if (ch.acao !== 'trocada') h += '<button type="button" class="pf131-b ok" data-pf145="chk" data-pk="' + esc(ch.pk) + '">✅ Trocada (marca no checklist)</button>';
+        if (ch.acao !== 'trocada' && est !== 'nao_trocada') h += '<button type="button" class="pf131-b nao" data-pf145="nao" data-k="' + esc(key) + '">⏸ Não trocada</button>';
+        if (est === 'nao_trocada' || (est === 'trocada' && (pen || !p.derivada))) h += '<button type="button" class="pf131-b lv" data-pf145="limpar" data-k="' + esc(key) + '">↺ Desfazer</button>';
+      } else if (est === 'prevista') {
+        h += '<button type="button" class="pf131-b ok" data-pf145="sim" data-k="' + esc(key) + '">✅ Trocada</button>' +
+             '<button type="button" class="pf131-b nao" data-pf145="nao" data-k="' + esc(key) + '">⏸ Não trocada</button>';
+      } else if (!(est === 'trocada' && p.derivada && !pen)) {
+        h += '<button type="button" class="pf131-b lv" data-pf145="mudar" data-k="' + esc(key) + '">✎ Mudar a resposta</button>' +
+             '<button type="button" class="pf131-b lv" data-pf145="limpar" data-k="' + esc(key) + '">↺ Desfazer</button>';
+      }
+      h += '</div>';
+    }
+    return h + '</div>';
+  }
+  function servicoHtml(os, s) {
+    var key = os + '|' + s.chave, pen = pendenteDe(os, s.chave), est = estEfetivo(s, pen), deOutro = pen && pen.sub && pen.sub !== dono();
+    var h = '<div class="pf131-it" data-pf145-chave="' + esc(s.chave) + '" data-pf145-nat="servico">' +
+      '<div class="pf131-l1"><span class="pf131-d"><span class="pf145-tag sv">🛠 Serviço</span>' + esc(s.descricao) + '</span><span class="pf131-q">' + esc(num(s.qtd)) + ' ' + esc(s.unidade || 'un') + '</span></div>' +
+      origemLinha(s);
+    var st = '', cl = 'pv';
+    if (est === 'feito') { cl = 'tr'; st = '✅ Feito' + (!pen && s.por_nome ? ' · ' + esc(s.por_nome) : '') + (!pen && s.em ? ' ' + esc(hhmm(Date.parse(s.em))) + ' ☁️' : ''); }
+    else if (est === 'nao_feito') { cl = 'nt'; st = '⏸ Não feito — ' + esc(rotMotivo(pen ? pen.motivo : s.motivo, MOT_SERV)) + (!pen && s.por_nome ? ' · ' + esc(s.por_nome) : '') + (!pen && s.em ? ' ' + esc(hhmm(Date.parse(s.em))) + ' ☁️' : ''); }
+    else st = '🛠 Fazer nesta visita';
+    h += '<div class="pf131-st ' + cl + '">' + st + '</div>' + filaHtml(pen);
+    if (deOutro) h += '<div class="pf131-m">Para não inverter a ordem das respostas, este serviço só pode ser mudado depois que a resposta de ' + esc(pen.sub) + ' subir.</div>';
+    else if (PF145.aberto === key + '|n') h += formHtml(os, s, 'n', 'servico');
+    else {
+      h += '<div class="pf131-bts">';
+      if (est === 'prevista') h += '<button type="button" class="pf131-b ok" data-pf145="feito" data-k="' + esc(key) + '">✅ Feito</button>' +
+                                   '<button type="button" class="pf131-b nao" data-pf145="nao" data-k="' + esc(key) + '">⏸ Não feito</button>';
+      else h += (est === 'feito' ? '<button type="button" class="pf131-b lv" data-pf145="nao" data-k="' + esc(key) + '">⏸ Mudar para não feito</button>'
+                                 : '<button type="button" class="pf131-b lv" data-pf145="feito" data-k="' + esc(key) + '">✅ Mudar para feito</button>') +
+                '<button type="button" class="pf131-b lv" data-pf145="limpar" data-k="' + esc(key) + '">↺ Desfazer</button>';
+      h += '</div>';
+    }
+    return h + '</div>';
+  }
+  function situacaoTxt(sit) { return sit === 'a_aprovar' ? '⏳ Precisa aprovar — o escritório faz o aditivo' : '✅ Já troquei/fiz agora'; }
+  function acrescimoHtml(os, a, idx, fechada) {
+    var key = os + '|' + a.chave, saindo = retiradaPendente(os, a.id);
+    var h = '<div class="pf131-it' + (saindo ? ' pf145-riscado' : '') + '" data-pf145-chave="' + esc(a.chave) + '" data-pf145-nat="' + esc(a.natureza) + '" data-pf145-orig="campo">' +
+      '<div class="pf131-l1"><span class="pf131-d"><span class="pf145-tag ' + (a.natureza === 'servico' ? 'sv">🛠 Serviço' : 'pc">🔩 Peça') + '</span><span class="pf145-tag cp">＋ do campo</span>' +
+      (a.a_identificar ? '<span class="pf145-tag id">a identificar</span>' : '') + esc(a.descricao) + '</span><span class="pf131-q">' + esc(num(a.qtd)) + ' ' + esc(a.unidade || 'un') + '</span></div>';
+    var m = []; if (a.codigo) m.push('Ref. ' + esc(a.codigo)); m.push('Lançado por ' + esc(a.por_nome || a.por || '?') + (a.em ? ' ' + esc(hhmm(Date.parse(a.em))) : ''));
+    if (a.obs) m.push('Obs.: ' + esc(a.obs));
+    h += '<div class="pf131-m">' + m.join(' · ') + '</div>';
+    h += '<div class="pf131-st ' + (a.situacao === 'a_aprovar' ? 'nt' : 'tr') + '">' + situacaoTxt(a.situacao) + ' ☁️</div>';
+    if (saindo) return h + '<div class="pf131-st fi">⏳ Mudança guardada no celular — sobe ao servidor quando houver sinal</div></div>';
+    if (!(a.por ? a.por === dono() : a.meu) || fechada) return h + '</div>';
+    if (PF145.conf === key) {
+      h += '<div class="pf131-f"><label>Retirar este lançamento da OS? (fica no histórico)</label><div class="pf131-bts">' +
+           '<button type="button" class="pf131-b nao" data-pf145="ret-ok" data-k="' + esc(key) + '">🗑 Sim, retirar</button><button type="button" class="pf131-b lv" data-pf145="fechar">Cancelar</button></div></div>';
+    } else {
+      h += '<div class="pf131-bts"><button type="button" class="pf131-b lv" data-pf145="ac-mudar" data-k="' + esc(key) + '" data-idx="' + (idx == null ? '' : idx) + '">✎ Mudar</button>' +
+           '<button type="button" class="pf131-b lv" data-pf145="ret" data-k="' + esc(key) + '">🗑 Retirar</button></div>';
+    }
+    return h + '</div>';
+  }
+  function pendenteInclusaoHtml(it) {
+    var a = it.item || {}, deOutro = it.sub && it.sub !== dono();
+    return '<div class="pf131-it" data-pf145-uid="' + esc(it.client_uid) + '" data-pf145-orig="fila">' +
+      '<div class="pf131-l1"><span class="pf131-d"><span class="pf145-tag ' + (a.natureza === 'servico' ? 'sv">🛠 Serviço' : 'pc">🔩 Peça') + '</span><span class="pf145-tag cp">＋ do campo</span>' +
+      (a.fonte === 'texto' ? '<span class="pf145-tag id">a identificar</span>' : '') + esc(a.descricao) + '</span><span class="pf131-q">' + esc(num(a.qtd)) + ' ' + esc(a.unidade || 'un') + '</span></div>' +
+      (a.obs ? '<div class="pf131-m">Obs.: ' + esc(a.obs) + '</div>' : '') +
+      '<div class="pf131-st ' + (a.situacao === 'a_aprovar' ? 'nt' : 'tr') + '">' + situacaoTxt(a.situacao) + '</div>' + filaHtml(it) +
+      (deOutro ? '' : '<div class="pf131-bts"><button type="button" class="pf131-b lv" data-pf145="cancelar-fila" data-uid="' + esc(it.client_uid) + '">✕ Cancelar este lançamento</button></div>') + '</div>';
+  }
+  function formHtml(os, p, modo, nat) {
+    var key = os + '|' + p.chave, f = PF145.form[key] || (PF145.form[key] = { qtd: qtdCampo(p.qtd), ref: '', motivo: '', outro: '' });
+    var h = '<div class="pf131-f" data-k="' + esc(key) + '">';
+    if (modo === 't') {
+      h += '<label>Quantidade trocada</label><input type="text" inputmode="decimal" autocomplete="off" name="pf145_qtd_nofill" data-lpignore="true" data-1p-ignore data-pf145-campo="qtd" value="' + esc(f.qtd) + '">' +
+           '<label>Referência usada (só se for OUTRA, equivalente)</label><input type="text" autocomplete="off" name="pf145_ref_nofill" data-lpignore="true" data-1p-ignore data-pf145-campo="ref" maxlength="80" placeholder="' + esc(p.codigo || 'a mesma da proposta') + '" value="' + esc(f.ref) + '">' +
+           '<div class="pf131-bts"><button type="button" class="pf131-b ok" data-pf145="ok-t" data-k="' + esc(key) + '">✅ Confirmar: trocada</button><button type="button" class="pf131-b lv" data-pf145="fechar">Cancelar</button></div>';
+    } else {
+      var lista = nat === 'servico' ? MOT_SERV : MOT_PECA;
+      h += '<label>' + (nat === 'servico' ? 'Por que o serviço não foi feito?' : 'Por que não foi trocada?') + '</label><div class="pf131-ch">' + lista.map(function (m) {
+             return '<button type="button" class="pf131-c' + (f.motivo === m[0] ? ' on' : '') + '" data-pf145="mot" data-v="' + m[0] + '" data-k="' + esc(key) + '">' + esc(m[1]) + '</button>'; }).join('') + '</div>' +
+           (f.motivo === 'outro' ? '<label>Qual o motivo?</label><input type="text" autocomplete="off" name="pf145_mot_nofill" data-lpignore="true" data-1p-ignore data-pf145-campo="outro" maxlength="280" value="' + esc(f.outro) + '">' : '') +
+           '<div class="pf131-bts"><button type="button" class="pf131-b nao" data-pf145="ok-n" data-k="' + esc(key) + '" data-nat="' + nat + '">⏸ Confirmar: ' + (nat === 'servico' ? 'não feito' : 'não trocada') + '</button><button type="button" class="pf131-b lv" data-pf145="fechar">Cancelar</button></div>';
+    }
+    return h + '</div>';
+  }
+  // o ＋ (linha que se abre, no próprio cartão)
+  function hkDe(os, idx) { return os + '|' + (idx == null ? 'os' : String(idx)); }
+  function hkId(hk) { return 'pf145Res_' + String(hk).replace(/[^A-Za-z0-9_-]/g, '_'); }
+  function maquinasDe(d) { return Array.isArray(d.maquinas) ? d.maquinas : []; }
+  function resultadosHtml(hk) {
+    var n = PF145.novo[hk]; if (!n) return '';
+    if (n.sel) return '<div class="pf145-sel' + (n.sel.fonte === 'texto' ? ' livre' : '') + '"><span>' + (n.sel.fonte === 'texto' ? '✍ ' + esc(n.sel.descricao) + ' <small>(a identificar pelo escritório)</small>'
+             : '✓ ' + esc(n.sel.descricao) + (n.sel.codigo ? ' · ' + esc(n.sel.codigo) : '') + ' <small>(' + esc(n.sel.de || '') + ')</small>') + '</span>' +
+             '<button type="button" class="pf131-b lv" data-pf145="trocar-sel" data-hk="' + esc(hk) + '">trocar</button></div>';
+    var h = '';
+    if (n.buscando) h += '<div class="pf145-dica">Buscando…</div>';
+    else if (n.erroBusca) h += '<div class="pf145-dica">' + esc(n.erroBusca) + '</div>';
+    (n.res || []).forEach(function (o, i) {
+      h += '<button type="button" class="pf145-op" data-pf145="esc" data-hk="' + esc(hk) + '" data-i="' + i + '">' + esc(o.descricao) +
+           '<small>' + esc([o.codigo ? 'ref. ' + o.codigo : '', o.de || ''].filter(Boolean).join(' · ')) + '</small></button>';
+    });
+    if (!n.buscando && n.txt && String(n.txt).trim().length >= 2 && n.feita && !(n.res || []).length && !n.erroBusca) h += '<div class="pf145-dica">Nada encontrado com "' + esc(n.txt) + '".</div>';
+    if (n.txt && String(n.txt).trim().length >= 2)
+      h += '<button type="button" class="pf145-op livre" data-pf145="livre" data-hk="' + esc(hk) + '">✍ Não achei — usar "' + esc(String(n.txt).trim()) + '"<small>fica "a identificar": o escritório escolhe o cadastro certo</small></button>';
+    return h;
+  }
+  function novoHtml(os, d, idx, mid) {
+    var hk = hkDe(os, idx), n = PF145.novo[hk], maqs = maquinasDe(d);
+    if (!n) return '';
+    var h = '<div class="pf131-f pf145-novo" data-hk="' + esc(hk) + '">' + (n.subs ? '<div class="pf131-m">✎ Mudando o lançamento — o anterior sai da OS (fica no histórico).</div>' : '');
+    h += '<label>É peça ou serviço?</label><div class="pf131-ch">' +
+         '<button type="button" class="pf131-c' + (n.nat === 'peca' ? ' on' : '') + '" data-pf145="nat" data-v="peca" data-hk="' + esc(hk) + '"' + (n.subs ? ' disabled' : '') + '>🔩 Peça</button>' +
+         '<button type="button" class="pf131-c' + (n.nat === 'servico' ? ' on' : '') + '" data-pf145="nat" data-v="servico" data-hk="' + esc(hk) + '"' + (n.subs ? ' disabled' : '') + '>🛠 Serviço</button></div>';
+    var midFora = idx != null && !!mid && maqs.length > 0 && !maqs.some(function (q) { return q.id === mid; });
+    if ((maqs.length > 1 && (idx == null || !mid || midFora)) || midFora) {
+      if (midFora) h += '<div class="pf131-m">⚠ A máquina deste painel não está nesta OS — escolha em qual máquina da OS lançar.</div>';
+      h += '<label>Em qual máquina?</label><div class="pf131-ch">' + maqs.map(function (q) {
+        return '<button type="button" class="pf131-c' + (n.maq === q.id ? ' on' : '') + '" data-pf145="maq" data-v="' + esc(q.id) + '" data-hk="' + esc(hk) + '">' + esc(q.rotulo || q.id) + '</button>'; }).join('') + '</div>';
+    }
+    if (n.nat) {
+      if (!n.sel) h += '<label>' + (n.nat === 'servico' ? 'Buscar o serviço' : 'Buscar a peça (da máquina ou do Omie)') + '</label>' +
+        '<input type="text" autocomplete="off" name="pf145_busca_nofill" data-lpignore="true" data-1p-ignore readonly onfocus="this.removeAttribute(\'readonly\')" data-pf145-campo="txt" data-hk="' + esc(hk) + '" maxlength="60" placeholder="Digite parte do nome ou da referência" value="' + esc(n.txt || '') + '">';
+      h += '<div class="pf145-res" id="' + hkId(hk) + '">' + resultadosHtml(hk) + '</div>';
+      h += '<label>Quantidade</label><div class="pf145-qu"><input type="text" inputmode="decimal" autocomplete="off" name="pf145_nqtd_nofill" data-lpignore="true" data-1p-ignore data-pf145-campo="qtd" data-hk="' + esc(hk) + '" value="' + esc(n.qtd || '1') + '">' +
+           '<input type="text" autocomplete="off" name="pf145_nun_nofill" data-lpignore="true" data-1p-ignore data-pf145-campo="un" data-hk="' + esc(hk) + '" maxlength="12" value="' + esc(n.un || (n.sel && n.sel.unidade) || (n.nat === 'servico' ? 'h' : 'un')) + '" aria-label="unidade"></div>';
+      h += '<label>Situação</label><div class="pf131-ch">' +
+           '<button type="button" class="pf131-c' + (n.sit === 'feito' ? ' on' : '') + '" data-pf145="sit" data-v="feito" data-hk="' + esc(hk) + '">✅ Já ' + (n.nat === 'servico' ? 'fiz' : 'troquei') + ' agora</button>' +
+           '<button type="button" class="pf131-c' + (n.sit === 'a_aprovar' ? ' on' : '') + '" data-pf145="sit" data-v="a_aprovar" data-hk="' + esc(hk) + '">⏳ Precisa aprovar</button></div>';
+      h += '<label>Observação (opcional)</label><textarea autocomplete="off" name="pf145_obs_nofill" data-lpignore="true" data-1p-ignore data-pf145-campo="obs" data-hk="' + esc(hk) + '" maxlength="300">' + esc(n.obs || '') + '</textarea>';
+    }
+    h += '<div class="pf131-bts"><button type="button" class="pf131-b ok" data-pf145="add-ok" data-hk="' + esc(hk) + '"' + (n.nat ? '' : ' disabled') + '>' + (n.subs ? '✎ Gravar a mudança' : '＋ Acrescentar na OS') + '</button>' +
+         '<button type="button" class="pf131-b lv" data-pf145="add-fechar" data-hk="' + esc(hk) + '">Cancelar</button></div>';
+    return h + '</div>';
+  }
+  // o cartão inteiro de uma OS (idx = máquina da coleta, ou null = a OS toda)
+  function cartaoHtml(os, idx, mid) {
+    var x = dadosDe(os), er = PF145.erro[os], voo = !!PF145.voo[os];
+    var h = '<div class="pf131-h"><span>📋</span><b>Peças e serviços desta OS</b>';
+    if (!x) {
+      h += '</div>';
+      if (er) {
+        var msg = er.tipo === 'cracha' ? 'Não consegui conferir as peças e serviços: ' + esc(er.msg) : 'Não consegui conferir as peças e serviços aprovados desta OS (' + esc(er.msg) + ').';
+        return h + '<div class="pf131-nota er">' + msg + '</div><div class="pf131-nota"><button type="button" class="pf131-b lv" data-pf145="atualizar" data-os="' + esc(os) + '">↻ Tentar de novo</button></div>';
+      }
+      return h + '<div class="pf131-nota">' + (voo ? 'Conferindo as peças e serviços aprovados na proposta…' : 'Ainda não conferi as peças e serviços desta OS.') + '</div>';
+    }
+    var d = x.d, daMaq = function (q) { return idx == null || !mid || !q.maquina_id || q.maquina_id === mid; };
+    if (d.cancelada) return h + '</div><div class="pf131-nota">OS cancelada — nenhuma peça ou serviço a fazer.</div>';
+    if (d.sem_os) return h + '</div><div class="pf131-nota av">A OS ainda não chegou ao banco — confiro de novo em instantes.' + (voo ? ' Conferindo…' : '') + '</div>';
+    var ps = (d.pecas || []).filter(daMaq), ss = (d.servicos || []).filter(daMaq), ac = (d.acrescimos || []).filter(daMaq);
+    var pend = inclusoesPendentes(os).filter(function (it) { return daMaq({ maquina_id: it.item && it.item.maquina_id }); });
+    var feitos = 0, nao = 0;
+    ps.forEach(function (p) { var e = estEfetivo(p, pendenteDe(os, p.chave)); if (e === 'trocada') feitos++; else if (e === 'nao_trocada') nao++; });
+    ss.forEach(function (s) { var e = estEfetivo(s, pendenteDe(os, s.chave)); if (e === 'feito') feitos++; else if (e === 'nao_feito') nao++; });
+    var tot = ps.length + ss.length, nAc = ac.length + pend.length;
+    h += '<span class="pf131-res">' + (tot ? tot + ' aprovado' + (tot > 1 ? 's' : '') + ' · ' + feitos + ' feito' + (feitos !== 1 ? 's' : '') + (nao ? ' · ' + nao + ' não' : '') : '') +
+         (nAc ? (tot ? '<br>' : '') + '＋ ' + nAc + ' do campo' : '') + '</span></div>';
+    var origem = (x.fonte === 'cache' || er) ? 'Lista de ' + esc(hhmm(x.ts)) + (x.fonte === 'cache' ? ' guardada no celular' : '') + (er ? ' — não consegui atualizar agora (' + esc(er.msg) + ')' : '') : '';
+    if (origem) h += '<div class="pf131-nota av">' + origem + '.</div>';
+    if (!tot && !nAc) {
+      h += '<div class="pf131-nota">' + (idx != null && mid && ((d.pecas || []).length + (d.servicos || []).length) ? 'Nenhuma peça ou serviço aprovado para ESTA máquina (há em outra máquina da OS).'
+        : 'Nenhuma peça ou serviço aprovado em proposta para esta OS.') + '</div>';
+    }
+    // os itens, máquina a máquina (na coleta: só os desta máquina, sem cabeçalho de grupo)
+    var grupos = [], porG = {};
+    function g(id) { var k = id || ''; if (!porG[k]) { porG[k] = { id: k, rot: k ? (rotuloMaq(d, k) || k) : 'Sem máquina definida', ps: [], ss: [], ac: [], pe: [] }; grupos.push(porG[k]); } return porG[k]; }
+    maquinasDe(d).forEach(function (q) { if (idx == null) g(q.id); });
+    ps.forEach(function (p) { g(p.maquina_id).ps.push(p); });
+    ss.forEach(function (s) { g(s.maquina_id).ss.push(s); });
+    ac.forEach(function (a) { g(a.maquina_id).ac.push(a); });
+    pend.forEach(function (it) { g(it.item && it.item.maquina_id).pe.push(it); });
+    grupos.forEach(function (gr) {
+      if (!gr.ps.length && !gr.ss.length && !gr.ac.length && !gr.pe.length) return;
+      if (idx == null) h += '<div class="pf131-maq">' + esc(gr.rot) + '</div>';
+      gr.ps.forEach(function (p) { h += pecaHtml(os, p, idx); });
+      gr.ss.forEach(function (s) { h += servicoHtml(os, s); });
+      gr.ac.forEach(function (a) { h += acrescimoHtml(os, a, idx, d.pode_acrescentar === false); });
+      gr.pe.forEach(function (it) { h += pendenteInclusaoHtml(it); });
+    });
+    if (idx == null && ((d.antigas || []).length || (d.antigas_servicos || []).length)) {
+      h += '<div class="pf131-ant">Respostas de itens que SAÍRAM da proposta (versão nova aceita): ' + (d.antigas || []).concat(d.antigas_servicos || []).map(function (a) {
+        return esc(a.descricao || 'item') + ' — ' + ({ trocada: 'trocada', nao_trocada: 'não trocada', feito: 'feito', nao_feito: 'não feito' }[a.estado] || a.estado); }).join(' · ') + '. Fale com o escritório.</div>';
+    }
+    var rc = recusados().concat(recusadosLegado()).filter(function (r) { return r.os === os; });
+    if (rc.length) {
+      h += '<div class="pf131-nota er">⚠ O servidor recusou ' + (rc.length > 1 ? rc.length + ' envios guardados' : 'um envio guardado') + ' neste celular (anote e faça de novo, se for o caso):<br>' +
+        rc.map(function (r) { return '• ' + esc(r.descricao || 'item') + ' — ' + esc({ incluir: 'acrescentar', retirar: 'retirar' }[r.tipo] || ({ trocada: 'trocada', nao_trocada: 'não trocada', feito: 'feito', nao_feito: 'não feito', limpar: 'desfazer' }[r.estado] || r.estado)) + ' · motivo da recusa: ' + esc(r.msg); }).join('<br>') +
+        ' <button type="button" class="pf131-b lv" data-pf145="ok-rc" data-os="' + esc(os) + '">Entendi</button></div>';
+    }
+    // o ＋
+    var hk = hkDe(os, idx);
+    if (PF145.novo[hk]) h += novoHtml(os, d, idx, mid);
+    else if (d.pode_acrescentar === false) h += '<div class="pf131-nota">OS concluída — para acrescentar peça ou serviço, fale com o escritório.</div>';
+    else h += '<div class="pf145-add"><button type="button" class="pf131-b lv" data-pf145="add" data-hk="' + esc(hk) + '" data-os="' + esc(os) + '" data-idx="' + (idx == null ? '' : idx) + '" data-mid="' + esc(mid || '') + '">＋ Acrescentar peça ou serviço nesta OS</button></div>';
+    return h;
+  }
+  PF145.cartaoHtml = cartaoHtml;
+  function pintarEm(el, html) {   // nunca repinta por cima do que está sendo digitado
+    if (!el) return;
+    var foco = document.activeElement;
+    if (foco && el.contains(foco) && (foco.tagName === 'INPUT' || foco.tagName === 'TEXTAREA')) { el.__pf145Pend = html; return; }
+    if (el.__pf145 !== html) { el.innerHTML = html; el.__pf145 = html; }
+  }
+  function pintarPipeline() {
+    var tela = $('pfScreenPipeline'), cont = $('pfPipelineConteudo'), os = osTela();
+    var host = $('pf145Itens');
+    if (!ativo()) { if (host) host.style.display = 'none'; return; }
+    if (!host && cont && cont.parentNode) { host = document.createElement('div'); host.id = 'pf145Itens'; host.className = 'pf131 pf145'; cont.parentNode.insertBefore(host, cont); }
+    if (!host) return;
+    if (!os || !tela || tela.style.display === 'none') { host.style.display = 'none'; return; }
+    host.style.display = '';
+    host.setAttribute('data-os', os);
+    pintarEm(host, cartaoHtml(os, null, null));
+  }
+  function maqDe(i) { try { return typeof pfHorimMachineId === 'function' ? String(pfHorimMachineId(i) || '') : ''; } catch (e) { return ''; } }
+  function pintarColeta() {
+    var os = osColeta();
+    document.querySelectorAll('[id^="panel-"]').forEach(function (p) {
+      var i = parseInt(String(p.id).replace('panel-', ''), 10); if (!isFinite(i)) return;
+      var box = $('pf145Box' + i);
+      if (!os || !ativo()) { if (box) box.remove(); return; }
+      if (!box) { box = document.createElement('div'); box.id = 'pf145Box' + i; box.className = 'pf131 pf145 pf145-box'; }
+      // lugar: o do PF131 (logo depois do hub do Visual novo, ou antes da 1ª etapa) — nunca disputa com o PF130
+      var ref = p.querySelector(':scope > .pf130-hub');
+      if (ref) { if (ref.nextElementSibling !== box) p.insertBefore(box, ref.nextSibling); }
+      else { var s1 = p.querySelector(':scope > .section'); if (s1 && box.nextElementSibling !== s1) p.insertBefore(box, s1); else if (!s1 && box.parentNode !== p) p.appendChild(box); }
+      box.setAttribute('data-os', os); box.setAttribute('data-idx', String(i));
+      pintarEm(box, cartaoHtml(os, i, maqDe(i)));
+    });
+  }
+  var _raf = 0;
+  function pintar() { if (_raf) return; _raf = setTimeout(function () { _raf = 0; marcar(); try { pintarPipeline(); } catch (e) { nota(e, 'pipeline'); } try { pintarColeta(); } catch (e) { nota(e, 'coleta'); } }, 30); }
+  PF145.pintar = pintar;
+  PF145.t = { numBR: numBR, qtdCampo: qtdCampo, estEfetivo: estEfetivo };   // para a bancada
+
+  // ── 6 · a busca do ＋ ──────────────────────────────────────────────────────────────────────────────────────
+  function pintarResultados(hk) { var el = $(hkId(hk)); if (el) el.innerHTML = resultadosHtml(hk); }
+  async function buscar(hk) {
+    var n = PF145.novo[hk]; if (!n || !n.nat || n.sel) return;
+    var txt = String(n.txt || '').trim(), seq = (n.seq = (n.seq || 0) + 1);
+    if (n.nat === 'peca' && txt.length < 2 && !n.maqBusca) { n.res = []; n.feita = false; n.erroBusca = ''; pintarResultados(hk); return; }
+    n.buscando = true; n.erroBusca = ''; pintarResultados(hk);
+    try {
+      var r = await rpc('pc_os_item_buscar', { p: { os: n.os, natureza: n.nat, maquina_id: n.maqBusca || null, texto: txt } });
+      if (n.seq !== seq || PF145.novo[hk] !== n) return;   // chegou outra busca depois desta
+      var ops = (r && Array.isArray(r.opcoes)) ? r.opcoes : [];
+      // a primeira lista (sem texto) pode ser longa: o filtro local sem acento ajuda enquanto o servidor não responde a próxima
+      n.res = ops.slice(0, 25); n.feita = true;
+    } catch (e) {
+      if (n.seq !== seq) return;
+      n.res = []; n.feita = false;
+      n.erroBusca = e && e.pf145 === 'rede' ? 'Sem conexão para buscar — digite a descrição e use "Não achei" (fica a identificar).' : 'A busca falhou (' + ((e && e.message) || 'erro') + ') — digite e use "Não achei".';
+      nota(e, 'buscar');
+    } finally { if (n.seq === seq) { n.buscando = false; pintarResultados(hk); } }
+  }
+  function agendarBusca(hk) { clearTimeout(PF145.buscaT[hk]); PF145.buscaT[hk] = setTimeout(function () { buscar(hk); }, 320); }
+  function maqDoNovo(n, d) {   // a máquina que o ＋ vai mandar: a escolhida, a da coleta (se é da OS) ou a única da OS
+    var maqs = maquinasDe(d), tem = function (id) { return maqs.some(function (q) { return q.id === id; }); };
+    if (n.maq && tem(n.maq)) return n.maq;
+    if (n.mid && tem(n.mid)) return n.mid;
+    if (n.mid && maqs.length) return '';   // o painel é de uma máquina que NÃO está na OS: o técnico escolhe (nunca em silêncio)
+    if (maqs.length === 1) return maqs[0].id;
+    return '';
+  }
+
+  // ── 7 · os toques ───────────────────────────────────────────────────────────────────────────────────────
+  function achar(key) {
+    var i = key.indexOf('|'), os = key.slice(0, i), ch = key.slice(i + 1), x = dadosDe(os), d = x && x.d;
+    var p = null, nat = '';
+    if (d) {
+      p = (d.pecas || []).filter(function (q) { return q.chave === ch; })[0]; if (p) nat = 'peca';
+      if (!p) { p = (d.servicos || []).filter(function (q) { return q.chave === ch; })[0]; if (p) nat = 'servico'; }
+      if (!p) { p = (d.acrescimos || []).filter(function (q) { return q.chave === ch; })[0]; if (p) nat = 'campo'; }
+    }
+    return { os: os, chave: ch, p: p, nat: nat, d: d };
+  }
+  document.addEventListener('input', function (ev) {
+    var t = ev.target; if (!t || !t.getAttribute || !t.getAttribute('data-pf145-campo')) return;
+    var campo = t.getAttribute('data-pf145-campo'), hk = t.getAttribute('data-hk');
+    if (hk) {
+      var n = PF145.novo[hk]; if (!n) return;
+      n[campo] = t.value;
+      if (campo === 'txt') { n.feita = false; agendarBusca(hk); pintarResultados(hk); }
+      return;
+    }
+    var f = t.closest('.pf131-f'); if (!f) return;
+    var key = f.getAttribute('data-k'); var st = PF145.form[key] || (PF145.form[key] = {});
+    st[campo] = t.value;
+  }, true);
+  document.addEventListener('focusout', function (ev) {
+    var box = ev.target && ev.target.closest && ev.target.closest('.pf145');
+    if (box && box.__pf145Pend) setTimeout(function () { if (!box.contains(document.activeElement)) { var h = box.__pf145Pend; box.__pf145Pend = null; if (box.__pf145 !== h) { box.innerHTML = h; box.__pf145 = h; } } }, 0);
+  }, true);
+  document.addEventListener('click', function (ev) {
+    var b = ev.target && ev.target.closest && ev.target.closest('[data-pf145]'); if (!b) return;
+    if (!b.closest('.pf145')) return;   // a folha do aviso (#pf145Folha) tem o tratador dela
+    ev.preventDefault(); ev.stopPropagation();
+    if (b.disabled) return;
+    var a = b.getAttribute('data-pf145'), key = b.getAttribute('data-k') || '', hk = b.getAttribute('data-hk') || '';
+    try { var fo = document.activeElement; if (fo && fo !== b && (fo.tagName === 'INPUT' || fo.tagName === 'TEXTAREA') && b.closest('.pf145') && b.closest('.pf145').contains(fo)) fo.blur(); } catch (e) {}
+    try {
+      if (a === 'atualizar') { carregar(b.getAttribute('data-os'), 'toque'); return; }
+      if (a === 'ok-rc') { var os0 = b.getAttribute('data-os'), eu0 = dono(), fica = function (r) { return r.os !== os0 || (r.sub && r.sub !== eu0); };
+        gravarJ(RECUSA_KEY, recusados().filter(fica)); gravarJ('pf131_recusados_v1', recusadosLegado().filter(fica)); pintar(); return; }
+      if (a === 'fechar') { PF145.aberto = ''; PF145.conf = ''; pintar(); return; }
+      if (a === 'chk') {   // a peça é linha do checklist da preventiva: a resposta é a pílula "Trocada" da linha
+        var pk = b.getAttribute('data-pk'); if (pk && typeof pgpSetAcao === 'function') { PF145.toque = { pk: pk, em: Date.now() }; pgpSetAcao(pk, 'trocada'); try { pgpSaveDraftBreve(); } catch (e) {} aviso('✅ Marcada "Trocada" no checklist — sobe com a preventiva.'); }
+        pintar(); return;
+      }
+      // ── o ＋ ──
+      if (a === 'add') {
+        var osA = b.getAttribute('data-os'), ix = b.getAttribute('data-idx'), mid = b.getAttribute('data-mid') || '';
+        PF145.novo[hk] = { os: osA, idx: ix === '' ? null : parseInt(ix, 10), mid: mid, nat: '', maq: '', txt: '', sel: null, qtd: '1', un: '', sit: '', obs: '', res: [], subs: null };
+        pintar(); return;
+      }
+      if (a === 'add-fechar') { delete PF145.novo[hk]; pintar(); return; }
+      if (a === 'nat' || a === 'maq' || a === 'sit') {
+        var n1 = PF145.novo[hk]; if (!n1) return;
+        if (a === 'nat' && n1.nat !== b.getAttribute('data-v')) { n1.nat = b.getAttribute('data-v'); n1.sel = null; n1.res = []; n1.feita = false; n1.un = ''; }
+        if (a === 'maq') n1.maq = b.getAttribute('data-v');
+        if (a === 'sit') n1.sit = b.getAttribute('data-v');
+        if (a !== 'sit') { var x1 = dadosDe(n1.os); n1.maqBusca = x1 ? maqDoNovo(n1, x1.d) : ''; if (n1.nat === 'servico' || n1.maqBusca) buscar(hk); }
+        pintar(); return;
+      }
+      if (a === 'esc') { var n2 = PF145.novo[hk]; if (!n2) return; var o = (n2.res || [])[parseInt(b.getAttribute('data-i'), 10)]; if (!o) return; n2.sel = o; n2.un = o.unidade || n2.un; pintar(); return; }
+      if (a === 'livre') { var n3 = PF145.novo[hk]; if (!n3) return; var tx = String(n3.txt || '').replace(/\s+/g, ' ').trim(); if (tx.length < 2) return;
+        n3.sel = { fonte: 'texto', descricao: tx.slice(0, 200), de: 'a identificar' }; pintar(); return; }
+      if (a === 'trocar-sel') { var n4 = PF145.novo[hk]; if (!n4) return; n4.sel = null; pintar(); setTimeout(function () { buscar(hk); }, 0); return; }
+      if (a === 'add-ok') {
+        var n5 = PF145.novo[hk]; if (!n5) return; var x5 = dadosDe(n5.os); if (!x5) { aviso('⚠ A lista desta OS ainda não chegou — toque em ↻ e tente de novo.'); return; }
+        if (!n5.nat) { aviso('⚠ Diga se é peça ou serviço.'); return; }
+        var maq = maqDoNovo(n5, x5.d);
+        if (maquinasDe(x5.d).length && !maq) { aviso('⚠ Escolha a máquina.'); return; }
+        if (!n5.sel) { aviso('⚠ Escolha o item na busca — ou digite e toque em "Não achei".'); return; }
+        var qn = numBR(n5.qtd); if (!(qn > 0) || qn > 100000) { aviso('⚠ Quantidade inválida — use um número maior que zero.'); return; }
+        if (!n5.sit) { aviso('⚠ Diga se já foi ' + (n5.nat === 'servico' ? 'feito' : 'trocada') + ' agora ou se precisa aprovar.'); return; }
+        var un = String(n5.un || n5.sel.unidade || (n5.nat === 'servico' ? 'h' : 'un')).trim().slice(0, 12) || 'un';
+        var obs = String(n5.obs || '').trim().slice(0, 300);
+        var item = { natureza: n5.nat, fonte: n5.sel.fonte, ref_id: n5.sel.fonte === 'texto' ? null : (n5.sel.ref_id || null), codigo: n5.sel.fonte === 'texto' ? null : (n5.sel.codigo || null),
+                     descricao: n5.sel.descricao, qtd: Math.round(qn * 1000) / 1000, unidade: un, maquina_id: maq || null, situacao: n5.sit, obs: obs || null, substitui: n5.subs || null };
+        b.disabled = true;
+        if (enfileirar({ tipo: 'incluir', os: n5.os, item: item })) { delete PF145.novo[hk]; aviso((n5.subs ? '✎ Mudança' : '＋ Acrescentado') + ' — guardado no celular; o ☁️ aparece quando o servidor confirmar.'); pintar(); }
+        else b.disabled = false;
+        return;
+      }
+      if (a === 'cancelar-fila') { var u = b.getAttribute('data-uid'), f0 = fila(); if (f0[u] && f0[u].sub === dono()) { delete f0[u]; gravarJ(FILA_KEY, f0); aviso('✕ Lançamento cancelado (não tinha subido).'); } pintar(); return; }
+      // ── itens da lista ──
+      var o2 = achar(key); if (!o2.p) { aviso('⚠ Este item não está mais na lista — toque em ↻ Atualizar.'); return; }
+      if (a === 'ac-mudar') {
+        var ac = o2.p, ix2 = b.getAttribute('data-idx'), hk2 = hkDe(o2.os, ix2 === '' ? null : parseInt(ix2, 10));
+        PF145.novo[hk2] = { os: o2.os, idx: ix2 === '' ? null : parseInt(ix2, 10), mid: ac.maquina_id || '', nat: ac.natureza, maq: ac.maquina_id || '', txt: ac.fonte === 'texto' ? ac.descricao : '',
+                            sel: { fonte: ac.fonte, ref_id: ac.ref_id, codigo: ac.codigo, descricao: ac.descricao, unidade: ac.unidade, de: ac.fonte === 'texto' ? 'a identificar' : 'escolhido antes' },
+                            qtd: qtdCampo(ac.qtd), un: ac.unidade, sit: ac.situacao, obs: ac.obs || '', res: [], subs: ac.id, maqBusca: ac.maquina_id || '' };
+        pintar(); return;
+      }
+      if (a === 'ret') { PF145.conf = key; pintar(); return; }
+      if (a === 'ret-ok') { b.disabled = true; if (enfileirar({ tipo: 'retirar', os: o2.os, id: o2.p.id, motivo: 'retirado pelo técnico' })) aviso('🗑 Retirada — guardada no celular; sobe quando houver sinal.'); else b.disabled = false; return; }
+      var tipo = o2.nat === 'servico' ? 'servico' : 'peca';
+      if (a === 'sim' || a === 'mudar') { PF145.aberto = key + '|t'; pintar(); return; }
+      if (a === 'nao') { PF145.aberto = key + '|n'; pintar(); return; }
+      if (a === 'mot') { var f = PF145.form[key] || (PF145.form[key] = {}); f.motivo = b.getAttribute('data-v'); pintar(); return; }
+      if (a === 'limpar') { b.disabled = true; enfileirar({ tipo: tipo, os: o2.os, chave: o2.chave, estado: 'limpar' }); return; }
+      if (a === 'feito') { b.disabled = true; if (enfileirar({ tipo: 'servico', os: o2.os, chave: o2.chave, estado: 'feito' })) aviso('✅ Feito — guardado no celular; o ☁️ aparece quando o servidor confirmar.'); else b.disabled = false; return; }
+      if (a === 'ok-t') {
+        var ft = PF145.form[key] || {}, q = String(ft.qtd == null ? '' : ft.qtd).trim(), nq = q === '' ? null : numBR(q);
+        if (q !== '' && (!(nq > 0) || nq > 100000)) { aviso('⚠ Quantidade inválida — use um número maior que zero.'); return; }
+        var ref = String(ft.ref || '').trim();
+        b.disabled = true;
+        if (enfileirar({ tipo: 'peca', os: o2.os, chave: o2.chave, estado: 'trocada', qtd: nq, ref_usada: ref || null })) { aviso('✅ Trocada — guardada no celular; o ☁️ aparece quando o servidor confirmar.'); delete PF145.form[key]; }
+        else b.disabled = false;
+        return;
+      }
+      if (a === 'ok-n') {
+        var fn = PF145.form[key] || {}, mot = fn.motivo || '';
+        if (!mot) { aviso('⚠ Escolha o motivo.'); return; }
+        if (mot === 'outro') { var tx2 = String(fn.outro || '').trim(); if (tx2.length < 3) { aviso('⚠ Escreva o motivo (pelo menos 3 letras).'); return; } mot = 'outro: ' + tx2; }
+        b.disabled = true;
+        if (enfileirar({ tipo: tipo, os: o2.os, chave: o2.chave, estado: tipo === 'servico' ? 'nao_feito' : 'nao_trocada', motivo: mot })) {
+          aviso('⏸ ' + (tipo === 'servico' ? 'Não feito' : 'Não trocada') + ' — guardado no celular; o ☁️ aparece quando o servidor confirmar.'); delete PF145.form[key]; }
+        else b.disabled = false;
+        return;
+      }
+    } catch (e) { nota(e, 'toque ' + a); aviso('⚠ Não consegui registrar — tente de novo.'); }
+  }, true);
+
+  // ── 8 · o aviso ao concluir (avisa e deixa concluir — D1 de 08/10) ──────────────────────────────────────────
+  function abertaTarefa(t) {   // a regra do app (_PIPE_RESOLVIDOS_: completo/dispensado) + a tarefa já confirmada que está na fila do V116
+    if (!t || t._pf116Fila || t._pf116Confirmando) return false;
+    var st = String(t.Status || t.status || 'pendente').trim().toLowerCase();
+    var res = []; try { if (Array.isArray(window._PIPE_RESOLVIDOS_)) res = window._PIPE_RESOLVIDOS_; } catch (e) {}
+    return res.concat(['completo', 'dispensado', 'dispensada', 'concluida', 'concluído', 'concluido', 'concluída', 'cancelada', 'cancelado', 'nao_aplicavel', 'pulada']).indexOf(st) < 0;
+  }
+  function ehUltimaTarefa(tid) {
+    var ts = []; try { ts = window._pfTarefas || []; } catch (e) {}
+    if (!Array.isArray(ts) || !ts.length) return false;
+    var outras = ts.filter(function (t) { var id = String((t && (t.Tarefa_ID || t.tarefa_id || t.id)) || ''); return id !== String(tid) && abertaTarefa(t); });
+    return outras.length === 0;
+  }
+  function maqsDaColeta() {
+    var r = []; document.querySelectorAll('[id^="panel-"]').forEach(function (p) { var i = parseInt(String(p.id).replace('panel-', ''), 10); if (!isFinite(i)) return; var m = maqDe(i); if (m) r.push({ i: i, m: m }); });
+    return r;
+  }
+  function faltando(os, onde) {   // o que foi APROVADO e ainda não tem resposta (nem no celular), e o que ficou "não"
+    var x = dadosDe(os); if (!x || !x.d) return { semLista: true, falta: [], nao: [], erro: PF145.erro[os] || null };
+    if (x.d.sem_os || x.d.cancelada) return null;
+    var d = x.d, mq = onde === 'coleta' ? maqsDaColeta() : null, mids = mq ? mq.map(function (q) { return q.m; }) : null;
+    var daqui = function (q) { return !mids || !q.maquina_id || mids.indexOf(q.maquina_id) >= 0; };
+    var falta = [], nao = [];
+    (d.pecas || []).filter(daqui).forEach(function (p) {
+      if (!p.natureza) p.natureza = 'peca';
+      var e = estEfetivo(p, pendenteDe(os, p.chave));
+      if (e === 'prevista') {
+        var marcada = false;
+        if (mq) mq.forEach(function (q) { if (!p.maquina_id || p.maquina_id === q.m) { var ch = linhaChecklist(p, q.i); if (ch && ch.acao === 'trocada') marcada = true; } });
+        if (!marcada) falta.push(p);
+      } else if (e === 'nao_trocada') nao.push(p);
+    });
+    (d.servicos || []).filter(daqui).forEach(function (s) { var e = estEfetivo(s, pendenteDe(os, s.chave)); if (e === 'prevista') falta.push(s); else if (e === 'nao_feito') nao.push(s); });
+    return { falta: falta, nao: nao };
+  }
+  PF145.faltando = faltando;
+  function fecharFolha() { var f = $('pf145Folha'); if (f) f.remove(); }
+  function folha(os, onde, fx, botao) {
+    fecharFolha();
+    var ov = document.createElement('div'); ov.id = 'pf145Folha';
+    var li = function (p) { return '<div class="li">' + (p.natureza === 'servico' ? '🛠 ' : '🔩 ') + esc(p.descricao) + ' <small>' + esc(num(p.qtd)) + ' ' + esc(p.unidade || 'un') + (p.maquina_rotulo ? ' · ' + esc(p.maquina_rotulo) : '') + '</small></div>'; };
+    var corpo;
+    if (fx.semLista) corpo = '<h3>⚠ Não consegui conferir as peças e serviços aprovados desta OS</h3>' +
+      '<div class="s">O celular ainda não tem a lista desta OS' + (fx.erro ? ' (' + esc(fx.erro.msg) + ')' : '') + '. Pode haver peça ou serviço aprovado na proposta. Volte com sinal para conferir, ou conclua assim mesmo.</div>';
+    else if (fx.falta.length) corpo = '<h3>⚠ ' + fx.falta.length + ' ' + (fx.falta.length > 1 ? 'itens aprovados' : 'item aprovado') + ' sem resposta</h3>' +
+      '<div class="s">O cliente aprovou na proposta e ainda não está marcado como trocado/feito nem como "não". Responda agora, ou conclua assim mesmo — o escritório vai ver o que ficou sem resposta.</div>' +
+      fx.falta.map(li).join('') +
+      (fx.nao.length ? '<div class="s" style="margin-top:10px">Já marcados como "não" (com motivo): ' + fx.nao.map(function (p) { return esc(p.descricao); }).join(' · ') + '.</div>' : '');
+    else corpo = '<h3>⚠ ' + fx.nao.length + ' ' + (fx.nao.length > 1 ? 'itens aprovados ficaram' : 'item aprovado ficou') + ' sem trocar/fazer</h3>' +
+      '<div class="s">O cliente aprovou e você marcou "não". Confira antes de concluir — o escritório vai ver o motivo.</div>' +
+      fx.nao.map(function (p) { var m = rotMotivo(p.motivo || ((pendenteDe(os, p.chave) || {}).motivo), p.natureza === 'servico' ? MOT_SERV : MOT_PECA);
+        return '<div class="li">' + (p.natureza === 'servico' ? '🛠 ' : '🔩 ') + esc(p.descricao) + ' <small>' + (p.natureza === 'servico' ? 'não feito' : 'não trocada') + (m ? ' — ' + esc(m) : '') + '</small></div>'; }).join('');
+    ov.innerHTML = '<div class="pf145-fo" role="dialog" aria-modal="true">' + corpo +
+      '<div class="bt"><button type="button" class="pf131-b ok" data-pf145="fo-resp">' + (fx.semLista ? 'Voltar' : fx.falta.length ? 'Responder agora' : 'Voltar e revisar') + '</button>' +
+      '<button type="button" class="pf131-b lv" data-pf145="fo-seguir">' + (onde === 'coleta' ? 'Concluir a coleta assim mesmo' : 'Concluir a tarefa assim mesmo') + '</button></div></div>';
+    ov.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('[data-pf145]') : null;
+      if (!b) { if (e.target === ov) fecharFolha(); return; }
+      e.preventDefault(); e.stopPropagation();
+      var a = b.getAttribute('data-pf145'); fecharFolha();
+      if (a === 'fo-seguir') { PF145.ack = { os: os, onde: onde, em: Date.now() }; try { botao.click(); } catch (x) { nota(x, 'seguir'); } }
+      if (a === 'fo-resp') {
+        var alvo = onde === 'coleta' ? document.querySelector('[id^="pf145Box"]') : $('pf145Itens');
+        try { if (alvo) alvo.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (x) {}
+      }
+    });
+    document.body.appendChild(ov);
+  }
+  window.addEventListener('click', function (ev) {
+    try {
+      if (!ativo()) return;
+      var b = ev.target && ev.target.closest && ev.target.closest('[id^="pfBtnConfirmar-"],#pcf116BtnEnviar'); if (!b || b.disabled) return;
+      var onde = b.id === 'pcf116BtnEnviar' ? 'coleta' : 'tarefa', os = onde === 'coleta' ? osColeta() : osTela();
+      if (!os) return;
+      if (onde === 'tarefa' && !ehUltimaTarefa(b.id.slice('pfBtnConfirmar-'.length))) return;
+      if (PF145.ack && PF145.ack.os === os && PF145.ack.onde === onde && Date.now() - PF145.ack.em < 60000) { PF145.ack = null; return; }   // "assim mesmo": segue
+      var fx = faltando(os, onde); if (!fx || (!fx.semLista && !fx.falta.length && !fx.nao.length)) return;
+      ev.preventDefault(); ev.stopPropagation(); if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+      folha(os, onde, fx, b);
+    } catch (e) { nota(e, 'aviso concluir'); }
+  }, true);
+
+  // ── 9 · ganchos no app (por window[nome], a regra dos embrulhos do PCF) ──────────────────────────────────────
+  function embrulhar(nome, fazer) {
+    try { var o = window[nome]; if (typeof o !== 'function' || o.__pf145) return; var n = fazer(o); n.__pf145 = true; window[nome] = n; } catch (e) { nota(e, 'embrulhar ' + nome); }
+  }
+  embrulhar('pfLoadPipeline', function (orig) {
+    return function () {
+      var os = osTela(), r = orig.apply(this, arguments);
+      try { if (os && ativo()) { pintar(); if (!PF145.voo[os]) carregar(os, 'pipeline'); } } catch (e) { nota(e, 'pfLoadPipeline'); }
+      return r;
+    };
+  });
+  // "Trocada" na linha do checklist = a resposta da peça (desfaz um "não trocada" dado antes a ela) — o PF131 faz isso só quando o PF145 está desligado
+  embrulhar('pgpSetAcao', function (orig) {
+    return function (pk, acao) {
+      var r = orig.apply(this, arguments);
+      try {
+        if (!ativo()) return r;
+        var m = String(pk || '').match(/^m(\d+)_(.+)$/), os = osColeta(), t = PF145.toque;
+        var doTecnico = !!(t && t.pk === pk && Date.now() - t.em < 2500); if (doTecnico) PF145.toque = null;
+        if (m && os && doTecnico) {
+          var i = parseInt(m[1], 10), part = (pgpPartIdMapDe(i) || {})[m[2]], mid = maqDe(i), x = dadosDe(os);
+          if (part && x && x.d) (x.d.pecas || []).forEach(function (p) {
+            if (p.part_id !== part || (mid && p.maquina_id && p.maquina_id !== mid)) return;
+            var pen = pendenteDe(os, p.chave), est = pen ? pen.estado : p.estado;
+            if (acao === 'trocada' && est === 'nao_trocada') enfileirar({ tipo: 'peca', os: os, chave: p.chave, estado: 'limpar' });
+          });
+        }
+      } catch (e) { nota(e, 'pgpSetAcao'); }
+      pintar();
+      return r;
+    };
+  });
+  document.addEventListener('click', function (ev) {   // o toque de verdade nas pílulas da AÇÃO da peça
+    try {
+      var b = ev.target && ev.target.closest && ev.target.closest('button[id$="_acao_trocada"],button[id$="_acao_conferida"],button[id$="_acao_na"]');
+      if (b && ev.isTrusted) PF145.toque = { pk: String(b.id).replace(/_acao_(trocada|conferida|na)$/, ''), em: Date.now() };
+    } catch (e) {}
+  }, true);
+  window.addEventListener('online', function () { subir(); });
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') { subir(); pintar(); } });
+  function legadoN() { var g = lerJ(LEG_FILA, {}); return (g && typeof g === 'object') ? Object.keys(g).length : 0; }
+  function iniciar() {
+    marcar(); pintar(); subir();
+    PF145.legN = legadoN();
+    setInterval(function () { try { if (Object.keys(fila()).length && navigator.onLine !== false) subir(); } catch (e) {} }, 30000);
+    setInterval(function () {
+      try {
+        if (!ativo()) return;
+        var os = osColeta(); if (os && !PF145.dados[os] && !PF145.voo[os] && !(PF145.erro[os] && Date.now() - PF145.erro[os].em < 60000)) carregar(os, 'coleta');
+        [osColeta(), osTela()].forEach(function (o) {   // "a OS ainda não chegou ao banco": relê a cada 20 s enquanto for isso
+          var x = o && PF145.dados[o]; if (x && x.d && x.d.sem_os && !PF145.voo[o] && Date.now() - x.ts > 20000) carregar(o, 'sem_os');
+        });
+        var n = legadoN(); if (n < PF145.legN) { var o2 = osTela() || osColeta(); if (o2) carregar(o2, 'fila antiga subiu'); subir(); } PF145.legN = n;   // a fila do PF131 subiu: relê
+      } catch (e) {}
+      pintar();
+    }, 2500);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else setTimeout(iniciar, 0);
+})();
+</script>
+<!-- ████ FIM PCF_V145 (PF145) ████ -->
 
 </body>
 </html>
