@@ -45072,7 +45072,8 @@ html.pf129 #pf145Folha .li{border-top-color:#eef1f5}
    3 · So na OS do ESCRITORIO (cadastro travado, V74: o saveClient leva so nome + datas). Na INS aberta pelo proprio PCF (V144),
        o que esta na secao 1 vira pedido de correcao do cliente — la nada muda.
    4 · copyClientDataSilent (a heranca da maquina 1 para as outras, V103): a UNIDADE da maquina 1 nao vaza para o painel de uma
-       maquina que nao esta nela — o que faltar ali vem do que a maquina 1 teria sem a unidade (o mesmo que o V146 copiaria).
+       maquina que nao esta nela (Filial, CNPJ, Cidade e UF nao sao copiados; ficam os da carga do proprio painel). Decide pelo
+       dado guardado (maquina de cada painel + pf147_uni_v1), entao vale depois de recarregar, restaurar e fechar aba.
    Sem unidade, unidade de outro cliente, sem leitura e sem nada no aparelho, fora de OS: tela, PDF e envio iguais ao PCF_V146.
    Chave de volta: localStorage pcf147 = off (volta ao V146). Diagnostico: PF147.log, PF147.aplicadas. */
 (function () {
@@ -45086,10 +45087,11 @@ html.pf129 #pf145Folha .li{border-top-color:#eef1f5}
 
   // ── o que o aparelho guarda por OS: { ts, cli, m: { <id da máquina>: {id,nome,cnpj,cidade,uf} | 0 } } ──────────────────────
   function lerCache() { try { var c = JSON.parse(localStorage.getItem(CHAVE) || '{}'); return (c && typeof c === 'object') ? c : {}; } catch (e) { return {}; } }
-  function gravarCache(osId, ent) {
+  function gravarCache(osId, ent, ids) {
     try {
-      var c = lerCache(), velho = c[osId] && c[osId].m ? c[osId].m : {};
-      c[osId] = { ts: Date.now(), cli: ent.cli, m: Object.assign({}, velho, ent.m) };
+      var c = lerCache(), velho = (c[osId] && c[osId].cli === ent.cli && c[osId].m) ? c[osId].m : {}, m = Object.assign({}, velho);
+      (ids || []).forEach(function (id) { delete m[id]; });   // máquina lida sem linha na resposta não guarda a unidade de antes
+      c[osId] = { ts: Date.now(), cli: ent.cli, m: Object.assign(m, ent.m) };
       if (typeof _pfCacheTrim === 'function') _pfCacheTrim(c, (typeof PF_CACHE_MAX_OS === 'number') ? PF_CACHE_MAX_OS : 25);
       localStorage.setItem(CHAVE, JSON.stringify(c));
     } catch (e) { log('cache', e && e.message); }
@@ -45137,7 +45139,7 @@ html.pf129 #pf145Folha .li{border-top-color:#eef1f5}
     });
     PF147.leituras++;
     var ent = { cli: cli, m: m };
-    gravarCache(osId, ent);
+    gravarCache(osId, ent, ids);
     log('lido', osId, ids.length + ' máq', Object.keys(m).filter(function (k) { return m[k]; }).length + ' com unidade');
     return ent;
   }
@@ -45151,7 +45153,7 @@ html.pf129 #pf145Folha .li{border-top-color:#eef1f5}
     var v = PF147.voo[osId];
     if (v && v.chave === chave && (Date.now() - v.em) < 60000) return v.p;
     var p = buscar(osId, ids, cli).catch(function (e) { PF147.falhas++; log('falhou', osId, e && e.message); return null; });
-    PF147.voo[osId] = { chave: chave, em: Date.now(), p: p };
+    PF147.voo[osId] = { chave: chave, em: Date.now(), limite: Date.now() + ESPERA, p: p };   // o prazo é da OS, não de cada máquina
     return p;
   }
   function comEspera(p, ms) {
@@ -45173,7 +45175,7 @@ html.pf129 #pf145Folha .li{border-top-color:#eef1f5}
       iniciar(osId, lista, osObj);
       v = PF147.voo[osId];
     }
-    if (v) ent = await comEspera(v.p, ESPERA);
+    if (v) ent = await comEspera(v.p, Math.max(0, (v.limite || 0) - Date.now()));
     if (!ent || ent.cli !== cli || !Object.prototype.hasOwnProperty.call(ent.m, id)) {
       var c = lerCache()[osId];
       ent = (c && c.cli === cli && c.m && Object.prototype.hasOwnProperty.call(c.m, id)) ? c : null;
@@ -45210,9 +45212,10 @@ html.pf129 #pf145Folha .li{border-top-color:#eef1f5}
           if (ligado() && eq && !sub && o && travado()) {
             u = await unidadeDa(eq, o);
             if (u) {
-              eq2 = Object.assign({}, eq, { branch: u.nome });
-              if (u.cnpj) eq2.cnpj = u.cnpj;
-              if (u.cidade) eq2.city = u.cidade;
+              var _cd0 = (eq && eq.clientData) || ((typeof pgpClientDataDaOS === 'function') ? pgpClientDataDaOS(o) : null) || {};
+              eq2 = Object.assign({}, eq, { branch: u.nome,
+                                            cnpj: u.cnpj || txt(eq.cnpj) || txt(_cd0.cnpj),        // sem CNPJ na unidade: o do cliente
+                                            city: u.cidade || txt(eq.city) || txt(_cd0.cidade) }); // (nunca o do espelho local)
             }
           }
         } catch (e) { u = null; eq2 = eq; log('unidade', e && e.message); }
@@ -45220,17 +45223,12 @@ html.pf129 #pf145Folha .li{border-top-color:#eef1f5}
         if (u) {
           try {
             var i2 = (typeof pgpGetMachineIndex === 'function') ? pgpGetMachineIndex(idx) : idx;
-            // o que ESTE painel teria sem a unidade (o V146): a herança da máquina 1 para as outras usa isto (item 4)
-            var _cd = (eq && eq.clientData) || ((typeof pgpClientDataDaOS === 'function') ? pgpClientDataDaOS(osObj) : null) || {};
-            var _ufEl = document.querySelector('[data-key="m' + i2 + '_uf"]');
-            var sem = { filial: txt(eq && eq.branch) || txt(_cd.filial), cnpj: txt(eq && eq.cnpj) || txt(_cd.cnpj),
-                        cidade: txt(eq && eq.city) || txt(_cd.cidade), uf: _ufEl ? txt(_ufEl.value) : '' };
             // UF anda com a cidade: a da unidade (o complemento do cadastro do cliente preencheu a dele no campo vazio)
             if (u.cidade) {
               var el = document.querySelector('[data-key="m' + i2 + '_uf"]');
               if (el && !(el.dataset && el.dataset.pgpTocado === 'true')) el.value = u.uf;
             }
-            PF147.aplicadas[i2] = { maquina: txt(eq && eq.id), unidade: u.id, nome: u.nome, sem: sem };
+            PF147.aplicadas[i2] = { maquina: txt(eq && eq.id), unidade: u.id };   // só diagnóstico
             log('aplicada', 'painel ' + i2, txt(eq && eq.id), u.id);
           } catch (e) { log('uf', e && e.message); }
         } else {
@@ -45243,25 +45241,39 @@ html.pf129 #pf145Folha .li{border-top-color:#eef1f5}
   } catch (e) { log('embrulho carregar', e && e.message); }
 
   // ── 4 · a herança da máquina 1 (addMachine, troca de aba, V103) não leva a UNIDADE dela para quem não está nela ────────
-  //   copyClientDataSilent copia os campos do cliente do painel 0 para os vazios dos outros. Se a máquina 1 está numa unidade
-  //   e a outra não (ou em outra), Filial / CNPJ / Cidade / UF que faltarem na outra vêm do que a máquina 1 teria SEM a
-  //   unidade — o mesmo que o V146 copiaria. Só durante a cópia: o painel 0 volta exatamente como estava.
+  //   copyClientDataSilent copia os campos do cliente do painel 0 para os outros. Em OS do escritório, se o painel 0 mostra
+  //   uma unidade desta OS (pf147_uni_v1) e a máquina do painel de destino não está nela, Filial / CNPJ / Cidade / UF NÃO são
+  //   copiados (o destino fica com o que a carga dele mesmo pôs: a máquina dele ou o cliente). Decide pelo DADO guardado
+  //   (máquina carregada em cada painel + o que o aparelho leu), não pela memória: vale depois de recarregar, de restaurar
+  //   rascunho e de fechar aba. O painel 0 volta exatamente como estava. Fora de OS: igual ao V146.
   var CAMPOS_UNI = ['filial', 'cnpj', 'cidade', 'uf'];
   function campo(i, f) { return document.querySelector('[data-key="m' + i + '_' + f + '"]'); }
+  function maquinaDoPainel(i) { try { var q = (typeof pgpGetLoadedMachineForIndex === 'function') ? pgpGetLoadedMachineForIndex(i) : null; return txt(q && q.id); } catch (e) { return ''; } }
+  function bloquearHeranca(alvo) {
+    if (!ligado() || alvo === 0 || !travado()) return false;
+    var ent = lerCache()[txt(window._PGP_OS_ID)];
+    if (!ent || !ent.m) return false;
+    var e0 = campo(0, 'filial'), nome0 = e0 ? txt(e0.value) : '';
+    if (!nome0) return false;
+    var u0 = null;
+    Object.keys(ent.m).forEach(function (k) { var u = ent.m[k]; if (u && u.nome === nome0) u0 = u; });
+    if (!u0) return false;                                    // o painel 0 não mostra unidade desta OS
+    var id = maquinaDoPainel(alvo), ua = id ? ent.m[id] : null;
+    return !(ua && ua.id === u0.id);                          // destino na MESMA unidade: copia como sempre
+  }
+  PF147.bloquearHeranca = bloquearHeranca;
   try {
     var _cc = window.copyClientDataSilent;
     if (typeof _cc === 'function' && !_cc.__pf147) {
       window.copyClientDataSilent = function (opts) {
-        var a0 = PF147.aplicadas[0], trocou = null;
+        var trocou = null;
         try {
           var alvo = (opts && typeof opts.midx === 'number') ? opts.midx : (typeof currentMachine === 'number' ? currentMachine : 0);
-          var ai = PF147.aplicadas[alvo];
-          var e0 = campo(0, 'filial');
-          if (ligado() && a0 && a0.sem && alvo !== 0 && e0 && txt(e0.value) === a0.nome && !(ai && ai.unidade === a0.unidade)) {
-            trocou = {};
-            CAMPOS_UNI.forEach(function (f) { var e = campo(0, f); if (e) { trocou[f] = e.value; e.value = a0.sem[f] || ''; } });
+          if (bloquearHeranca(alvo)) {
+            trocou = {};   // origem vazia = copyClientDataSilent não copia aquele campo
+            CAMPOS_UNI.forEach(function (f) { var e = campo(0, f); if (e) { trocou[f] = e.value; e.value = ''; } });
           }
-        } catch (e) { log('herança', e && e.message); }
+        } catch (e) { trocou = null; log('herança', e && e.message); }
         try { return _cc.apply(this, arguments); }
         finally {
           if (trocou) CAMPOS_UNI.forEach(function (f) { var e = campo(0, f); if (e && Object.prototype.hasOwnProperty.call(trocou, f)) e.value = trocou[f]; });
