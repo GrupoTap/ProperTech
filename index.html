@@ -45071,6 +45071,8 @@ html.pf129 #pf145Folha .li{border-top-color:#eef1f5}
        maquina ⇒ OS com maquinas de unidades diferentes sai com a unidade certa em cada "MAQUINA n DE N".
    3 · So na OS do ESCRITORIO (cadastro travado, V74: o saveClient leva so nome + datas). Na INS aberta pelo proprio PCF (V144),
        o que esta na secao 1 vira pedido de correcao do cliente — la nada muda.
+   4 · copyClientDataSilent (a heranca da maquina 1 para as outras, V103): a UNIDADE da maquina 1 nao vaza para o painel de uma
+       maquina que nao esta nela — o que faltar ali vem do que a maquina 1 teria sem a unidade (o mesmo que o V146 copiaria).
    Sem unidade, unidade de outro cliente, sem leitura e sem nada no aparelho, fora de OS: tela, PDF e envio iguais ao PCF_V146.
    Chave de volta: localStorage pcf147 = off (volta ao V146). Diagnostico: PF147.log, PF147.aplicadas. */
 (function () {
@@ -45218,20 +45220,56 @@ html.pf129 #pf145Folha .li{border-top-color:#eef1f5}
         if (u) {
           try {
             var i2 = (typeof pgpGetMachineIndex === 'function') ? pgpGetMachineIndex(idx) : idx;
+            // o que ESTE painel teria sem a unidade (o V146): a herança da máquina 1 para as outras usa isto (item 4)
+            var _cd = (eq && eq.clientData) || ((typeof pgpClientDataDaOS === 'function') ? pgpClientDataDaOS(osObj) : null) || {};
+            var _ufEl = document.querySelector('[data-key="m' + i2 + '_uf"]');
+            var sem = { filial: txt(eq && eq.branch) || txt(_cd.filial), cnpj: txt(eq && eq.cnpj) || txt(_cd.cnpj),
+                        cidade: txt(eq && eq.city) || txt(_cd.cidade), uf: _ufEl ? txt(_ufEl.value) : '' };
             // UF anda com a cidade: a da unidade (o complemento do cadastro do cliente preencheu a dele no campo vazio)
             if (u.cidade) {
               var el = document.querySelector('[data-key="m' + i2 + '_uf"]');
               if (el && !(el.dataset && el.dataset.pgpTocado === 'true')) el.value = u.uf;
             }
-            PF147.aplicadas[i2] = { maquina: txt(eq && eq.id), unidade: u.id };
+            PF147.aplicadas[i2] = { maquina: txt(eq && eq.id), unidade: u.id, nome: u.nome, sem: sem };
             log('aplicada', 'painel ' + i2, txt(eq && eq.id), u.id);
           } catch (e) { log('uf', e && e.message); }
+        } else {
+          try { delete PF147.aplicadas[(typeof pgpGetMachineIndex === 'function') ? pgpGetMachineIndex(idx) : idx]; } catch (e) {}
         }
         return r;
       };
       window.pgpCarregarMaquinaOS.__pf147 = true;
     }
   } catch (e) { log('embrulho carregar', e && e.message); }
+
+  // ── 4 · a herança da máquina 1 (addMachine, troca de aba, V103) não leva a UNIDADE dela para quem não está nela ────────
+  //   copyClientDataSilent copia os campos do cliente do painel 0 para os vazios dos outros. Se a máquina 1 está numa unidade
+  //   e a outra não (ou em outra), Filial / CNPJ / Cidade / UF que faltarem na outra vêm do que a máquina 1 teria SEM a
+  //   unidade — o mesmo que o V146 copiaria. Só durante a cópia: o painel 0 volta exatamente como estava.
+  var CAMPOS_UNI = ['filial', 'cnpj', 'cidade', 'uf'];
+  function campo(i, f) { return document.querySelector('[data-key="m' + i + '_' + f + '"]'); }
+  try {
+    var _cc = window.copyClientDataSilent;
+    if (typeof _cc === 'function' && !_cc.__pf147) {
+      window.copyClientDataSilent = function (opts) {
+        var a0 = PF147.aplicadas[0], trocou = null;
+        try {
+          var alvo = (opts && typeof opts.midx === 'number') ? opts.midx : (typeof currentMachine === 'number' ? currentMachine : 0);
+          var ai = PF147.aplicadas[alvo];
+          var e0 = campo(0, 'filial');
+          if (ligado() && a0 && a0.sem && alvo !== 0 && e0 && txt(e0.value) === a0.nome && !(ai && ai.unidade === a0.unidade)) {
+            trocou = {};
+            CAMPOS_UNI.forEach(function (f) { var e = campo(0, f); if (e) { trocou[f] = e.value; e.value = a0.sem[f] || ''; } });
+          }
+        } catch (e) { log('herança', e && e.message); }
+        try { return _cc.apply(this, arguments); }
+        finally {
+          if (trocou) CAMPOS_UNI.forEach(function (f) { var e = campo(0, f); if (e && Object.prototype.hasOwnProperty.call(trocou, f)) e.value = trocou[f]; });
+        }
+      };
+      window.copyClientDataSilent.__pf147 = true;
+    }
+  } catch (e) { log('embrulho herança', e && e.message); }
 
   log('pronto');
 })();
