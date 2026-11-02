@@ -45072,7 +45072,7 @@ html.pf129 #pf145Folha .li{border-top-color:#eef1f5}
    3 · So na OS do ESCRITORIO (cadastro travado, V74: o saveClient leva so nome + datas). Na INS aberta pelo proprio PCF (V144),
        o que esta na secao 1 vira pedido de correcao do cliente — la nada muda.
    4 · copyClientDataSilent (a heranca da maquina 1 para as outras, V103): a UNIDADE da maquina 1 nao vaza para o painel de uma
-       maquina que nao esta nela (Filial, CNPJ, Cidade e UF nao sao copiados; ficam os da carga do proprio painel). Decide pelo
+       maquina que nao esta nela (Filial, CNPJ, Cidade e UF vem do cliente da OS, como no V146). Decide pelo
        dado guardado (maquina de cada painel + pf147_uni_v1), entao vale depois de recarregar, restaurar e fechar aba.
    Sem unidade, unidade de outro cliente, sem leitura e sem nada no aparelho, fora de OS: tela, PDF e envio iguais ao PCF_V146.
    Chave de volta: localStorage pcf147 = off (volta ao V146). Diagnostico: PF147.log, PF147.aplicadas. */
@@ -45242,8 +45242,8 @@ html.pf129 #pf145Folha .li{border-top-color:#eef1f5}
 
   // ── 4 · a herança da máquina 1 (addMachine, troca de aba, V103) não leva a UNIDADE dela para quem não está nela ────────
   //   copyClientDataSilent copia os campos do cliente do painel 0 para os outros. Em OS do escritório, se o painel 0 mostra
-  //   uma unidade desta OS (pf147_uni_v1) e a máquina do painel de destino não está nela, Filial / CNPJ / Cidade / UF NÃO são
-  //   copiados (o destino fica com o que a carga dele mesmo pôs: a máquina dele ou o cliente). Decide pelo DADO guardado
+  //   uma unidade desta OS (pf147_uni_v1) e a máquina do painel de destino não está nela, Filial / CNPJ / Cidade / UF saem do
+  //   CLIENTE da OS, não da unidade (o que o V146 copiaria; sem o cliente na memória, não copia). Decide pelo DADO guardado
   //   (máquina carregada em cada painel + o que o aparelho leu), não pela memória: vale depois de recarregar, de restaurar
   //   rascunho e de fechar aba. O painel 0 volta exatamente como estava. Fora de OS: igual ao V146.
   var CAMPOS_UNI = ['filial', 'cnpj', 'cidade', 'uf'];
@@ -45270,8 +45270,11 @@ html.pf129 #pf145Folha .li{border-top-color:#eef1f5}
         try {
           var alvo = (opts && typeof opts.midx === 'number') ? opts.midx : (typeof currentMachine === 'number' ? currentMachine : 0);
           if (bloquearHeranca(alvo)) {
-            trocou = {};   // origem vazia = copyClientDataSilent não copia aquele campo
-            CAMPOS_UNI.forEach(function (f) { var e = campo(0, f); if (e) { trocou[f] = e.value; e.value = ''; } });
+            // na origem, só durante a cópia, o que o painel 0 teria SEM a unidade: o cliente da OS (o mesmo que o V146 copiaria);
+            // sem o cliente na memória, vazio = copyClientDataSilent não copia aquele campo
+            var cd = ((typeof pgpClientDataDaOS === 'function') ? pgpClientDataDaOS(window._PGP_OS_OBJ) : null) || {};
+            trocou = {};
+            CAMPOS_UNI.forEach(function (f) { var e = campo(0, f); if (e) { trocou[f] = e.value; e.value = txt(cd[f]); } });
           }
         } catch (e) { trocou = null; log('herança', e && e.message); }
         try { return _cc.apply(this, arguments); }
