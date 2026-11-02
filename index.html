@@ -1774,8 +1774,16 @@ html[data-boot="pipeline"] #pf113Splash{display:flex;position:fixed;inset:0;z-in
   pergunta ao servidor (pc_rasc_ler) e oferece "Recuperar" (vira Coleta guardada e abre pelo restaurarSessao). Chave de volta pcf146=off.
   Bloco PF146 no fim do body; nenhum remendo no corpo de outros blocos.
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V146</title>
-<meta name="app-build" content="PCF_V146" data-date="2026-10-27">
+<!--
+  PCF_V147 · O RELATORIO SAI COM A UNIDADE DA MAQUINA · 02/11/2026 · feito SOBRE o PCF_V146 no ar · par sw propertech-v149 · zero SQL, zero GAS.
+  ProperCare-backlog#2. Dentro de uma OS do escritorio, a secao 1 (e por ela o PDF, o resumo, o CSV e a visita) passa a dizer a UNIDADE
+  onde a maquina esta (MAQUINAS.Unidade_ID): Filial / Unidade = nome da unidade; CNPJ, Cidade e UF da unidade quando ela tem. Cada
+  painel com a sua maquina. A leitura e direta no Postgres (maquinas + unidades, colunas explicitas), sai junto com o getMaquinasByOS
+  e fica no aparelho por OS (vale offline). Sem unidade do cliente da OS: igual ao V146. Chave de volta pcf147=off.
+  Bloco PF147 no fim do body; nenhum remendo no corpo de outros blocos.
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V147</title>
+<meta name="app-build" content="PCF_V147" data-date="2026-11-02">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -45045,5 +45053,189 @@ html.pf129 #pf145Folha .li{border-top-color:#eef1f5}
 </script>
 <!-- ████ FIM PCF_V146 (PF146) ████ -->
 
+<!-- ████ PCF_V147 (PF147) · O RELATORIO SAI COM A UNIDADE DA MAQUINA · 02/11/2026 ████ -->
+<script>
+/* PCF_V147 (PF147) — 02/11/2026 · ProperCare-backlog#2 · zero SQL, zero GAS · par sw propertech-v149.
+   O DEFEITO: dentro de uma OS, o campo "Filial / Unidade" da secao 1 (e por ele o PDF, o resumo, o CSV e a VISITA) vinha do
+   texto Filial da MAQUINA ou, vazio, do campo Filial da FICHA DO CLIENTE — nunca da UNIDADE onde a maquina esta
+   (MAQUINAS.Unidade_ID). Cliente com duas unidades: a preventiva feita na filial saia com o nome da matriz.
+   O QUE ESTE BLOCO FAZ (so embrulhos por window[nome], nenhum remendo no corpo de outros blocos):
+   1 · pfCacheGravarMaqOS (a mesma porta de quando o getMaquinasByOS chega: abrir a OS e "Preparar o dia") dispara em 2o plano
+       UMA leitura do Postgres: maquinas(id, unidade_id) das maquinas da OS + unidades(id, cliente_id, nome, cnpj, cidade, uf,
+       ativo) do cliente da OS — colunas explicitas, o crachá do PCF, sem passar pelo GAS (as duas tabelas ja sao FONTE no banco
+       desde o M4). O resultado fica no aparelho por OS (pf147_uni_v1, mesmo teto do pf_maqos_cache_v1) e vale offline.
+   2 · pgpCarregarMaquinaOS: antes de pintar a maquina, espera essa leitura (no maximo 2,5 s; senao usa a do aparelho) e, se a
+       maquina tem unidade DO CLIENTE DA OS e ativa (a regra do _v140DestinoOS_ do GAS: maquina da frota em posse do cliente nao
+       tem unidade dele e cai no cliente), entrega ao carregador de sempre: Filial / Unidade = nome da unidade; CNPJ da unidade
+       (se ela tem); Cidade e UF da unidade (se ela tem cidade). Razao Social continua o cliente da OS. Cada painel com a sua
+       maquina ⇒ OS com maquinas de unidades diferentes sai com a unidade certa em cada "MAQUINA n DE N".
+   3 · So na OS do ESCRITORIO (cadastro travado, V74: o saveClient leva so nome + datas). Na INS aberta pelo proprio PCF (V144),
+       o que esta na secao 1 vira pedido de correcao do cliente — la nada muda.
+   Sem unidade, unidade de outro cliente, sem leitura e sem nada no aparelho, fora de OS: tela, PDF e envio iguais ao PCF_V146.
+   Chave de volta: localStorage pcf147 = off (volta ao V146). Diagnostico: PF147.log, PF147.aplicadas. */
+(function () {
+  if (window.PF147) return;
+  var PF147 = window.PF147 = { versao: 'PCF_V147', log: [], leituras: 0, falhas: 0, aplicadas: {}, voo: {} };
+  function ligado() { try { return localStorage.getItem('pcf147') !== 'off'; } catch (e) { return true; } }
+  function txt(v) { return String(v === undefined || v === null ? '' : v).trim(); }
+  function log() { try { PF147.log.push([new Date().toISOString().slice(11, 19)].concat([].slice.call(arguments)).join(' ')); if (PF147.log.length > 60) PF147.log.shift(); } catch (e) {} }
+  var CHAVE = 'pf147_uni_v1', ESPERA = 2500, PRAZO = 8000;
+  PF147.cfg = { espera: ESPERA, prazo: PRAZO };
+
+  // ── o que o aparelho guarda por OS: { ts, cli, m: { <id da máquina>: {id,nome,cnpj,cidade,uf} | 0 } } ──────────────────────
+  function lerCache() { try { var c = JSON.parse(localStorage.getItem(CHAVE) || '{}'); return (c && typeof c === 'object') ? c : {}; } catch (e) { return {}; } }
+  function gravarCache(osId, ent) {
+    try {
+      var c = lerCache(), velho = c[osId] && c[osId].m ? c[osId].m : {};
+      c[osId] = { ts: Date.now(), cli: ent.cli, m: Object.assign({}, velho, ent.m) };
+      if (typeof _pfCacheTrim === 'function') _pfCacheTrim(c, (typeof PF_CACHE_MAX_OS === 'number') ? PF_CACHE_MAX_OS : 25);
+      localStorage.setItem(CHAVE, JSON.stringify(c));
+    } catch (e) { log('cache', e && e.message); }
+  }
+
+  // ── leitura direta do Postgres (as mesmas travas gerais do motor: PCL.disponivel) ─────────────────────────────────────────
+  function podeLer() {
+    try {
+      if (typeof pgpRedeBloqueada === 'function' && pgpRedeBloqueada()) return false;
+      if (navigator.onLine === false) return false;
+      if (typeof PCL === 'undefined' || typeof _pcfPcConfigurar !== 'function' || !_pcfPcConfigurar()) return false;
+      return !!PCL.disponivel();
+    } catch (e) { return false; }
+  }
+  async function rest(caminho) {
+    var tok = await _pcfSupaToken();
+    if (!tok) throw new Error('sem crachá');
+    var ctl = (typeof AbortController === 'function') ? new AbortController() : null;
+    var tm = ctl ? setTimeout(function () { try { ctl.abort(); } catch (e) {} }, PRAZO) : null;
+    try {
+      var r = await fetch(PCF_SUPA_URL + '/rest/v1/' + caminho, { method: 'GET', signal: ctl ? ctl.signal : undefined,
+        headers: { apikey: PCF_SUPA_ANON, Authorization: 'Bearer ' + tok, Accept: 'application/json' } });
+      if (r.status !== 200) throw new Error(caminho.split('?')[0] + ': HTTP ' + r.status);
+      var j = await r.json();
+      if (!Array.isArray(j)) throw new Error(caminho.split('?')[0] + ': resposta inválida');
+      return j;
+    } finally { if (tm) clearTimeout(tm); }
+  }
+  function aspas(v) { return encodeURIComponent('"' + String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"'); }
+  function ativa(u) { return txt(u && u.ativo !== undefined && u.ativo !== null ? u.ativo : 'SIM').toUpperCase() !== 'NÃO'; }   // = _v140Ativo_ do GAS
+
+  async function buscar(osId, ids, cli) {
+    var q1 = 'maquinas?select=id,unidade_id&id=in.(' + ids.map(aspas).join(',') + ')';
+    var q2 = 'unidades?select=id,cliente_id,nome,cnpj,cidade,uf,ativo&cliente_id=eq.' + encodeURIComponent(cli);
+    var res = await Promise.all([rest(q1), rest(q2)]);
+    var uni = {};
+    res[1].forEach(function (u) { if (u && txt(u.id)) uni[txt(u.id)] = u; });
+    var m = {};
+    res[0].forEach(function (x) {
+      var id = txt(x && x.id); if (!id) return;
+      var u = uni[txt(x.unidade_id)] || null;
+      // a regra do _v140DestinoOS_: só unidade DO CLIENTE DA OS e ativa (frota em posse do cliente cai no cliente)
+      m[id] = (u && txt(u.cliente_id) === cli && ativa(u) && txt(u.nome))
+        ? { id: txt(u.id), nome: txt(u.nome), cnpj: txt(u.cnpj), cidade: txt(u.cidade), uf: txt(u.uf).toUpperCase() } : 0;
+    });
+    PF147.leituras++;
+    var ent = { cli: cli, m: m };
+    gravarCache(osId, ent);
+    log('lido', osId, ids.length + ' máq', Object.keys(m).filter(function (k) { return m[k]; }).length + ' com unidade');
+    return ent;
+  }
+  // dispara (ou reaproveita) a leitura da OS — nunca lança
+  function iniciar(osId, machines, os) {
+    osId = txt(osId);
+    var cli = txt(os && os.id_cliente);
+    var ids = (machines || []).map(function (q) { return txt(q && q.id); }).filter(Boolean);
+    if (!osId || !cli || !ids.length || !podeLer()) return null;
+    var chave = cli + '|' + ids.slice().sort().join(',');
+    var v = PF147.voo[osId];
+    if (v && v.chave === chave && (Date.now() - v.em) < 60000) return v.p;
+    var p = buscar(osId, ids, cli).catch(function (e) { PF147.falhas++; log('falhou', osId, e && e.message); return null; });
+    PF147.voo[osId] = { chave: chave, em: Date.now(), p: p };
+    return p;
+  }
+  function comEspera(p, ms) {
+    return new Promise(function (res) {
+      var t = setTimeout(function () { res(null); }, ms);
+      Promise.resolve(p).then(function (v) { clearTimeout(t); res(v); }, function () { clearTimeout(t); res(null); });
+    });
+  }
+  // a unidade da máquina nesta OS: leitura de agora (espera curta) → a do aparelho → null (comportamento do V146)
+  async function unidadeDa(eq, osObj) {
+    var osId = txt((osObj && osObj.id_os) || window._PGP_OS_ID_CARREGADA || window._PGP_OS_ID);
+    var cli = txt(osObj && osObj.id_cliente);
+    var id = txt(eq && eq.id);
+    if (!osId || !cli || !id) return null;
+    var v = PF147.voo[osId], ent = null;
+    if (!v) {
+      var lista = [eq];
+      try { var mc = JSON.parse(localStorage.getItem('pf_maqos_cache_v1') || '{}')[osId]; if (mc && Array.isArray(mc.machines) && mc.machines.some(function (q) { return txt(q && q.id) === id; })) lista = mc.machines; } catch (e) {}
+      iniciar(osId, lista, osObj);
+      v = PF147.voo[osId];
+    }
+    if (v) ent = await comEspera(v.p, ESPERA);
+    if (!ent || ent.cli !== cli || !Object.prototype.hasOwnProperty.call(ent.m, id)) {
+      var c = lerCache()[osId];
+      ent = (c && c.cli === cli && c.m && Object.prototype.hasOwnProperty.call(c.m, id)) ? c : null;
+      if (ent) log('do aparelho', osId, id);
+    }
+    return ent ? (ent.m[id] || null) : null;
+  }
+  PF147.unidadeDa = unidadeDa;
+
+  function travado() { try { return typeof window.pgpCadTravado === 'function' && !!window.pgpCadTravado(); } catch (e) { return false; } }
+
+  // ── 1 · quando as máquinas da OS chegam do servidor, a leitura das unidades sai junto (2º plano) ─────────────────────────
+  try {
+    var _cg = window.pfCacheGravarMaqOS;
+    if (typeof _cg === 'function' && !_cg.__pf147) {
+      window.pfCacheGravarMaqOS = function (osId, machines, os) {
+        var r = _cg.apply(this, arguments);
+        try { if (ligado()) iniciar(osId, machines, os); } catch (e) { log('iniciar', e && e.message); }
+        return r;
+      };
+      window.pfCacheGravarMaqOS.__pf147 = true;
+    }
+  } catch (e) { log('embrulho cache', e && e.message); }
+
+  // ── 2 · a máquina vai para o painel com a unidade dela ────────────────────────────────────────────────────────────────────
+  try {
+    var _cm = window.pgpCarregarMaquinaOS;
+    if (typeof _cm === 'function' && !_cm.__pf147) {
+      window.pgpCarregarMaquinaOS = async function (eq, idx, dbPre, osObj) {
+        var u = null, eq2 = eq;
+        try {
+          var o = osObj || window._PGP_OS_OBJ || null;
+          var sub = (typeof _v91EhSubsistema === 'function') && _v91EhSubsistema(eq);
+          if (ligado() && eq && !sub && o && travado()) {
+            u = await unidadeDa(eq, o);
+            if (u) {
+              eq2 = Object.assign({}, eq, { branch: u.nome });
+              if (u.cnpj) eq2.cnpj = u.cnpj;
+              if (u.cidade) eq2.city = u.cidade;
+            }
+          }
+        } catch (e) { u = null; eq2 = eq; log('unidade', e && e.message); }
+        var r = await _cm.call(this, eq2, idx, dbPre, osObj);
+        if (u) {
+          try {
+            var i2 = (typeof pgpGetMachineIndex === 'function') ? pgpGetMachineIndex(idx) : idx;
+            // UF anda com a cidade: a da unidade (o complemento do cadastro do cliente preencheu a dele no campo vazio)
+            if (u.cidade) {
+              var el = document.querySelector('[data-key="m' + i2 + '_uf"]');
+              if (el && !(el.dataset && el.dataset.pgpTocado === 'true')) el.value = u.uf;
+            }
+            PF147.aplicadas[i2] = { maquina: txt(eq && eq.id), unidade: u.id };
+            log('aplicada', 'painel ' + i2, txt(eq && eq.id), u.id);
+          } catch (e) { log('uf', e && e.message); }
+        }
+        return r;
+      };
+      window.pgpCarregarMaquinaOS.__pf147 = true;
+    }
+  } catch (e) { log('embrulho carregar', e && e.message); }
+
+  log('pronto');
+})();
+</script>
+<!-- ████ FIM PCF_V147 (PF147) ████ -->
 </body>
 </html>
