@@ -1782,8 +1782,17 @@ html[data-boot="pipeline"] #pf113Splash{display:flex;position:fixed;inset:0;z-in
   e fica no aparelho por OS (vale offline). Sem unidade do cliente da OS: igual ao V146. Chave de volta pcf147=off.
   Bloco PF147 no fim do body; nenhum remendo no corpo de outros blocos.
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V147</title>
-<meta name="app-build" content="PCF_V147" data-date="2026-11-02">
+<!--
+  PCF_V148 · ITEM ADICIONAL COM REFERENCIA, HORIMETRO E INTERVALO + BOTOES QUE PINTAM NO TEMA CLARO · 03/11/2026 · feito SOBRE o
+  PCF_V147 no ar · par sw propertech-v150 · zero SQL, zero GAS. ProperCare-backlog#60 (partes A e B-campos).
+  (A) No Visual novo (PF129) a regra com !important de fundo branco dos botoes Ok/NOK/Trocada/N.A. vencia a do estado marcado (V117):
+  o toque gravava e nada mudava na tela. Regras do marcado no tema claro (pilula cheia) e cartao do item claro.
+  (B) Secao 7: Referencia / codigo, Horimetro da troca (vem com o horimetro da secao 3 ao marcar Trocada, editavel) e Intervalo (h),
+  opcionais. Viajam no hidden do item (rascunho, coletas guardadas, copia do servidor), no payload itens_extras e no PDF (5.1).
+  O GAS v180 ainda nao grava estes tres na tabela itens_extras_campo (issue propria). Mudancas dentro do bloco V117 e do PF129.
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V148</title>
+<meta name="app-build" content="PCF_V148" data-date="2026-11-03">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -10167,8 +10176,12 @@ function pgpCreateReportBuilder() {
         const est117 = ({ ok: 'OK', nok: 'NOK', trocada: 'Trocada', na: 'N/A' })[it.estado] || '-';
         const cor117 = it.estado === 'nok' ? [200, 30, 30] : it.estado === 'ok' ? [22, 130, 60] : it.estado === 'trocada' ? [190, 100, 10] : DARK;
         doc.setFont('helvetica', 'normal'); doc.setFontSize(7);
+        // PCF_V148 (ProperCare-backlog#60): referência, horímetro da troca e intervalo numa linha própria
+        const det148 = [it.ref ? 'Ref.: ' + it.ref : '', it.horim_troca ? 'Horímetro da troca: ' + it.horim_troca + ' h' : '',
+                        it.intervalo ? 'Intervalo: ' + it.intervalo + ' h' : ''].filter(function (x) { return x; }).join(' - ');
+        const detL148 = det148 ? doc.splitTextToSize(limparTextoPDF(det148), CW - 6) : [];
         const obsL117 = it.obs ? doc.splitTextToSize(limparTextoPDF('Obs.: ' + it.obs), CW - 6) : [];
-        const h117 = 7 + (obsL117.length ? obsL117.length * 3.6 + 1 : 0);
+        const h117 = 7 + (detL148.length ? detL148.length * 3.6 + 1 : 0) + (obsL117.length ? obsL117.length * 3.6 + 1 : 0);
         y = checkY(y, h117);
         if (k % 2 === 0) { doc.setFillColor(248, 249, 252); doc.rect(ML, y, CW, h117, 'F'); }
         doc.setDrawColor(...MGRAY); doc.setLineWidth(0.15); doc.rect(ML, y, CW, h117, 'S');
@@ -10178,7 +10191,9 @@ function pgpCreateReportBuilder() {
         doc.setFont('helvetica', 'normal'); doc.setTextColor(...DARK);
         const med117 = (it.medicao ? 'Medição: ' + it.medicao : '') + (it.fotos ? (it.medicao ? ' - ' : '') + it.fotos + ' foto(s)' : '');
         if (med117) doc.text(doc.splitTextToSize(limparTextoPDF(med117), CW * 0.29)[0], ML + CW * 0.70, y + 4.6);
-        if (obsL117.length) { doc.setFontSize(7); doc.text(obsL117, ML + 3, y + 8.3); }
+        let yl148 = y + 8.3;
+        if (detL148.length) { doc.setFontSize(7); doc.text(detL148, ML + 3, yl148); yl148 += detL148.length * 3.6 + 1; }
+        if (obsL117.length) { doc.setFontSize(7); doc.text(obsL117, ML + 3, yl148); }
         y += h117;
       });
       y += 4;
@@ -32329,6 +32344,11 @@ try{
 .pcf117-e.on[data-v="trocada"]{border-color:#f59e0b;background:#3a2a15;color:#fde68a}
 .pcf117-e.on[data-v="na"]{border-color:#64748b;background:#1e293b;color:#cbd5e1}
 .pcf117-med{width:100%;min-height:42px;margin-bottom:6px}
+/* PCF_V148 (ProperCare-backlog#60) — referência, horímetro da troca e intervalo do item adicional */
+.pcf148-campos{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px}
+.pcf148-campos label{display:flex;flex-direction:column;gap:3px;font-size:12px;font-weight:600;color:#94a3b8;min-width:0}
+.pcf148-campos label.largo{grid-column:1 / -1}
+.pcf148-campos input{width:100%;min-height:42px;min-width:0}
 .pcf117-obs{width:100%;min-height:56px}
 .pcf117-foto{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px}
 .pcf117-foto .btn-foto-inline{min-height:40px}
@@ -32446,6 +32466,12 @@ try{
         return '<button type="button" class="pcf117-e' + (it.estado === e[0] ? ' on' : '') + '" data-pcf117="est" data-v="' + e[0] + '">' + e[1] + '</button>';
       }).join('') + '</div>' +
       '<input type="text" class="pcf117-med" data-f="medicao" maxlength="120" placeholder="Medição (opcional) — ex.: 78 °C · 7,2 bar · 3 mm" value="' + esc(it.medicao || '') + '">' +
+      // PCF_V148 (ProperCare-backlog#60): referência, horímetro da troca e intervalo — opcionais, viajam no item
+      '<div class="pcf148-campos">' +
+      '<label class="largo">Referência / código da peça<input type="text" class="pcf148-ref" data-f="ref" maxlength="120" placeholder="Ex.: W 962" value="' + esc(it.ref || '') + '" autocomplete="off" name="pcf148_ref_nofill" data-lpignore="true" data-1p-ignore></label>' +
+      '<label>Horímetro da troca (h)<input type="number" inputmode="numeric" min="0" class="pcf148-hor" data-f="horim_troca" placeholder="Ex.: 5735" value="' + esc(it.horim_troca || '') + '"></label>' +
+      '<label>Intervalo de troca (h)<input type="number" inputmode="numeric" min="0" class="pcf148-int" data-f="intervalo" placeholder="Ex.: 2000" value="' + esc(it.intervalo || '') + '"></label>' +
+      '</div>' +
       '<textarea class="pcf117-obs" data-f="obs" maxlength="2000" placeholder="Observação (opcional)">' + esc(it.obs || '') + '</textarea>' +
       '<div class="pcf117-foto"><button type="button" class="btn-foto-inline" data-photokey="' + esc(k) + '" data-orig-label="📷 Foto" data-done-label="✅ Foto" ' +
       'onclick="event.stopPropagation();abrirFotoPicker(this,\'linked\',' + i + ',\'' + esc(k) + '\')">📷 Foto</button>' +
@@ -32523,7 +32549,7 @@ try{
   };
   window.pcf117Remover = async function (i, uid) {
     var it = ler(i).find(function (x) { return x.uid === uid; }); if (!it) return;
-    var temAlgo = String(it.nome || '').trim() || it.estado || it.medicao || it.obs || nFotos(i, uid);
+    var temAlgo = String(it.nome || '').trim() || it.estado || it.medicao || it.obs || it.ref || it.horim_troca || it.intervalo || nFotos(i, uid);
     if (temAlgo) {
       var ok = true;
       try { ok = await AppDialog.confirm('Tirar o item "' + (it.nome || 'sem nome') + '" desta máquina?' + (nFotos(i, uid) ? '\n\nAs fotos dele saem do relatório (as que já subiram ficam no Drive da OS).' : ''),
@@ -32620,8 +32646,19 @@ try{
     if (a === 'del') return window.pcf117Remover(i, uid);
     if (a === 'est') {
       var v = b.getAttribute('data-v');
-      mudar(i, uid, function (it) { it.estado = (it.estado === v) ? '' : v; }, true);
-      card.querySelectorAll('.pcf117-e').forEach(function (x) { x.classList.toggle('on', x.getAttribute('data-v') === (ler(i).find(function (y) { return y.uid === uid; }) || {}).estado); });
+      mudar(i, uid, function (it) {
+        it.estado = (it.estado === v) ? '' : v;
+        // PCF_V148 (ProperCare-backlog#60): marcou "Trocada" com o horímetro da troca vazio ⇒ vem o horímetro
+        // atual da seção 3 (o técnico pode editar). Nunca sobrescreve o que já foi digitado.
+        if (it.estado === 'trocada' && !String(it.horim_troca || '').trim()) {
+          var hs = $('m' + i + '_horimetro'), hv = hs ? String(hs.value || '').trim() : '';
+          if (hv) it.horim_troca = hv;
+        }
+      }, true);
+      var _it148 = ler(i).find(function (y) { return y.uid === uid; }) || {};
+      card.querySelectorAll('.pcf117-e').forEach(function (x) { x.classList.toggle('on', x.getAttribute('data-v') === _it148.estado); });
+      var _h148 = card.querySelector('.pcf148-hor');
+      if (_h148 && _it148.horim_troca != null && String(_h148.value) !== String(_it148.horim_troca)) _h148.value = String(_it148.horim_troca);
     }
   }, false);
   document.addEventListener('input', function (ev) {
@@ -32643,10 +32680,20 @@ try{
   }, false);
 
   // ── payload: os itens com nome (cada um com o seu ts) + os removidos ────
+  // PCF_V148: horas como texto de inteiro ≥ 0 ("5735"); o que não for número vira '' (nunca NaN no PDF)
+  function _num148(v) {
+    var s = String(v == null ? '' : v).trim().replace(/\s/g, ''); if (!s) return '';
+    if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');   // "5.735" = milhar (horas são inteiras)
+    s = s.replace(',', '.');
+    var n = Number(s); return (isFinite(n) && n >= 0) ? String(Math.round(n)) : '';
+  }
   function listaPayload(i) {
     return ler(i).filter(function (it) { return String(it.nome || '').trim(); }).map(function (it) {
       return { uid: String(it.uid), nome: String(it.nome).trim().slice(0, 200), estado: String(it.estado || ''),
                medicao: String(it.medicao || '').slice(0, 120), obs: String(it.obs || '').slice(0, 2000), fotos: nFotos(i, it.uid),
+               // PCF_V148 (ProperCare-backlog#60): vazios = ''. O GAS v180 ainda não grava estes três no banco
+               // (ficam no aparelho, no rascunho do servidor e no PDF) — a gravação no banco é issue própria.
+               ref: String(it.ref || '').trim().slice(0, 120), horim_troca: _num148(it.horim_troca), intervalo: _num148(it.intervalo),
                ts: Number(it.ts) || 0 };
     });
   }
@@ -33758,7 +33805,7 @@ input.pcf121-dt-nativo::-webkit-calendar-picker-indicator{filter:invert(1) brigh
         if (card && !card.querySelector('.pcf121-novo')) {
           var nm = card.querySelector('.pcf117-nome');
           var g = document.createElement('div'); g.className = 'pcf121-novo';
-          g.innerHTML = '<b>Novo item:</b> 1) dê o nome · 2) marque Ok / NOK / Trocada / N.A. · medição, observação e foto são <b>opcionais</b>.';
+          g.innerHTML = '<b>Novo item:</b> 1) dê o nome · 2) marque Ok / NOK / Trocada / N.A. · medição, referência, horímetro da troca, intervalo, observação e foto são <b>opcionais</b>.';
           card.insertBefore(g, card.firstChild);
           var usados = nomesUsados(), lista = usados.concat(NOMES_PRONTOS.filter(function (n) { return usados.map(function (x) { return String(x).toLowerCase(); }).indexOf(n.toLowerCase()) < 0; })).slice(0, 10);
           var ch = document.createElement('div'); ch.className = 'pcf121-chips';
@@ -37531,6 +37578,20 @@ html.pf129 .pcf116-sec{background:#ffffff!important;color:#0f172a!important;bord
 /* botões que ainda vinham do tema escuro (sonda de fundo escuro na tela clara) */
 html.pf129 .pcf117-assin,html.pf129 .pf122-salvar{background:#ffffff!important;color:#0f172a!important;border:2px solid #94a3b8!important}
 html.pf129 .pcf117-e,html.pf129 .pcf121-chip{background:#ffffff!important;color:#0f172a!important;border-color:#cbd5e1!important}
+/* PCF_V148 (ProperCare-backlog#60) — a regra acima (com !important) apagava o estado marcado do V117: o toque gravava
+   e nada mudava na tela. Marcado no tema claro = pílula cheia, texto branco (contraste para ler no sol). */
+html.pf129 .pcf117-e.on[data-v="ok"]{background:#15803d!important;border-color:#15803d!important;color:#ffffff!important}
+html.pf129 .pcf117-e.on[data-v="nok"]{background:#b91c1c!important;border-color:#b91c1c!important;color:#ffffff!important}
+html.pf129 .pcf117-e.on[data-v="trocada"]{background:#b45309!important;border-color:#b45309!important;color:#ffffff!important}
+html.pf129 .pcf117-e.on[data-v="na"]{background:#475569!important;border-color:#475569!important;color:#ffffff!important}
+html.pf129 .pcf117-e:active,html.pf129 .pcf121-chip:active{background:#e2e8f0!important;border-color:#94a3b8!important}
+html.pf129 .pcf117-e.on:active{filter:brightness(.9)}
+/* o cartão do item adicional era azul-escuro dentro da tela clara */
+html.pf129 .pcf117-item{background:#ffffff!important;border:1px solid #d9e0ea!important;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+html.pf129 .pcf117-item.sem-nome{border-color:#d97706!important}
+html.pf129 .pcf117-del{background:#fef2f2!important;color:#b91c1c!important;border:1px solid #fca5a5!important}
+html.pf129 .pcf117-aviso,html.pf129 .pcf121-novo{color:#92400e!important}
+html.pf129 .pcf148-campos label{color:#334155!important}
 html.pf129 .pcf121-incluir{background:#fff7ed!important;color:#b45309!important}
 html.pf129 .pcf116-enviar.secundario{color:#15803d!important}
 html.pf129 .pgp-banner{background:#ffffff!important;border-color:#d9e0ea!important;color:#0f172a!important}
