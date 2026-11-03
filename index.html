@@ -32469,8 +32469,8 @@ try{
       // PCF_V148 (ProperCare-backlog#60): referência, horímetro da troca e intervalo — opcionais, viajam no item
       '<div class="pcf148-campos">' +
       '<label class="largo">Referência / código da peça<input type="text" class="pcf148-ref" data-f="ref" maxlength="120" placeholder="Ex.: W 962" value="' + esc(it.ref || '') + '" autocomplete="off" name="pcf148_ref_nofill" data-lpignore="true" data-1p-ignore></label>' +
-      '<label>Horímetro da troca (h)<input type="number" inputmode="numeric" min="0" class="pcf148-hor" data-f="horim_troca" placeholder="Ex.: 5735" value="' + esc(it.horim_troca || '') + '"></label>' +
-      '<label>Intervalo de troca (h)<input type="number" inputmode="numeric" min="0" class="pcf148-int" data-f="intervalo" placeholder="Ex.: 2000" value="' + esc(it.intervalo || '') + '"></label>' +
+      '<label>Horímetro da troca (h)<input type="text" inputmode="numeric" class="pcf148-hor" maxlength="12" autocomplete="off" data-f="horim_troca" placeholder="Ex.: 5735" value="' + esc(it.horim_troca || '') + '"></label>' +
+      '<label>Intervalo de troca (h)<input type="text" inputmode="numeric" class="pcf148-int" maxlength="12" autocomplete="off" data-f="intervalo" placeholder="Ex.: 2000" value="' + esc(it.intervalo || '') + '"></label>' +
       '</div>' +
       '<textarea class="pcf117-obs" data-f="obs" maxlength="2000" placeholder="Observação (opcional)">' + esc(it.obs || '') + '</textarea>' +
       '<div class="pcf117-foto"><button type="button" class="btn-foto-inline" data-photokey="' + esc(k) + '" data-orig-label="📷 Foto" data-done-label="✅ Foto" ' +
@@ -32652,13 +32652,17 @@ try{
         // atual da seção 3 (o técnico pode editar). Nunca sobrescreve o que já foi digitado.
         if (it.estado === 'trocada' && !String(it.horim_troca || '').trim()) {
           var hs = $('m' + i + '_horimetro'), hv = hs ? String(hs.value || '').trim() : '';
-          if (hv) it.horim_troca = hv;
+          if (hv) { it.horim_troca = hv; it.horim_auto = hv; }
+        }
+        // desmarcou "Trocada" (toque por engano): o horímetro que VEIO da seção 3 sai junto; o digitado fica
+        if (it.estado !== 'trocada' && it.horim_auto && String(it.horim_troca || '') === String(it.horim_auto)) {
+          it.horim_troca = ''; delete it.horim_auto;
         }
       }, true);
       var _it148 = ler(i).find(function (y) { return y.uid === uid; }) || {};
       card.querySelectorAll('.pcf117-e').forEach(function (x) { x.classList.toggle('on', x.getAttribute('data-v') === _it148.estado); });
       var _h148 = card.querySelector('.pcf148-hor');
-      if (_h148 && _it148.horim_troca != null && String(_h148.value) !== String(_it148.horim_troca)) _h148.value = String(_it148.horim_troca);
+      if (_h148 && String(_h148.value) !== String(_it148.horim_troca || '')) _h148.value = String(_it148.horim_troca || '');
     }
   }, false);
   document.addEventListener('input', function (ev) {
@@ -32666,7 +32670,7 @@ try{
     var f = el.getAttribute('data-f'); if (!f) return;
     var sec = el.closest('.pcf117-sec'), card = el.closest('.pcf117-item'); if (!sec || !card) return;
     var i = parseInt(String(sec.id).replace('pcf117Sec', ''), 10), uid = card.getAttribute('data-uid');
-    mudar(i, uid, function (it) { it[f] = String(el.value || ''); if (f === 'nome') registrarRotulo(i, it); }, true);
+    mudar(i, uid, function (it) { it[f] = String(el.value || ''); if (f === 'nome') registrarRotulo(i, it); if (f === 'horim_troca') delete it.horim_auto; }, true);
     if (f === 'nome') {
       var semNome = !String(el.value || '').trim();
       card.classList.toggle('sem-nome', semNome);
