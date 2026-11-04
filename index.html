@@ -1791,8 +1791,18 @@ html[data-boot="pipeline"] #pf113Splash{display:flex;position:fixed;inset:0;z-in
   opcionais. Viajam no hidden do item (rascunho, coletas guardadas, copia do servidor), no payload itens_extras e no PDF (5.1).
   O GAS v180 ainda nao grava estes tres na tabela itens_extras_campo (issue propria). Mudancas dentro do bloco V117 e do PF129.
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V148</title>
-<meta name="app-build" content="PCF_V148" data-date="2026-11-03">
+<!--
+  PCF_V149 · SECAO 4 EM CARTOES (UMA PECA = UM CARTAO) + O RESTO DO LAYOUT DO ITEM ADICIONAL · 03/11/2026 · feito SOBRE o
+  PCF_V148 no ar · par sw propertech-v151 · zero SQL, zero GAS. ProperCare-backlog#61.
+  (1) Secao 4: cada peca no seu tbody (cartao), na ordem cabecalho (nome, padrao, selo) · Acao · leitura do cenario · Referencia ·
+  Fotos · Precisa trocar? · Mais. Ids, data-key, onclick, calculos, cenarios A-E e payload iguais. (2) Um N/A so: na preventiva a
+  pilula N/A da Acao faz o mesmo que o botao da linha (que some); na inspecao fica o da linha. (3) Peca completa recolhe sozinha
+  (pcf149_recolher=off desliga). (4) Tocar num cenario nao apaga mais o que foi lancado na tabela. (5) Secao 7: titulo com o nome,
+  "Estado do item" em pilula como a Acao da secao 4, nomes prontos somem quando o nome e digitado. Chave de volta pcf149=off.
+  Bloco PF149 no fim do body; nenhum remendo no corpo de outros blocos.
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V149</title>
+<meta name="app-build" content="PCF_V149" data-date="2026-11-03">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -45355,5 +45365,440 @@ html.pf129 #pf145Folha .li{border-top-color:#eef1f5}
 })();
 </script>
 <!-- ████ FIM PCF_V147 (PF147) ████ -->
+<!-- ████ PCF_V149 (PF149) · SECAO 4 EM CARTOES (UMA PECA = UM CARTAO) + O RESTO DO LAYOUT DO ITEM ADICIONAL · 03/11/2026 ████ -->
+<style id="pf149Estilo">
+/* PCF_V149 (PF149) · ProperCare-backlog#61 — a seção 4 vira UM CARTÃO POR PEÇA. Só vale com a tabela marcada .pf149 (a marca
+   sai do JS abaixo; chave de volta localStorage pcf149 = off ⇒ nenhuma regra daqui pega).
+   Mecânica: cada peça mora no seu <tbody class="pf149-peca"> (HTML válido) e as 3 linhas dela (cabeçalho, "rápida", detalhe)
+   viram display:contents ⇒ as células e caixas de dentro são itens de UM flex e a ordem sai do `order`. Nenhum id, data-key
+   ou onclick mudou de lugar. 🔴 SEM !important no display das LINHAS (a mesma regra do V105/V96): togglePtNA,
+   togglePartDetail e o "Recolher" escondem por estilo INLINE e o inline tem de vencer. */
+table.pt-table.pf149{display:block!important;width:100%!important;min-width:0!important;table-layout:auto!important;border-collapse:separate!important;margin:0 0 8px!important}
+table.pt-table.pf149>colgroup,table.pt-table.pf149>thead{display:none!important}
+table.pt-table.pf149>tbody.pf149-peca{
+  --pf149-faixa:var(--brand-start,#f58220);
+  display:flex!important;flex-wrap:wrap;align-items:flex-start;gap:10px 8px;position:relative;
+  margin:0 0 14px;padding:10px 12px 12px;border-radius:12px;
+  background:var(--bg-card,#1e293b);border:1px solid rgba(255,255,255,.14);border-left:5px solid var(--pf149-faixa);
+  box-shadow:0 2px 8px rgba(0,0,0,.28)}
+html.pf129 table.pt-table.pf149>tbody.pf149-peca{background:#ffffff;border-color:#cfd8e3;border-left-color:var(--pf149-faixa);box-shadow:0 1px 4px rgba(15,23,42,.10)}
+table.pt-table.pf149>tbody.pf149-peca.pf149-completa{--pf149-faixa:#16a34a}
+table.pt-table.pf149>tbody.pf149-peca.pf149-na{--pf149-faixa:#94a3b8}
+table.pt-table.pf149>tbody.pf149-peca.pf149-subst-proxima{box-shadow:inset 0 -3px 0 #f59e0b,0 2px 8px rgba(0,0,0,.2)}
+table.pt-table.pf149>tbody.pf149-peca.pf149-subst-urgente{box-shadow:inset 0 -3px 0 #ef4444,0 2px 8px rgba(0,0,0,.2)}
+/* as linhas não desenham caixa: os filhos é que são o cartão */
+table.pt-table.pf149>tbody.pf149-peca>tr.pt-group,
+table.pt-table.pf149>tbody.pf149-peca>tr.pt-quick-row{display:contents}
+table.pt-table.pf149>tbody.pf149-peca>tr.pt-quick-row>td,
+table.pt-table.pf149>tbody.pf149-peca>tr.pt-quick-row>td>.pt-quick-box{display:contents!important}
+table.pt-table.pf149>tbody.pf149-peca>tr.pt-detail-row{display:block;order:30;flex:1 1 100%;width:100%;min-width:0}
+table.pt-table.pf149>tbody.pf149-peca>tr.pt-detail-row>td{display:block!important;padding:0!important;border:none!important;background:transparent!important}
+table.pt-table.pf149>tbody.pf149-peca>tr.pt-detail-row .pt-detail-box{border-radius:10px;margin:0}
+table.pt-table.pf149>tbody.pf149-peca>tr.pt-group>td{display:block!important;padding:0!important;border:none!important;
+  background:transparent!important;box-shadow:none!important;width:auto!important;min-width:0!important}
+/* 1 · cabeçalho: nome, padrão (h) e selo — o nome UMA vez só */
+table.pt-table.pf149>tbody.pf149-peca>tr.pt-group>td.pt-name{order:0;flex:1 1 55%;font-size:16px!important;font-weight:800!important;line-height:1.2!important;
+  white-space:normal!important;overflow-wrap:anywhere!important;border-left:none!important;padding-left:0!important}
+table.pt-table.pf149>tbody.pf149-peca>tr.pt-group>td.pt-name small{display:block;font-size:12px!important;font-weight:600!important;margin:2px 0 4px;opacity:.85}
+table.pt-table.pf149>tbody.pf149-peca>tr.pt-group>td.pt-name .pt-status-badge{display:inline-block;font-size:12px!important;padding:3px 10px!important;border-radius:999px!important}
+table.pt-table.pf149>tbody.pf149-peca.pf149-trocada>tr.pt-group>td.pt-name::after{content:'🔧 Trocada';display:inline-block;margin-left:6px;vertical-align:middle;
+  font-size:12px;font-weight:800;padding:3px 10px;border-radius:999px;background:#1d4ed8;color:#ffffff}
+.pf149-peca .pt-box-partname{display:none!important}
+/* o N/A da linha só existe quando NÃO há pílulas de Ação (inspeção): aí ele fica no cabeçalho, à direita */
+table.pt-table.pf149>tbody.pf149-peca>tr.pt-group>td.td-na{order:1;flex:0 0 auto}
+table.pt-table.pf149>tbody.pf149-peca>tr.pt-group>td.td-na .btn-pt-na{min-width:72px!important;min-height:44px!important;border-radius:999px!important;font-size:14px!important}
+html.pf149-prev table.pt-table.pf149>tbody.pf149-peca>tr.pt-group>td.td-na{display:none!important}
+/* 2 · Ação (preventiva) — a pílula N/A é O N/A da peça */
+table.pt-table.pf149>tbody.pf149-peca>tr.pt-group>td.pf149-acao{order:2;flex:1 1 100%}
+html:not(.pf149-prev) table.pt-table.pf149>tbody.pf149-peca>tr.pt-group>td.pf149-acao{display:none!important}
+.pf149-peca .pf149-acao .pgp-acao-wrap{margin:0!important}
+/* 3 · leitura do cenário (adesivo / contador / restam / intervalo · pistão: última troca e ciclo) */
+table.pt-table.pf149>tbody.pf149-peca>tr.pt-group>td.pt-inp{order:3;flex:1 1 42%;min-width:120px!important}
+table.pt-table.pf149>tbody.pf149-peca>tr.pt-group>td.pt-inp[data-rot]::before{content:attr(data-rot);display:block;font-size:10px;font-weight:700;
+  letter-spacing:.04em;text-transform:uppercase;color:var(--text-light);margin:0 0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html.pf129 table.pt-table.pf149>tbody.pf149-peca>tr.pt-group>td.pt-inp[data-rot]::before{color:#475569}
+table.pt-table.pf149>tbody.pf149-peca>tr.pt-group>td.pt-inp input,
+table.pt-table.pf149>tbody.pf149-peca>tr.pt-group>td.pt-inp select{width:100%!important;min-height:46px!important;font-size:16px!important}
+/* 4 · referência · 5 · fotos · 6 · precisa trocar? · prazo do pistão */
+.pf149-peca .pt-quick-box>*{order:8;flex:1 1 100%;min-width:0}
+.pf149-peca .pt-quick-box>.pgp-estado-wrap{order:2}   /* pistão: o estado encontrado logo depois da Ação */
+.pf149-peca .pt-quick-box>.pt-det-field{order:4;margin:0!important}
+.pf149-peca .pt-quick-box>.pt-photo-cols,.pf149-peca .pt-quick-box>.pt-foto-dupla,.pf149-peca .pt-quick-box>.photo-thumbs-mini{order:5}
+.pf149-peca .pt-quick-box>.pcf116-subst{order:6}
+.pf149-peca .pt-quick-box>.pt-calc-inline{order:7}
+/* 7 · "▸ Mais" (intervalo, cálculo e observação) — o texto do botão continua "▸" no DOM */
+table.pt-table.pf149>tbody.pf149-peca>tr.pt-group>td.td-detail{order:20;flex:1 1 100%}
+table.pt-table.pf149>tbody.pf149-peca .btn-pt-detail{width:100%!important;min-height:44px!important;font-size:0!important;border-radius:10px!important;text-align:left!important;padding:0 14px!important}
+table.pt-table.pf149>tbody.pf149-peca .btn-pt-detail::before{content:attr(data-pf149-rot);font-size:14px;font-weight:700}
+table.pt-table.pf149>tbody.pf149-peca .btn-pt-detail.open::before{content:'▾ Fechar os detalhes'}
+table.pt-table.pf149>tbody.pf149-peca .btn-pt-detail,table.pt-table.pf149>tbody.pf149-peca .btn-pt-detail.open{transform:none!important}   /* o V45 girava a seta ▸ 90° — com o texto, girava o botão inteiro */
+/* N/A: o cartão fica só com o cabeçalho e o N/A (para desfazer) */
+table.pt-table.pf149>tbody.pf149-peca>tr.pt-group.pt-na>td.pt-inp{display:none!important}
+/* peça completa recolhida (botão "▴ Recolher" ou automático): só o cabeçalho + "▸ Abrir" */
+table.pt-table.pf149>tbody.pf149-peca>tr.pt-group.pt-collapsed-complete>td.pt-inp,
+table.pt-table.pf149>tbody.pf149-peca>tr.pt-group.pt-collapsed-complete>td.pf149-acao,
+table.pt-table.pf149>tbody.pf149-peca>tr.pt-group.pt-collapsed-complete>td.td-na{display:none!important}
+table.pt-table.pf149>tbody.pf149-peca>tr.pt-group.pt-collapsed-complete>td.td-detail .btn-pt-detail::before{content:'▸ Abrir esta peça (já está completa)'}
+table.pt-table.pf149>tbody.pf149-peca>tr.pt-group.pt-na.pt-collapsed-complete>td.td-detail .btn-pt-detail::before{content:'▸ Abrir esta peça (N/A)'}
+
+/* ── seção 7 · item adicional: título com o nome, estado em pílula como a "Ação desta peça", chips que somem ── */
+html.pf149-on .pcf117-item .pf149-tit{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;margin:0 0 8px;padding:0 0 8px;border-bottom:1px solid rgba(255,255,255,.12)}
+html.pf129.pf149-on .pcf117-item .pf149-tit{border-bottom-color:#e2e8f0}
+html.pf149-on .pcf117-item .pf149-tit .rot{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--brand-start,#f58220)}
+html.pf149-on .pcf117-item .pf149-tit .nm{font-size:16px;font-weight:800;color:var(--text,#e2e8f0);overflow-wrap:anywhere}
+html.pf129.pf149-on .pcf117-item .pf149-tit .nm{color:#0f172a}
+html.pf149-on .pcf117-item .pf149-tit .nm.vazio{font-weight:600;font-style:italic;opacity:.75}
+html.pf149-on .pcf117-item .pf149-est-rot{margin:8px 0 6px}
+html.pf149-on .pcf117-item .pcf117-est{gap:8px;margin-top:0}
+html.pf149-on .pcf117-item .pcf117-e{min-height:44px;border-radius:8px;font-size:14px}
+html.pf149-on .pcf117-item .pcf117-e.on{box-shadow:0 3px 10px rgba(0,0,0,.28);transform:translateY(-1px)}
+html.pf149-on .pcf117-item.pf149-com-nome .pcf121-chips{display:none!important}
+</style>
+<script>
+/* PCF_V149 (PF149) — 03/11/2026 · ProperCare-backlog#61 (parte C da #60 e o resto do layout da parte B) · zero SQL, zero GAS ·
+   par sw propertech-v151. Só embrulhos por window[nome] e DOM movido de lugar; nenhum remendo no corpo de outros blocos.
+   1 · SEÇÃO 4 EM CARTÕES. Depois de toda montagem da tabela de peças (selectScenario, pgpAplicarPerfil, createPanel,
+       restoreState), cada peça vai para o seu <tbody class="pf149-peca" id="<pk>_pf149"> — as 3 linhas dela mudam de lugar
+       SEM trocar id, data-key nem onclick (o rascunho e o restore dependem deles). O CSS acima ordena: cabeçalho (nome,
+       padrão e selo) · Ação · leitura do cenário · Referência · Fotos · Precisa trocar? · "▸ Mais". A caixa da Ação
+       (.pgp-acao-wrap) sai da linha "rápida" para uma célula nova do cabeçalho: assim ela continua à mão com a peça em N/A.
+   2 · UM N/A SÓ. Na preventiva a pílula N/A da Ação É o N/A da peça (o botão da linha some); na inspeção (sem pílulas) fica
+       o botão da linha, no cabeçalho. Tocar a pílula N/A faz o MESMO que o botão da linha (o estado a que o restore já levava:
+       pgpRepintarPilulasDoPainel, V102 achado F) e o 2º toque desfaz; Conferida/Trocada numa peça em N/A tira o N/A antes.
+       Nenhum cálculo e nenhum payload mudou: o mesmo estado de tela gera o mesmo envio de antes.
+   3 · RECOLHE SOZINHA. Peça "Completa" pelo toque do técnico E com o "Precisa trocar?" respondido recolhe 3 s depois (só o
+       cabeçalho + "▸ Abrir"), desde que ninguém esteja com o dedo na tela nem digitando dentro dela. A rolagem não é mexida
+       (o Chrome já segura a tela quando algo acima encolhe). Nunca depois de devolver/restaurar. Chave: pcf149_recolher = off.
+   4 · TROCAR O CENÁRIO NÃO APAGA. Até o V148 tocar num cenário (até no mesmo) remontava a tabela vazia: referência, leituras,
+       Ação, "Precisa trocar?" e observações sumiam. Agora o TOQUE do técnico guarda o que está na tabela (e o N/A de cada
+       peça como estava na tela) e devolve depois da remontagem. O contador é do cenário (no mesmo cenário fica); entre o B
+       (adesivo) e os outros a leitura não viaja (outro significado). Só o toque de verdade (isTrusted): o restore e as cargas
+       do programa continuam exatamente como eram.
+   5 · SEÇÃO 7: o cartão do item ganha o título com o nome (muda enquanto digita), o estado fica numa linha "Estado do item"
+       com a pílula marcada igual à da Ação da seção 4, e os nomes prontos (PF121) somem quando o nome é digitado à mão
+       (voltam se o nome for apagado).
+   Chave de volta: localStorage pcf149 = off (volta ao V148). Diagnóstico: PF149.log, PF149.montadas. */
+(function () {
+  if (window.PF149) return;
+  var PF149 = window.PF149 = { versao: 'PCF_V149', log: [], montadas: 0, recolhidas: 0, devolvidos: 0 };
+  function ligado() { try { return localStorage.getItem('pcf149') !== 'off'; } catch (e) { return true; } }
+  function recolherLigado() { try { return localStorage.getItem('pcf149_recolher') !== 'off'; } catch (e) { return true; } }
+  function $(id) { return document.getElementById(id); }
+  function log() { try { PF149.log.push([new Date().toISOString().slice(11, 19)].concat([].slice.call(arguments)).join(' ')); if (PF149.log.length > 60) PF149.log.shift(); } catch (e) {} }
+  var FAKE = { stopPropagation: function () {}, preventDefault: function () {} };
+  function embrulhar(nome, fazer) {
+    try { var o = window[nome]; if (typeof o !== 'function' || o.__pf149) return; var n = fazer(o); n.__pf149 = true; window[nome] = n; } catch (e) { log('embrulhar', nome, e && e.message); }
+  }
+  function ehPreventiva() { try { return _pgpTipoVisita === 'preventiva'; } catch (e) { return false; } }
+  function marcarTipo() {
+    try {
+      var h = document.documentElement, quer = ligado() && ehPreventiva();
+      if (h.classList.contains('pf149-prev') !== quer) h.classList.toggle('pf149-prev', quer);
+    } catch (e) {}
+  }
+  function midxDePk(pk) { var m = /^m(\d+)_/.exec(String(pk || '')); return m ? +m[1] : 0; }
+
+  // ── 1 · montar os cartões ─────────────────────────────────────────────────────────────────────────────────────────
+  function rotuloMais(pk, tabela) {
+    if (tabela.classList.contains('pt-perfil-pistao')) return '▸ Mais: observação';
+    return tabela.classList.contains('pt-scenario-D') ? '▸ Mais: cálculo e observação' : '▸ Mais: intervalo, cálculo e observação';
+  }
+  function montarTabela(t) {
+    if (!t || !ligado()) return false;
+    var linhas = [].slice.call(t.querySelectorAll(':scope > tbody:not(.pf149-peca) > tr'));
+    if (!linhas.length && t.classList.contains('pf149')) return false;   // já montada
+    var atual = null, n = 0;
+    linhas.forEach(function (tr) {
+      if (tr.classList.contains('pt-group') && /_tr$/.test(tr.id || '')) {
+        var pk = tr.id.replace(/_tr$/, '');
+        atual = document.createElement('tbody'); atual.className = 'pf149-peca'; atual.id = pk + '_pf149'; atual.setAttribute('data-pk', pk);
+        t.appendChild(atual);
+        n++;
+      }
+      if (atual) atual.appendChild(tr);
+    });
+    t.classList.add('pf149');
+    t.querySelectorAll(':scope > tbody.pf149-peca').forEach(function (tb) {
+      var pk = tb.getAttribute('data-pk'), tr = $(pk + '_tr'); if (!tr) return;
+      if (!$(pk + '_pf149acao')) {
+        var td = document.createElement('td'); td.className = 'pf149-acao'; td.id = pk + '_pf149acao';
+        td.addEventListener('click', function (ev) { ev.stopPropagation(); });   // o rótulo da Ação não abre o "Mais"
+        var det = tr.querySelector(':scope > td.td-detail');
+        tr.insertBefore(td, det || null);
+      }
+      var w = tb.querySelector('.pt-quick-box .pgp-acao-wrap');
+      if (w) $(pk + '_pf149acao').appendChild(w);
+      var b = $(pk + '_detail_btn'); if (b) b.setAttribute('data-pf149-rot', rotuloMais(pk, t));
+      repintarEstado(pk); sincronizar(pk);
+    });
+    if (n) { PF149.montadas += n; log('montou', n, 'peça(s)'); }
+    return n > 0;
+  }
+  function montarTodos() {
+    if (!ligado()) return;
+    marcarTipo();
+    document.querySelectorAll('[id$="parts_table_content"] table.pt-table').forEach(function (t) { try { montarTabela(t); } catch (e) { log('montar', e && e.message); } });
+  }
+  PF149.montarTodos = montarTodos;
+
+  // classes do cartão (cor da faixa, selo "Trocada", "Precisa trocar?") — sempre conferindo antes de escrever
+  function poe(el, cls, sim) { if (el.classList.contains(cls) !== !!sim) el.classList.toggle(cls, !!sim); }
+  function sincronizar(pk) {
+    var tb = $(pk + '_pf149'); if (!tb) return null;
+    var badge = $(pk + '_status_badge'), na = $(pk + '_na');
+    var completa = !!(badge && /\bpt-badge-ok\b/.test(badge.className));
+    var isNa = !!(na && na.classList.contains('active'));
+    var ac = String(($(pk + '_acao') || {}).value || '');
+    var sub = String(($(pk + '_subst') || {}).value || '');
+    var era = tb.classList.contains('pf149-completa');
+    poe(tb, 'pf149-completa', completa && !isNa);
+    poe(tb, 'pf149-na', isNa);
+    poe(tb, 'pf149-trocada', ac === 'trocada' && !isNa);
+    poe(tb, 'pf149-subst-proxima', sub === 'proxima');
+    poe(tb, 'pf149-subst-urgente', sub === 'urgente');
+    return { tb: tb, virouCompleta: completa && !isNa && !era };
+  }
+
+  // pistão: o "Estado encontrado" volta pintado depois do restore (o restoreState repõe o hidden <pk>_estado e ninguém
+  // repintava os botões — a peça voltava "sem estado" na tela com o dado gravado). Só o visual, alinhado ao dado.
+  function repintarEstado(pk) {
+    var h = $(pk + '_estado'); if (!h) return;
+    var v = String(h.value || ''), bOk = $(pk + '_est_ok'), bNok = $(pk + '_est_nok'), tr = $(pk + '_tr');
+    if (bOk) poe(bOk, 'active', v === 'ok');
+    if (bNok) poe(bNok, 'active', v === 'nao_conforme');
+    if (tr) poe(tr, 'pt-nao-conforme', v === 'nao_conforme');
+  }
+  function repintarTodos() {
+    if (!ligado()) return;
+    document.querySelectorAll('tbody.pf149-peca[data-pk]').forEach(function (tb) {
+      var pk = tb.getAttribute('data-pk');
+      try {
+        var nb = $(pk + '_na'), h = $(pk + '_acao');
+        if (nb && h && nb.classList.contains('active') && String(h.value || '') !== 'na') h.value = 'na';
+        repintarEstado(pk); repintarPilulas(pk); sincronizar(pk);
+      } catch (e) {}
+    });
+  }
+  PF149.repintarTodos = repintarTodos;
+
+  // ── 3 · recolher sozinha ──────────────────────────────────────────────────────────────────────────────────────────
+  var _dedo = false, _ultToque = {};
+  document.addEventListener('pointerdown', function (ev) {
+    _dedo = true;
+    try { var tb = ev.target && ev.target.closest && ev.target.closest('tbody.pf149-peca'); if (tb) _ultToque[tb.id] = Date.now(); } catch (e) {}
+  }, true);
+  ['pointerup', 'pointercancel'].forEach(function (n) { document.addEventListener(n, function () { _dedo = false; }, true); });
+  ['input', 'change'].forEach(function (n) {
+    document.addEventListener(n, function (ev) {
+      try { var tb = ev.target && ev.target.closest && ev.target.closest('tbody.pf149-peca'); if (tb && ev.isTrusted !== false) _ultToque[tb.id] = Date.now(); } catch (e) {}
+    }, true);
+  });
+  PF149.cfg = { espera: 3000, janela: 90000 };
+  function recolher(pk) {
+    // a MESMA receita do collapseCompletedParts (V46), para UMA peça
+    var tr = $(pk + '_tr'), det = $(pk + '_detail_row'), quick = $(pk + '_quick_row'), btn = $(pk + '_detail_btn');
+    if (det) det.style.display = 'none';
+    if (quick) quick.style.display = 'none';
+    if (btn) btn.classList.remove('open');
+    if (tr) { tr.classList.remove('pt-detail-open'); tr.classList.add('pt-collapsed-complete'); }
+  }
+  // tri-estado do pcf116: '' = ainda não respondeu (o "Não" aparece marcado, mas é só o desenho)
+  function substRespondido(pk) { var e = $(pk + '_subst'); return !e || String(e.value || '') !== ''; }
+  var _quieto = 0;   // devolver/restaurar: a peça "vira completa" pelo programa, não pelo técnico — não recolhe
+  function talvezRecolher(pk, s) {
+    if (_quieto || !s || !ligado() || !recolherLigado()) return;
+    if (Date.now() - (_ultToque[s.tb.id] || 0) < PF149.cfg.janela) agendarRecolher(pk, 0);
+  }
+  function agendarRecolher(pk, tentativa) {
+    setTimeout(function () {
+      try {
+        if (!ligado() || !recolherLigado()) return;
+        var tb = $(pk + '_pf149'), tr = $(pk + '_tr'); if (!tb || !tr || !tb.isConnected) return;
+        if (!tb.classList.contains('pf149-completa') || tr.classList.contains('pt-collapsed-complete')) return;
+        if (!substRespondido(pk)) return;   // "Precisa trocar?" ainda sem resposta: recolher esconderia a pergunta
+        var foco = document.activeElement;
+        if (foco && foco !== document.body && tb.contains(foco) && /^(INPUT|TEXTAREA|SELECT)$/.test(foco.tagName)) return;   // digitando: fica aberta
+        if (_dedo || Date.now() - (_ultToque[tb.id] || 0) < 1200) { if ((tentativa || 0) < 10) agendarRecolher(pk, (tentativa || 0) + 1); return; }
+        // sem mexer na rolagem: o Chrome já segura o que está na tela quando algo ACIMA encolhe (scroll anchoring);
+        // descontar de novo fazia a página pular o dobro (auditoria 03/11)
+        recolher(pk);
+        PF149.recolhidas++; log('recolheu', pk);
+      } catch (e) { log('recolher', e && e.message); }
+    }, PF149.cfg.espera);
+  }
+  embrulhar('updatePartCompletionStatus', function (orig) {
+    return function (pk) {
+      var r = orig.apply(this, arguments);
+      try {
+        var s = sincronizar(pk);
+        if (s && s.virouCompleta && substRespondido(pk)) talvezRecolher(pk, s);
+      } catch (e) { log('status', e && e.message); }
+      return r;
+    };
+  });
+
+  // ── 2 · um N/A só ─────────────────────────────────────────────────────────────────────────────────────────────────
+  function repintarPilulas(pk) {
+    var val = String(($(pk + '_acao') || {}).value || '').trim();
+    ['conferida', 'trocada', 'na'].forEach(function (a) { var b = $(pk + '_acao_' + a); if (b && b.classList.contains('active') !== (!!val && a === val)) b.classList.toggle('active', !!val && a === val); });
+  }
+  embrulhar('togglePtNA', function (orig) {
+    return function (pk) {
+      var r = orig.apply(this, arguments);
+      try { if (ligado()) { repintarPilulas(pk); sincronizar(pk); } } catch (e) { log('togglePtNA', e && e.message); }
+      return r;
+    };
+  });
+  embrulhar('pgpSetAcao', function (orig) {
+    return function (pk, acao) {
+      if (!ligado()) return orig.apply(this, arguments);
+      var na = $(pk + '_na'), isNa = !!(na && na.classList.contains('active'));
+      if (acao === 'na') {
+        if (isNa) {                                   // 2º toque no N/A: desfaz (igual ao botão da linha)
+          try { togglePtNA(pk, FAKE); } catch (e) { log('desfazer N/A', e && e.message); }
+          return orig.call(this, pk, '');
+        }
+        var r = orig.apply(this, arguments);
+        try { var n2 = $(pk + '_na'); if (n2 && !n2.classList.contains('active')) togglePtNA(pk, FAKE); } catch (e) { log('N/A', e && e.message); }
+        return r;
+      }
+      if (isNa) { try { togglePtNA(pk, FAKE); } catch (e) { log('tirar N/A', e && e.message); } }
+      return orig.apply(this, arguments);
+    };
+  });
+  embrulhar('togglePartDetail', function (orig) {
+    return function (pk) {
+      var r = orig.apply(this, arguments);
+      try {
+        var tb = $(pk + '_pf149'), tr = $(pk + '_tr');
+        if (ligado() && tb && tr && tr.classList.contains('pt-detail-open') && tb.scrollIntoView) tb.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      } catch (e) {}
+      return r;
+    };
+  });
+  embrulhar('pcf116SetSubst', function (orig) {
+    return function (pk) {
+      var r = orig.apply(this, arguments);
+      try { var s = sincronizar(pk); if (s && s.tb.classList.contains('pf149-completa') && substRespondido(pk)) talvezRecolher(pk, s); } catch (e) {}
+      return r;
+    };
+  });
+  embrulhar('pgpSetTipoVisita', function (orig) {
+    return function () { var r = orig.apply(this, arguments); marcarTipo(); return r; };
+  });
+
+  // ── 4 · trocar o cenário não apaga (só o toque do técnico) ────────────────────────────────────────────────────────
+  function fotografar(p, scDe, scPara) {
+    var c = $(p + 'parts_table_content'); if (!c || !c.querySelector('table.pt-table')) return null;
+    var v = {}, na = {}, n = 0, mesmo = (scDe === scPara);
+    // o adesivo (B) é "h ou data do adesivo", não leitura de contador: entre B e os outros a leitura NÃO viaja
+    var semLeitura = ((scDe === 'B') !== (scPara === 'B'));
+    c.querySelectorAll('.btn-pt-na[id$="_na"]').forEach(function (b) { na[b.id.replace(/_na$/, '')] = b.classList.contains('active'); n++; });
+    c.querySelectorAll('[data-key]').forEach(function (el) {
+      var k = el.getAttribute('data-key'); if (!k || /_ult$/.test(k)) return;
+      if (/_contador$/.test(k) && !mesmo) return;        // o contador é do cenário (no mesmo cenário, o select do C fica)
+      if (semLeitura && /_valor_mostrado$/.test(k)) return;
+      var x = String(el.value == null ? '' : el.value); if (x.trim() === '') return;
+      // o intervalo que só tem o PADRÃO da peça não foi digitado: não vai para a coluna vazia do cenário D
+      if (/_int$/.test(k)) { try { if (x === String(pgpCicloPadrao(k.replace(/_int$/, '')))) return; } catch (e) {} }
+      v[k] = x; n++;
+    });
+    return n ? { v: v, na: na } : null;
+  }
+  function devolver(p, midx, foto) {
+    var c = $(p + 'parts_table_content'); if (!c) return 0;
+    var v = foto.v, n = 0, pks = {};
+    _quieto++;
+    try {
+    // 1º o N/A de cada peça como estava na tela (a remontagem religa o N/A do CADASTRO — auditoria 03/11: a tela mostrava
+    // "Conferida" e o envio saía N/A). togglePtNA é o mesmo caminho do botão da linha.
+    Object.keys(foto.na).forEach(function (pk) {
+      var b = $(pk + '_na'); if (!b || b.classList.contains('active') === foto.na[pk]) return;
+      try { togglePtNA(pk, FAKE); n++; pks[pk] = 1; } catch (e) {}
+    });
+    Object.keys(v).forEach(function (k) {
+      var el = c.querySelector('[data-key="' + k.replace(/"/g, '') + '"]'); if (!el) return;
+      if (String(el.value) !== v[k]) { el.value = v[k]; n++; }
+      var m = /^(m\d+_[a-z]+\d+)_/.exec(k); if (m) pks[m[1]] = 1;
+    });
+    try { pgpRepintarPilulasDoPainel(midx); } catch (e) {}
+    try { if (typeof pcf116RepintarSubst === 'function') pcf116RepintarSubst(); } catch (e) {}
+    Object.keys(pks).forEach(function (pk) {
+      try { calcPartRow(pk, (typeof pgpCicloPadrao === 'function' ? pgpCicloPadrao(pk) : 0) || 0); } catch (e) {}
+      try { updatePartCompletionStatus(pk); } catch (e) {}
+    });
+    try { updateProgress(); } catch (e) {}
+    try { pgpSaveDraftBreve(); } catch (e) {}
+    } finally { _quieto--; }
+    PF149.devolvidos += n; log('cenário trocado: devolveu', n, 'campo(s)');
+    return n;
+  }
+  embrulhar('selectScenario', function (orig) {
+    return function (p, scId, midx, e) {
+      var foto = null;
+      try { if (ligado() && e && e.isTrusted) foto = fotografar(p, String(($(p + 'scenario') || {}).value || ''), String(scId || '')); } catch (x) { foto = null; }
+      var r = orig.apply(this, arguments);
+      try { montarTodos(); if (foto) devolver(p, (typeof midx === 'number' ? midx : midxDePk(p)), foto); } catch (x) { log('selectScenario', x && x.message); }
+      return r;
+    };
+  });
+  ['pgpAplicarPerfil', 'createPanel', 'restoreState', 'restorePhotoStore'].forEach(function (n) {
+    embrulhar(n, function (orig) {
+      return function () {
+        var r = orig.apply(this, arguments);
+        var fim = function () { _quieto++; try { montarTodos(); repintarTodos(); } catch (e) {} finally { _quieto--; } try { setTimeout(observarListas, 0); } catch (e) {} };
+        try { if (r && typeof r.then === 'function') r.then(fim, function () {}); else fim(); } catch (e) {}
+        return r;
+      };
+    });
+  });
+
+  // ── 5 · seção 7 · item adicional ──────────────────────────────────────────────────────────────────────────────────
+  function tituloDe(card) {
+    var nm = card.querySelector('.pcf117-nome'), v = nm ? String(nm.value || '').trim() : '';
+    var t = card.querySelector(':scope > .pf149-tit');
+    if (!t) { t = document.createElement('div'); t.className = 'pf149-tit'; t.innerHTML = '<span class="rot">Item adicional</span><span class="nm"></span>'; }
+    if (card.firstChild !== t) card.insertBefore(t, card.firstChild);
+    var s = t.querySelector('.nm'), quer = v || 'sem nome — dê o nome abaixo';
+    if (s.textContent !== quer) s.textContent = quer;
+    poe(s, 'vazio', !v);
+    poe(card, 'pf149-com-nome', !!v);
+  }
+  function decorarItem(card) {
+    if (!ligado() || !card) return;
+    tituloDe(card);
+    var est = card.querySelector(':scope > .pcf117-est');
+    if (est && !card.querySelector(':scope > .pf149-est-rot')) {
+      var l = document.createElement('label'); l.className = 'pgp-acao-label pf149-est-rot'; l.textContent = 'Estado do item';
+      card.insertBefore(l, est);
+    }
+  }
+  function decorarLista(lista) { try { lista.querySelectorAll(':scope > .pcf117-item').forEach(decorarItem); } catch (e) {} }
+  function observarListas() {
+    if (!ligado()) return;
+    document.querySelectorAll('[id^="pcf117Lista"]').forEach(function (lista) {
+      if (!lista.__pf149) {
+        lista.__pf149 = true;
+        try { new MutationObserver(function () { decorarLista(lista); }).observe(lista, { childList: true }); } catch (e) {}
+      }
+      decorarLista(lista);
+    });
+  }
+  PF149.observarListas = observarListas;
+  document.addEventListener('input', function (ev) {
+    try {
+      var el = ev.target; if (!el || !el.classList || !el.classList.contains('pcf117-nome') || !ligado()) return;
+      var card = el.closest('.pcf117-item'); if (card) tituloDe(card);
+    } catch (e) {}
+  }, false);
+  embrulhar('pcf117Adicionar', function (orig) {
+    return function () { var r = orig.apply(this, arguments); try { observarListas(); } catch (e) {} return r; };
+  });
+
+  function iniciar() { try { if (ligado()) document.documentElement.classList.add('pf149-on'); montarTodos(); repintarTodos(); observarListas(); log('pronto', ligado() ? 'ligado' : 'DESLIGADO (pcf149=off)'); } catch (e) { log('iniciar', e && e.message); } }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
+})();
+</script>
+<!-- ████ FIM PCF_V149 (PF149) ████ -->
 </body>
 </html>
