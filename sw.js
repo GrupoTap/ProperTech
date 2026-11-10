@@ -9,7 +9,8 @@
  * O activate abaixo apaga qualquer cache antigo com prefixo 'propertech-'.
  */
 const CACHE_BASE = 'propertech-';
-const CACHE = CACHE_BASE + 'v151';  // 03/11/2026 — par do PCF_V149 (seção 4 em cartões, um N/A só, trocar o cenário não apaga; item adicional com título e estado em pílula, ProperCare-backlog#61). Sem bump, o celular serve o V148 do cache.
+const CACHE = CACHE_BASE + 'v152';  // 10/11/2026 — par do PCF_V150 (Retirei o kit: cartão do kit da OS, câmera com leitor de QR, ProperCare-backlog#139). Sem bump, o celular serve o V149 do cache.
+// antes: 'v151'  // 03/11/2026 — par do PCF_V149 (seção 4 em cartões, um N/A só, trocar o cenário não apaga; item adicional com título e estado em pílula, ProperCare-backlog#61). Sem bump, o celular serve o V148 do cache.
 // antes: 'v150'  // 03/11/2026 — par do PCF_V148 (item adicional com referência/horímetro/intervalo + Ok/NOK/Trocada/N.A. pintam no tema claro, ProperCare-backlog#60). Sem bump, o celular serve o V147 do cache.
 // antes: 'v148'  // 27/10/2026 — par do PCF_V146 (salvamento seguro: nuvem sozinha, volta direto, recuperar do servidor). Sem bump, o celular serve o V145 do cache.
 // antes: 'v147'  // 27/10/2026 — par do PCF_V145 (peças e serviços da OS + acrescentar na mesma OS). Sem bump, o celular serve o V144 do cache.
@@ -77,6 +78,7 @@ const CACHE = CACHE_BASE + 'v151';  // 03/11/2026 — par do PCF_V149 (seção 4
 //        PCF_V108 ↔  propertech-v110  (11/09 — a rodada Campo e Documentos)
 //        PCF_V110 ↔  propertech-v112  (17/09 — os motores CFX + PWAIT, front puro)
 //        PCF_V109 ↔  propertech-v111  (11/09 — o PDF da preventiva: compress:true + PDF na fila do IndexedDB)
+//        PCF_V150 ↔  propertech-v152  (10/11 — Retirei o kit: cartão do kit da OS e câmera que lê o QR da etiqueta — ProperCare-backlog#139)
 //        PCF_V149 ↔  propertech-v151  (03/11 — seção 4 em cartões: uma peça por cartão, um N/A só, recolhe sozinha, trocar o cenário não apaga; item adicional com título e estado em pílula — ProperCare-backlog#61)
 //        PCF_V148 ↔  propertech-v150  (03/11 — item adicional: referência, horímetro da troca e intervalo; Ok/NOK/Trocada/N.A. pintam no tema claro — ProperCare-backlog#60)
 //        PCF_V147 ↔  propertech-v149  (02/11 — o relatório sai com a unidade da máquina: Filial / Unidade, CNPJ e cidade da unidade, por máquina)
@@ -143,7 +145,8 @@ const APP_SHELL = [
   // V113 (M) — o mapa de marcar o ponto (Leaflet) mora no repo e no cache:
   // abre sem depender de CDN e, sem sinal, pelo menos o mapa-base carrega.
   '/ProperTech/vendor/leaflet/leaflet.js',
-  '/ProperTech/vendor/leaflet/leaflet.css'
+  '/ProperTech/vendor/leaflet/leaflet.css',
+  '/ProperTech/vendor/jsqr/jsQR.min.js'  // PCF_V150: o leitor de QR do "Retirei o kit" (iPhone/Windows não têm BarcodeDetector)
 ];
 
 self.addEventListener('install', (event) => {

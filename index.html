@@ -1801,8 +1801,16 @@ html[data-boot="pipeline"] #pf113Splash{display:flex;position:fixed;inset:0;z-in
   "Estado do item" em pilula como a Acao da secao 4, nomes prontos somem quando o nome e digitado. Chave de volta pcf149=off.
   Bloco PF149 no fim do body; nenhum remendo no corpo de outros blocos.
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V149</title>
-<meta name="app-build" content="PCF_V149" data-date="2026-11-03">
+<!--
+  PCF_V150 · RETIREI O KIT · 10/11/2026 · feito SOBRE o PCF_V149 no ar · par sw propertech-v152 · par do SQL 128 (ja no ar) · zero GAS.
+  ProperCare-backlog#139 (parte 2). Cartao "Kit da OS" na tela da OS: onde o almoxarifado deixou o kit e o botao "Retirei o kit"
+  (so para quem o banco deixa: pc_os_kit). A folha abre a camera na pagina e le o QR da etiqueta do kit (BarcodeDetector ou,
+  sem ele, o jsQR de vendor/jsqr, carregado so nessa hora); ultima opcao: digitar o numero da OS. Quem confere e o banco
+  (alm_kit_retirar); a retirada fica no celular antes de subir (uid). Chave de volta pcf150=off. Bloco PF150 no fim do body;
+  nenhum remendo no corpo de outros blocos.
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V150</title>
+<meta name="app-build" content="PCF_V150" data-date="2026-11-10">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -45800,5 +45808,338 @@ html.pf149-on .pcf117-item.pf149-com-nome .pcf121-chips{display:none!important}
 })();
 </script>
 <!-- ████ FIM PCF_V149 (PF149) ████ -->
+<!-- ████ PCF_V150 (PF150) · 🧰 RETIREI O KIT — o técnico retira o kit da OS bipando a etiqueta · 10/11/2026 ████ -->
+<style>
+/* PF150 — o cartão "🧰 Kit da OS" usa as classes visuais do PF131 (.pf131-*) e a folha segue o desenho da do PF145. */
+.pf150 .pf150-end{font-size:20px;font-weight:800;letter-spacing:.02em}
+.pf150 .pf150-st{padding:10px 12px}
+.pf150 .pf150-st.ok{color:#86efac}.pf150 .pf150-st.av{color:#fcd34d}.pf150 .pf150-st.er{color:#fca5a5}
+.pf150 .pf150-bt{padding:0 12px 12px}
+.pf150 .pf150-bt .pf131-b{width:100%;min-height:52px;font-size:16px}
+#pf150Folha{position:fixed;inset:0;z-index:100060;background:rgba(2,6,23,.62);display:flex;align-items:flex-end;justify-content:center}
+#pf150Folha .pf150-fo{width:100%;max-width:560px;max-height:92vh;overflow:auto;background:#0f172a;color:#e2e8f0;border-radius:16px 16px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));box-shadow:0 -8px 30px rgba(0,0,0,.4)}
+#pf150Folha h3{margin:0 0 4px;font-size:17px}
+#pf150Folha .s{font-size:13px;color:#94a3b8;margin-bottom:10px;line-height:1.4}
+#pf150Folha .pf150-cam{position:relative;width:100%;aspect-ratio:1/1;max-height:52vh;background:#000;border-radius:12px;overflow:hidden}
+#pf150Folha .pf150-cam video{width:100%;height:100%;object-fit:cover;display:block}
+#pf150Folha .pf150-mira{position:absolute;inset:18%;border:3px solid rgba(250,204,21,.9);border-radius:12px;pointer-events:none}
+#pf150Folha .pf150-msg{margin:10px 0 0;padding:10px 12px;border-radius:8px;font-size:14px;line-height:1.4;background:#111a2e;border:1px solid #334155}
+#pf150Folha .pf150-msg.er{border-color:#b91c1c;background:#2a0f12;color:#fecaca}
+#pf150Folha .pf150-msg.ok{border-color:#16a34a;background:#0f2a1a;color:#bbf7d0}
+#pf150Folha label{display:block;font-size:13px;color:#94a3b8;margin:14px 0 4px}
+#pf150Folha input[type=text]{width:100%;box-sizing:border-box;min-height:48px;padding:8px 12px;border:1px solid #475569;border-radius:8px;background:#0f172a;color:#e2e8f0;font-size:18px}
+#pf150Folha .bt{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+#pf150Folha .bt .pf131-b{width:100%;min-height:52px}
+html.pf129 .pf150 .pf150-st.ok{color:#166534}html.pf129 .pf150 .pf150-st.av{color:#92400e}html.pf129 .pf150 .pf150-st.er{color:#b91c1c}
+html.pf129 #pf150Folha .pf150-fo{background:#fff;color:#0f172a}
+html.pf129 #pf150Folha .s,html.pf129 #pf150Folha label{color:#475569}
+html.pf129 #pf150Folha .pf150-msg{background:#f8fafc;border-color:#d9e0ea;color:#0f172a}
+html.pf129 #pf150Folha .pf150-msg.er{background:#fef2f2;border-color:#dc2626;color:#991b1b}
+html.pf129 #pf150Folha .pf150-msg.ok{background:#f0fdf4;border-color:#16a34a;color:#166534}
+html.pf129 #pf150Folha input[type=text]{background:#fff;border-color:#cbd5e1;color:#0f172a}
+</style>
+<script>
+/* ════════════════════════════════════════════════════════════════════════════════════════════════════════
+   PCF_V150 (PF150) — 10/11/2026 · ProperCare-backlog#139 (parte 2: retirada pelo técnico) · par do SQL 128 (já no ar) ·
+   zero GAS · par sw propertech-v152.
+   · Cartão "🧰 Kit da OS" na tela da OS (acima das peças e serviços): onde o almoxarifado deixou o kit (📍 Face-Coluna-Andar) e
+     o botão "Retirei o kit" — só para quem o banco deixa (pc_os_kit.pode_retirar: o técnico da OS ou o almoxarifado). Kit
+     retirado: quem, quando e de onde. OS sem kit separado: o cartão não aparece.
+   · "Retirei o kit" abre uma folha com a câmera DENTRO da página (getUserMedia; nunca <input capture>): lê o QR da etiqueta do
+     kit (…#os/<número>) pelo BarcodeDetector do aparelho ou, sem ele (iPhone, Chrome do Windows), pelo jsQR de vendor/jsqr
+     (carregado só nesta hora). Última opção: digitar o número da OS (o leitor de mão também serve: ele digita e dá Enter).
+   · Quem confere é o banco (alm_kit_retirar): kit de outra OS = recusa com a mensagem do banco, nada gravado.
+   · Persist-first: a retirada é gravada no celular (pf150_fila_v1) com um uid ANTES do 1º envio e só sai com o "ok" (o uid
+     torna a repetição inofensiva). Sem internet: fica "⏳ guardada" e sobe sozinha. Recusa do banco: sai da fila e aparece.
+   · A leitura guardada (pf150_kit_v1) tem só o que o servidor disse, com a hora. Sem a função no servidor: o cartão não aparece.
+   Chave de volta: localStorage pcf150 = off.
+   ════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+  var PF150 = window.PF150 = { versao: 'PCF_V150', log: [], dados: {}, erro: {}, voo: {}, semSql: false, folha: null, subindo: false };
+  var CACHE_KEY = 'pf150_kit_v1', FILA_KEY = 'pf150_fila_v1', RECUSA_KEY = 'pf150_recusados_v1', OFF_KEY = 'pcf150';
+  var JSQR_SRC = 'vendor/jsqr/jsQR.min.js';
+  function $(id) { return document.getElementById(id); }
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function nota(e, onde) { try { PF150.log.push({ onde: onde, msg: String((e && e.message) || e), em: Date.now() }); if (PF150.log.length > 40) PF150.log.shift(); } catch (x) {} }
+  function lerJ(k, p) { try { var v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? p : v; } catch (e) { return p; } }
+  function gravarJ(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { nota(e, 'gravar ' + k); return false; } }
+  function aviso(m) { try { showNotification(m); } catch (e) {} }
+  function hhmm(v) { var d = new Date(v || 0); if (!v || isNaN(d.getTime())) return ''; var p = function (n) { return (n < 10 ? '0' : '') + n; };
+    var hoje = new Date(); return (d.toDateString() === hoje.toDateString() ? 'hoje ' : p(d.getDate()) + '/' + p(d.getMonth() + 1) + ' ') + p(d.getHours()) + ':' + p(d.getMinutes()); }
+  function osTela() { try { return String(_pfOsId || ''); } catch (e) { return ''; } }
+  function uid() { return 'pf150-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10); }
+  function ativo() { if (PF150.semSql) return false; try { return localStorage.getItem(OFF_KEY) !== 'off'; } catch (e) { return true; } }
+  PF150.ativo = ativo;
+
+  // ── 1 · o servidor (crachá do login com PIN, o mesmo do PF123/PF145) ─────────────────────────────────────────
+  function erro(tipo, msg, st, hint) { var e = new Error(msg || tipo); e.pf150 = tipo; e.status = st || 0; e.hint = hint || ''; return e; }
+  async function rpc(fn, args) {
+    try { if (typeof pgpRedeBloqueada === 'function' && pgpRedeBloqueada()) throw erro('rede', 'modo offline'); } catch (e) { if (e.pf150) throw e; }
+    if (navigator.onLine === false) throw erro('rede', 'sem internet');
+    var tok = null; try { tok = await _pcfSupaToken(); } catch (e) { tok = null; }
+    if (!tok) throw erro('cracha', 'falta o login com PIN neste celular (entre de novo pelo Hub)');
+    var r, txt = '', d = null;
+    try {
+      var ctl = (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(15000) : undefined;
+      r = await fetch(PCF_SUPA_URL + '/rest/v1/rpc/' + fn, { method: 'POST', signal: ctl,
+        headers: { 'apikey': PCF_SUPA_ANON, 'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: JSON.stringify(args || {}) });
+      txt = await r.text();
+    } catch (e) { throw erro('rede', 'sem resposta do servidor'); }
+    try { d = JSON.parse(txt); } catch (e) { d = null; }
+    var msg = (d && d.message) || '';
+    if (r.status === 404 && d && (d.code === 'PGRST202' || /Could not find the function/i.test(msg))) throw erro('sem_sql', 'o servidor ainda não tem o kit da OS', 404);
+    if (/^Kit:/.test(msg)) throw erro('recusado', msg.replace(/^Kit:\s*/, ''), r.status, (d && d.hint) || '');   // NÃO do banco (inclui o 42501 "só o técnico da OS")
+    if (r.status === 401 || r.status === 403) throw erro('cracha', 'o servidor recusou o crachá — entre de novo pelo Hub', r.status);
+    if (r.status >= 500 || !r.status) throw erro('rede', 'o servidor falhou (' + r.status + ')', r.status);
+    if (!r.ok) throw erro('recusado', msg || ('HTTP ' + r.status), r.status, (d && d.hint) || '');
+    return d;
+  }
+  PF150.rpc = rpc;
+
+  // ── 2 · o kit da OS (só o que o servidor disse, com a hora) ─────────────────────────────────────────────────
+  function cache() { var c = lerJ(CACHE_KEY, {}); return (c && typeof c === 'object') ? c : {}; }
+  function cacheGravar(os, d) {
+    var c = cache(); c[os] = { d: d, ts: Date.now() };
+    var ks = Object.keys(c); if (ks.length > 30) ks.sort(function (a, b) { return (c[a].ts || 0) - (c[b].ts || 0); }).slice(0, ks.length - 30).forEach(function (k) { delete c[k]; });
+    gravarJ(CACHE_KEY, c);
+  }
+  function dadosDe(os) { if (!os) return null; if (PF150.dados[os]) return PF150.dados[os]; var c = cache()[os]; return (c && c.d && c.d.ok) ? { d: c.d, ts: c.ts, fonte: 'cache' } : null; }
+  async function carregar(os, porque) {
+    if (!os || !ativo() || PF150.voo[os]) return;
+    PF150.voo[os] = true;
+    try {
+      var d = await rpc('pc_os_kit', { p_os: os });
+      if (d && d.ok) { PF150.dados[os] = { d: d, ts: Date.now(), fonte: 'servidor' }; cacheGravar(os, d); delete PF150.erro[os]; }
+    } catch (e) {
+      if (e.pf150 === 'sem_sql') { PF150.semSql = true; }
+      PF150.erro[os] = { msg: e.message, tipo: e.pf150, em: Date.now() }; nota(e, 'carregar ' + porque);
+    } finally { delete PF150.voo[os]; pintar(); }
+  }
+  PF150.carregar = carregar;
+
+  // ── 3 · a fila da retirada (persist-first; o uid deixa a repetição inofensiva) ──────────────────────────────
+  function fila() { var f = lerJ(FILA_KEY, {}); return (f && typeof f === 'object') ? f : {}; }
+  function recusas() { var f = lerJ(RECUSA_KEY, {}); return (f && typeof f === 'object') ? f : {}; }
+  function aplicar(os, r) {   // o "ok" do servidor entra na tela já; a releitura vem depois
+    var x = dadosDe(os), d = x && x.d ? JSON.parse(JSON.stringify(x.d)) : { ok: true, os: os };
+    d.retirado_em = r.retirado_em || d.retirado_em || new Date().toISOString(); d.retirado_de = r.retirado_de || d.retirado_de || d.endereco;
+    if (r.retirado_por) d.retirado_por = r.retirado_por; d.endereco = null; d.pode_retirar = false;
+    PF150.dados[os] = { d: d, ts: Date.now(), fonte: 'servidor' }; cacheGravar(os, d);
+  }
+  // envia UM item da fila: devolve {ok:true,r} · {recusa:msg,hint} · {rede:msg}
+  async function enviar(it) {
+    try {
+      var r = await rpc('alm_kit_retirar', { p: { os: it.os, lido: it.lido, modo: it.modo, uid: it.uid } });
+      var f = fila(); delete f[it.os]; gravarJ(FILA_KEY, f);
+      aplicar(it.os, r || {}); carregar(it.os, 'retirou');
+      return { ok: true, r: r || {} };
+    } catch (e) {
+      if (e.pf150 === 'recusado' || e.pf150 === 'sem_sql') {
+        var f2 = fila(); delete f2[it.os]; gravarJ(FILA_KEY, f2);
+        if (!it.naTela) { var rc = recusas(); rc[it.os] = { msg: e.message, em: Date.now() }; gravarJ(RECUSA_KEY, rc); }
+        return { recusa: e.message, hint: e.hint || '' };
+      }
+      return { rede: e.message };
+    }
+  }
+  async function subir() {
+    if (PF150.subindo || !ativo() || (PF150.folha && PF150.folha.enviando)) return; var f = fila(), ks = Object.keys(f); if (!ks.length || navigator.onLine === false) return;
+    PF150.subindo = true;
+    try { for (var i = 0; i < ks.length; i++) { var it = f[ks[i]]; if (it && it.os) { var res = await enviar(it); if (res.rede) break; if (res.ok) aviso('🧰 Kit retirado — registrado no servidor.'); } } }
+    finally { PF150.subindo = false; pintar(); }
+  }
+  PF150.subir = subir;
+
+  // ── 4 · o cartão na tela da OS ───────────────────────────────────────────────────────────────────────────────
+  function cartaoHtml(os) {
+    var x = dadosDe(os), pend = fila()[os], rc = recusas()[os];
+    if (!x || !x.d || x.d.sem_os) return '';
+    var d = x.d;
+    if (!d.endereco && !d.retirado_em && !pend) return '';   // OS sem kit separado: nada a mostrar
+    var h = '<div class="pf131-h"><b>🧰 Kit da OS</b><span class="pf131-res" title="' + esc(x.fonte === 'cache' ? 'Guardado no celular — lido do servidor ' + hhmm(x.ts) : 'Lido do servidor ' + hhmm(x.ts)) + '">' + (x.fonte === 'cache' ? '⟳ ' : '● ') + esc(hhmm(x.ts)) + '</span></div>';
+    if (pend) {
+      h += '<div class="pf150-st av">⏳ Retirada guardada neste celular — sobe quando houver internet.</div>';
+    } else if (d.retirado_em) {
+      h += '<div class="pf150-st ok">✅ Retirado' + (d.retirado_por ? ' por ' + esc(d.retirado_por) : '') + ' · ' + esc(hhmm(d.retirado_em)) + (d.retirado_de ? '<br><small>estava em 📍 ' + esc(d.retirado_de) + '</small>' : '') + '</div>';
+    } else {
+      h += '<div class="pf150-st">Separado em <span class="pf150-end">📍 ' + esc(d.endereco) + '</span></div>';
+      if (d.pode_retirar) h += '<div class="pf150-bt"><button type="button" class="pf131-b ok" data-pf150="abrir" data-os="' + esc(os) + '">🧰 Retirei o kit</button></div>';
+    }
+    if (rc) h += '<div class="pf131-nota er">⚠ O servidor recusou a retirada guardada (' + esc(hhmm(rc.em)) + '): ' + esc(rc.msg) + ' <button type="button" class="pf131-b lv" data-pf150="ok-rc" data-os="' + esc(os) + '">Entendi</button></div>';
+    return h;
+  }
+  PF150.cartaoHtml = cartaoHtml;
+  function pintarTela() {
+    var tela = $('pfScreenPipeline'), cont = $('pfPipelineConteudo'), os = osTela(), host = $('pf150Kit');
+    if (!ativo()) { if (host) host.style.display = 'none'; return; }
+    if (!host && cont && cont.parentNode) {
+      host = document.createElement('div'); host.id = 'pf150Kit'; host.className = 'pf131 pf150';
+      var antes = $('pf145Itens'); antes = (antes && antes.parentNode === cont.parentNode) ? antes : cont;   // logo acima das peças e serviços
+      cont.parentNode.insertBefore(host, antes);
+    }
+    if (!host) return;
+    var html = (os && tela && tela.style.display !== 'none') ? cartaoHtml(os) : '';
+    if (!html) { host.style.display = 'none'; return; }
+    host.style.display = ''; host.setAttribute('data-os', os);
+    if (host.__pf150 !== html) { host.innerHTML = html; host.__pf150 = html; }
+  }
+  var _t = 0;
+  function pintar() { if (_t) return; _t = setTimeout(function () { _t = 0; try { pintarTela(); } catch (e) { nota(e, 'pintar'); } }, 30); }
+  PF150.pintar = pintar;
+
+  // ── 5 · a folha "Retirei o kit": câmera na página + leitor de QR; digitar o número como última opção ──────────
+  function carregarJsQR() {
+    if (window.jsQR) return Promise.resolve(window.jsQR);
+    if (PF150._jsqr) return PF150._jsqr;
+    PF150._jsqr = new Promise(function (ok, nao) {
+      var s = document.createElement('script'); s.src = JSQR_SRC; s.async = true;
+      s.onload = function () { window.jsQR ? ok(window.jsQR) : nao(new Error('jsQR não carregou')); };
+      s.onerror = function () { PF150._jsqr = null; nao(new Error('leitor de QR não carregou')); };
+      document.head.appendChild(s);
+    });
+    return PF150._jsqr;
+  }
+  async function leitor() {   // devolve uma função (canvas) → texto|null
+    try {
+      if ('BarcodeDetector' in window) {
+        var fm = (typeof BarcodeDetector.getSupportedFormats === 'function') ? await BarcodeDetector.getSupportedFormats() : ['qr_code'];
+        if (fm.indexOf('qr_code') >= 0) { var bd = new BarcodeDetector({ formats: ['qr_code'] }); PF150.motor = 'BarcodeDetector';
+          return async function (cv) { var r = await bd.detect(cv); return (r && r[0] && r[0].rawValue) || null; }; }
+      }
+    } catch (e) { nota(e, 'BarcodeDetector'); }
+    var jq = await carregarJsQR(); PF150.motor = 'jsQR';
+    return async function (cv) { var cx = cv.getContext('2d', { willReadFrequently: true }), im = cx.getImageData(0, 0, cv.width, cv.height);
+      var r = jq(im.data, im.width, im.height, { inversionAttempts: 'dontInvert' }); return (r && r.data) || null; };
+  }
+  function pararCamera() {
+    var f = PF150.folha; if (!f) return;
+    f.lendo = false; if (f.tm) { clearTimeout(f.tm); f.tm = 0; }
+    try { if (f.stream) f.stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
+    f.stream = null;
+  }
+  async function abrirCamera() {
+    var f = PF150.folha; if (!f) return; var g = f.ger;
+    var v = $('pf150Video'); if (!v) return;
+    if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') { msg('A câmera não está disponível neste aparelho. Digite o número da OS abaixo.', 'er'); return; }
+    var st = null, tent = [{ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false }, { video: true, audio: false }];
+    for (var i = 0; i < tent.length && !st; i++) { try { st = await navigator.mediaDevices.getUserMedia(tent[i]); } catch (e) { nota(e, 'getUserMedia ' + i); } }
+    if (!PF150.folha || PF150.folha.ger !== g) { if (st) st.getTracks().forEach(function (t) { t.stop(); }); return; }   // fechou enquanto pedia
+    if (!st) { msg('Não consegui abrir a câmera (permissão negada?). Digite o número da OS abaixo.', 'er'); return; }
+    f.stream = st; v.srcObject = st; v.setAttribute('playsinline', ''); v.muted = true;
+    try { await v.play(); } catch (e) { nota(e, 'play'); }
+    var ler; try { ler = await leitor(); } catch (e) { nota(e, 'leitor'); msg('O leitor de QR não carregou (sem internet?). Digite o número da OS abaixo.', 'er'); return; }
+    if (!PF150.folha || PF150.folha.ger !== g) return;
+    var cv = document.createElement('canvas'); f.lendo = true;
+    var passo = async function () {
+      if (!PF150.folha || PF150.folha.ger !== g || !f.lendo) return;
+      try {
+        if (!f.enviando && v.readyState >= 2 && v.videoWidth) {
+          var w = v.videoWidth, h = v.videoHeight, k = Math.min(1, 720 / Math.max(w, h));
+          cv.width = Math.round(w * k); cv.height = Math.round(h * k); cv.getContext('2d', { willReadFrequently: true }).drawImage(v, 0, 0, cv.width, cv.height);
+          var txt = await ler(cv);
+          if (txt && f.lendo && !f.enviando) { retirar(String(txt), 'qr'); }
+        }
+      } catch (e) { nota(e, 'ler quadro'); }
+      if (PF150.folha && PF150.folha.ger === g && f.lendo) f.tm = setTimeout(passo, 180);
+    };
+    passo();
+  }
+  function msg(t, cls) { var m = $('pf150Msg'); if (!m) return; m.className = 'pf150-msg' + (cls ? ' ' + cls : ''); m.textContent = t; m.style.display = t ? '' : 'none'; }
+  function travar(sim) { var f = PF150.folha; if (f) f.enviando = sim; ['pf150Conf', 'pf150Fechar'].forEach(function (id) { var b = $(id); if (b) b.disabled = !!sim; }); var b2 = $('pf150Conf'); if (b2) { if (sim) b2.setAttribute('data-pcm-enviando', '1'); else b2.removeAttribute('data-pcm-enviando'); } }
+  function abrirFolha(os) {
+    var x = dadosDe(os); if (!x || !x.d || !x.d.endereco) return;
+    fecharFolha();
+    var num = x.d.numero_os || os, ger = Date.now();
+    PF150.folha = { os: os, ger: ger, stream: null, lendo: false, enviando: false };
+    var el = document.createElement('div'); el.id = 'pf150Folha';
+    el.innerHTML = '<div class="pf150-fo" role="dialog" aria-label="Retirei o kit">' +
+      '<h3>🧰 Retirei o kit</h3><div class="s">OS ' + esc(num) + ' · kit em <b>📍 ' + esc(x.d.endereco) + '</b><br>Aponte a câmera para o QR da etiqueta do kit.</div>' +
+      '<div class="pf150-cam"><video id="pf150Video" playsinline muted></video><div class="pf150-mira"></div></div>' +
+      '<div id="pf150Msg" class="pf150-msg" style="display:none"></div>' +
+      '<label for="pf150Num">Sem câmera? Digite o número da OS</label>' +
+      '<input type="text" id="pf150Num" name="pf150_os_nofill" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" data-lpignore="true" data-1p-ignore="true" readonly onfocus="this.removeAttribute(\'readonly\')" enterkeyhint="done">' +
+      '<div class="bt"><button type="button" class="pf131-b ok" id="pf150Conf" data-pf150="conf">Confirmar pelo número</button>' +
+      '<button type="button" class="pf131-b" id="pf150Fechar" data-pf150="fechar">Cancelar</button></div></div>';
+    document.body.appendChild(el);
+    el.addEventListener('click', function (ev) { if (ev.target === el && !(PF150.folha && PF150.folha.enviando)) fecharFolha(); });
+    var inp = $('pf150Num'); if (inp) inp.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); confirmarDigitado(); } });
+    abrirCamera();
+  }
+  function fecharFolha() { pararCamera(); var el = $('pf150Folha'); if (el) el.remove(); PF150.folha = null; }
+  PF150.abrirFolha = abrirFolha; PF150.fecharFolha = fecharFolha;
+  function confirmarDigitado() {
+    var inp = $('pf150Num'), t = String((inp && inp.value) || '').trim();
+    if (!t) { msg('Digite o número da OS (ou aponte a câmera para o QR).', 'er'); if (inp) inp.focus(); return; }
+    retirar(t, /#os\//i.test(t) ? 'qr' : 'os');   // o leitor de mão "digita" o QR inteiro
+  }
+  async function retirar(lido, modo) {
+    var f = PF150.folha; if (!f || f.enviando) return;
+    var os = f.os, ger = f.ger; travar(true); f.lendo = false;
+    var it = { os: os, lido: String(lido).slice(0, 300), modo: modo, uid: uid(), em: Date.now(), naTela: true };
+    var fl = fila(); fl[os] = it; if (!gravarJ(FILA_KEY, fl)) { travar(false); msg('O celular está sem espaço — não consegui guardar a retirada. Nada foi enviado.', 'er'); return; }   // persist-first
+    var rc = recusas(); if (rc[os]) { delete rc[os]; gravarJ(RECUSA_KEY, rc); }
+    msg('Enviando…', '');
+    var res = await enviar(it);
+    if (!PF150.folha || PF150.folha.ger !== ger) { pintar(); return; }   // a folha fechou durante o envio: o resultado já está na fila/cartão
+    if (res.ok) {
+      var r = res.r || {};
+      msg(r.ja_retirado ? '✅ Este kit já estava retirado' + (r.retirado_por ? ' por ' + r.retirado_por : '') + '.' : '✅ Kit retirado — registrado no servidor.', 'ok');
+      aviso('🧰 Kit retirado.'); pararCamera();
+      setTimeout(function () { if (PF150.folha && PF150.folha.ger === ger) fecharFolha(); pintar(); }, 1200);
+      return;
+    }
+    if (res.recusa) {   // o banco disse NÃO (ex.: kit de outra OS): nada gravado, pode ler de novo
+      pararCamera(); travar(false); msg((/^\s*⚠/.test(res.recusa) ? '' : '⚠ ') + res.recusa, 'er');
+      var m = $('pf150Msg'); if (m) { var bb = document.createElement('button'); bb.type = 'button'; bb.className = 'pf131-b lv'; bb.setAttribute('data-pf150', 'reler'); bb.textContent = '📷 Ler de novo'; bb.style.marginTop = '8px'; m.appendChild(document.createElement('br')); m.appendChild(bb); }
+      return;
+    }
+    // sem rede: a retirada fica guardada e sobe sozinha
+    var it2 = fila()[os]; if (it2) { delete it2.naTela; var f3 = fila(); f3[os] = it2; gravarJ(FILA_KEY, f3); }
+    msg('⏳ Sem conexão — a retirada ficou guardada neste celular e sobe sozinha quando houver internet.', '');
+    pararCamera(); travar(false); pintar();
+    setTimeout(function () { if (PF150.folha && PF150.folha.ger === ger) fecharFolha(); }, 2500);
+  }
+  PF150.retirar = retirar;
+  function abrirCameraLoop() { var f = PF150.folha; if (!f) return; pararCamera(); abrirCamera(); }
+
+  // ── 6 · toques ─────────────────────────────────────────────────────────────────────────────────────────────
+  document.addEventListener('click', function (ev) {
+    try {
+      var b = ev.target && ev.target.closest && ev.target.closest('[data-pf150]'); if (!b || b.disabled) return;
+      var a = b.getAttribute('data-pf150'), os = b.getAttribute('data-os') || '';
+      if (a === 'abrir') { ev.preventDefault(); abrirFolha(os); }
+      else if (a === 'fechar') { ev.preventDefault(); if (!(PF150.folha && PF150.folha.enviando)) fecharFolha(); }
+      else if (a === 'conf') { ev.preventDefault(); confirmarDigitado(); }
+      else if (a === 'reler') { ev.preventDefault(); msg('', ''); abrirCameraLoop(); }
+      else if (a === 'ok-rc') { ev.preventDefault(); var rc = recusas(); delete rc[os]; gravarJ(RECUSA_KEY, rc); pintar(); }
+    } catch (e) { nota(e, 'toque'); }
+  }, false);
+
+  // ── 7 · ganchos no app (por window[nome]) ───────────────────────────────────────────────────────────────────
+  function embrulhar(nome, fazer) {
+    try { var o = window[nome]; if (typeof o !== 'function' || o.__pf150) return; var n = fazer(o); n.__pf150 = true; window[nome] = n; } catch (e) { nota(e, 'embrulhar ' + nome); }
+  }
+  embrulhar('pfLoadPipeline', function (orig) {
+    return function () {
+      var r = orig.apply(this, arguments);
+      try { var os = osTela(); if (os && ativo()) { pintar(); carregar(os, 'pipeline'); } } catch (e) { nota(e, 'pfLoadPipeline'); }
+      return r;
+    };
+  });
+  window.addEventListener('online', function () { subir(); });
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') { subir(); var os = osTela(); if (os && ativo() && !PF150.folha) carregar(os, 'voltou'); if (PF150.folha && !PF150.folha.enviando && !PF150.folha.stream && !$('pf150Msg').textContent) abrirCameraLoop(); pintar(); }
+    else if (PF150.folha) pararCamera();   // app em segundo plano: a câmera desliga (abre de novo ao tocar "Retirei o kit")
+  });
+  window.addEventListener('pagehide', function () { pararCamera(); });
+  function iniciar() {
+    pintar(); subir();
+    setInterval(function () { try { if (Object.keys(fila()).length && navigator.onLine !== false) subir(); } catch (e) {} pintar(); }, 5000);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else setTimeout(iniciar, 0);
+})();
+</script>
+<!-- ████ FIM PCF_V150 (PF150) ████ -->
 </body>
 </html>
