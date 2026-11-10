@@ -45830,6 +45830,7 @@ html.pf149-on .pcf117-item.pf149-com-nome .pcf121-chips{display:none!important}
 #pf150Folha input[type=text]{width:100%;box-sizing:border-box;min-height:48px;padding:8px 12px;border:1px solid #475569;border-radius:8px;background:#0f172a;color:#e2e8f0;font-size:18px}
 #pf150Folha .bt{display:flex;flex-direction:column;gap:8px;margin-top:12px}
 #pf150Folha .bt .pf131-b{width:100%;min-height:52px}
+#pf150Msg .pf131-b,.pf150 .pf131-nota .pf131-b{min-height:52px;padding:8px 16px}
 html.pf129 .pf150 .pf150-st.ok{color:#166534}html.pf129 .pf150 .pf150-st.av{color:#92400e}html.pf129 .pf150 .pf150-st.er{color:#b91c1c}
 html.pf129 #pf150Folha .pf150-fo{background:#fff;color:#0f172a}
 html.pf129 #pf150Folha .s,html.pf129 #pf150Folha label{color:#475569}
@@ -45856,7 +45857,7 @@ html.pf129 #pf150Folha input[type=text]{background:#fff;border-color:#cbd5e1;col
    ════════════════════════════════════════════════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
-  var PF150 = window.PF150 = { versao: 'PCF_V150', log: [], dados: {}, erro: {}, voo: {}, semSql: false, folha: null, subindo: false };
+  var PF150 = window.PF150 = { versao: 'PCF_V150', log: [], dados: {}, erro: {}, voo: {}, ger: {}, reler: {}, pendErro: {}, semSql: false, folha: null, subindo: false };
   var CACHE_KEY = 'pf150_kit_v1', FILA_KEY = 'pf150_fila_v1', RECUSA_KEY = 'pf150_recusados_v1', OFF_KEY = 'pcf150';
   var JSQR_SRC = 'vendor/jsqr/jsQR.min.js';
   function $(id) { return document.getElementById(id); }
@@ -45890,9 +45891,9 @@ html.pf129 #pf150Folha input[type=text]{background:#fff;border-color:#cbd5e1;col
     var msg = (d && d.message) || '';
     if (r.status === 404 && d && (d.code === 'PGRST202' || /Could not find the function/i.test(msg))) throw erro('sem_sql', 'o servidor ainda não tem o kit da OS', 404);
     if (/^Kit:/.test(msg)) throw erro('recusado', msg.replace(/^Kit:\s*/, ''), r.status, (d && d.hint) || '');   // NÃO do banco (inclui o 42501 "só o técnico da OS")
-    if (r.status === 401 || r.status === 403) throw erro('cracha', 'o servidor recusou o crachá — entre de novo pelo Hub', r.status);
-    if (r.status >= 500 || !r.status) throw erro('rede', 'o servidor falhou (' + r.status + ')', r.status);
-    if (!r.ok) throw erro('recusado', msg || ('HTTP ' + r.status), r.status, (d && d.hint) || '');
+    if (r.status === 401 || r.status === 403) throw erro('cracha', 'Entre de novo pelo Hub (o login venceu).', r.status);
+    if (!r.ok) { console.warn('[PF150]', fn, r.status, msg || txt.slice(0, 200)); throw erro('rede', 'o servidor falhou (' + r.status + ')', r.status); }   // 408/429/5xx/outro 4xx: tenta de novo
+    if (!d || typeof d !== 'object' || d.ok !== true) { console.warn('[PF150]', fn, 'resposta inesperada', txt.slice(0, 200)); throw erro('rede', 'resposta inesperada do servidor', r.status); }   // portal de Wi-Fi etc.
     return d;
   }
   PF150.rpc = rpc;
@@ -45906,15 +45907,16 @@ html.pf129 #pf150Folha input[type=text]{background:#fff;border-color:#cbd5e1;col
   }
   function dadosDe(os) { if (!os) return null; if (PF150.dados[os]) return PF150.dados[os]; var c = cache()[os]; return (c && c.d && c.d.ok) ? { d: c.d, ts: c.ts, fonte: 'cache' } : null; }
   async function carregar(os, porque) {
-    if (!os || !ativo() || PF150.voo[os]) return;
-    PF150.voo[os] = true;
+    if (!os || !ativo()) return;
+    if (PF150.voo[os]) { PF150.reler[os] = true; return; }   // uma leitura já em voo: relê quando ela voltar
+    PF150.voo[os] = true; var g0 = PF150.ger[os] || 0;
     try {
       var d = await rpc('pc_os_kit', { p_os: os });
-      if (d && d.ok) { PF150.dados[os] = { d: d, ts: Date.now(), fonte: 'servidor' }; cacheGravar(os, d); delete PF150.erro[os]; }
+      if (d && d.ok && (PF150.ger[os] || 0) === g0) { PF150.dados[os] = { d: d, ts: Date.now(), fonte: 'servidor' }; cacheGravar(os, d); delete PF150.erro[os]; }   // pedida antes de uma retirada: descarta
     } catch (e) {
       if (e.pf150 === 'sem_sql') { PF150.semSql = true; }
       PF150.erro[os] = { msg: e.message, tipo: e.pf150, em: Date.now() }; nota(e, 'carregar ' + porque);
-    } finally { delete PF150.voo[os]; pintar(); }
+    } finally { delete PF150.voo[os]; if (PF150.reler[os]) { delete PF150.reler[os]; setTimeout(function () { carregar(os, 'relê'); }, 0); } pintar(); }
   }
   PF150.carregar = carregar;
 
@@ -45925,28 +45927,30 @@ html.pf129 #pf150Folha input[type=text]{background:#fff;border-color:#cbd5e1;col
     var x = dadosDe(os), d = x && x.d ? JSON.parse(JSON.stringify(x.d)) : { ok: true, os: os };
     d.retirado_em = r.retirado_em || d.retirado_em || new Date().toISOString(); d.retirado_de = r.retirado_de || d.retirado_de || d.endereco;
     if (r.retirado_por) d.retirado_por = r.retirado_por; d.endereco = null; d.pode_retirar = false;
-    PF150.dados[os] = { d: d, ts: Date.now(), fonte: 'servidor' }; cacheGravar(os, d);
+    PF150.ger[os] = (PF150.ger[os] || 0) + 1; PF150.dados[os] = { d: d, ts: Date.now(), fonte: 'servidor' }; cacheGravar(os, d);
   }
   // envia UM item da fila: devolve {ok:true,r} · {recusa:msg,hint} · {rede:msg}
   async function enviar(it) {
     try {
       var r = await rpc('alm_kit_retirar', { p: { os: it.os, lido: it.lido, modo: it.modo, uid: it.uid } });
-      var f = fila(); delete f[it.os]; gravarJ(FILA_KEY, f);
+      var f = fila(); delete f[it.os]; gravarJ(FILA_KEY, f); delete PF150.pendErro[it.os];
       aplicar(it.os, r || {}); carregar(it.os, 'retirou');
       return { ok: true, r: r || {} };
     } catch (e) {
       if (e.pf150 === 'recusado' || e.pf150 === 'sem_sql') {
         var f2 = fila(); delete f2[it.os]; gravarJ(FILA_KEY, f2);
-        if (!it.naTela) { var rc = recusas(); rc[it.os] = { msg: e.message, em: Date.now() }; gravarJ(RECUSA_KEY, rc); }
+        delete PF150.pendErro[it.os];
+        if (!(PF150.folha && PF150.folha.os === it.os)) { var rc = recusas(); rc[it.os] = { msg: e.message, em: Date.now() }; gravarJ(RECUSA_KEY, rc); }   // ninguém vendo: fica no cartão
         return { recusa: e.message, hint: e.hint || '' };
       }
-      return { rede: e.message };
+      PF150.pendErro[it.os] = e.pf150 === 'cracha' ? 'cracha' : 'rede';
+      return e.pf150 === 'cracha' ? { cracha: e.message } : { rede: e.message };
     }
   }
   async function subir() {
     if (PF150.subindo || !ativo() || (PF150.folha && PF150.folha.enviando)) return; var f = fila(), ks = Object.keys(f); if (!ks.length || navigator.onLine === false) return;
     PF150.subindo = true;
-    try { for (var i = 0; i < ks.length; i++) { var it = f[ks[i]]; if (it && it.os) { var res = await enviar(it); if (res.rede) break; if (res.ok) aviso('🧰 Kit retirado — registrado no servidor.'); } } }
+    try { for (var i = 0; i < ks.length; i++) { var it = f[ks[i]]; if (it && it.os) { var res = await enviar(it); if (res.rede || res.cracha) break; if (res.ok) aviso('🧰 Kit retirado — registrado no servidor.'); } } }
     finally { PF150.subindo = false; pintar(); }
   }
   PF150.subir = subir;
@@ -45957,9 +45961,10 @@ html.pf129 #pf150Folha input[type=text]{background:#fff;border-color:#cbd5e1;col
     if (!x || !x.d || x.d.sem_os) return '';
     var d = x.d;
     if (!d.endereco && !d.retirado_em && !pend) return '';   // OS sem kit separado: nada a mostrar
-    var h = '<div class="pf131-h"><b>🧰 Kit da OS</b><span class="pf131-res" title="' + esc(x.fonte === 'cache' ? 'Guardado no celular — lido do servidor ' + hhmm(x.ts) : 'Lido do servidor ' + hhmm(x.ts)) + '">' + (x.fonte === 'cache' ? '⟳ ' : '● ') + esc(hhmm(x.ts)) + '</span></div>';
+    var er = PF150.erro[os], velho = x.fonte === 'cache' || !!er;
+    var h = '<div class="pf131-h"><b>🧰 Kit da OS</b><span class="pf131-res" title="' + esc((er ? 'Não consegui atualizar agora — ' : '') + (x.fonte === 'cache' ? 'guardado no celular, lido do servidor ' : 'lido do servidor ') + hhmm(x.ts)) + '">' + (velho ? '⟳ ' : '● ') + esc(hhmm(x.ts)) + '</span></div>';
     if (pend) {
-      h += '<div class="pf150-st av">⏳ Retirada guardada neste celular — sobe quando houver internet.</div>';
+      h += '<div class="pf150-st av">⏳ Retirada guardada neste celular — ' + (PF150.pendErro[os] === 'cracha' ? 'entre de novo pelo Hub para ela subir.' : 'sobe quando houver internet.') + '</div>';
     } else if (d.retirado_em) {
       h += '<div class="pf150-st ok">✅ Retirado' + (d.retirado_por ? ' por ' + esc(d.retirado_por) : '') + ' · ' + esc(hhmm(d.retirado_em)) + (d.retirado_de ? '<br><small>estava em 📍 ' + esc(d.retirado_de) + '</small>' : '') + '</div>';
     } else {
@@ -45972,6 +45977,7 @@ html.pf129 #pf150Folha input[type=text]{background:#fff;border-color:#cbd5e1;col
   PF150.cartaoHtml = cartaoHtml;
   function pintarTela() {
     var tela = $('pfScreenPipeline'), cont = $('pfPipelineConteudo'), os = osTela(), host = $('pf150Kit');
+    if (PF150.folha && PF150.folha.os !== os) fecharFolha();   // a OS da tela mudou: a folha era de outra
     if (!ativo()) { if (host) host.style.display = 'none'; return; }
     if (!host && cont && cont.parentNode) {
       host = document.createElement('div'); host.id = 'pf150Kit'; host.className = 'pf131 pf150';
@@ -46002,7 +46008,7 @@ html.pf129 #pf150Folha input[type=text]{background:#fff;border-color:#cbd5e1;col
   }
   async function leitor() {   // devolve uma função (canvas) → texto|null
     try {
-      if ('BarcodeDetector' in window) {
+      if ('BarcodeDetector' in window && !PF150.semBD) {
         var fm = (typeof BarcodeDetector.getSupportedFormats === 'function') ? await BarcodeDetector.getSupportedFormats() : ['qr_code'];
         if (fm.indexOf('qr_code') >= 0) { var bd = new BarcodeDetector({ formats: ['qr_code'] }); PF150.motor = 'BarcodeDetector';
           return async function (cv) { var r = await bd.detect(cv); return (r && r[0] && r[0].rawValue) || null; }; }
@@ -46019,34 +46025,42 @@ html.pf129 #pf150Folha input[type=text]{background:#fff;border-color:#cbd5e1;col
     f.stream = null;
   }
   async function abrirCamera() {
-    var f = PF150.folha; if (!f) return; var g = f.ger;
+    var f = PF150.folha; if (!f) return; var g = f.ger, eu = (f.cam = (f.cam || 0) + 1);
+    var viva = function () { return PF150.folha === f && f.ger === g && f.cam === eu && document.visibilityState !== 'hidden'; };
     var v = $('pf150Video'); if (!v) return;
     if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') { msg('A câmera não está disponível neste aparelho. Digite o número da OS abaixo.', 'er'); return; }
     var st = null, tent = [{ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false }, { video: true, audio: false }];
     for (var i = 0; i < tent.length && !st; i++) { try { st = await navigator.mediaDevices.getUserMedia(tent[i]); } catch (e) { nota(e, 'getUserMedia ' + i); } }
-    if (!PF150.folha || PF150.folha.ger !== g) { if (st) st.getTracks().forEach(function (t) { t.stop(); }); return; }   // fechou enquanto pedia
+    if (!viva()) { if (st) st.getTracks().forEach(function (t) { t.stop(); }); return; }   // fechou, foi para 2º plano ou outra abertura começou
     if (!st) { msg('Não consegui abrir a câmera (permissão negada?). Digite o número da OS abaixo.', 'er'); return; }
     f.stream = st; v.srcObject = st; v.setAttribute('playsinline', ''); v.muted = true;
     try { await v.play(); } catch (e) { nota(e, 'play'); }
-    var ler; try { ler = await leitor(); } catch (e) { nota(e, 'leitor'); msg('O leitor de QR não carregou (sem internet?). Digite o número da OS abaixo.', 'er'); return; }
-    if (!PF150.folha || PF150.folha.ger !== g) return;
-    var cv = document.createElement('canvas'); f.lendo = true;
+    var ler; try { ler = await leitor(); } catch (e) { nota(e, 'leitor'); if (viva()) msg('O leitor de QR não carregou (sem internet?). Digite o número da OS abaixo.', 'er'); return; }
+    if (!viva()) { if (f.cam === eu) pararCamera(); return; }
+    var cv = document.createElement('canvas'), falhas = 0; f.lendo = true;
     var passo = async function () {
-      if (!PF150.folha || PF150.folha.ger !== g || !f.lendo) return;
+      if (!viva() || !f.lendo) return;
       try {
         if (!f.enviando && v.readyState >= 2 && v.videoWidth) {
           var w = v.videoWidth, h = v.videoHeight, k = Math.min(1, 720 / Math.max(w, h));
           cv.width = Math.round(w * k); cv.height = Math.round(h * k); cv.getContext('2d', { willReadFrequently: true }).drawImage(v, 0, 0, cv.width, cv.height);
-          var txt = await ler(cv);
-          if (txt && f.lendo && !f.enviando) { retirar(String(txt), 'qr'); }
+          var txt = await ler(cv); falhas = 0;
+          if (txt && f.lendo && !f.enviando && viva()) { retirar(String(txt), 'qr'); }
         }
-      } catch (e) { nota(e, 'ler quadro'); }
-      if (PF150.folha && PF150.folha.ger === g && f.lendo) f.tm = setTimeout(passo, 180);
+      } catch (e) {
+        nota(e, 'ler quadro');
+        if (++falhas >= 3 && PF150.motor === 'BarcodeDetector') {   // o do aparelho existe mas não lê: troca pelo jsQR
+          falhas = 0; PF150.semBD = true;
+          try { var jq = await carregarJsQR(); PF150.motor = 'jsQR'; ler = async function (c) { var im = c.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, c.width, c.height); var r = jq(im.data, im.width, im.height, { inversionAttempts: 'dontInvert' }); return (r && r.data) || null; }; }
+          catch (e2) { nota(e2, 'troca jsQR'); if (viva()) msg('Não consegui ler o QR. Digite o número da OS abaixo.', 'er'); f.lendo = false; return; }
+        }
+      }
+      if (viva() && f.lendo) f.tm = setTimeout(passo, 180);
     };
     passo();
   }
   function msg(t, cls) { var m = $('pf150Msg'); if (!m) return; m.className = 'pf150-msg' + (cls ? ' ' + cls : ''); m.textContent = t; m.style.display = t ? '' : 'none'; }
-  function travar(sim) { var f = PF150.folha; if (f) f.enviando = sim; ['pf150Conf', 'pf150Fechar'].forEach(function (id) { var b = $(id); if (b) b.disabled = !!sim; }); var b2 = $('pf150Conf'); if (b2) { if (sim) b2.setAttribute('data-pcm-enviando', '1'); else b2.removeAttribute('data-pcm-enviando'); } }
+  function travar(sim) { var f = PF150.folha; if (f) f.enviando = sim; ['pf150Conf'].forEach(function (id) { var b = $(id); if (b) b.disabled = !!sim; }); var b2 = $('pf150Conf'); if (b2) { if (sim) b2.setAttribute('data-pcm-enviando', '1'); else b2.removeAttribute('data-pcm-enviando'); } }
   function abrirFolha(os) {
     var x = dadosDe(os); if (!x || !x.d || !x.d.endereco) return;
     fecharFolha();
@@ -46057,12 +46071,12 @@ html.pf129 #pf150Folha input[type=text]{background:#fff;border-color:#cbd5e1;col
       '<h3>🧰 Retirei o kit</h3><div class="s">OS ' + esc(num) + ' · kit em <b>📍 ' + esc(x.d.endereco) + '</b><br>Aponte a câmera para o QR da etiqueta do kit.</div>' +
       '<div class="pf150-cam"><video id="pf150Video" playsinline muted></video><div class="pf150-mira"></div></div>' +
       '<div id="pf150Msg" class="pf150-msg" style="display:none"></div>' +
-      '<label for="pf150Num">Sem câmera? Digite o número da OS</label>' +
+      '<label for="pf150Num">Ou digite o número da OS</label>' +
       '<input type="text" id="pf150Num" name="pf150_os_nofill" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" data-lpignore="true" data-1p-ignore="true" readonly onfocus="this.removeAttribute(\'readonly\')" enterkeyhint="done">' +
       '<div class="bt"><button type="button" class="pf131-b ok" id="pf150Conf" data-pf150="conf">Confirmar pelo número</button>' +
       '<button type="button" class="pf131-b" id="pf150Fechar" data-pf150="fechar">Cancelar</button></div></div>';
     document.body.appendChild(el);
-    el.addEventListener('click', function (ev) { if (ev.target === el && !(PF150.folha && PF150.folha.enviando)) fecharFolha(); });
+    el.addEventListener('click', function (ev) { var n = $('pf150Num'); if (ev.target === el && !(PF150.folha && PF150.folha.enviando) && !(n && n.value.trim())) fecharFolha(); });
     var inp = $('pf150Num'); if (inp) inp.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); confirmarDigitado(); } });
     abrirCamera();
   }
@@ -46094,9 +46108,9 @@ html.pf129 #pf150Folha input[type=text]{background:#fff;border-color:#cbd5e1;col
       var m = $('pf150Msg'); if (m) { var bb = document.createElement('button'); bb.type = 'button'; bb.className = 'pf131-b lv'; bb.setAttribute('data-pf150', 'reler'); bb.textContent = '📷 Ler de novo'; bb.style.marginTop = '8px'; m.appendChild(document.createElement('br')); m.appendChild(bb); }
       return;
     }
-    // sem rede: a retirada fica guardada e sobe sozinha
+    // sem rede (ou login vencido): a retirada fica guardada e sobe sozinha
     var it2 = fila()[os]; if (it2) { delete it2.naTela; var f3 = fila(); f3[os] = it2; gravarJ(FILA_KEY, f3); }
-    msg('⏳ Sem conexão — a retirada ficou guardada neste celular e sobe sozinha quando houver internet.', '');
+    msg(res.cracha ? '⏳ A retirada ficou guardada neste celular. Entre de novo pelo Hub (o login venceu) para ela subir.' : '⏳ Sem conexão — a retirada ficou guardada neste celular e sobe sozinha quando houver internet.', '');
     pararCamera(); travar(false); pintar();
     setTimeout(function () { if (PF150.folha && PF150.folha.ger === ger) fecharFolha(); }, 2500);
   }
@@ -46109,7 +46123,7 @@ html.pf129 #pf150Folha input[type=text]{background:#fff;border-color:#cbd5e1;col
       var b = ev.target && ev.target.closest && ev.target.closest('[data-pf150]'); if (!b || b.disabled) return;
       var a = b.getAttribute('data-pf150'), os = b.getAttribute('data-os') || '';
       if (a === 'abrir') { ev.preventDefault(); abrirFolha(os); }
-      else if (a === 'fechar') { ev.preventDefault(); if (!(PF150.folha && PF150.folha.enviando)) fecharFolha(); }
+      else if (a === 'fechar') { ev.preventDefault(); fecharFolha(); pintar(); }   // durante o envio também: a retirada já está guardada e o resultado vai para o cartão
       else if (a === 'conf') { ev.preventDefault(); confirmarDigitado(); }
       else if (a === 'reler') { ev.preventDefault(); msg('', ''); abrirCameraLoop(); }
       else if (a === 'ok-rc') { ev.preventDefault(); var rc = recusas(); delete rc[os]; gravarJ(RECUSA_KEY, rc); pintar(); }
@@ -46120,6 +46134,8 @@ html.pf129 #pf150Folha input[type=text]{background:#fff;border-color:#cbd5e1;col
   function embrulhar(nome, fazer) {
     try { var o = window[nome]; if (typeof o !== 'function' || o.__pf150) return; var n = fazer(o); n.__pf150 = true; window[nome] = n; } catch (e) { nota(e, 'embrulhar ' + nome); }
   }
+  embrulhar('pfVoltarOS', function (orig) { return function () { fecharFolha(); return orig.apply(this, arguments); }; });
+  window.addEventListener('popstate', function () { if (PF150.folha) fecharFolha(); });
   embrulhar('pfLoadPipeline', function (orig) {
     return function () {
       var r = orig.apply(this, arguments);
@@ -46134,6 +46150,7 @@ html.pf129 #pf150Folha input[type=text]{background:#fff;border-color:#cbd5e1;col
   });
   window.addEventListener('pagehide', function () { pararCamera(); });
   function iniciar() {
+    try { var f0 = fila(), mud = false; Object.keys(f0).forEach(function (k) { if (f0[k] && f0[k].naTela) { delete f0[k].naTela; mud = true; } }); if (mud) gravarJ(FILA_KEY, f0); } catch (e) {}
     pintar(); subir();
     setInterval(function () { try { if (Object.keys(fila()).length && navigator.onLine !== false) subir(); } catch (e) {} pintar(); }, 5000);
   }
