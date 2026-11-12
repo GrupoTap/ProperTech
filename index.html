@@ -45977,7 +45977,7 @@ html.pf129 #pf150Folha input[type=text]{background:#fff;border-color:#cbd5e1;col
       h += '<div class="pf150-st ok">✅ Retirado' + (d.retirado_por ? ' por ' + esc(d.retirado_por) : '') + ' · ' + esc(hhmm(d.retirado_em)) + (d.retirado_de ? '<br><small>estava em 📍 ' + esc(d.retirado_de) + '</small>' : '') + '</div>';
     } else {
       h += '<div class="pf150-st">Separado em <span class="pf150-end">📍 ' + esc(d.endereco) + '</span></div>';
-      if (d.pode_retirar && !(window.PF151 && PF151.ativo())) h += '<div class="pf150-bt"><button type="button" class="pf131-b ok" data-pf150="abrir" data-os="' + esc(os) + '">🧰 Retirei o kit</button></div>';   // PCF_V151: a retirada é pelo 🏷 Conferir as peças
+      if (d.pode_retirar) h += '<div class="pf150-bt"' + (window.PF151 && PF151.ativo() ? ' hidden' : '') + '><button type="button" class="pf131-b ok" data-pf150="abrir" data-os="' + esc(os) + '">🧰 Retirei o kit</button></div>';   // PCF_V151: a retirada é pelo 🏷 Conferir as peças (o botão fica no DOM, escondido)
     }
     if (rc) h += '<div class="pf131-nota er">⚠ O servidor recusou a retirada guardada (' + esc(hhmm(rc.em)) + '): ' + esc(rc.msg) + ' <button type="button" class="pf131-b lv" data-pf150="ok-rc" data-os="' + esc(os) + '">Entendi</button></div>';
     return h;
@@ -46238,7 +46238,7 @@ html.pf129 #pf151Folha .pf151-it.separada .r{color:#166534}html.pf129 #pf151Folh
     var hoje = new Date(); return (d.toDateString() === hoje.toDateString() ? 'hoje ' : p(d.getDate()) + '/' + p(d.getMonth() + 1) + ' ') + p(d.getHours()) + ':' + p(d.getMinutes()); }
   function osTela() { try { return String(_pfOsId || ''); } catch (e) { return ''; } }
   function uid() { return 'pf151-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10); }
-  function ativo() { if (!window.PF150 || typeof PF150.rpc !== 'function') return false; try { return localStorage.getItem(OFF_KEY) !== 'off'; } catch (e) { return true; } }
+  function ativo() { if (!window.PF150 || typeof PF150.rpc !== 'function' || PF151.semSql) return false; try { return localStorage.getItem(OFF_KEY) !== 'off'; } catch (e) { return true; } }
   PF151.ativo = ativo;
   function modoDe(t) { return /#os\//i.test(t) ? 'qr' : 'os'; }
   function rpc(fn, a) { return PF150.rpc(fn, a); }   // o mesmo crachá e a mesma régua de erro do PF150 (recusado = "Kit: …" do banco)
@@ -46247,21 +46247,36 @@ html.pf129 #pf151Folha .pf151-it.separada .r{color:#166534}html.pf129 #pf151Folh
   // ── 1 · a fila do "Conferi e retirei" (persist-first; o uid deixa a repetição inofensiva) ───────────────────────
   function fila() { var f = lerJ(FILA_KEY, {}); return (f && typeof f === 'object') ? f : {}; }
   function recusas() { var f = lerJ(RECUSA_KEY, {}); return (f && typeof f === 'object') ? f : {}; }
-  async function enviar(it) {   // → {ok, r} · {recusa, mudou} · {rede} · {cracha}
+  // envia UM item da fila → {ok, r} · {recusa, mudou} · {rede} · {cracha}. naFolha = quem chamou foi o toque (a folha mostra o resultado);
+  // senão (a fila subindo sozinha) o resultado vai para o cartão E para a folha da mesma OS, se estiver aberta (auditoria A2)
+  async function enviar(it, naFolha) {
+    var res;
     try {
-      var r = await rpc('alm_kit_conferi', { p: { os: it.os, lido: it.lido, modo: it.modo, visto: it.visto, uid: it.uid } });
+      var r = await rpc('alm_kit_conferi', { p: { os: it.os, lido: it.lido, modo: it.modo, visto: it.visto, uid: it.uid, em: new Date(it.em || Date.now()).toISOString() } });
       var f = fila(); delete f[it.os]; gravarJ(FILA_KEY, f); delete PF151.pendErro[it.os];
       try { if (window.PF150 && PF150.carregar) PF150.carregar(it.os, 'pf151'); } catch (e) {}
-      return { ok: true, r: r || {} };
+      res = { ok: true, r: r || {} };
     } catch (e) {
-      if (e.pf150 === 'recusado' || e.pf150 === 'sem_sql') {
+      var st = N(e.status), definitivo = e.pf150 === 'recusado' || e.pf150 === 'sem_sql'
+          || (e.pf150 === 'rede' && st >= 400 && st < 500 && st !== 408 && st !== 429);   // auditoria A6: 4xx que não é do banco não fica na fila para sempre
+      if (e.pf150 === 'sem_sql') PF151.semSql = true;
+      if (definitivo) {
         var f2 = fila(); delete f2[it.os]; gravarJ(FILA_KEY, f2); delete PF151.pendErro[it.os];
-        if (!(PF151.folha && PF151.folha.os === it.os)) { var rc = recusas(); rc[it.os] = { msg: cap(e.message), em: Date.now() }; gravarJ(RECUSA_KEY, rc); }   // ninguém vendo: fica no cartão
-        return { recusa: cap(e.message), mudou: e.hint === 'mudou' || /separação mudou/.test(e.message) };
+        var m = e.pf150 === 'rede' ? 'O servidor recusou o envio (HTTP ' + st + ') — confira com o escritório.' : cap(e.message);
+        if (!naFolha) { var rc = recusas(); rc[it.os] = { msg: m, em: Date.now() }; gravarJ(RECUSA_KEY, rc); }
+        res = { recusa: m, mudou: e.hint === 'mudou' || /separação mudou/.test(e.message) };
+      } else {
+        PF151.pendErro[it.os] = e.pf150 === 'cracha' ? 'cracha' : 'rede';
+        res = e.pf150 === 'cracha' ? { cracha: e.message } : { rede: e.message };
       }
-      PF151.pendErro[it.os] = e.pf150 === 'cracha' ? 'cracha' : 'rede';
-      return e.pf150 === 'cracha' ? { cracha: e.message } : { rede: e.message };
     }
+    var fo = PF151.folha;
+    if (!naFolha && fo && fo.os === it.os && !fo.enviando && (res.ok || res.recusa)) {   // a folha da OS está aberta: ela diz o que aconteceu
+      if (res.ok) { fo.msgTxt = '✅ O "Conferi e retirei" guardado subiu: ' + N(res.r.vol_sep) + ' de ' + N(res.r.vol_tot) + ' volumes.'; fo.msgCls = 'ok'; }
+      else { fo.msgTxt = '⚠ O servidor recusou o "Conferi e retirei" guardado: ' + res.recusa.replace(/^⚠\s*/, ''); fo.msgCls = 'er'; var rc2 = recusas(); delete rc2[it.os]; gravarJ(RECUSA_KEY, rc2); }
+      if (fo.fase === 'lista' && fo.lido) abrirLista(fo.lido, fo.modo, true); else pintarFolha();
+    }
+    return res;
   }
   async function subir() {
     if (PF151.subindo || !ativo() || (PF151.folha && PF151.folha.enviando)) return; var f = fila(), ks = Object.keys(f); if (!ks.length || navigator.onLine === false) return;
@@ -46342,7 +46357,7 @@ html.pf129 #pf151Folha .pf151-it.separada .r{color:#166534}html.pf129 #pf151Folh
     f.stream = st; v.srcObject = st; v.setAttribute('playsinline', ''); v.muted = true;
     try { await v.play(); } catch (e) { nota(e, 'play'); }
     var ler; try { ler = await leitor(); } catch (e) { nota(e, 'leitor'); if (viva()) msg('O leitor de QR não carregou (sem internet?). Digite o número da OS abaixo.', 'er'); return; }
-    if (!viva()) { if (f.cam === eu) pararCamera(); return; }
+    if (!viva()) { if (PF151.folha === f && f.cam === eu) pararCamera(); return; }
     var cv = document.createElement('canvas'), falhas = 0; f.lendo = true;
     var passo = async function () {
       if (!viva() || !f.lendo) return;
@@ -46426,7 +46441,7 @@ html.pf129 #pf151Folha .pf151-it.separada .r{color:#166534}html.pf129 #pf151Folh
   }
   async function abrirLista(lido, modo, manter) {
     var f = PF151.folha; if (!f) return;
-    var g = f.ger; f.lido = String(lido).slice(0, 300); f.modo = modo; f.fase = 'carregando'; if (!manter) { f.msgTxt = ''; f.msgCls = ''; } pintarFolha();
+    pararCamera(); var g = f.ger; f.lido = String(lido).slice(0, 300); f.modo = modo; f.fase = 'carregando'; if (!manter) { f.msgTxt = ''; f.msgCls = ''; } pintarFolha();
     try {
       var d = await rpc('alm_kit_conferencia', { p: { os: f.os, lido: f.lido, modo: f.modo } });
       if (!PF151.folha || PF151.folha.ger !== g) return;
@@ -46434,7 +46449,7 @@ html.pf129 #pf151Folha .pf151-it.separada .r{color:#166534}html.pf129 #pf151Folh
     } catch (e) {
       if (!PF151.folha || PF151.folha.ger !== g) return;
       f.fase = 'ler'; f.parada = true; f.erro = e.pf150 === 'recusado' ? '⚠ ' + cap(e.message).replace(/^⚠\s*/, '') : e.pf150 === 'cracha' ? 'Entre de novo pelo Hub (o login venceu).'
-        : e.pf150 === 'sem_sql' ? 'A conferência ainda não está no servidor — avise o escritório.' : 'Sem conexão: a lista das peças precisa do servidor. Tente de novo com sinal.';
+        : e.pf150 === 'sem_sql' ? (PF151.semSql = true, 'A conferência ainda não está no servidor — avise o escritório.') : 'Sem conexão: a lista das peças precisa do servidor. Tente de novo com sinal.';
     }
     pintarFolha(); f.erro = '';
   }
@@ -46443,12 +46458,15 @@ html.pf129 #pf151Folha .pf151-it.separada .r{color:#166534}html.pf129 #pf151Folh
     var f = PF151.folha; if (!f || f.enviando || !f.d || !f.d.pode_retirar) return;
     var os = f.os, g = f.ger, v = f.d.volumes || {};
     f.enviando = true; if (bt) { bt.disabled = true; bt.setAttribute('data-pcm-enviando', '1'); bt.textContent = '⏳ Enviando…'; }
-    var it = { os: os, lido: f.lido, modo: f.modo, visto: { sep: N(v.sep), tot: N(v.tot) }, uid: uid(), em: Date.now() };
+    var it = { os: os, lido: f.lido, modo: f.modo, visto: { sep: N(v.sep), tot: N(v.tot), assin: f.d.assinatura || '' }, uid: uid(), em: Date.now() };
     var fl = fila(); fl[os] = it;
     if (!gravarJ(FILA_KEY, fl)) { f.enviando = false; f.msgTxt = 'O celular está sem espaço — não consegui guardar. Nada foi enviado.'; f.msgCls = 'er'; return pintarFolha(); }   // persist-first
     var rc = recusas(); if (rc[os]) { delete rc[os]; gravarJ(RECUSA_KEY, rc); }
-    var res = await enviar(it);
-    if (!PF151.folha || PF151.folha.ger !== g) { pintar(); return; }   // a folha fechou durante o envio: o resultado já está na fila/cartão
+    var res = await enviar(it, true);
+    if (!PF151.folha || PF151.folha.ger !== g) {   // a folha fechou durante o envio: o resultado vai para o cartão
+      if (res.recusa) { var rc3 = recusas(); rc3[os] = { msg: res.recusa, em: Date.now() }; gravarJ(RECUSA_KEY, rc3); }
+      pintar(); return;
+    }   // a folha fechou durante o envio: o resultado já está na fila/cartão
     f.enviando = false;
     if (res.ok) {
       var r = res.r || {};
@@ -46467,6 +46485,7 @@ html.pf129 #pf151Folha .pf151-it.separada .r{color:#166534}html.pf129 #pf151Folh
     try {
       var b = ev.target && ev.target.closest && ev.target.closest('[data-pf151]'); if (!b || b.disabled || !ativo()) return;
       var a = b.getAttribute('data-pf151'), os = b.getAttribute('data-os') || '';
+      if (a === 'abrir' && PF151.subindo) { aviso('Um envio guardado está subindo — tente de novo em instantes.'); return; }
       if (a === 'abrir') { ev.preventDefault(); abrirFolha(os); }
       else if (a === 'fechar') { ev.preventDefault(); fecharFolha(); pintar(); }
       else if (a === 'num') { ev.preventDefault(); porNumero(); }
