@@ -1809,8 +1809,16 @@ html[data-boot="pipeline"] #pf113Splash{display:flex;position:fixed;inset:0;z-in
   (alm_kit_retirar); a retirada fica no celular antes de subir (uid). Chave de volta pcf150=off. Bloco PF150 no fim do body;
   nenhum remendo no corpo de outros blocos.
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V150</title>
-<meta name="app-build" content="PCF_V150" data-date="2026-11-10">
+<!--
+  PCF_V151 · CONFERIR AS PECAS · 12/11/2026 · feito SOBRE o PCF_V150 no ar · par sw propertech-v153 · par do SQL 134 (roda ANTES) ·
+  zero GAS. ProperCare-backlog#169 (parte 2). Cartao "🏷 Conferir as pecas" na tela da OS: a camera da pagina le o QR da etiqueta
+  da separacao (ou o numero digitado) e abre a lista de conferencia do banco (alm_kit_conferencia): veredito por volumes, faltas
+  primeiro, pedida x separada, endereco. "Conferi e retirei" (alm_kit_conferi) grava quem e quando, guardado no celular antes do
+  envio (uid). O "Retirei o kit" do PF150 sai (o processo mudou). Chave de volta pcf151=off. Bloco PF151 no fim do body; no
+  PF150 so a linha do botao "Retirei o kit".
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V151</title>
+<meta name="app-build" content="PCF_V151" data-date="2026-11-12">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -45969,7 +45977,7 @@ html.pf129 #pf150Folha input[type=text]{background:#fff;border-color:#cbd5e1;col
       h += '<div class="pf150-st ok">✅ Retirado' + (d.retirado_por ? ' por ' + esc(d.retirado_por) : '') + ' · ' + esc(hhmm(d.retirado_em)) + (d.retirado_de ? '<br><small>estava em 📍 ' + esc(d.retirado_de) + '</small>' : '') + '</div>';
     } else {
       h += '<div class="pf150-st">Separado em <span class="pf150-end">📍 ' + esc(d.endereco) + '</span></div>';
-      if (d.pode_retirar) h += '<div class="pf150-bt"><button type="button" class="pf131-b ok" data-pf150="abrir" data-os="' + esc(os) + '">🧰 Retirei o kit</button></div>';
+      if (d.pode_retirar && !(window.PF151 && PF151.ativo())) h += '<div class="pf150-bt"><button type="button" class="pf131-b ok" data-pf150="abrir" data-os="' + esc(os) + '">🧰 Retirei o kit</button></div>';   // PCF_V151: a retirada é pelo 🏷 Conferir as peças
     }
     if (rc) h += '<div class="pf131-nota er">⚠ O servidor recusou a retirada guardada (' + esc(hhmm(rc.em)) + '): ' + esc(rc.msg) + ' <button type="button" class="pf131-b lv" data-pf150="ok-rc" data-os="' + esc(os) + '">Entendi</button></div>';
     return h;
@@ -46158,5 +46166,334 @@ html.pf129 #pf150Folha input[type=text]{background:#fff;border-color:#cbd5e1;col
 })();
 </script>
 <!-- ████ FIM PCF_V150 (PF150) ████ -->
+<!-- ████ PCF_V151 (PF151) · 🏷 CONFERIR AS PEÇAS — o QR da etiqueta da separação abre a lista de conferência + "Conferi e retirei" · 12/11/2026 ████ -->
+<style>
+/* PF151 — o cartão "🏷 Conferir as peças" usa as classes do PF131/PF150; a folha segue o desenho da do PF150. */
+#pf151Folha{position:fixed;inset:0;z-index:100060;background:rgba(2,6,23,.62);display:flex;align-items:flex-end;justify-content:center}
+#pf151Folha .pf151-fo{width:100%;max-width:560px;max-height:94vh;overflow:auto;background:#0f172a;color:#e2e8f0;border-radius:16px 16px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));box-shadow:0 -8px 30px rgba(0,0,0,.4);box-sizing:border-box}
+#pf151Folha h3{margin:0 0 4px;font-size:17px}
+#pf151Folha .s{font-size:13px;color:#94a3b8;margin-bottom:10px;line-height:1.4}
+#pf151Folha .pf151-cam{position:relative;width:100%;aspect-ratio:1/1;max-height:48vh;background:#000;border-radius:12px;overflow:hidden}
+#pf151Folha .pf151-cam video{width:100%;height:100%;object-fit:cover;display:block}
+#pf151Folha .pf151-mira{position:absolute;inset:18%;border:3px solid rgba(250,204,21,.9);border-radius:12px;pointer-events:none}
+#pf151Folha .pf151-msg{margin:10px 0 0;padding:10px 12px;border-radius:8px;font-size:14px;line-height:1.4;background:#111a2e;border:1px solid #334155}
+#pf151Folha .pf151-msg.er{border-color:#b91c1c;background:#2a0f12;color:#fecaca}
+#pf151Folha .pf151-msg.ok{border-color:#16a34a;background:#0f2a1a;color:#bbf7d0}
+#pf151Folha label{display:block;font-size:13px;color:#94a3b8;margin:14px 0 4px}
+#pf151Folha input[type=text]{width:100%;box-sizing:border-box;min-height:48px;padding:8px 12px;border:1px solid #475569;border-radius:8px;background:#0f172a;color:#e2e8f0;font-size:18px}
+#pf151Folha .bt{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+#pf151Folha .bt .pf131-b{width:100%;min-height:52px}
+#pf151Folha .pf151-ver{padding:12px 14px;border-radius:10px;font-size:19px;font-weight:800;margin:4px 0 8px;line-height:1.3}
+#pf151Folha .pf151-ver small{display:block;font-size:13px;font-weight:500;opacity:.85}
+#pf151Folha .pf151-ver.verde{background:#0f2a1a;border:2px solid #16a34a;color:#bbf7d0}
+#pf151Folha .pf151-ver.ambar{background:#2a2108;border:2px solid #d97706;color:#fde68a}
+#pf151Folha .pf151-info{font-size:13px;color:#cbd5e1;margin:2px 0;line-height:1.4}
+#pf151Folha .pf151-it{border:1px solid #334155;border-radius:10px;padding:8px 10px;margin:6px 0;overflow-wrap:anywhere}
+#pf151Folha .pf151-it.falta{border-color:#d97706}
+#pf151Folha .pf151-it .r{font-weight:700;font-size:13px}
+#pf151Folha .pf151-it.separada .r{color:#86efac}#pf151Folha .pf151-it.falta .r{color:#fcd34d}
+#pf151Folha .pf151-it .c{font:800 16px ui-monospace,Consolas,monospace;margin-top:2px}
+#pf151Folha .pf151-it .d{font-size:14px;margin-top:2px}
+#pf151Folha .pf151-it .q{font-size:13px;color:#94a3b8;margin-top:2px}
+html.pf129 #pf151Folha .pf151-fo{background:#fff;color:#0f172a}
+html.pf129 #pf151Folha .s,html.pf129 #pf151Folha label,html.pf129 #pf151Folha .pf151-it .q{color:#475569}
+html.pf129 #pf151Folha .pf151-info{color:#334155}
+html.pf129 #pf151Folha .pf151-msg{background:#f8fafc;border-color:#d9e0ea;color:#0f172a}
+html.pf129 #pf151Folha .pf151-msg.er{background:#fef2f2;border-color:#dc2626;color:#991b1b}
+html.pf129 #pf151Folha .pf151-msg.ok{background:#f0fdf4;border-color:#16a34a;color:#166534}
+html.pf129 #pf151Folha input[type=text]{background:#fff;border-color:#cbd5e1;color:#0f172a}
+html.pf129 #pf151Folha .pf151-ver.verde{background:#f0fdf4;color:#166534}
+html.pf129 #pf151Folha .pf151-ver.ambar{background:#fffbeb;color:#92400e}
+html.pf129 #pf151Folha .pf151-it{border-color:#d9e0ea}
+html.pf129 #pf151Folha .pf151-it.separada .r{color:#166534}html.pf129 #pf151Folha .pf151-it.falta .r{color:#92400e}
+</style>
+<script>
+/* ════════════════════════════════════════════════════════════════════════════════════════════════════════
+   PCF_V151 (PF151) — 12/11/2026 · ProperCare-backlog#169 (parte 2) · par do SQL 134 (roda ANTES) · zero GAS · par sw propertech-v153.
+   Decisão do Fernando (11/11, 16h41): a conferência abre no PCF (técnico) e no PCM (bancada); o "Conferi e retirei" entra já.
+   · Cartão "🏷 Conferir as peças" na tela da OS (logo abaixo do 🧰 Kit da OS): "Ler a etiqueta da separação" abre a câmera DENTRO da
+     página (a mesma do PF150: BarcodeDetector ou o jsQR de vendor/jsqr, baixado só nessa hora); última opção: digitar o número da OS.
+   · O QR lido abre a LISTA DE CONFERÊNCIA (alm_kit_conferencia — o banco confere que a etiqueta é desta OS): o veredito por volumes
+     ("Completa — 8 de 8 volumes" verde / "Faltam 2 volumes" âmbar), as faltas primeiro e cada peça com a situação, o código, a
+     descrição, pedida × separada e o endereço.
+   · "✔ Conferi e retirei" (alm_kit_conferi): grava quem (o técnico) e quando, com o que ele VIU; se a separação mudou no meio, o banco
+     recusa e a lista se relê. Persist-first: o envio é gravado no celular (pf151_fila_v1) com um uid ANTES do 1º POST e só sai com o
+     "ok" (o uid torna a repetição inofensiva). Sem internet: "⏳ guardado" no cartão, sobe sozinho. Recusa: sai da fila e aparece.
+   · O "Retirei o kit" do PF150 sai (o processo mudou: a retirada agora é pela conferência); o cartão do kit continua dizendo onde está e
+     quem retirou. Chave de volta: localStorage pcf151 = off (volta o "Retirei o kit").
+   ════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+  var PF151 = window.PF151 = { versao: 'PCF_V151', log: [], folha: null, subindo: false, pendErro: {} };
+  var FILA_KEY = 'pf151_fila_v1', RECUSA_KEY = 'pf151_recusados_v1', OFF_KEY = 'pcf151', JSQR_SRC = 'vendor/jsqr/jsQR.min.js';
+  function $(id) { return document.getElementById(id); }
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function nota(e, onde) { try { PF151.log.push({ onde: onde, msg: String((e && e.message) || e), em: Date.now() }); if (PF151.log.length > 40) PF151.log.shift(); } catch (x) {} }
+  function lerJ(k, p) { try { var v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? p : v; } catch (e) { return p; } }
+  function gravarJ(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { nota(e, 'gravar ' + k); return false; } }
+  function aviso(m) { try { showNotification(m); } catch (e) {} }
+  function N(x) { var n = Number(x); return isFinite(n) ? n : 0; }
+  function Q(x) { return N(x).toLocaleString('pt-BR', { maximumFractionDigits: 3 }); }
+  function hhmm(v) { var d = new Date(v || 0); if (!v || isNaN(d.getTime())) return ''; var p = function (n) { return (n < 10 ? '0' : '') + n; };
+    var hoje = new Date(); return (d.toDateString() === hoje.toDateString() ? 'hoje ' : p(d.getDate()) + '/' + p(d.getMonth() + 1) + ' ') + p(d.getHours()) + ':' + p(d.getMinutes()); }
+  function osTela() { try { return String(_pfOsId || ''); } catch (e) { return ''; } }
+  function uid() { return 'pf151-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10); }
+  function ativo() { if (!window.PF150 || typeof PF150.rpc !== 'function') return false; try { return localStorage.getItem(OFF_KEY) !== 'off'; } catch (e) { return true; } }
+  PF151.ativo = ativo;
+  function modoDe(t) { return /#os\//i.test(t) ? 'qr' : 'os'; }
+  function rpc(fn, a) { return PF150.rpc(fn, a); }   // o mesmo crachá e a mesma régua de erro do PF150 (recusado = "Kit: …" do banco)
+  function cap(m) { m = String(m || ''); return m.charAt(0).toUpperCase() + m.slice(1); }
+
+  // ── 1 · a fila do "Conferi e retirei" (persist-first; o uid deixa a repetição inofensiva) ───────────────────────
+  function fila() { var f = lerJ(FILA_KEY, {}); return (f && typeof f === 'object') ? f : {}; }
+  function recusas() { var f = lerJ(RECUSA_KEY, {}); return (f && typeof f === 'object') ? f : {}; }
+  async function enviar(it) {   // → {ok, r} · {recusa, mudou} · {rede} · {cracha}
+    try {
+      var r = await rpc('alm_kit_conferi', { p: { os: it.os, lido: it.lido, modo: it.modo, visto: it.visto, uid: it.uid } });
+      var f = fila(); delete f[it.os]; gravarJ(FILA_KEY, f); delete PF151.pendErro[it.os];
+      try { if (window.PF150 && PF150.carregar) PF150.carregar(it.os, 'pf151'); } catch (e) {}
+      return { ok: true, r: r || {} };
+    } catch (e) {
+      if (e.pf150 === 'recusado' || e.pf150 === 'sem_sql') {
+        var f2 = fila(); delete f2[it.os]; gravarJ(FILA_KEY, f2); delete PF151.pendErro[it.os];
+        if (!(PF151.folha && PF151.folha.os === it.os)) { var rc = recusas(); rc[it.os] = { msg: cap(e.message), em: Date.now() }; gravarJ(RECUSA_KEY, rc); }   // ninguém vendo: fica no cartão
+        return { recusa: cap(e.message), mudou: e.hint === 'mudou' || /separação mudou/.test(e.message) };
+      }
+      PF151.pendErro[it.os] = e.pf150 === 'cracha' ? 'cracha' : 'rede';
+      return e.pf150 === 'cracha' ? { cracha: e.message } : { rede: e.message };
+    }
+  }
+  async function subir() {
+    if (PF151.subindo || !ativo() || (PF151.folha && PF151.folha.enviando)) return; var f = fila(), ks = Object.keys(f); if (!ks.length || navigator.onLine === false) return;
+    PF151.subindo = true;
+    try { for (var i = 0; i < ks.length; i++) { var it = f[ks[i]]; if (it && it.os) { var res = await enviar(it); if (res.rede || res.cracha) break; if (res.ok) aviso('🏷 Retirada das peças registrada no servidor.'); } } }
+    finally { PF151.subindo = false; pintar(); }
+  }
+  PF151.subir = subir;
+
+  // ── 2 · o cartão na tela da OS ──────────────────────────────────────────────────────────────────────────────
+  function cartaoHtml(os) {
+    var pend = fila()[os], rc = recusas()[os];
+    var h = '<div class="pf131-h"><b>🏷 Conferir as peças</b></div>';
+    if (pend) h += '<div class="pf150-st av">⏳ "Conferi e retirei" guardado neste celular — ' + (PF151.pendErro[os] === 'cracha' ? 'entre de novo pelo Hub para ele subir.' : 'sobe quando houver internet.') + '</div>';
+    if (rc) h += '<div class="pf131-nota er">⚠ O servidor recusou o "Conferi e retirei" guardado (' + esc(hhmm(rc.em)) + '): ' + esc(rc.msg) + ' <button type="button" class="pf131-b lv" data-pf151="ok-rc" data-os="' + esc(os) + '">Entendi</button></div>';
+    h += '<div class="pf150-bt"><button type="button" class="pf131-b ok" data-pf151="abrir" data-os="' + esc(os) + '">🏷 Ler a etiqueta da separação</button></div>';
+    return h;
+  }
+  function pintarTela() {
+    var tela = $('pfScreenPipeline'), cont = $('pfPipelineConteudo'), os = osTela(), host = $('pf151Conf');
+    if (PF151.folha && PF151.folha.os !== os) fecharFolha();
+    if (!ativo()) { if (host) host.style.display = 'none'; return; }
+    if (!host && cont && cont.parentNode) {
+      host = document.createElement('div'); host.id = 'pf151Conf'; host.className = 'pf131 pf150';
+      var kit = $('pf150Kit'), antes = $('pf145Itens');
+      if (kit && kit.parentNode === cont.parentNode) cont.parentNode.insertBefore(host, kit.nextSibling);   // logo abaixo do 🧰 Kit da OS
+      else cont.parentNode.insertBefore(host, (antes && antes.parentNode === cont.parentNode) ? antes : cont);
+    }
+    if (!host) return;
+    var html = (os && tela && tela.style.display !== 'none') ? cartaoHtml(os) : '';
+    if (!html) { host.style.display = 'none'; return; }
+    host.style.display = ''; host.setAttribute('data-os', os);
+    if (host.__pf151 !== html) { host.innerHTML = html; host.__pf151 = html; }
+  }
+  var _t = 0;
+  function pintar() { if (_t) return; _t = setTimeout(function () { _t = 0; try { pintarTela(); } catch (e) { nota(e, 'pintar'); } try { if (window.PF150 && PF150.pintar) PF150.pintar(); } catch (e) {} }, 30); }
+  PF151.pintar = pintar;
+
+  // ── 3 · a câmera (na página; o leitor do aparelho ou o jsQR) ─────────────────────────────────────────────────────
+  function carregarJsQR() {
+    if (window.jsQR) return Promise.resolve(window.jsQR);
+    if (PF151._jsqr) return PF151._jsqr;
+    PF151._jsqr = new Promise(function (ok, nao) {
+      var s = document.createElement('script'); s.src = JSQR_SRC; s.async = true;
+      s.onload = function () { window.jsQR ? ok(window.jsQR) : nao(new Error('jsQR não carregou')); };
+      s.onerror = function () { PF151._jsqr = null; nao(new Error('leitor de QR não carregou')); };
+      document.head.appendChild(s);
+    });
+    return PF151._jsqr;
+  }
+  function lerJsQR(jq) { return async function (cv) { var im = cv.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, cv.width, cv.height);
+    var r = jq(im.data, im.width, im.height, { inversionAttempts: 'dontInvert' }); return (r && r.data) || null; }; }
+  async function leitor() {
+    try {
+      if ('BarcodeDetector' in window && !PF151.semBD) {
+        var fm = (typeof BarcodeDetector.getSupportedFormats === 'function') ? await BarcodeDetector.getSupportedFormats() : ['qr_code'];
+        if (fm.indexOf('qr_code') >= 0) { var bd = new BarcodeDetector({ formats: ['qr_code'] }); PF151.motor = 'BarcodeDetector';
+          return async function (cv) { var r = await bd.detect(cv); return (r && r[0] && r[0].rawValue) || null; }; }
+      }
+    } catch (e) { nota(e, 'BarcodeDetector'); }
+    var jq = await carregarJsQR(); PF151.motor = 'jsQR'; return lerJsQR(jq);
+  }
+  function pararCamera() {
+    var f = PF151.folha; if (!f) return;
+    f.lendo = false; if (f.tm) { clearTimeout(f.tm); f.tm = 0; }
+    try { if (f.stream) f.stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
+    f.stream = null;
+  }
+  async function abrirCamera() {
+    var f = PF151.folha; if (!f || f.fase !== 'ler') return; var g = f.ger, eu = (f.cam = (f.cam || 0) + 1);
+    var viva = function () { return PF151.folha === f && f.ger === g && f.cam === eu && f.fase === 'ler' && document.visibilityState !== 'hidden'; };
+    var v = $('pf151Video'); if (!v) return;
+    if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') { msg('A câmera não está disponível neste aparelho. Digite o número da OS abaixo.', 'er'); return; }
+    var st = null, tent = [{ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false }, { video: true, audio: false }];
+    for (var i = 0; i < tent.length && !st; i++) { try { st = await navigator.mediaDevices.getUserMedia(tent[i]); } catch (e) { nota(e, 'getUserMedia ' + i); } }
+    if (!viva()) { if (st) st.getTracks().forEach(function (t) { t.stop(); }); return; }
+    if (!st) { msg('Não consegui abrir a câmera (permissão negada?). Digite o número da OS abaixo.', 'er'); return; }
+    f.stream = st; v.srcObject = st; v.setAttribute('playsinline', ''); v.muted = true;
+    try { await v.play(); } catch (e) { nota(e, 'play'); }
+    var ler; try { ler = await leitor(); } catch (e) { nota(e, 'leitor'); if (viva()) msg('O leitor de QR não carregou (sem internet?). Digite o número da OS abaixo.', 'er'); return; }
+    if (!viva()) { if (f.cam === eu) pararCamera(); return; }
+    var cv = document.createElement('canvas'), falhas = 0; f.lendo = true;
+    var passo = async function () {
+      if (!viva() || !f.lendo) return;
+      try {
+        if (v.readyState >= 2 && v.videoWidth) {
+          var w = v.videoWidth, h = v.videoHeight, k = Math.min(1, 720 / Math.max(w, h));
+          cv.width = Math.round(w * k); cv.height = Math.round(h * k); cv.getContext('2d', { willReadFrequently: true }).drawImage(v, 0, 0, cv.width, cv.height);
+          var txt = await ler(cv); falhas = 0;
+          if (txt && f.lendo && viva()) { f.lendo = false; pararCamera(); return abrirLista(String(txt), 'qr'); }
+        }
+      } catch (e) {
+        nota(e, 'ler quadro');
+        if (++falhas >= 3 && PF151.motor === 'BarcodeDetector') {   // o do aparelho existe mas não lê: troca pelo jsQR
+          falhas = 0; PF151.semBD = true;
+          try { ler = lerJsQR(await carregarJsQR()); PF151.motor = 'jsQR'; }
+          catch (e2) { nota(e2, 'troca jsQR'); if (viva()) msg('Não consegui ler o QR. Digite o número da OS abaixo.', 'er'); f.lendo = false; return; }
+        }
+      }
+      if (viva() && f.lendo) f.tm = setTimeout(passo, 180);
+    };
+    passo();
+  }
+
+  // ── 4 · a folha: ler a etiqueta → a lista de conferência → "Conferi e retirei" ──────────────────────────────────────
+  function msg(t, cls) { var m = $('pf151Msg'); if (!m) return; m.className = 'pf151-msg' + (cls ? ' ' + cls : ''); m.textContent = t; m.style.display = t ? '' : 'none'; }
+  function folhaLerHtml(f) {
+    return '<h3>🏷 Conferir as peças</h3><div class="s">OS ' + esc(f.num) + '<br>Aponte a câmera para o QR da 🏷 etiqueta da separação (a da caixa).</div>' +
+      '<div class="pf151-cam"><video id="pf151Video" playsinline muted></video><div class="pf151-mira"></div></div>' +
+      '<div id="pf151Msg" class="pf151-msg' + (f.erro ? ' er' : '') + '"' + (f.erro ? '' : ' style="display:none"') + '>' + esc(f.erro || '') + '</div>' +
+      '<label for="pf151Num">Ou digite o número da OS</label>' +
+      '<input type="text" id="pf151Num" name="pf151_os_nofill" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" data-lpignore="true" data-1p-ignore="true" readonly onfocus="this.removeAttribute(\'readonly\')" enterkeyhint="done">' +
+      '<div class="bt"><button type="button" class="pf131-b ok" id="pf151Num1" data-pf151="num">Abrir pelo número</button>' +
+      (f.parada ? '<button type="button" class="pf131-b lv" data-pf151="reler">📷 Ler de novo</button>' : '') +   // depois de uma recusa a câmera NÃO relê sozinha
+      '<button type="button" class="pf131-b" data-pf151="fechar">Cancelar</button></div>';
+  }
+  function itemHtml(l) {
+    return '<div class="pf151-it ' + esc(l.conf) + '"><div class="r">' + (l.conf === 'falta' ? '⚠ ' : '') + esc(l.rotulo || '') + (N(l.retirado) > 0 && N(l.retirado) >= N(l.vol_sep) ? ' · já saiu' : '') + '</div>' +
+      '<div class="c">' + esc(l.codigo || '—') + '</div><div class="d">' + esc(l.descricao || '') + '</div>' +
+      '<div class="q">pedida ' + Q(l.qtd) + ' ' + esc(l.unidade || '') + ' · separada ' + Q(l.separado) + (l.endereco ? ' · 📍 ' + esc(l.endereco) : '') + '</div></div>';
+  }
+  function folhaListaHtml(f) {
+    var d = f.d || {}, v = d.volumes || {}, k = d.kit || {}, h = '<h3>🏷 Conferir as peças</h3><div class="s">OS ' + esc(d.numero_os || f.num) + (d.cliente ? ' · ' + esc(d.cliente) : '') + '</div>';
+    if (d.sem_acesso) return h + '<div class="pf151-info">A lista das peças é do técnico da OS e do almoxarifado.</div><div class="bt"><button type="button" class="pf131-b" data-pf151="fechar">Fechar</button></div>';
+    h += '<div class="pf151-ver ' + (d.nivel === 'verde' ? 'verde' : 'ambar') + '" id="pf151Ver">' + (d.nivel === 'verde' ? '✅ ' : '⚠ ') + esc(d.veredito || '') +
+      '<small>' + N(d.itens) + ' ite' + (N(d.itens) === 1 ? 'm' : 'ns') + '</small></div>';
+    if (k.endereco) h += '<div class="pf151-info">🧰 Kit em <b>📍 ' + esc(k.endereco) + '</b></div>';
+    if (d.retirada) h += '<div class="pf151-info">🧰 Última retirada: ' + N(d.retirada.vol_sep) + ' de ' + N(d.retirada.vol_tot) + ' volumes, por ' + esc(d.retirada.levou || '') + ' · ' + esc(hhmm(d.retirada.em)) + '</div>';
+    h += '<div id="pf151Msg" class="pf151-msg' + (f.msgCls ? ' ' + f.msgCls : '') + '"' + (f.msgTxt ? '' : ' style="display:none"') + '>' + esc(f.msgTxt || '') + '</div>';
+    h += (d.linhas || []).map(itemHtml).join('') || '<div class="pf151-info">Nenhuma peça de proposta aceita nesta OS.</div>';
+    h += '<div class="bt">';
+    if (d.pode_retirar) h += '<button type="button" class="pf131-b ok" id="pf151Ok" data-pf151="conferi">✔ Conferi e retirei — ' + N(v.sep) + ' de ' + N(v.tot) + ' volumes</button>';
+    else h += '<div class="pf151-info" id="pf151Mot">Nada a retirar agora' + (d.motivo ? ': ' + esc(d.motivo) : '') + '.</div>';
+    return h + '<button type="button" class="pf131-b" data-pf151="reler">📷 Ler outra etiqueta</button><button type="button" class="pf131-b" data-pf151="fechar">Fechar</button></div>';
+  }
+  function pintarFolha() {
+    var f = PF151.folha, fo = document.querySelector('#pf151Folha .pf151-fo'); if (!f || !fo) return;
+    var rol = fo.scrollTop;
+    fo.innerHTML = f.fase === 'lista' ? folhaListaHtml(f) : f.fase === 'carregando' ? '<h3>🏷 Conferir as peças</h3><div class="pf151-info">⏳ Abrindo a lista da OS…</div>' : folhaLerHtml(f);
+    if (f.fase === 'lista') fo.scrollTop = rol;
+    if (f.fase === 'ler') {
+      var inp = $('pf151Num'); if (inp) inp.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); porNumero(); } });
+      if (!f.parada) abrirCamera();
+    }
+  }
+  function abrirFolha(os) {
+    fecharFolha();
+    var x = window.PF150 && PF150.dados && PF150.dados[os], num = (x && x.d && x.d.numero_os) || os;
+    PF151.folha = { os: os, num: num, ger: Date.now(), stream: null, lendo: false, enviando: false, fase: 'ler', erro: '' };
+    var el = document.createElement('div'); el.id = 'pf151Folha';
+    el.innerHTML = '<div class="pf151-fo" role="dialog" aria-label="Conferir as peças"></div>';
+    document.body.appendChild(el);
+    el.addEventListener('click', function (ev) { var n = $('pf151Num'); if (ev.target === el && !(PF151.folha && PF151.folha.enviando) && !(n && n.value.trim())) fecharFolha(); });
+    pintarFolha();
+  }
+  function fecharFolha() { pararCamera(); var el = $('pf151Folha'); if (el) el.remove(); PF151.folha = null; }
+  PF151.abrirFolha = abrirFolha; PF151.fecharFolha = fecharFolha;
+  function porNumero() {
+    var inp = $('pf151Num'), t = String((inp && inp.value) || '').trim();
+    if (!t) { msg('Digite o número da OS (ou aponte a câmera para o QR).', 'er'); if (inp) inp.focus(); return; }
+    pararCamera(); abrirLista(t, modoDe(t));   // o leitor de mão "digita" o QR inteiro
+  }
+  async function abrirLista(lido, modo, manter) {
+    var f = PF151.folha; if (!f) return;
+    var g = f.ger; f.lido = String(lido).slice(0, 300); f.modo = modo; f.fase = 'carregando'; if (!manter) { f.msgTxt = ''; f.msgCls = ''; } pintarFolha();
+    try {
+      var d = await rpc('alm_kit_conferencia', { p: { os: f.os, lido: f.lido, modo: f.modo } });
+      if (!PF151.folha || PF151.folha.ger !== g) return;
+      f.d = d; f.fase = 'lista';
+    } catch (e) {
+      if (!PF151.folha || PF151.folha.ger !== g) return;
+      f.fase = 'ler'; f.parada = true; f.erro = e.pf150 === 'recusado' ? '⚠ ' + cap(e.message).replace(/^⚠\s*/, '') : e.pf150 === 'cracha' ? 'Entre de novo pelo Hub (o login venceu).'
+        : e.pf150 === 'sem_sql' ? 'A conferência ainda não está no servidor — avise o escritório.' : 'Sem conexão: a lista das peças precisa do servidor. Tente de novo com sinal.';
+    }
+    pintarFolha(); f.erro = '';
+  }
+  PF151.abrirLista = abrirLista;
+  async function conferi(bt) {
+    var f = PF151.folha; if (!f || f.enviando || !f.d || !f.d.pode_retirar) return;
+    var os = f.os, g = f.ger, v = f.d.volumes || {};
+    f.enviando = true; if (bt) { bt.disabled = true; bt.setAttribute('data-pcm-enviando', '1'); bt.textContent = '⏳ Enviando…'; }
+    var it = { os: os, lido: f.lido, modo: f.modo, visto: { sep: N(v.sep), tot: N(v.tot) }, uid: uid(), em: Date.now() };
+    var fl = fila(); fl[os] = it;
+    if (!gravarJ(FILA_KEY, fl)) { f.enviando = false; f.msgTxt = 'O celular está sem espaço — não consegui guardar. Nada foi enviado.'; f.msgCls = 'er'; return pintarFolha(); }   // persist-first
+    var rc = recusas(); if (rc[os]) { delete rc[os]; gravarJ(RECUSA_KEY, rc); }
+    var res = await enviar(it);
+    if (!PF151.folha || PF151.folha.ger !== g) { pintar(); return; }   // a folha fechou durante o envio: o resultado já está na fila/cartão
+    f.enviando = false;
+    if (res.ok) {
+      var r = res.r || {};
+      aviso('🏷 Peças conferidas e retiradas.'); pintar();
+      f.msgTxt = r.ja_retirado ? '✅ Nada novo: tudo o que está separado já tinha saído.' : '✅ Retirada registrada: ' + N(r.vol_sep) + ' de ' + N(r.vol_tot) + ' volumes, por ' + (r.retirado_por || 'você') + '.';
+      f.msgCls = 'ok'; return abrirLista(f.lido, f.modo, true);
+    }
+    if (res.recusa) { f.msgTxt = '⚠ ' + res.recusa.replace(/^⚠\s*/, ''); f.msgCls = 'er'; if (res.mudou) return abrirLista(f.lido, f.modo, true); pintar(); return pintarFolha(); }
+    f.msgTxt = res.cracha ? '⏳ Ficou guardado neste celular. Entre de novo pelo Hub (o login venceu) para subir.' : '⏳ Sem conexão — ficou guardado neste celular e sobe sozinho quando houver internet.';
+    f.msgCls = ''; pintar(); pintarFolha();
+  }
+  PF151.conferi = conferi;
+
+  // ── 5 · toques e ganchos ─────────────────────────────────────────────────────────────────────────────────────
+  document.addEventListener('click', function (ev) {
+    try {
+      var b = ev.target && ev.target.closest && ev.target.closest('[data-pf151]'); if (!b || b.disabled || !ativo()) return;
+      var a = b.getAttribute('data-pf151'), os = b.getAttribute('data-os') || '';
+      if (a === 'abrir') { ev.preventDefault(); abrirFolha(os); }
+      else if (a === 'fechar') { ev.preventDefault(); fecharFolha(); pintar(); }
+      else if (a === 'num') { ev.preventDefault(); porNumero(); }
+      else if (a === 'conferi') { ev.preventDefault(); conferi(b); }
+      else if (a === 'reler') { ev.preventDefault(); var f = PF151.folha; if (f) { f.fase = 'ler'; f.parada = false; f.erro = ''; f.d = null; f.msgTxt = ''; pintarFolha(); } }
+      else if (a === 'ok-rc') { ev.preventDefault(); var rc = recusas(); delete rc[os]; gravarJ(RECUSA_KEY, rc); pintar(); }
+    } catch (e) { nota(e, 'toque'); }
+  }, false);
+  function embrulhar(nome, fazer) {
+    try { var o = window[nome]; if (typeof o !== 'function' || o.__pf151) return; var n = fazer(o); n.__pf151 = true; window[nome] = n; } catch (e) { nota(e, 'embrulhar ' + nome); }
+  }
+  embrulhar('pfVoltarOS', function (orig) { return function () { fecharFolha(); return orig.apply(this, arguments); }; });
+  window.addEventListener('popstate', function () { if (PF151.folha) fecharFolha(); });
+  embrulhar('pfLoadPipeline', function (orig) { return function () { var r = orig.apply(this, arguments); try { pintar(); } catch (e) { nota(e, 'pfLoadPipeline'); } return r; }; });
+  window.addEventListener('online', function () { subir(); });
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') { subir(); var f = PF151.folha; if (f && f.fase === 'ler' && !f.stream && !f.parada) abrirCamera(); pintar(); }
+    else if (PF151.folha) pararCamera();
+  });
+  window.addEventListener('pagehide', function () { pararCamera(); });
+  function iniciar() {
+    pintar(); subir();
+    setInterval(function () { try { if (Object.keys(fila()).length && navigator.onLine !== false) subir(); } catch (e) {} pintar(); }, 5000);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else setTimeout(iniciar, 0);
+})();
+</script>
+<!-- ████ FIM PCF_V151 (PF151) ████ -->
 </body>
 </html>
