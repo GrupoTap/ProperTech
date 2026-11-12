@@ -46184,7 +46184,7 @@ html.pf129 #pf150Folha input[type=text]{background:#fff;border-color:#cbd5e1;col
 #pf151Folha .bt{display:flex;flex-direction:column;gap:8px;margin-top:12px}
 #pf151Folha .bt .pf131-b{width:100%;min-height:52px}
 #pf151Folha .pf151-ver{padding:12px 14px;border-radius:10px;font-size:19px;font-weight:800;margin:4px 0 8px;line-height:1.3}
-#pf151Folha .pf151-ver small{display:block;font-size:13px;font-weight:500;opacity:.85}
+#pf151Folha .pf151-ver .pf151-n{display:block;font-size:13px;font-weight:500;opacity:.85}
 #pf151Folha .pf151-ver.verde{background:#0f2a1a;border:2px solid #16a34a;color:#bbf7d0}
 #pf151Folha .pf151-ver.ambar{background:#2a2108;border:2px solid #d97706;color:#fde68a}
 #pf151Folha .pf151-info{font-size:13px;color:#cbd5e1;margin:2px 0;line-height:1.4}
@@ -46402,7 +46402,7 @@ html.pf129 #pf151Folha .pf151-it.separada .r{color:#166534}html.pf129 #pf151Folh
     var d = f.d || {}, v = d.volumes || {}, k = d.kit || {}, h = '<h3>🏷 Conferir as peças</h3><div class="s">OS ' + esc(d.numero_os || f.num) + (d.cliente ? ' · ' + esc(d.cliente) : '') + '</div>';
     if (d.sem_acesso) return h + '<div class="pf151-info">A lista das peças é do técnico da OS e do almoxarifado.</div><div class="bt"><button type="button" class="pf131-b" data-pf151="fechar">Fechar</button></div>';
     h += '<div class="pf151-ver ' + (d.nivel === 'verde' ? 'verde' : 'ambar') + '" id="pf151Ver">' + (d.nivel === 'verde' ? '✅ ' : '⚠ ') + esc(d.veredito || '') +
-      '<small>' + N(d.itens) + ' ite' + (N(d.itens) === 1 ? 'm' : 'ns') + '</small></div>';
+      '<span class="pf151-n">' + N(d.itens) + ' ite' + (N(d.itens) === 1 ? 'm' : 'ns') + '</span></div>';
     if (k.endereco) h += '<div class="pf151-info">🧰 Kit em <b>📍 ' + esc(k.endereco) + '</b></div>';
     if (d.retirada) h += '<div class="pf151-info">🧰 Última retirada: ' + N(d.retirada.vol_sep) + ' de ' + N(d.retirada.vol_tot) + ' volumes, por ' + esc(d.retirada.levou || '') + ' · ' + esc(hhmm(d.retirada.em)) + '</div>';
     h += '<div id="pf151Msg" class="pf151-msg' + (f.msgCls ? ' ' + f.msgCls : '') + '"' + (f.msgTxt ? '' : ' style="display:none"') + '>' + esc(f.msgTxt || '') + '</div>';
