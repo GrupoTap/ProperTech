@@ -1817,8 +1817,16 @@ html[data-boot="pipeline"] #pf113Splash{display:flex;position:fixed;inset:0;z-in
   envio (uid). O "Retirei o kit" do PF150 sai (o processo mudou). Chave de volta pcf151=off. Bloco PF151 no fim do body; no
   PF150 so a linha do botao "Retirei o kit".
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V151</title>
-<meta name="app-build" content="PCF_V151" data-date="2026-11-12">
+<!--
+  PCF_V152 · TRAVA POR TAREFA · 14/11/2026 · feito SOBRE o PCF_V151 no ar · par sw propertech-v154 · par do SQL 136 (roda ANTES) ·
+  par do GAS v182. ProperCare-backlog#189 (parte 4 da Esteira da Oficina, #197). A tarefa marcada no roteiro "precisa do kit / do
+  servico de terceiro" fica trancada enquanto falta peca; o resto da OS segue. Sugestao da fila: urgente, depois OS com kit completo,
+  depois OS esperando peca (adiantar). Na OS, o cartao "Pode comecar?" e o Assumir da tarefa trancada desligado com o motivo. A regra
+  mora no banco (pc_oficina_prontidao); o bloco so le. Chave de volta pcf152=off. Bloco PF152 no fim do body; nenhum remendo no corpo
+  de outros blocos.
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V152</title>
+<meta name="app-build" content="PCF_V152" data-date="2026-11-14">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -46514,5 +46522,219 @@ html.pf129 #pf151Folha .pf151-it.separada .r{color:#166534}html.pf129 #pf151Folh
 })();
 </script>
 <!-- ████ FIM PCF_V151 (PF151) ████ -->
+<!-- ████ PCF_V152 (PF152) · 🔒 TRAVA POR TAREFA — a tarefa que precisa do kit espera; o resto da OS segue na fila · 14/11/2026 ████ -->
+<style>
+.pf152{margin:10px 0;padding:12px 14px;border:1px solid #334155;border-radius:12px;background:#0f172a;color:#e2e8f0;font-size:14px;line-height:1.4}
+.pf152 .t{font-weight:700;font-size:15px;margin-bottom:6px}
+.pf152 .s{color:#94a3b8;font-size:12px}
+.pf152 .ln{display:flex;gap:8px;align-items:flex-start;margin:4px 0}
+.pf152 .ln .i{flex:0 0 22px;text-align:center}
+.pf152 .ok{color:#86efac}.pf152 .av{color:#fcd34d}
+.pf152-trava{display:block;margin-top:6px;font-size:13px;color:#fcd34d}
+html.pf129 .pf152{background:#fff;border-color:#d9e0ea;color:#0f172a}
+html.pf129 .pf152 .s{color:#475569}html.pf129 .pf152 .ok{color:#166534}html.pf129 .pf152 .av,html.pf129 .pf152-trava{color:#92400e}
+</style>
+<script>
+/* ════════════════════════════════════════════════════════════════════════════════════════════════════════
+   PCF_V152 (PF152) — 14/11/2026 · ProperCare-backlog#189 (parte 4 da Esteira da Oficina, #197) · par do SQL 136 (roda ANTES) ·
+   par do GAS v182 (assumirTarefa pergunta ao banco) · par sw propertech-v154.
+   · A régua mora no banco (pc_oficina_prontidao): a tarefa marcada no roteiro "precisa do kit / do serviço de terceiro" fica 🔒
+     enquanto falta peça; as outras seguem. Este bloco só LÊ e mostra.
+   · Sugestão da fila (Minha vez / Backlog): 1º urgente · 2º OS com kit completo · 3º OS esperando peça (adiantar) — a posição do
+     servidor (chegada física) desempata dentro de cada grupo. OS sem tarefa livre (só sobrou a 🔒) sai da sugestão.
+   · Na OS: cartão "Pode começar?" (o kit, o terceiro, o que espera e até quando); o botão "Assumir" da tarefa 🔒 fica desligado
+     com o motivo (o GAS v182 recusa do mesmo jeito). Liberada para mim pela designação com motivo = segue normal.
+   · Lido do servidor e guardado com a hora (pf152_pront_v1); sem a função no servidor = nada muda. Chave de volta: pcf152 = off.
+   ════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+  var PF152 = window.PF152 = { versao: 'PCF_V152', log: [], dados: {}, lidoEm: 0, semSql: false, voo: false, assinatura: '', vooOs: {} };
+  var CACHE_KEY = 'pf152_pront_v1', OFF_KEY = 'pcf152', IDADE_MAX = 30 * 60 * 1000, RELER = 2 * 60 * 1000;
+  function $(id) { return document.getElementById(id); }
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function nota(e, onde) { try { PF152.log.push({ onde: onde, msg: String((e && e.message) || e), em: Date.now() }); if (PF152.log.length > 40) PF152.log.shift(); } catch (x) {} }
+  function ativo() { if (PF152.semSql) return false; try { return localStorage.getItem(OFF_KEY) !== 'off'; } catch (e) { return true; } }
+  PF152.ativo = ativo;
+  function dm(iso) { var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || '')); return m ? m[3] + '/' + m[2] : ''; }
+  function hhmm(ms) { var d = new Date(ms || 0); if (!ms || isNaN(d.getTime())) return ''; var p = function (n) { return (n < 10 ? '0' : '') + n; }; return p(d.getHours()) + ':' + p(d.getMinutes()); }
+  function euId() { try { var s = window.PROPER_SESSION || {}; return String(s.id_tecnico || (s.tecnico && (s.tecnico.id || s.tecnico.nome)) || ''); } catch (e) { return ''; } }
+  function euNome() { try { var s = window.PROPER_SESSION || {}; return String(s.nome_tecnico || (s.tecnico && s.tecnico.nome) || ''); } catch (e) { return ''; } }
+  function souEu(x) { x = String(x || '').trim().toLowerCase(); return !!x && (x === euId().toLowerCase() || x === euNome().toLowerCase()); }
+  function osTela() { try { return String(_pfOsId || ''); } catch (e) { return ''; } }
+
+  // ── 1 · o servidor (o crachá do login com PIN, o mesmo do PF150) ────────────────────────────────────────────
+  async function rpc(fn, args) {
+    if (navigator.onLine === false) throw new Error('sem internet');
+    try { if (typeof pgpRedeBloqueada === 'function' && pgpRedeBloqueada()) throw new Error('modo offline'); } catch (e) { throw e; }
+    var tok = null; try { tok = await _pcfSupaToken(); } catch (e) { tok = null; }
+    if (!tok) throw new Error('falta o login com PIN');
+    var ctl = (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(15000) : undefined;
+    var r = await fetch(PCF_SUPA_URL + '/rest/v1/rpc/' + fn, { method: 'POST', signal: ctl,
+      headers: { 'apikey': PCF_SUPA_ANON, 'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: JSON.stringify(args || {}) });
+    var txt = await r.text(), d = null; try { d = JSON.parse(txt); } catch (e) { d = null; }
+    if (r.status === 404 && d && (d.code === 'PGRST202' || /Could not find the function/i.test(d.message || ''))) { var e4 = new Error('sem SQL'); e4.semSql = true; throw e4; }
+    if (!r.ok || !d || d.ok !== true) throw new Error('o servidor falhou (' + r.status + ')');
+    return d;
+  }
+
+  // ── 2 · os dados (só o que o servidor disse, com a hora) ───────────────────────────────────────────────────
+  function cacheLer() { try { var c = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null'); if (c && c.itens && Date.now() - (c.ts || 0) < IDADE_MAX) { PF152.dados = c.itens; PF152.lidoEm = c.ts; } } catch (e) {} }
+  function cacheGravar() { try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: PF152.lidoEm, itens: PF152.dados })); } catch (e) { nota(e, 'cache'); } }
+  function aceitar(d, parcial) {
+    var novo = parcial ? Object.assign({}, PF152.dados) : {};
+    (d.itens || []).forEach(function (x) { if (x && x.os_id) novo[String(x.os_id)] = x; });
+    PF152.dados = novo; PF152.lidoEm = Date.now(); PF152.marcas = !!d.marcas; cacheGravar();
+  }
+  function de(os) { if (!ativo() || !os) return null; var x = PF152.dados[String(os)]; return x || null; }
+  PF152.de = de;
+  function idsDaLista() {
+    var lista = (typeof _pfOsList !== 'undefined' && Array.isArray(_pfOsList)) ? _pfOsList : [];
+    return lista.filter(function (o) {
+      try { if (!o || !o.id_os || !_pfOsAtiva(o)) return false; if (typeof pfOsEhExterna === 'function' && pfOsEhExterna(o)) return false; return true; } catch (e) { return false; }
+    }).map(function (o) { return String(o.id_os); }).slice(0, 400);
+  }
+  async function carregarLista(porque) {
+    if (!ativo() || PF152.voo) return;
+    var ids = idsDaLista(); if (!ids.length) return;
+    var ass = ids.slice().sort().join('|');
+    if (ass === PF152.assinatura && Date.now() - PF152.lidoEm < RELER) return;
+    PF152.voo = true;
+    try { var d = await rpc('pc_oficina_prontidao', { p: { os: ids } }); aceitar(d, false); PF152.assinatura = ass; repintar(); }
+    catch (e) { if (e.semSql) PF152.semSql = true; nota(e, 'lista ' + porque); }
+    finally { PF152.voo = false; }
+  }
+  async function carregarOs(os, porque) {
+    if (!ativo() || !os || PF152.vooOs[os]) return;
+    PF152.vooOs[os] = true;
+    try { var d = await rpc('pc_oficina_prontidao', { p: { os: [os] } }); aceitar(d, true); }
+    catch (e) { if (e.semSql) PF152.semSql = true; nota(e, 'os ' + porque); }
+    finally { delete PF152.vooOs[os]; pintarOs(); }
+  }
+  PF152.carregarOs = carregarOs; PF152.carregarLista = carregarLista;
+
+  // ── 3 · a régua da tela (só lê o que o banco calculou) ─────────────────────────────────────────────────────
+  function travadaParaMim(t) { return !!(t && t.travada) && !souEu(t.liberada_para) && !souEu(t.liberada_nome); }
+  function semTarefaLivre(x) { return !!x && Number(x.travadas || 0) > 0 && Number(x.livres_camada) === 0; }
+  function grupo(o) { var x = de(o && o.id_os); return (x && x.pronta === false) ? 1 : 0; }
+  function previsaoTxt(x) {
+    if (!x) return '';
+    var k = x.kit || {}, t = x.terceiro || {};
+    if (x.previsao) return 'chegam ' + dm(x.previsao);
+    if ((k.ok === false && k.sem_previsao) || (t.ok === false && t.sem_previsao)) return 'sem previsão';
+    return '';
+  }
+  PF152.travadaParaMim = travadaParaMim;
+
+  // ── 4 · os ganchos na fila (por window[nome]: o corpo dos outros blocos não muda) ──────────────────────────
+  function embrulhar(nome, fazer) {
+    try { var o = window[nome]; if (typeof o !== 'function' || o.__pf152) return; var n = fazer(o); n.__pf152 = true; window[nome] = n; } catch (e) { nota(e, 'embrulhar ' + nome); }
+  }
+  embrulhar('_pfSugerivel', function (orig) {
+    return function (o) { var ok = orig.apply(this, arguments); if (!ok || !ativo()) return ok; return !semTarefaLivre(de(o && o.id_os)); };
+  });
+  embrulhar('_pfOrdemSugestao', function (orig) {
+    return function (a, b) {
+      if (ativo()) {
+        var ua = _pfRank(a) >= 3 ? 1 : 0, ub = _pfRank(b) >= 3 ? 1 : 0;
+        if (ub !== ua) return ub - ua;                                // 1º urgente fura
+        var ga = grupo(a), gb = grupo(b);
+        if (ga !== gb) return ga - gb;                                // 2º kit completo · 3º esperando peça
+      }
+      return orig.apply(this, arguments);                           // dentro do grupo: a posição do servidor (chegada física)
+    };
+  });
+  embrulhar('_pfMotivoSugestao', function (orig) {
+    return function (o) {
+      var t = orig.apply(this, arguments), x = de(o && o.id_os);
+      if (!x || x.pronta !== false) return t;
+      var pv = previsaoTxt(x);
+      return t + ' <span class="pf152-trava">🔒 Esperando peças' + (pv ? ' (' + esc(pv) + ')' : '') + ' — dá para adiantar as tarefas que não dependem do kit.</span>';
+    };
+  });
+  embrulhar('_pfClassificar', function (orig) {
+    return function () { var r = orig.apply(this, arguments); try { if (ativo()) setTimeout(function () { carregarLista('lista'); }, 0); } catch (e) {} return r; };
+  });
+
+  // ── 5 · na OS: o cartão "Pode começar?" e o botão Assumir da tarefa 🔒 ──────────────────────────────────────
+  function cartaoHtml(os) {
+    var x = de(os); if (!x) return '';
+    var tar = Array.isArray(x.tarefas) ? x.tarefas : [];
+    if (x.pronta !== false && !tar.length) return '';
+    var k = x.kit || {}, te = x.terceiro || {}, h = '<div class="t">' + (x.pronta === false ? '🔒 Pode começar? Em parte' : '✅ Pode começar') + '</div>';
+    if (Number(k.pecas || 0) > 0) {
+      var kt = k.ok ? 'Kit completo (' + k.pecas + ' peças)'
+        : (Number(k.separadas) === Number(k.pecas) ? 'Kit separado — falta o lugar na área de kits'
+          : 'Peças: ' + (k.separadas || 0) + ' de ' + k.pecas + ' separadas' + (Number(k.a_separar) > 0 ? ' · ' + k.a_separar + ' a separar' : '')
+            + (Number(k.a_chegar) > 0 ? ' · ' + k.a_chegar + ' a chegar' + (k.previsao ? ' (chegam ' + dm(k.previsao) + ')' : ' (sem previsão)') : ''));
+      h += '<div class="ln"><span class="i">' + (k.ok ? '✅' : '📦') + '</span><span class="' + (k.ok ? 'ok' : 'av') + '">' + esc(kt) + '</span></div>';
+    }
+    if (Number(te.linhas || 0) > 0) {
+      var tt = te.ok ? 'Serviço de terceiro concluído' : 'Serviço de terceiro: ' + (te.recebidas || 0) + ' de ' + te.linhas + ' recebidos' + (te.previsao ? ' (previsto ' + dm(te.previsao) + ')' : ' (sem previsão)');
+      h += '<div class="ln"><span class="i">' + (te.ok ? '✅' : '🔧') + '</span><span class="' + (te.ok ? 'ok' : 'av') + '">' + esc(tt) + '</span></div>';
+    }
+    tar.forEach(function (t) {
+      var nome = esc(t.nome || t.tarefa_id), mot = t.motivo === 'terceiro' ? 'o serviço de terceiro' : (t.motivo === 'kit' ? 'as peças' : 'as peças e o terceiro');
+      if (t.travada && !travadaParaMim(t)) h += '<div class="ln"><span class="i">🔓</span><span>' + nome + ' — liberada para você pelo escritório' + (t.liberada_motivo ? ': <i>' + esc(t.liberada_motivo) + '</i>' : '') + '</span></div>';
+      else if (t.travada) h += '<div class="ln"><span class="i">🔒</span><span class="av">' + nome + ' — espera ' + mot + (t.liberada_nome ? ' (liberada para ' + esc(t.liberada_nome) + ')' : '') + '</span></div>';
+      else h += '<div class="ln"><span class="i">✅</span><span>' + nome + ' — pode fazer</span></div>';
+    });
+    if (x.pronta === false) h += '<div class="s">As tarefas sem 🔒 seguem normalmente. A 🔒 se libera sozinha quando a separação fecha o kit.</div>';
+    h += '<div class="s">Lido do servidor às ' + esc(hhmm(PF152.lidoEm)) + '.</div>';
+    return h;
+  }
+  PF152.cartaoHtml = cartaoHtml;
+  function travarBotoes(os) {
+    var x = de(os), cont = $('pfPipelineConteudo'); if (!cont) return;
+    var trav = {}; (x && Array.isArray(x.tarefas) ? x.tarefas : []).forEach(function (t) { if (travadaParaMim(t)) trav[String(t.tarefa_id)] = t; });
+    Array.prototype.forEach.call(cont.querySelectorAll('button[onclick*="pfAssumirTarefa("]'), function (b) {
+      var m = /pfAssumirTarefa\('((?:[^'\\]|\\.)*)'/.exec(b.getAttribute('onclick') || ''); if (!m) return;
+      var tid = m[1].replace(/\\'/g, "'"), t = trav[tid];
+      var nota0 = b.parentNode && b.parentNode.querySelector('.pf152-trava');
+      if (t) {
+        if (!b.__pf152) { b.__pf152 = { txt: b.textContent, dis: b.disabled }; }
+        b.disabled = true; b.textContent = '🔒 Espera ' + (t.motivo === 'terceiro' ? 'o serviço de terceiro' : 'as peças');
+        var pv = previsaoTxt(x);
+        if (!nota0) { nota0 = document.createElement('span'); nota0.className = 'pf152-trava'; b.parentNode.appendChild(nota0); }
+        nota0.textContent = (pv ? pv.charAt(0).toUpperCase() + pv.slice(1) + '. ' : '') + 'Faça outra tarefa livre da OS ou peça ao escritório para designar com motivo.';
+      } else if (b.__pf152) {
+        b.disabled = b.__pf152.dis; b.textContent = b.__pf152.txt; delete b.__pf152; if (nota0) nota0.remove();
+      }
+    });
+  }
+  function pintarOs() {
+    try {
+      var tela = $('pfScreenPipeline'), cont = $('pfPipelineConteudo'), os = osTela(), host = $('pf152Pode');
+      if (!ativo()) { if (host) host.style.display = 'none'; return; }
+      if (!host && cont && cont.parentNode) {
+        host = document.createElement('div'); host.id = 'pf152Pode'; host.className = 'pf152';
+        cont.parentNode.insertBefore(host, $('pf150Kit') && $('pf150Kit').parentNode === cont.parentNode ? $('pf150Kit') : cont);
+      }
+      if (host) {
+        var html = (os && tela && tela.style.display !== 'none') ? cartaoHtml(os) : '';
+        if (!html) host.style.display = 'none';
+        else { host.style.display = ''; if (host.__pf152 !== html) { host.innerHTML = html; host.__pf152 = html; } }
+      }
+      if (os) travarBotoes(os);
+    } catch (e) { nota(e, 'pintarOs'); }
+  }
+  PF152.pintarOs = pintarOs;
+  function repintar() { try { pintarOs(); if (typeof pfRenderVez === 'function') pfRenderVez(); } catch (e) { nota(e, 'repintar'); } }
+  embrulhar('pfLoadPipeline', function (orig) {
+    return function () {
+      var r = orig.apply(this, arguments);
+      try { var os = osTela(); if (os && ativo()) { Promise.resolve(r).then(function () { pintarOs(); }, function () {}); pintarOs(); carregarOs(os, 'pipeline'); } } catch (e) { nota(e, 'pfLoadPipeline'); }
+      return r;
+    };
+  });
+  function iniciar() {
+    cacheLer();
+    setInterval(function () { if (document.visibilityState === 'visible' && ativo()) { carregarLista('relógio'); pintarOs(); } }, 60000);
+    document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && ativo()) carregarLista('voltou'); });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else setTimeout(iniciar, 0);
+  PF152.ok = true;
+})();
+</script>
+<!-- ████ FIM PCF_V152 (PF152) ████ -->
 </body>
 </html>
