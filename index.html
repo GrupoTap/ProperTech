@@ -46585,7 +46585,9 @@ html.pf129 .pf152 .s{color:#475569}html.pf129 .pf152 .ok{color:#166534}html.pf12
     (d.itens || []).forEach(function (x) { if (x && x.os_id) novo[String(x.os_id)] = x; });
     PF152.dados = novo; PF152.lidoEm = Date.now(); PF152.marcas = !!d.marcas; cacheGravar();
   }
-  function de(os) { if (!ativo() || !os) return null; var x = PF152.dados[String(os)]; return x || null; }
+  // velho demais (> 30 min sem ler o servidor) = não sei: nada muda na tela (pcf.md 4.5: o aparelho nunca mostra o que não sabe)
+  function de(os) { if (!ativo() || !os || Date.now() - (PF152.lidoEm || 0) > IDADE_MAX) return null; var x = PF152.dados[String(os)]; return x || null; }
+  function fresco() { return Date.now() - (PF152.lidoEm || 0) < 10 * 60 * 1000; }
   PF152.de = de;
   function idsDaLista() {
     var lista = (typeof _pfOsList !== 'undefined' && Array.isArray(_pfOsList)) ? _pfOsList : [];
@@ -46619,9 +46621,9 @@ html.pf129 .pf152 .s{color:#475569}html.pf129 .pf152 .ok{color:#166534}html.pf12
   function previsaoTxt(x) {
     if (!x) return '';
     var k = x.kit || {}, t = x.terceiro || {};
-    if (x.previsao) return 'chegam ' + dm(x.previsao);
-    if ((k.ok === false && k.sem_previsao) || (t.ok === false && t.sem_previsao)) return 'sem previsão';
-    return '';
+    var sem = (k.ok === false && k.sem_previsao) || (t.ok === false && t.sem_previsao);
+    if (x.previsao) return 'chegam ' + dm(x.previsao) + (sem ? '; parte sem previsão' : '');
+    return sem ? 'sem previsão' : '';
   }
   PF152.travadaParaMim = travadaParaMim;
 
@@ -46665,7 +46667,7 @@ html.pf129 .pf152 .s{color:#475569}html.pf129 .pf152 .ok{color:#166534}html.pf12
       var kt = k.ok ? 'Kit completo (' + k.pecas + ' peças)'
         : (Number(k.separadas) === Number(k.pecas) ? 'Kit separado — falta o lugar na área de kits'
           : 'Peças: ' + (k.separadas || 0) + ' de ' + k.pecas + ' separadas' + (Number(k.a_separar) > 0 ? ' · ' + k.a_separar + ' a separar' : '')
-            + (Number(k.a_chegar) > 0 ? ' · ' + k.a_chegar + ' a chegar' + (k.previsao ? ' (chegam ' + dm(k.previsao) + ')' : ' (sem previsão)') : ''));
+            + (Number(k.a_chegar) > 0 ? ' · ' + k.a_chegar + ' a chegar' + (k.previsao ? ' (chegam ' + dm(k.previsao) + (k.sem_previsao ? '; parte sem previsão' : '') + ')' : ' (sem previsão)') : ''));
       h += '<div class="ln"><span class="i">' + (k.ok ? '✅' : '📦') + '</span><span class="' + (k.ok ? 'ok' : 'av') + '">' + esc(kt) + '</span></div>';
     }
     if (Number(te.linhas || 0) > 0) {
@@ -46685,7 +46687,7 @@ html.pf129 .pf152 .s{color:#475569}html.pf129 .pf152 .ok{color:#166534}html.pf12
   PF152.cartaoHtml = cartaoHtml;
   function travarBotoes(os) {
     var x = de(os), cont = $('pfPipelineConteudo'); if (!cont) return;
-    var trav = {}; (x && Array.isArray(x.tarefas) ? x.tarefas : []).forEach(function (t) { if (travadaParaMim(t)) trav[String(t.tarefa_id)] = t; });
+    var trav = {}; if (fresco()) (x && Array.isArray(x.tarefas) ? x.tarefas : []).forEach(function (t) { if (travadaParaMim(t)) trav[String(t.tarefa_id)] = t; });   // leitura de mais de 10 min: o botão não desliga (o GAS segue conferindo)
     Array.prototype.forEach.call(cont.querySelectorAll('button[onclick*="pfAssumirTarefa("]'), function (b) {
       var m = /pfAssumirTarefa\('((?:[^'\\]|\\.)*)'/.exec(b.getAttribute('onclick') || ''); if (!m) return;
       var tid = m[1].replace(/\\'/g, "'"), t = trav[tid];
