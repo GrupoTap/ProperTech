@@ -9,7 +9,8 @@
  * O activate abaixo apaga qualquer cache antigo com prefixo 'propertech-'.
  */
 const CACHE_BASE = 'propertech-';
-const CACHE = CACHE_BASE + 'v154';  // 14/11/2026 — par do PCF_V152 (🔒 trava por tarefa: a tarefa que precisa do kit espera, o resto da OS segue — ProperCare-backlog#189). Sem bump, o celular serve o V151 do cache.
+const CACHE = CACHE_BASE + 'v155';  // 16/11/2026 — par do PCF_V153 (🏭 linha do tempo da máquina na OS da oficina — ProperCare-backlog#194). Sem bump, o celular serve o V152 do cache.
+// antes: 'v154'  // 14/11/2026 — par do PCF_V152 (🔒 trava por tarefa: a tarefa que precisa do kit espera, o resto da OS segue — ProperCare-backlog#189). Sem bump, o celular serve o V151 do cache.
 // antes: 'v152'  // 10/11/2026 — par do PCF_V150 (Retirei o kit: cartão do kit da OS, câmera com leitor de QR, ProperCare-backlog#139). Sem bump, o celular serve o V149 do cache.
 // antes: 'v151'  // 03/11/2026 — par do PCF_V149 (seção 4 em cartões, um N/A só, trocar o cenário não apaga; item adicional com título e estado em pílula, ProperCare-backlog#61). Sem bump, o celular serve o V148 do cache.
 // antes: 'v150'  // 03/11/2026 — par do PCF_V148 (item adicional com referência/horímetro/intervalo + Ok/NOK/Trocada/N.A. pintam no tema claro, ProperCare-backlog#60). Sem bump, o celular serve o V147 do cache.
@@ -79,6 +80,7 @@ const CACHE = CACHE_BASE + 'v154';  // 14/11/2026 — par do PCF_V152 (🔒 trav
 //        PCF_V108 ↔  propertech-v110  (11/09 — a rodada Campo e Documentos)
 //        PCF_V110 ↔  propertech-v112  (17/09 — os motores CFX + PWAIT, front puro)
 //        PCF_V109 ↔  propertech-v111  (11/09 — o PDF da preventiva: compress:true + PDF na fila do IndexedDB)
+//        PCF_V153 ↔  propertech-v155  (16/11 — 🏭 linha do tempo da máquina na OS da oficina: a faixa das 9 estações — ProperCare-backlog#194)
 //        PCF_V152 ↔  propertech-v154  (14/11 — 🔒 trava por tarefa: a tarefa marcada "precisa do kit" espera, o resto da OS segue; Pode começar? na OS — ProperCare-backlog#189)
 //        PCF_V151 ↔  propertech-v153  (12/11 — 🏷 Conferir as peças: QR da etiqueta da separação → lista de conferência + Conferi e retirei — ProperCare-backlog#169)
 //        PCF_V150 ↔  propertech-v152  (10/11 — Retirei o kit: cartão do kit da OS e câmera que lê o QR da etiqueta — ProperCare-backlog#139)
