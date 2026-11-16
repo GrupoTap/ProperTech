@@ -1825,8 +1825,15 @@ html[data-boot="pipeline"] #pf113Splash{display:flex;position:fixed;inset:0;z-in
   mora no banco (pc_oficina_prontidao); o bloco so le. Chave de volta pcf152=off. Bloco PF152 no fim do body; nenhum remendo no corpo
   de outros blocos.
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V152</title>
-<meta name="app-build" content="PCF_V152" data-date="2026-11-14">
+<!--
+  PCF_V153 · LINHA DO TEMPO DA OFICINA · 16/11/2026 · feito SOBRE o PCF_V152 no ar · par sw propertech-v155 · par do SQL 140 (roda ANTES) ·
+  zero GAS. ProperCare-backlog#194 (parte 9 da Esteira da Oficina, #197). Na OS da oficina, no topo: a faixa das 9 estacoes (feita com
+  o dia em que entrou, a atual com desde, dias uteis x meta, parada e retrabalho; antes da atual sem data = cinza, nunca feita) e a 1a
+  coisa que falta. Lida do banco (pc_oficina_linha), guardada no celular com a hora. Chave de volta pcf153=off. Bloco PF153 no fim do
+  body; nenhum remendo no corpo de outros blocos.
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V153</title>
+<meta name="app-build" content="PCF_V153" data-date="2026-11-16">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -46738,5 +46745,174 @@ html.pf129 .pf152 .s{color:#475569}html.pf129 .pf152 .ok{color:#166534}html.pf12
 })();
 </script>
 <!-- ████ FIM PCF_V152 (PF152) ████ -->
+<!-- ████ PCF_V153 (PF153) · 🏭 LINHA DO TEMPO DA MÁQUINA NA OFICINA — a faixa das 9 estações no topo da OS · 16/11/2026 ████ -->
+<style>
+.pf153{margin:0 0 12px;padding:10px 12px 8px;border:1px solid #334155;border-radius:12px;background:#0f172a;color:#e2e8f0;font-size:13px;line-height:1.35;font-variant-numeric:tabular-nums}
+.pf153 .cab{display:flex;flex-wrap:wrap;gap:6px;align-items:baseline}
+.pf153 .cab b{font-size:14px}
+.pf153 .q{color:#94a3b8}.pf153 .q.atr{color:#fca5a5;font-weight:700}
+.pf153 .tag{display:inline-block;border-radius:999px;padding:0 8px;font-size:12px;font-weight:700;background:#7f1d1d;color:#fecaca}
+.pf153 .tag.cinza{background:#334155;color:#e2e8f0}
+.pf153 ol{list-style:none;margin:10px 0 2px;padding:0;display:grid;grid-template-columns:repeat(9,minmax(0,1fr))}
+.pf153 li{display:flex;flex-direction:column;align-items:center;gap:3px;position:relative;min-width:0}
+.pf153 li::before{content:"";position:absolute;top:11px;right:50%;width:100%;height:2px;background:#334155}
+.pf153 li:first-child::before{display:none}
+.pf153 li.f::before,.pf153 li.a::before{background:#e2e8f0}
+.pf153 li.s::before{background:#64748b}
+.pf153 .b{position:relative;z-index:1;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;background:#0f172a;border:2px solid #475569;color:#94a3b8;box-sizing:border-box}
+.pf153 li.f .b{background:#e2e8f0;border-color:#e2e8f0;color:#0f172a}
+.pf153 li.a .b{background:#f97316;border-color:#f97316;color:#fff;box-shadow:0 0 0 3px rgba(249,115,22,.35)}
+.pf153 li.s .b{background:#334155;border-color:#334155;color:#64748b}
+.pf153 li.x .b{border-style:dashed;color:#64748b}
+.pf153 .d{font-size:11px;color:#94a3b8;white-space:nowrap;min-height:14px}
+.pf153 li.a .d{color:#fdba74;font-weight:700}
+.pf153 .s{color:#94a3b8;font-size:12px;margin-top:6px}
+html.pf129 .pf153{background:#fff;border-color:#d9e0ea;color:#0f172a}
+html.pf129 .pf153 .q,html.pf129 .pf153 .s,html.pf129 .pf153 .d{color:#475569}
+html.pf129 .pf153 .q.atr{color:#b42318}
+html.pf129 .pf153 .tag{background:#fef3f2;color:#912018}html.pf129 .pf153 .tag.cinza{background:#f1f5f9;color:#334155}
+html.pf129 .pf153 li::before{background:#e2e8f0}
+html.pf129 .pf153 li.f::before,html.pf129 .pf153 li.a::before{background:#0f172a}
+html.pf129 .pf153 li.s::before{background:#94a3b8}
+html.pf129 .pf153 .b{background:#fff;border-color:#cbd5e1;color:#64748b}
+html.pf129 .pf153 li.f .b{background:#0f172a;border-color:#0f172a;color:#fff}
+html.pf129 .pf153 li.s .b{background:#e2e8f0;border-color:#e2e8f0;color:#94a3b8}
+html.pf129 .pf153 li.a .d{color:#b54708}
+</style>
+<script>
+/* ══════════════════════════════════════════════════════════════════════════════════════
+   PCF_V153 (PF153) — 16/11/2026 · ProperCare-backlog#194 (parte 9 da Esteira da Oficina, #197; estudo #185, P6) · par do SQL 140
+   (roda ANTES) · zero GAS · par sw propertech-v155.
+   · Na OS da oficina, no topo (acima do "Pode começar?" e das tarefas): a faixa das 9 estações — feita com o dia em que entrou, a
+     atual em laranja (desde quando, dias úteis × meta, ⛔ parada, ↻ retrabalho), as que faltam; antes da atual sem data no histórico
+     = cinza (nunca "feita" sem data). Embaixo, a 1ª coisa que falta e a hora da leitura.
+   · Lida do banco (pc_oficina_linha, a mesma régua do Quadro da Oficina do PCM): 1 chamada ao abrir a OS da oficina; a OS de campo
+     não chama. Guardada no aparelho com a hora (pf153_linha_v1, até 30 min): sem rede mostra a guardada dizendo de quando; sem
+     guardada e sem rede, a faixa não aparece. Sem a função no servidor = nada muda. Chave de volta: pcf153 = off.
+   ══════════════════════════════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+  var PF153 = window.PF153 = { versao: 'PCF_V153', log: [], dados: {}, semSql: false, voo: {}, falhaEm: {} };
+  var CACHE_KEY = 'pf153_linha_v1', OFF_KEY = 'pcf153', IDADE_MAX = 30 * 60 * 1000, RELER = 60 * 1000;
+  function $(id) { return document.getElementById(id); }
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function nota(e, onde) { try { PF153.log.push({ onde: onde, msg: String((e && e.message) || e), em: Date.now() }); if (PF153.log.length > 40) PF153.log.shift(); } catch (x) {} }
+  function ativo() { if (PF153.semSql) return false; try { return localStorage.getItem(OFF_KEY) !== 'off'; } catch (e) { return true; } }
+  PF153.ativo = ativo;
+  function N(v) { var n = Number(v); return isFinite(n) ? n : 0; }
+  function tem(v) { return v !== null && v !== undefined && v !== '' && isFinite(Number(v)); }
+  function dm(iso) { try { var d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit' }); } catch (e) { return ''; } }
+  function hhmm(ms) { var d = new Date(ms || 0); if (!ms || isNaN(d.getTime())) return ''; var p = function (n) { return (n < 10 ? '0' : '') + n; }; return p(d.getHours()) + ':' + p(d.getMinutes()); }
+  function osTela() { try { return String(_pfOsId || ''); } catch (e) { return ''; } }
+  function daOficina(id) {
+    try { var o = (_pfOsList || []).filter(function (x) { return String(x.id_os) === id; })[0]; return !!o && /^intern/i.test(String(o.local_atendimento || '').trim()); } catch (e) { return false; }
+  }
+  PF153.daOficina = daOficina;
+
+  // ── 1 · o servidor (o crachá do login com PIN, o mesmo do PF152) ────────────────────────────────────────────
+  async function rpc(fn, args) {
+    if (navigator.onLine === false) throw new Error('sem internet');
+    try { if (typeof pgpRedeBloqueada === 'function' && pgpRedeBloqueada()) throw new Error('modo offline'); } catch (e) { throw e; }
+    var tok = null; try { tok = await _pcfSupaToken(); } catch (e) { tok = null; }
+    if (!tok) throw new Error('falta o login com PIN');
+    var ctl = (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(15000) : undefined;
+    var r = await fetch(PCF_SUPA_URL + '/rest/v1/rpc/' + fn, { method: 'POST', signal: ctl,
+      headers: { 'apikey': PCF_SUPA_ANON, 'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: JSON.stringify(args || {}) });
+    var txt = await r.text(), d = null; try { d = JSON.parse(txt); } catch (e) { d = null; }
+    if (r.status === 404 && d && (d.code === 'PGRST202' || /Could not find the function/i.test(d.message || ''))) { var e4 = new Error('sem SQL'); e4.semSql = true; throw e4; }
+    if (!r.ok || !d || d.ok !== true) throw new Error('o servidor falhou (' + r.status + ')');
+    return d;
+  }
+
+  // ── 2 · os dados (só o que o servidor disse, com a hora) ───────────────────────────────────────────────────
+  function cacheLer() { try { var c = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null') || {}; Object.keys(c).forEach(function (k) { if (c[k] && Date.now() - (c[k].ts || 0) < IDADE_MAX) PF153.dados[k] = c[k]; }); } catch (e) {} }
+  function cacheGravar() {
+    try { var c = {}; Object.keys(PF153.dados).sort(function (a, b) { return PF153.dados[b].ts - PF153.dados[a].ts; }).slice(0, 20).forEach(function (k) { c[k] = PF153.dados[k]; }); localStorage.setItem(CACHE_KEY, JSON.stringify(c)); } catch (e) { nota(e, 'cache'); }
+  }
+  async function carregar(os) {
+    if (!os || !ativo() || PF153.voo[os] || !daOficina(os)) return;   // a OS de campo não chama
+    var x = PF153.dados[os]; if (x && Date.now() - x.ts < RELER) return;
+    if (Date.now() - (PF153.falhaEm[os] || 0) < RELER) return;   // falhou há menos de 1 min: não repete a cada toque
+    PF153.voo[os] = true;
+    try {
+      var d = await rpc('pc_oficina_linha', { p: { os: os } });
+      PF153.dados[os] = { d: d, ts: Date.now() }; cacheGravar(); delete PF153.falhaEm[os];
+    } catch (e) {
+      if (e && e.semSql) { PF153.semSql = true; nota('pc_oficina_linha não existe no servidor — a faixa fica desligada', 'carregar'); }
+      else { PF153.falhaEm[os] = Date.now(); nota(e, 'carregar ' + os); }
+    } finally { delete PF153.voo[os]; pintar(); }
+  }
+  PF153.carregar = carregar;
+
+  // ── 3 · a faixa ───────────────────────────────────────────────────────────────────────────────────────────
+  var CLS = { feita: 'f', atual: 'a', sem_registro: 's', futura: 'u', fora: 'x' };
+  function duTxt(n, meta) { n = N(n); return tem(meta) ? n + ' de ' + String(meta).replace('.', ',') + ' dias úteis' : n + (n === 1 ? ' dia útil' : ' dias úteis'); }
+  function faixaHtml(os) {
+    var x = PF153.dados[os], d = x && x.d;
+    if (!d || !d.oficina || !Array.isArray(d.estacoes)) return '';
+    var a = d.atual || null, h = '<div class="cab"><b>🏭 Oficina</b>';
+    if (a && N(a.n) === 0) h += '<span>↩ ' + esc(a.nome || 'Devolução') + '</span>';
+    else if (a) h += '<span>' + esc(a.n) + ' · ' + esc(a.nome) + '</span>';
+    else if (d.saiu_em) h += '<span>saiu da oficina em ' + esc(dm(d.saiu_em)) + '</span>';
+    else h += '<span>fora da oficina</span>';
+    if (a) {
+      var q = [dm(a.desde) ? 'desde ' + dm(a.desde) : '', tem(a.dias) ? duTxt(a.dias, a.meta) : ''].filter(Boolean).join(' · ');
+      if (q) h += '<span class="q' + (a.atrasada ? ' atr' : '') + '">' + esc(q) + '</span>';
+      if (a.parada) h += '<span class="tag">⛔ parada</span>';
+    }
+    if (N(d.voltas) > 0) h += '<span class="tag cinza">↻ ' + N(d.voltas) + ' retrabalho' + (N(d.voltas) > 1 ? 's' : '') + '</span>';
+    h += '</div><ol aria-label="Estações da oficina">';
+    d.estacoes.forEach(function (e) {
+      var c = CLS[e.estado] || 'u', dt = c === 'a' ? (a ? dm(a.desde) : dm(e.entrou)) : (c === 'f' ? dm(e.entrou) : '');
+      h += '<li class="' + c + '" data-pf153-n="' + esc(e.n) + '"><span class="b">' + esc(e.n) + '</span><span class="d">' + esc(dt) + '</span></li>';
+    });
+    h += '</ol>';
+    var sub = [];
+    if (a) {
+      var fa = (Array.isArray(a.falta) ? a.falta : []).filter(function (y) { return y && !y.ok; })[0];
+      if (fa) sub.push('Falta: ' + esc(fa.txt));
+      if (a.parada && a.parada.motivo) sub.push('⛔ ' + esc(a.parada.motivo));
+    }
+    var guardada = navigator.onLine === false || (PF153.falhaEm[os] || 0) > x.ts;   // só diz "guardado" quando a leitura nova não veio
+    sub.push((guardada ? '⏳ guardado no celular às ' : 'Lido do servidor às ') + esc(hhmm(x.ts)));
+    h += '<div class="s">' + sub.join(' · ') + '</div>';
+    return h;
+  }
+  PF153.faixaHtml = faixaHtml;
+  function pintar() {
+    try {
+      var tela = $('pfScreenPipeline'), cont = $('pfPipelineConteudo'), os = osTela(), host = $('pf153Linha');
+      if (!ativo() || !os || !daOficina(os)) { if (host) host.style.display = 'none'; return; }
+      if (!host && cont && cont.parentNode) {
+        host = document.createElement('div'); host.id = 'pf153Linha'; host.className = 'pf153';
+        var antes = $('pf152Pode') && $('pf152Pode').parentNode === cont.parentNode ? $('pf152Pode') : ($('pf150Kit') && $('pf150Kit').parentNode === cont.parentNode ? $('pf150Kit') : cont);
+        cont.parentNode.insertBefore(host, antes);
+      }
+      if (!host) return;
+      var html = (tela && tela.style.display !== 'none') ? faixaHtml(os) : '';
+      if (!html) host.style.display = 'none';
+      else { host.style.display = ''; if (host.__pf153 !== html) { host.innerHTML = html; host.__pf153 = html; } }
+    } catch (e) { nota(e, 'pintar'); }
+  }
+  PF153.pintar = pintar;
+  function embrulhar(nome, fazer) {
+    try { var o = window[nome]; if (typeof o !== 'function' || o.__pf153) return; var n = fazer(o); n.__pf153 = true; window[nome] = n; } catch (e) { nota(e, 'embrulhar ' + nome); }
+  }
+  embrulhar('pfLoadPipeline', function (orig) {
+    return function () {
+      var r = orig.apply(this, arguments);
+      try { var os = osTela(); if (os && ativo()) { pintar(); Promise.resolve(r).then(function () { pintar(); }, function () {}); carregar(os); } else pintar(); } catch (e) { nota(e, 'pfLoadPipeline'); }
+      return r;
+    };
+  });
+  function iniciar() {
+    cacheLer();
+    document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && ativo()) { var os = osTela(); if (os) carregar(os); pintar(); } });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else setTimeout(iniciar, 0);
+  PF153.ok = true;
+})();
+</script>
+<!-- ████ FIM PCF_V153 (PF153) ████ -->
 </body>
 </html>
