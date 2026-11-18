@@ -1832,8 +1832,16 @@ html[data-boot="pipeline"] #pf113Splash{display:flex;position:fixed;inset:0;z-in
   coisa que falta. Lida do banco (pc_oficina_linha), guardada no celular com a hora. Chave de volta pcf153=off. Bloco PF153 no fim do
   body; nenhum remendo no corpo de outros blocos.
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V153</title>
-<meta name="app-build" content="PCF_V153" data-date="2026-11-16">
+<!--
+  PCF_V154 · SERIE QUE JA EXISTE · 18/11/2026 · feito SOBRE o PCF_V153 no ar · par sw propertech-v156 · zero SQL · zero GAS.
+  ProperCare-backlog#183 (B4). Antes de nascer maquina nova pela serie digitada (ao sair do campo No Serie, no Cadastrar e carregar e
+  no Enviar), o PCF procura a serie no cadastro e, se achar a maquina ativa, pergunta "E esta maquina?": usa o cadastro que existe
+  (o cliente da tela vira o da maquina) ou confirma maquina nova. OS do escritorio com maquina de outro cliente: avisa e manda pedir
+  ao escritorio. Sem resposta do servidor: avisa que nao deu para conferir e segue. Chave de volta pcf154=off. Bloco PF154 no fim do
+  body; nenhum remendo no corpo de outros blocos.
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V154</title>
+<meta name="app-build" content="PCF_V154" data-date="2026-11-18">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -46914,5 +46922,265 @@ html.pf129 .pf153 li.a .d{color:#b54708}
 })();
 </script>
 <!-- ████ FIM PCF_V153 (PF153) ████ -->
+<!-- ████ PCF_V154 (PF154) · 🔎 SÉRIE QUE JÁ EXISTE — "É esta máquina?" antes de nascer outra · 18/11/2026 ████ -->
+<script>
+/* ══════════════════════════════════════════════════════════════════════════════════════
+   PCF_V154 (PF154) — 18/11/2026 · ProperCare-backlog#183 (B4) · zero SQL · zero GAS · par sw propertech-v156.
+   O caso (12/11): numa inspeção avulsa o técnico escolheu um cliente e digitou a série de uma máquina que já estava ativa em OUTRO
+   cliente (a frota da locação). Nada avisou: a visita criou uma 2ª máquina com a mesma série, e a mescla de clientes travou depois.
+   · Antes de nascer máquina nova pela série digitada, o PCF procura a série no cadastro (searchMachine — o Postgres pelo motor de
+     leitura, o GAS se ele não atender) e, se achar a máquina ATIVA, pergunta "É esta máquina?":
+       É esta  → a coleta passa a usar o cadastro que existe (mesma régua do "Buscar por série ou TAG": o cliente da tela vira o da
+                 máquina; os dados de cadastro do cliente antigo saem da tela para não irem ao cliente novo). EXCEÇÃO: máquina da
+                 frota EM POSSE do cliente da tela (frotaForaDeCasa) — o cliente fica (o GAS aceita, v146). Marca/modelo/TAG
+                 digitados dão lugar aos do cadastro (senão a visita gravaria o erro de digitação na máquina confirmada);
+       Não é   → 2ª pergunta "Cadastrar máquina NOVA com a série X?" (Sim, é outra · Voltar). A resposta vale para aquela série.
+   · Onde pergunta: (1) ao sair do campo Nº Série de um painel sem máquina carregada; (2) no "✚ Cadastrar e carregar" (antes de
+     criar); (3) no "Enviar", nos painéis que vão sair sem máquina carregada (rede de segurança: o envio só segue depois da resposta).
+   · OS do escritório (cadastro travado) e a máquina é de outro cliente: o PCF não troca o cliente da OS — avisa e manda pedir ao
+     escritório; "É outra máquina" continua possível.
+   · Sem resposta do servidor (teto de 15 s): não afirma nada e não trava o técnico — avisa que não deu para conferir e segue.
+   · Limite aceito: no Enviar com 2+ máquinas, a conferência vem antes do seletor de quais enviar (pergunta por todas com série).
+   · Chave de volta: localStorage pcf154 = off. Bloco no fim do body; só embrulhos por window[nome], nenhum remendo em outro bloco.
+   ══════════════════════════════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+  if (window.PF154) return;
+  var PF154 = window.PF154 = { versao: 'PCF_V154', log: [], respostas: {}, voo: {}, pend: {}, perguntas: 0 };
+  var OFF_KEY = 'pcf154';
+  function ativo() { try { return localStorage.getItem(OFF_KEY) !== 'off'; } catch (e) { return true; } }
+  PF154.ativo = ativo;
+  function nota(e, onde) { try { PF154.log.push({ onde: onde, msg: String((e && e.message) || e), em: Date.now() }); if (PF154.log.length > 40) PF154.log.shift(); } catch (x) {} }
+  function txt(v) { return String(v === undefined || v === null ? '' : v).trim(); }
+  function ck(v) { try { return compactKey(txt(v)); } catch (e) { return txt(v).toLowerCase().replace(/[^a-z0-9]/g, ''); } }
+  function cliK(v) { try { return clientKey(txt(v)); } catch (e) { return txt(v).toLowerCase(); } }
+  function aviso(m) { try { if (typeof showNotification === 'function') showNotification(m); } catch (e) {} }
+  function campo(i, k) { return document.querySelector('[data-key="m' + i + '_' + k + '"]'); }
+  function val(i, k) { var el = campo(i, k); return el ? txt(el.value) : ''; }
+  function carregada(i) { try { return typeof pgpGetLoadedMachineForIndex === 'function' ? pgpGetLoadedMachineForIndex(i) : null; } catch (e) { return null; } }
+  function travado() { try { return typeof window.pgpCadTravado === 'function' && !!window.pgpCadTravado(); } catch (e) { return false; } }
+  function chave(serie, maq) { return ck(serie) + '|' + txt(maq && maq.id); }
+  var TETO = 15000;
+  function comTeto(p, ms, valor) { return Promise.race([Promise.resolve(p).catch(function () { return valor; }), new Promise(function (r) { setTimeout(function () { r(valor); }, ms); })]); }
+  PF154.comTeto = comTeto;
+
+  // máquina da frota em posse do cliente da tela? true · false · null (não deu para saber)
+  async function emPosseDe(m, cliente) {
+    if (!txt(cliente) || !txt(m && m.id)) return false;
+    try {
+      var d = await comTeto(pgpPostJson('frotaForaDeCasa', {}, 0), TETO, null);
+      if (!d || d.status !== 'ok' || !Array.isArray(d.fora_de_casa)) return null;
+      return d.fora_de_casa.some(function (c) { return txt(c.maquina_id) === txt(m.id) && cliK(c.cliente) === cliK(cliente); });
+    } catch (e) { nota(e, 'posse'); return null; }
+  }
+  PF154.emPosseDe = emPosseDe;
+
+  // ── a procura: { estado: 'achou', maq } · { estado: 'nada' } · { estado: 'sem_resposta' } ─────────────────────────────────
+  async function procurar(serie) { return comTeto(procurar1(serie), TETO, { estado: 'sem_resposta' }); }
+  async function procurar1(serie) {
+    var q = txt(serie);
+    if (!ck(q)) return { estado: 'nada' };
+    try { if (typeof pgpRedeBloqueada === 'function' && pgpRedeBloqueada()) return { estado: 'sem_resposta' }; } catch (e) {}
+    try { if (!_pgpGsConnected || !_pgpGsUrl) return { estado: 'sem_resposta' }; } catch (e) { return { estado: 'sem_resposta' }; }
+    try {
+      var url = _pgpGsUrl + '?action=searchMachine&q=' + encodeURIComponent(q) + '&key=' + _AUTH_HASH + gcParam();
+      var sinal; try { sinal = AbortSignal.timeout(12000); } catch (e) {}
+      var r = await _pcfFetchLeitura(url, sinal ? { signal: sinal } : undefined);
+      var d = await r.json();
+      if (!d || d.status !== 'ok') return { estado: 'sem_resposta' };
+      var m = d.machine;
+      // só a SÉRIE igual conta (a busca também casa TAG, cliente e modelo); inativa não é "a mesma máquina"
+      if (m && ck(m.serial) === ck(q) && txt(m.ativo || 'SIM').toUpperCase() !== 'NÃO') {
+        if (m.canonicalClient) m.client = m.canonicalClient;
+        try { if (typeof pgpMergeClientDataForLoad === 'function') m = pgpMergeClientDataForLoad(m, null); } catch (e) {}
+        return { estado: 'achou', maq: m };
+      }
+      return { estado: 'nada' };
+    } catch (e) { nota(e, 'procurar'); return { estado: 'sem_resposta' }; }
+  }
+  PF154.procurar = procurar;
+
+  function descricao(m) {
+    var s = [txt(m.brand), txt(m.model)].filter(Boolean).join(' ') || 'Máquina';
+    if (txt(m.tag)) s += ' · TAG ' + txt(m.tag);
+    return s;
+  }
+
+  // ── a pergunta: 'esta' · 'outra' · 'voltar' ─────────────────────────────────────────────────────────────────────────────
+  // clienteTela = o cliente que está na tela agora (para dizer se a visita muda de cliente)
+  async function perguntar(m, serie, clienteTela, posse) {
+    PF154.perguntas++;
+    var cliMaq = txt(m.client) || '(sem cliente)';
+    var osCli = travado() ? txt(window._PGP_OS_CLIENTE) : '';
+    var r;
+    if (posse) {
+      r = await AppDialog.confirm(
+        'A série ' + txt(serie) + ' já está cadastrada:\n' + descricao(m) + ' — da frota de ' + cliMaq + ', com ' + txt(clienteTela) + '.\n\nÉ esta máquina?',
+        { title: 'Série já cadastrada', okLabel: 'É esta — usar o cadastro', cancelLabel: 'Não é esta' });
+      if (r) return 'esta';
+    } else if (osCli && cliK(osCli) !== cliK(cliMaq)) {
+      r = await AppDialog.confirm(
+        'A série ' + txt(serie) + ' já é da máquina ' + descricao(m) + ', do cliente ' + cliMaq + '.\n\n' +
+        'Esta OS é de ' + osCli + ': por aqui essa máquina não entra na OS. Se for a mesma, peça ao escritório para incluí-la.',
+        { title: 'Série já cadastrada em outro cliente', okLabel: 'Voltar', cancelLabel: 'É outra máquina' });
+      if (r) return 'voltar';
+    } else {
+      var muda = txt(clienteTela) && txt(m.client) && cliK(clienteTela) !== cliK(cliMaq);
+      r = await AppDialog.confirm(
+        'A série ' + txt(serie) + ' já está cadastrada:\n' + descricao(m) + ' — ' + cliMaq + '.\n\n' +
+        'É esta máquina?' + (muda ? ' A visita passa para o cliente ' + cliMaq + '.' : ''),
+        { title: 'Série já cadastrada', okLabel: 'É esta — usar o cadastro', cancelLabel: 'Não é esta' });
+      if (r) return 'esta';
+    }
+    var nova = await AppDialog.confirm(
+      'Cadastrar uma máquina NOVA com a série ' + txt(serie) + '?\n\nSe for a mesma máquina, o histórico fica dividido em dois cadastros.',
+      { title: 'Confirmar máquina nova', okLabel: 'Sim, é outra máquina', cancelLabel: 'Voltar', danger: true });
+    return nova ? 'outra' : 'voltar';
+  }
+  PF154.perguntar = perguntar;
+
+  // ── "É esta": a coleta passa a usar o cadastro que existe ───────────────────────────────────────────────────────────────
+  var MAPA_CLI = { razao_social: 'client', filial: 'branch', cnpj: 'cnpj', contato: 'contact', telefone: 'phone', email: 'email', cidade: 'city' };
+  function usarCadastro(m, i, posse) {
+    var antes = val(i, 'razao_social');
+    var guardado = {};   // em posse: o cadastro do cliente da tela fica como está
+    Object.keys(MAPA_CLI).concat(['uf']).forEach(function (k) { var el = campo(i, k); if (el) guardado[k] = { v: el.value, t: el.dataset.pgpTocado }; });
+    // o técnico CONFIRMOU o cadastro: o que ele digitou de cadastro (marca, modelo, TAG…) dá lugar ao do cadastro; a coleta fica
+    try {
+      document.querySelectorAll('[data-key^="m' + i + '_"]').forEach(function (el) {
+        var k = txt(el.dataset && el.dataset.key);
+        if (typeof pgpEhCampoColeta === 'function' && pgpEhCampoColeta(k)) return;
+        try { delete el.dataset.pgpTocado; } catch (e) {}
+      });
+    } catch (e) { nota(e, 'tocado'); }
+    var localDb = null; try { localDb = JSON.parse(localStorage.getItem('proper_admin_v2')); } catch (e) {}
+    if (posse && txt(antes)) {
+      // frota em posse: a máquina entra no painel em nome do cliente da tela (o envio usa o cliente da máquina carregada)
+      m = Object.assign({}, m, { client: antes, canonicalClient: antes, branch: '', cnpj: '', contact: '', phone: '', email: '', city: '' });
+      delete m.clientData;
+    }
+    pgpLoadMachine(m, localDb, i);
+    if (posse || !txt(m.client)) {
+      Object.keys(guardado).forEach(function (k) { var el = campo(i, k); if (!el) return; el.value = guardado[k].v; if (guardado[k].t) el.dataset.pgpTocado = guardado[k].t; });
+    } else if (cliK(antes) !== cliK(m.client)) {
+      // trocou de cliente: o cadastro do cliente de antes sai da tela (senão o CNPJ/contato dele iria para o cliente da máquina)
+      var cd = m.clientData || {};
+      Object.keys(MAPA_CLI).forEach(function (k) {
+        var el = campo(i, k); if (!el) return;
+        el.value = txt(m[MAPA_CLI[k]]);
+        try { delete el.dataset.pgpTocado; } catch (e) {}
+      });
+      var uf = campo(i, 'uf'); if (uf) { uf.value = txt(cd.uf).toUpperCase(); try { delete uf.dataset.pgpTocado; } catch (e) {} }
+    }
+    try { if (typeof pgpSaveLastClient === 'function') pgpSaveLastClient(m.client); if (typeof pgpRenderLastClients === 'function') pgpRenderLastClients(); } catch (e) {}
+    try { if (typeof pgpRenderLoadedCard === 'function') pgpRenderLoadedCard(i); } catch (e) {}
+    try { var f = document.getElementById('pgpFound'); if (f && i === currentMachine) { f.textContent = '✓ Carregado: ' + descricao(m) + ' — ' + txt(m.client); f.classList.add('show'); } } catch (e) {}
+    aviso('✅ Máquina ' + (i + 1) + ': usando o cadastro que existe (série ' + txt(m.serial) + ' · ' + (posse ? txt(antes) : txt(m.client)) + ')');
+  }
+  PF154.usarCadastro = usarCadastro;
+
+  // decide um painel: devolve false só quando o técnico mandou VOLTAR
+  async function decidir(i, serie, clienteTela) {
+    var r = await procurar(serie);
+    if (r.estado === 'sem_resposta') { PF154.semResposta = (PF154.semResposta || 0) + 1; return { seguir: true, semResposta: true }; }
+    if (r.estado !== 'achou') return { seguir: true };
+    var k = chave(serie, r.maq);
+    if (PF154.respostas[k] === 'outra') return { seguir: true };
+    var cliRef = travado() ? txt(window._PGP_OS_CLIENTE) : txt(clienteTela);
+    var posse = (cliRef && cliK(cliRef) !== cliK(r.maq.client)) ? (await emPosseDe(r.maq, cliRef)) === true : false;
+    var dec = await perguntar(r.maq, serie, cliRef, posse);
+    if (dec === 'outra') { PF154.respostas[k] = 'outra'; return { seguir: true }; }
+    if (dec === 'voltar') return { seguir: false };
+    return { seguir: true, esta: r.maq, posse: posse };
+  }
+  PF154.decidir = decidir;
+
+  function embrulhar(nome, fazer) {
+    try { var o = window[nome]; if (typeof o !== 'function' || o.__pf154) return; var n = fazer(o); n.__pf154 = true; window[nome] = n; } catch (e) { nota(e, 'embrulhar ' + nome); }
+  }
+
+  // ── (2) ✚ Cadastrar e carregar ────────────────────────────────────────────────────────────────────────────────────────
+  embrulhar('pgpRegisterNew', function (orig) {
+    return async function (btnEl) {
+      var self = this, args = arguments;
+      if (!ativo()) return orig.apply(self, args);
+      var serie = txt((document.getElementById('nm_serial') || {}).value);
+      if (!ck(serie)) return orig.apply(self, args);
+      if (PF154.voo.cad) return;
+      PF154.voo.cad = true;
+      var d;
+      try {
+        var cli = txt((document.getElementById('nm_client') || {}).value);
+        d = await (typeof _comLoadingBtn_ === 'function' ? _comLoadingBtn_(btnEl, function () { return decidir(currentMachine, serie, cli); }) : decidir(currentMachine, serie, cli));
+      } catch (e) { nota(e, 'cadastro'); d = { seguir: true }; }
+      finally { PF154.voo.cad = false; }
+      if (!d.seguir) { aviso('Cadastro não feito.'); return; }
+      if (d.esta) {
+        try {
+          var nm = document.getElementById('pgpNewMachine'); if (nm) nm.classList.remove('show');
+          var nf = document.getElementById('pgpNotFound'); if (nf) nf.classList.remove('show');
+          if (typeof pgpConsumirDestinoNovoPainel === 'function') pgpConsumirDestinoNovoPainel();
+          usarCadastro(d.esta, currentMachine, d.posse);
+          if (typeof pgpFinalizarInclusaoOS === 'function') pgpFinalizarInclusaoOS();
+        } catch (e) { nota(e, 'cadastro esta'); }
+        return;
+      }
+      if (d.semResposta) aviso('📴 Sem resposta do servidor: não deu para conferir se a série ' + serie + ' já existe.');
+      return orig.apply(self, args);
+    };
+  });
+
+  // ── (3) Enviar: os painéis que vão sair sem máquina carregada ───────────────────────────────────────────────────────────
+  embrulhar('pgpEnviarGS', function (orig) {
+    return async function () {
+      var self = this, args = arguments;
+      if (!ativo()) return orig.apply(self, args);
+      try { if (typeof _pgpEnviarGSBusy !== 'undefined' && _pgpEnviarGSBusy) return orig.apply(self, args); } catch (e) {}
+      if (PF154.voo.envio) return;
+      PF154.voo.envio = true;
+      var sem = [], srcBtn = args[0], ocupou = false;
+      try {
+        try { if (srcBtn && srcBtn.classList && !srcBtn.classList.contains('is-busy')) { srcBtn.classList.add('is-busy'); ocupou = true; } } catch (e) {}
+        var ms = (typeof machines !== 'undefined' && machines) ? machines : [];
+        var idxs = ms.map(function (_, i) { return i; }).filter(function (i) { try { return pgpHasMachineData(i); } catch (e) { return false; } });
+        for (var n = 0; n < idxs.length; n++) {
+          var i = idxs[n];
+          if (PF154.pend[i]) await comTeto(PF154.pend[i], 2 * TETO + 60000, null);   // a pergunta do campo ainda aberta: espera a resposta dela
+          var serie = val(i, 'ns');
+          if (!ck(serie) || carregada(i)) continue;
+          var d = await decidir(i, serie, val(i, 'razao_social'));
+          if (!d.seguir) {
+            try { var el = campo(i, 'ns'); if (typeof switchMachine === 'function' && i !== currentMachine) switchMachine(i); if (el) { el.scrollIntoView({ block: 'center' }); } } catch (e) {}
+            aviso('Envio não feito: confira a máquina ' + (i + 1) + ' (série ' + serie + ').');
+            return;
+          }
+          if (d.esta) usarCadastro(d.esta, i, d.posse);
+          if (d.semResposta) sem.push(serie);
+        }
+      } catch (e) { nota(e, 'envio'); }
+      finally { PF154.voo.envio = false; try { if (ocupou) srcBtn.classList.remove('is-busy'); } catch (e) {} }
+      if (sem.length) aviso('📴 Sem resposta do servidor: não deu para conferir se a série ' + sem.join(', ') + ' já existe.');
+      return orig.apply(self, args);
+    };
+  });
+
+  // ── (1) ao sair do campo Nº Série de um painel sem máquina carregada ──────────────────────────────────────────────────
+  document.addEventListener('change', function (ev) {
+    try {
+      if (!ativo()) return;
+      var el = ev.target, k = el && el.dataset ? txt(el.dataset.key) : '';
+      var mm = k.match(/^m(\d+)_ns$/); if (!mm) return;
+      var i = Number(mm[1]), serie = txt(el.value);
+      if (!ck(serie) || carregada(i) || PF154.pend[i]) return;
+      PF154.pend[i] = decidir(i, serie, val(i, 'razao_social')).then(function (d) {
+        if (d.esta && !carregada(i) && ck(val(i, 'ns')) === ck(serie)) usarCadastro(d.esta, i, d.posse);
+      }, function (e) { nota(e, 'campo'); }).then(function () { delete PF154.pend[i]; });
+    } catch (e) { nota(e, 'change'); }
+  }, true);
+
+  PF154.ok = true;
+})();
+</script>
+<!-- ████ FIM PCF_V154 (PF154) ████ -->
 </body>
 </html>
