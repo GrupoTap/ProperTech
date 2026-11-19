@@ -9,7 +9,8 @@
  * O activate abaixo apaga qualquer cache antigo com prefixo 'propertech-'.
  */
 const CACHE_BASE = 'propertech-';
-const CACHE = CACHE_BASE + 'v156';  // 18/11/2026 — par do PCF_V154 (🔎 série que já existe: "É esta máquina?" — ProperCare-backlog#183). Sem bump, o celular serve o V153 do cache.
+const CACHE = CACHE_BASE + 'v157';  // 19/11/2026 — par do PCF_V155 (🔎 a busca do ＋ diz quantos achou e tem "Mostrar mais" — ProperCare-backlog#273). Sem bump, o celular serve o V154 do cache.
+// antes: 'v156'  // 18/11/2026 — par do PCF_V154 (🔎 série que já existe: "É esta máquina?" — ProperCare-backlog#183). Sem bump, o celular serve o V153 do cache.
 // antes: 'v155'  // 16/11/2026 — par do PCF_V153 (🏭 linha do tempo da máquina na OS da oficina — ProperCare-backlog#194). Sem bump, o celular serve o V152 do cache.
 // antes: 'v154'  // 14/11/2026 — par do PCF_V152 (🔒 trava por tarefa: a tarefa que precisa do kit espera, o resto da OS segue — ProperCare-backlog#189). Sem bump, o celular serve o V151 do cache.
 // antes: 'v152'  // 10/11/2026 — par do PCF_V150 (Retirei o kit: cartão do kit da OS, câmera com leitor de QR, ProperCare-backlog#139). Sem bump, o celular serve o V149 do cache.
@@ -81,6 +82,7 @@ const CACHE = CACHE_BASE + 'v156';  // 18/11/2026 — par do PCF_V154 (🔎 sér
 //        PCF_V108 ↔  propertech-v110  (11/09 — a rodada Campo e Documentos)
 //        PCF_V110 ↔  propertech-v112  (17/09 — os motores CFX + PWAIT, front puro)
 //        PCF_V109 ↔  propertech-v111  (11/09 — o PDF da preventiva: compress:true + PDF na fila do IndexedDB)
+//        PCF_V155 ↔  propertech-v157  (19/11 — 🔎 a busca do ＋ peça/serviço diz "12 de 112" e tem "Mostrar mais" — ProperCare-backlog#273)
 //        PCF_V154 ↔  propertech-v156  (18/11 — 🔎 série que já existe: "É esta máquina?" antes de nascer outra — ProperCare-backlog#183)
 //        PCF_V153 ↔  propertech-v155  (16/11 — 🏭 linha do tempo da máquina na OS da oficina: a faixa das 9 estações — ProperCare-backlog#194)
 //        PCF_V152 ↔  propertech-v154  (14/11 — 🔒 trava por tarefa: a tarefa marcada "precisa do kit" espera, o resto da OS segue; Pode começar? na OS — ProperCare-backlog#189)

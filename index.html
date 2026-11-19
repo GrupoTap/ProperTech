@@ -1840,8 +1840,15 @@ html[data-boot="pipeline"] #pf113Splash{display:flex;position:fixed;inset:0;z-in
   ao escritorio. Sem resposta do servidor: avisa que nao deu para conferir e segue. Chave de volta pcf154=off. Bloco PF154 no fim do
   body; nenhum remendo no corpo de outros blocos.
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V154</title>
-<meta name="app-build" content="PCF_V154" data-date="2026-11-18">
+<!--
+  PCF_V155 · BUSCA DO MAIS QUE DIZ QUANTOS ACHOU · 19/11/2026 · feito SOBRE o PCF_V154 no ar · par sw propertech-v157 · SQL
+  OS_ITEM_BUSCA_TOTAL (cadeia 154) roda ANTES · zero GAS. ProperCare-backlog#273 (parte 2). No "Acrescentar peca ou servico nesta
+  OS" a busca cortava calado (25 pecas, 40 servicos, e a tela cortava os servicos em 25). Agora cada grupo diz "12 de 112" e tem
+  "Mostrar mais"; o "Nao achei" fica abaixo e diz quantos ainda ha. Sem o SQL: igual ao V154. Chave de volta pcf155=off. Bloco
+  PF155 no fim do body + 4 ganchos no PF145 (sem o PF155 fazem o mesmo de antes).
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V155</title>
+<meta name="app-build" content="PCF_V155" data-date="2026-11-19">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -44084,8 +44091,10 @@ html.pf129 #pf145Folha .li{border-top-color:#eef1f5}
            '<small>' + esc([o.codigo ? 'ref. ' + o.codigo : '', o.de || ''].filter(Boolean).join(' · ')) + '</small></button>';
     });
     if (!n.buscando && n.txt && String(n.txt).trim().length >= 2 && n.feita && !(n.res || []).length && !n.erroBusca) h += '<div class="pf145-dica">Nada encontrado com "' + esc(n.txt) + '".</div>';
+    var v155 = !!(window.PF155 && PF155.ativo());   // PCF_V155: "▾ Mostrar mais … · 12 de 112" acima do "Não achei", que diz quantos ainda há
+    if (v155) h += PF155.maisHtml(hk, n);
     if (n.txt && String(n.txt).trim().length >= 2)
-      h += '<button type="button" class="pf145-op livre" data-pf145="livre" data-hk="' + esc(hk) + '">✍ Não achei — usar "' + esc(String(n.txt).trim()) + '"<small>fica "a identificar": o escritório escolhe o cadastro certo</small></button>';
+      h += '<button type="button" class="pf145-op livre" data-pf145="livre" data-hk="' + esc(hk) + '">✍ Não achei — usar "' + esc(String(n.txt).trim()) + '"<small>fica "a identificar": o escritório escolhe o cadastro certo' + (v155 ? esc(PF155.faltamTxt(n)) : '') + '</small></button>';
     return h;
   }
   function novoHtml(os, d, idx, mid) {
@@ -44219,17 +44228,20 @@ html.pf129 #pf145Folha .li{border-top-color:#eef1f5}
 
   // ── 6 · a busca do ＋ ──────────────────────────────────────────────────────────────────────────────────────
   function pintarResultados(hk) { var el = $(hkId(hk)); if (el) el.innerHTML = resultadosHtml(hk); }
+  PF145.pintarResultados = pintarResultados;   // PCF_V155 (ProperCare-backlog#273): o "Mostrar mais" repinta só a lista
   async function buscar(hk) {
     var n = PF145.novo[hk]; if (!n || !n.nat || n.sel) return;
     var txt = String(n.txt || '').trim(), seq = (n.seq = (n.seq || 0) + 1);
     if (n.nat === 'peca' && txt.length < 2 && !n.maqBusca) { n.res = []; n.feita = false; n.erroBusca = ''; pintarResultados(hk); return; }
     n.buscando = true; n.erroBusca = ''; pintarResultados(hk);
     try {
-      var r = await rpc('pc_os_item_buscar', { p: { os: n.os, natureza: n.nat, maquina_id: n.maqBusca || null, texto: txt } });
+      var r = await rpc('pc_os_item_buscar', { p: { os: n.os, natureza: n.nat, maquina_id: n.maqBusca || null, texto: txt,
+        limite: window.PF155 && PF155.ativo() && n.nat === 'peca' ? PF155.LIMITE : undefined } });   // PCF_V155: a peça de 12 em 12 (sem ele, 25)
       if (n.seq !== seq || PF145.novo[hk] !== n) return;   // chegou outra busca depois desta
       var ops = (r && Array.isArray(r.opcoes)) ? r.opcoes : [];
       // a primeira lista (sem texto) pode ser longa: o filtro local sem acento ajuda enquanto o servidor não responde a próxima
-      n.res = ops.slice(0, 25); n.feita = true;
+      if (window.PF155 && PF155.ativo()) PF155.depois(n, r, txt, ops); else n.res = ops.slice(0, 25);   // PCF_V155: sem o corte calado de 25; guarda os totais
+      n.feita = true;
     } catch (e) {
       if (n.seq !== seq) return;
       n.res = []; n.feita = false;
@@ -47182,5 +47194,117 @@ html.pf129 .pf153 li.a .d{color:#b54708}
 })();
 </script>
 <!-- ████ FIM PCF_V154 (PF154) ████ -->
+<!-- ████ PCF_V155 (PF155) · 🔎 BUSCA DO ＋ QUE DIZ QUANTOS ACHOU — "12 de 112" + ▾ Mostrar mais · 19/11/2026 ████ -->
+<style id="pf155Css">
+.pf155-mais{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-height:44px;padding:8px 10px;border:1px dashed #60a5fa;border-radius:8px;background:transparent;color:#93c5fd;font-size:14px;font-weight:600;text-align:left;cursor:pointer}
+.pf155-mais small{color:#94a3b8;font-size:12px;font-weight:400;white-space:nowrap}
+.pf155-mais:active{filter:brightness(1.3)}
+.pf155-mais[disabled]{opacity:.65;cursor:progress}
+.pf155-erro{font-size:12px;color:#fca5a5;margin-top:4px}
+html.pf129 .pf155-mais{color:#1d4ed8;border-color:#93c5fd}
+html.pf129 .pf155-mais small{color:#475569}
+html.pf129 .pf155-erro{color:#b91c1c}
+</style>
+<script>
+/* ════════════════════════════════════════════════════════════════════════════════════════════════════════════
+   PCF_V155 (PF155) — ProperCare-backlog#273, parte 2 · 19/11/2026 · par do SQL OS_ITEM_BUSCA_TOTAL (154).
+   O ＋ Acrescentar peça ou serviço nesta OS cortava a busca calado: o banco devolvia 25 peças (máquina + Omie juntos) ou 40
+   serviços, em ordem alfabética, e a tela ainda cortava os serviços em 25. Digitar "kit" mostrava 25 de 112 sem dizer.
+   Agora o banco devolve o TOTAL de cada grupo e a ordem por relevância; a tela mostra a lista inteira da página e, em cada grupo
+   que tem mais, um "▾ Mostrar mais … · 12 de 112" que traz os próximos (do banco, grupo + "a partir de"). O "✍ Não achei" fica
+   abaixo e diz quantos ainda há para ver. Sem os totais (servidor sem o SQL): igual ao V154. Chave de volta: pcf155 = off.
+   Ganchos no PF145 (4, sem o PF155 fazem o mesmo de antes): pintarResultados exposto · a peça pede 12 por página · a lista sem o corte de 25 · o
+   "Mostrar mais" acima do "Não achei". Zero GAS.
+   ════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+  var OFF_KEY = 'pcf155';
+  var PF155 = window.PF155 = { versao: 'PCF_V155', log: [] };
+  var GRUPOS = { peca: ['peca_maquina', 'produto_erp'], servico: ['servico'] };
+  var ROT = { peca_maquina: 'peças da máquina', produto_erp: 'produtos do Omie', servico: 'serviços' };
+  function ativo() { if (!window.PF145) return false; try { return localStorage.getItem(OFF_KEY) !== 'off'; } catch (e) { return true; } }
+  PF155.ativo = ativo;
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function nota(e, onde) { try { PF155.log.push({ onde: onde, msg: String((e && e.message) || e), em: Date.now() }); if (PF155.log.length > 40) PF155.log.shift(); } catch (x) {} }
+  function inteiro(v) { if (v === null || v === undefined || v === '') return null; var x = Number(v); return isFinite(x) && x >= 0 ? Math.floor(x) : null; }
+  function mostrados(n, g) { return (n.res || []).filter(function (o) { return o && o.fonte === g; }).length; }
+  // a posição no BANCO de cada grupo (quantos ele já mandou): o "a partir de" é ela, nunca a contagem da tela — a linha repetida
+  //   (a mesma peça gravada pelo id e pela chave MK) aparece uma vez na tela e conta duas no banco (auditoria #273, achado 2)
+  function pos(n, g) { return n.pos && n.pos[g] != null ? n.pos[g] : mostrados(n, g); }
+  PF155.LIMITE = 12;   // a peça de 12 em 12 (o PCF V154, sem limite, recebe 25 por grupo)
+  // a lista na hora + o cartão inteiro pelo PF145.pintar (adiado 30 ms): o cartão guardado enquanto o campo tinha o foco
+  //   (__pf145Pend) é escrito no focusout e apagaria o "Mostrar mais" — a pintura do PF145 vem depois dele e põe o estado de agora
+  function repintar(hk) {
+    try { if (typeof PF145.pintarResultados === 'function') PF145.pintarResultados(hk); } catch (e) { nota(e, 'repintar lista'); }
+    try { PF145.pintar(); } catch (e) { nota(e, 'repintar'); }
+  }
+
+  // ── 1 · depois da busca do PF145: a página inteira (sem o corte de 25) e o total de cada grupo ──────────────────
+  PF155.depois = function (n, r, txt, ops) {
+    n.res = ops.slice(); n.q = txt; n.maisVoo = ''; n.maisErro = ''; n.maisTok = null; n.pos = {};
+    var t = r && r.totais && typeof r.totais === 'object' ? r.totais : null, tot = null;
+    if (t) { tot = {}; (GRUPOS[n.nat] || []).forEach(function (g) { var x = inteiro(t[g]); if (x != null) tot[g] = x; n.pos[g] = mostrados(n, g); }); }
+    n.tot = tot;   // servidor sem o SQL (sem totais): nada de "mostrar mais" — a lista é a de antes
+  };
+  PF155.faltam = function (n) {
+    if (!n || !n.tot || n.buscando || !n.feita) return 0;
+    var f = 0; Object.keys(n.tot).forEach(function (g) { f += Math.max(0, n.tot[g] - pos(n, g)); }); return f;
+  };
+  PF155.faltamTxt = function (n) { var f = PF155.faltam(n); return f ? ' · ainda há ' + f + ' na busca acima' : ''; };
+
+  // ── 2 · o "▾ Mostrar mais" de cada grupo que tem mais (acima do "Não achei") ───────────────────────────────────
+  PF155.maisHtml = function (hk, n) {
+    if (!n || n.sel || n.buscando || !n.feita || !n.tot) return '';
+    var h = '';
+    (GRUPOS[n.nat] || []).forEach(function (g) {
+      var tot = n.tot[g], ja = pos(n, g); if (tot == null || tot <= ja) return;
+      h += '<button type="button" class="pf155-mais" data-pf155="mais" data-hk="' + esc(hk) + '" data-g="' + g + '"' + (n.maisVoo ? ' disabled' : '') + '>' +
+           '<span>' + (n.maisVoo === g ? '⏳ Buscando mais…' : '▾ Mostrar mais ' + ROT[g]) + '</span><small>' + ja + ' de ' + tot + '</small></button>';
+    });
+    if (n.maisErro) h += '<div class="pf155-erro" role="status">' + esc(n.maisErro) + '</div>';
+    return h;
+  };
+
+  // ── 3 · traz os próximos de UM grupo (a partir de quantos já estão na tela) ─────────────────────────────────────
+  PF155.mais = async function (hk, g) {
+    var n = window.PF145 && PF145.novo[hk];
+    if (!n || n.sel || !n.tot || n.maisVoo || n.buscando || !n.feita || (GRUPOS[n.nat] || []).indexOf(g) < 0) return false;
+    if (String(n.txt || '').trim() !== String(n.q || '')) return false;   // o texto mudou e a busca nova ainda não saiu
+    var seq = n.seq, de = pos(n, g), tok = {};
+    if (!(n.tot[g] > de)) return false;
+    n.maisVoo = g; n.maisErro = ''; n.maisTok = tok; repintar(hk);
+    try {
+      var p = { os: n.os, natureza: n.nat, maquina_id: n.maqBusca || null, texto: n.q, grupo: g, a_partir: de };
+      if (n.nat === 'peca') p.limite = PF155.LIMITE;
+      var r = await PF145.rpc('pc_os_item_buscar', { p: p });
+      if (PF145.novo[hk] !== n || n.seq !== seq) return false;   // outra busca começou depois desta: a resposta não vale
+      var doG = ((r && Array.isArray(r.opcoes)) ? r.opcoes : []).filter(function (o) { return o && o.fonte === g; });
+      var ja = {}; n.res.forEach(function (o) { ja[JSON.stringify(o)] = 1; });
+      var novos = doG.filter(function (o) { var k = JSON.stringify(o); if (ja[k]) return false; ja[k] = 1; return true; });   // a mesma linha não entra 2× na tela
+      var ult = -1; n.res.forEach(function (o, i) { if (o && o.fonte === g) ult = i; });
+      Array.prototype.splice.apply(n.res, [ult < 0 ? n.res.length : ult + 1, 0].concat(novos));
+      n.pos[g] = de + doG.length;   // a posição do banco anda o que ele mandou (mesmo o que a tela não repetiu)
+      var t = r && r.totais ? inteiro(r.totais[g]) : null; if (t != null) n.tot[g] = t;
+      if (!doG.length) n.tot[g] = de;   // nada veio (a lista mudou no banco): o botão não fica em laço
+      return true;
+    } catch (e) {
+      if (PF145.novo[hk] === n && n.seq === seq)   // o detalhe fica no registro (PF155.log), nunca na tela
+        n.maisErro = e && e.pf145 === 'rede' ? 'Sem conexão para trazer mais — toque de novo quando voltar.' : 'Não deu para trazer mais — toque de novo.';
+      nota(e, 'mais'); return false;
+    } finally {
+      if (PF145.novo[hk] === n && n.maisTok === tok) { n.maisVoo = ''; n.maisTok = null; repintar(hk); }   // só quem armou a espera a solta
+    }
+  };
+
+  document.addEventListener('click', function (ev) {
+    var b = ev.target && ev.target.closest && ev.target.closest('[data-pf155]'); if (!b || !ativo()) return;
+    ev.preventDefault(); ev.stopPropagation();
+    if (b.disabled) return;
+    try { var fo = document.activeElement, cx = b.closest('.pf145'); if (fo && fo !== b && cx && cx.contains(fo) && (fo.tagName === 'INPUT' || fo.tagName === 'TEXTAREA')) fo.blur(); } catch (e) {}
+    if (b.getAttribute('data-pf155') === 'mais') PF155.mais(b.getAttribute('data-hk'), b.getAttribute('data-g'));
+  }, true);
+})();
+</script>
+<!-- ████ FIM PCF_V155 (PF155) ████ -->
 </body>
 </html>
