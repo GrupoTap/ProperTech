@@ -9,7 +9,8 @@
  * O activate abaixo apaga qualquer cache antigo com prefixo 'propertech-'.
  */
 const CACHE_BASE = 'propertech-';
-const CACHE = CACHE_BASE + 'v157';  // 19/11/2026 — par do PCF_V155 (🔎 a busca do ＋ diz quantos achou e tem "Mostrar mais" — ProperCare-backlog#273). Sem bump, o celular serve o V154 do cache.
+const CACHE = CACHE_BASE + 'v158';  // 20/11/2026 — par do PCF_V156 (⛔ máquina que o envio recusa não se esconde mais — ProperCare-backlog#300). Sem bump, o celular serve o V155 do cache.
+// antes: 'v157'  // 19/11/2026 — par do PCF_V155 (🔎 a busca do ＋ diz quantos achou e tem "Mostrar mais" — ProperCare-backlog#273)
 // antes: 'v156'  // 18/11/2026 — par do PCF_V154 (🔎 série que já existe: "É esta máquina?" — ProperCare-backlog#183). Sem bump, o celular serve o V153 do cache.
 // antes: 'v155'  // 16/11/2026 — par do PCF_V153 (🏭 linha do tempo da máquina na OS da oficina — ProperCare-backlog#194). Sem bump, o celular serve o V152 do cache.
 // antes: 'v154'  // 14/11/2026 — par do PCF_V152 (🔒 trava por tarefa: a tarefa que precisa do kit espera, o resto da OS segue — ProperCare-backlog#189). Sem bump, o celular serve o V151 do cache.
@@ -82,6 +83,7 @@ const CACHE = CACHE_BASE + 'v157';  // 19/11/2026 — par do PCF_V155 (🔎 a bu
 //        PCF_V108 ↔  propertech-v110  (11/09 — a rodada Campo e Documentos)
 //        PCF_V110 ↔  propertech-v112  (17/09 — os motores CFX + PWAIT, front puro)
 //        PCF_V109 ↔  propertech-v111  (11/09 — o PDF da preventiva: compress:true + PDF na fila do IndexedDB)
+//        PCF_V156 ↔  propertech-v158  (20/11 — ⛔ preventiva de várias máquinas: a máquina que o envio recusa pergunta ou trava com "Resolver" — ProperCare-backlog#300)
 //        PCF_V155 ↔  propertech-v157  (19/11 — 🔎 a busca do ＋ peça/serviço diz "12 de 112" e tem "Mostrar mais" — ProperCare-backlog#273)
 //        PCF_V154 ↔  propertech-v156  (18/11 — 🔎 série que já existe: "É esta máquina?" antes de nascer outra — ProperCare-backlog#183)
 //        PCF_V153 ↔  propertech-v155  (16/11 — 🏭 linha do tempo da máquina na OS da oficina: a faixa das 9 estações — ProperCare-backlog#194)
