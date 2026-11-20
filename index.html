@@ -47440,8 +47440,9 @@ html.pf129 .pf155-erro{color:#b91c1c}
   function avisar() {
     try {
       if (localStorage.getItem(CHAVE) !== null || localStorage.getItem(AVISO)) return;
+      if (typeof showNotification !== 'function') return;   // sem o toast ainda: não marca (o aviso fica para a próxima abertura)
+      showNotification('✨ O visual novo agora é o padrão do PCF. Para voltar ao de sempre: ☰ Menu.');
       localStorage.setItem(AVISO, new Date().toISOString().slice(0, 10));
-      if (typeof showNotification === 'function') showNotification('✨ O visual novo agora é o padrão do PCF. Para voltar ao de sempre: ☰ Menu.');
     } catch (e) {}
   }
 
