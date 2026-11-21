@@ -48022,7 +48022,7 @@ html.pf159 .scenario-selector > .pf159-cen{display:none}
 html.pf159 .scenario-selector.pf159-esc > .pf159-cen{display:flex;align-items:center;gap:10px;min-height:56px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:6px 8px 6px 12px;margin:0 0 10px}
 html.pf159 .scenario-selector.pf159-esc > .scenario-label,html.pf159 .scenario-selector.pf159-esc > .scenario-btns{display:none!important}
 html.pf159 .pf159-cen .tx{flex:1;min-width:0;font:700 14px Inter,system-ui,sans-serif;color:#0f172a;line-height:1.25}
-html.pf159 .pf159-cen .tx small{display:block;font:400 12px Inter,system-ui,sans-serif;color:#475569}
+html.pf159 .pf159-cen .tx .s{display:block;font:400 12px Inter,system-ui,sans-serif;color:#475569}
 html.pf159 .pf159-trocar{min-height:52px;padding:0 14px;border-radius:12px;border:1.5px solid #fdba74;background:#fff;color:#c2410c;font:700 14px Inter,system-ui,sans-serif;cursor:pointer;flex-shrink:0}
 html.pf159 .pf159-trocar:active{background:#fff7ed}
 html.pf159 [id$="_parts_table_content"] > .sc-hint{display:none!important}
@@ -48214,7 +48214,7 @@ html.pf159 .pcf117-item.pf159-fech .pf159-res{display:block;font:400 12px Inter,
     var on = sel.querySelector('.sc-btn.active'), ln = sel.querySelector(':scope > .pf159-cen');
     if (!ln) {
       ln = document.createElement('div'); ln.className = 'pf159-cen';
-      ln.innerHTML = '<div class="tx"><b></b><small>cenário desta máquina</small></div><button type="button" class="pf159-trocar" data-pf159="cen">Trocar</button>';
+      ln.innerHTML = '<div class="tx"><b></b><span class="s">cenário desta máquina</span></div><button type="button" class="pf159-trocar" data-pf159="cen">Trocar</button>';
       sel.insertBefore(ln, sel.firstChild);
     }
     if (on) txt(ln.querySelector('b'), String((on.querySelector('.sc-title') || on).textContent || '').trim());
