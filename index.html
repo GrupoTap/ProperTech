@@ -1880,8 +1880,17 @@ html[data-boot="pipeline"] #pf113Splash{display:flex;position:fixed;inset:0;z-in
   em "Escolher da lista", campos opcionais em "Mais". Chave de volta pcf159=off. Bloco PF159 no fim do body + 1 gancho no PF130 e
   1 no PF149 (sem o PF159 fazem o mesmo de antes).
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V159</title>
-<meta name="app-build" content="PCF_V159" data-date="2026-11-20">
+<!--
+  PCF_V160 · FOTOS, ASSINATURAS E O FECHAMENTO NO PADRAO · 21/11/2026 · feito SOBRE o PCF_V159 no ar · par sw propertech-v162 ·
+  zero SQL, zero GAS. ProperCare-backlog#309 (Parte 2, PR 4 — pranchas 7 e 8, decisao D6). So o visual novo: etapa 05 com as
+  fotos feitas numa faixa com miniaturas e a vaga que falta em nome + camera | N/D; lembrete do escritorio num "i" no fim da
+  etapa; etapa 08 com uma linha por assinatura e um botao so (o fluxo de sempre); folha do Concluir com trava no padrao (trava
+  em vermelho com o botao que resolve, checklist, Concluir e enviar apagado, Voltar e So o PDF); sai o cartao "Situacao do
+  envio" (o que so ele dizia continua aparecendo, sem titulo). Chave de volta pcf160=off. Bloco PF160 no fim do body + 1 gancho
+  no PF130 (sem o PF160 faz o mesmo de antes).
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V160</title>
+<meta name="app-build" content="PCF_V160" data-date="2026-11-21">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -38874,6 +38883,7 @@ html.pf129.pf130.pf130-cli #pgpTipoVisitaWrap{display:block!important}
     try { resgatar(); } catch (e) { nota(e, 'resgatar'); }
     try { if (window.PF158 && PF158.depois) PF158.depois(); } catch (e) { nota(e, 'pf158'); }   /* PCF_V158 (#309); sem o PF158, igual */
     try { if (window.PF159 && PF159.depois) PF159.depois(); } catch (e) { nota(e, 'pf159'); }   /* PCF_V159 (#309); sem o PF159, igual */
+    try { if (window.PF160 && PF160.depois) PF160.depois(); } catch (e) { nota(e, 'pf160'); }   /* PCF_V160 (#309); sem o PF160, igual */
   }
   function agendar() { if (_raf) return; _raf = (window.requestAnimationFrame || setTimeout)(tudo, 16); }
   PF130.pintar = function () { _raf = 0; tudo(); };
@@ -48459,6 +48469,285 @@ html.pf159 .pcf117-item.pf159-fech .pf159-res{display:block;font:400 12px Inter,
 })();
 </script>
 <!-- ████ FIM PCF_V159 (PF159) ████ -->
+<!-- ████ PCF_V160 (PF160) · 📸 FOTOS, ASSINATURAS E O FECHAMENTO NO PADRÃO · 21/11/2026 ████ -->
+<style id="pf160Css">
+/* ═════ PCF_V160 (PF160) — só vale com html.pf160 (visual novo + PF160 ligado; sem a classe: o V159). Tudo em @media screen:
+   a impressão continua a de sempre. ═════ */
+@media screen{
+/* etapa 05 · as fotos feitas viram uma faixa com miniaturas; a vaga que falta é nome + [📷 | N/D] */
+html.pf160 .pf160-sec5 > .section-body > .drive-reminder{display:none!important}
+html.pf160 .pf160-sec5 > .section-body > .drive-reminder.pf160-on{display:block!important;margin:0 0 10px!important}
+.pf160-feitas,.pf160-info{display:none}
+html.pf160 .pf160-feitas{display:flex;align-items:center;gap:10px;width:100%;min-height:64px;margin:2px 0 10px;padding:8px 12px;border:1.5px solid #bbf7d0;background:#f0fdf4;border-radius:14px;cursor:pointer;text-align:left;font-family:Inter,system-ui,sans-serif;box-sizing:border-box}
+html.pf160 .pf160-feitas.pf160-vazio{display:none}
+html.pf160 .pf160-feitas:active{background:#dcfce7}
+html.pf160 .pf160-feitas .mi{display:flex;gap:4px;flex-shrink:0}
+html.pf160 .pf160-feitas .mi img,html.pf160 .pf160-feitas .mi i{width:40px;height:40px;border-radius:8px;object-fit:cover;background:#cbd5e1;display:block}
+html.pf160 .pf160-feitas .tx{flex:1;min-width:0}
+html.pf160 .pf160-feitas .tx b{display:block;font:700 15px Inter,system-ui,sans-serif;color:#166534}
+html.pf160 .pf160-feitas .tx small{display:block;font:400 12.5px Inter,system-ui,sans-serif;color:#475569}
+html.pf160 .pf160-feitas .ch{color:#64748b;font:400 20px Inter,system-ui,sans-serif;flex-shrink:0}
+html.pf160 .pf129-vagas.pf160-esc > .photo-item-group.pf160-feito{display:none!important}
+html.pf160 .pf129-vagas > .photo-item-group:not(.pf160-feito){min-height:0!important;padding:10px!important}
+html.pf160 .pf129-vagas > .photo-item-group:not(.pf160-feito):not(.pf160-marc) > .pf129-vst{display:none!important}
+html.pf160 .pf129-vagas > .photo-item-group:not(.pf160-feito) .photo-item{display:grid!important;grid-template-columns:minmax(0,1fr) 62px;gap:6px!important;align-items:stretch!important}
+html.pf160 .pf129-vagas > .photo-item-group:not(.pf160-feito) .photo-item > :not(button):not(input){grid-column:1 / -1;min-height:34px}
+html.pf160 .pf129-vagas > .photo-item-group:not(.pf160-feito) .photo-hint{display:none!important}
+html.pf160 .pf129-vagas > .photo-item-group:not(.pf160-feito) .photo-pname{font-size:13.5px!important}
+html.pf160 .pf129-vagas > .photo-item-group:not(.pf160-feito) .btn-photo-capture{width:auto!important;min-height:52px!important;margin:0!important;background:#fff!important;border:1.5px solid #fdba74!important;border-radius:12px!important}
+html.pf160 .pf129-vagas > .photo-item-group:not(.pf160-feito) .photo-nd-btn{width:auto!important;min-height:52px!important;margin:0!important;padding:0!important;border-radius:12px!important;font:700 13px Inter,system-ui,sans-serif!important}
+html.pf160 .pf160-info{display:flex;align-items:center;gap:6px;width:100%;min-height:52px;margin:6px 0 0;padding:0 2px;border:0;border-top:1px dashed #cbd5e1;background:none;color:#475569;font:600 13px Inter,system-ui,sans-serif;text-align:left;cursor:pointer}
+html.pf160 .pf160-info:active{background:#f1f5f9}
+/* etapa 08 · uma linha por assinatura, com o estado; um botão só (o fluxo de sempre: técnico, depois o cliente) */
+html.pf160 .pf130-assin .bd2 > [data-pf130="assin-st"],html.pf160 .pf130-assin .bd2 > [data-pf130="assin"],html.pf160 .pf130-assin .bd2 > div:not(.pf160-al):not([data-pf130]){display:none!important}
+.pf160-al{display:none}
+html.pf160 .pf160-al{display:flex;flex-direction:column;gap:8px;padding-top:10px}
+html.pf160 .pf160-ar{display:flex;align-items:center;gap:12px;min-height:64px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:14px;background:#fff}
+html.pf160 .pf160-ar.ok{border-color:#bbf7d0;background:#f0fdf4}
+html.pf160 .pf160-ar .ic{width:40px;height:40px;border-radius:10px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+html.pf160 .pf160-ar .tx{flex:1;min-width:0}
+html.pf160 .pf160-ar .tx b{display:block;font:700 15px Inter,system-ui,sans-serif;color:#0f172a}
+html.pf160 .pf160-ar .tx small{display:block;font:400 12.5px Inter,system-ui,sans-serif;color:#475569;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html.pf160 .pf160-ar .st{flex-shrink:0;min-width:30px;height:30px;border-radius:15px;display:flex;align-items:center;justify-content:center;font:800 14px Inter,system-ui,sans-serif;color:#64748b;background:#f1f5f9}
+html.pf160 .pf160-ar.ok .st{background:#16a34a;color:#fff}
+html.pf160 .pf160-assinar{min-height:52px;border-radius:12px;border:1.5px solid #fdba74;background:#fff;color:#c2410c;font:700 15px Inter,system-ui,sans-serif;cursor:pointer}
+html.pf160 .pf160-assinar:active{background:#fff7ed}
+/* D6 · sai o cartão "Situação do envio": o selo fica acima dos botões; o que só ele dizia (envio em curso, erro, cadastro,
+   faixa da OS) continua aparecendo, sem o título e sem o cartão — e nada aparece quando ele não tem o que dizer */
+html.pf129.pf130.pf160 #pcf116Rodape{background:none!important;border:0!important;box-shadow:none!important;padding:0!important;margin:0 12px 10px!important}
+html.pf129.pf130.pf160 #pcf116Rodape:before{content:none!important;display:none!important}
+html.pf129.pf130.pf160 #pcf116Rodape #pcf116Salvo{display:none!important}
+html.pf129.pf130.pf160 #pcf116Rodape.pf160-vazio{display:none!important}
+}
+/* folha do Concluir com trava: o que trava em vermelho com o botão que resolve; o que está pronto em verde */
+.pf160-cl{display:flex;align-items:center;gap:12px;min-height:64px;padding:8px 12px;margin:0 0 8px;border-radius:14px;border:1.5px solid #e2e8f0;background:#fff;font-family:Inter,system-ui,sans-serif}
+.pf160-cl.er{border-color:#fecaca;background:#fef2f2}
+.pf160-cl.ok{border-color:#bbf7d0;background:#f0fdf4}
+.pf160-cl.am{border-color:#fde68a;background:#fffbeb}
+.pf160-cl .ic{width:40px;height:40px;border-radius:10px;background:#fff;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.pf160-cl .tx{flex:1;min-width:0}
+.pf160-cl .tx b{display:block;font:700 15px Inter,system-ui,sans-serif;color:#0f172a}
+.pf160-cl.er .tx b{color:#b91c1c}
+.pf160-cl .tx small{display:block;font:400 12.5px Inter,system-ui,sans-serif;color:#475569}
+.pf160-cl .vr{flex-shrink:0;min-height:52px;padding:0 12px;border-radius:12px;border:1.5px solid #fcd34d;background:#fff;color:#92400e;font:700 13.5px Inter,system-ui,sans-serif;cursor:pointer}
+.pf160-fz{display:block;width:100%;min-height:56px;margin:0 0 10px;border:0;border-radius:14px;background:#c2410c;color:#fff;font:700 16px Inter,system-ui,sans-serif;cursor:pointer}
+.pf160-fz:active{background:#9a3412}
+.pf160-env{display:block;width:100%;min-height:56px;margin:4px 0 10px;border:1.5px solid #e2e8f0;border-radius:14px;background:#f1f5f9;color:#94a3b8;font:700 16px Inter,system-ui,sans-serif}
+.pf160-r2{display:flex;gap:8px}
+.pf160-r2 > .pf130-b{flex:1;min-height:52px}
+@media print{.pf160-feitas,.pf160-info,.pf160-al{display:none!important}}
+</style>
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════════════
+   PCF_V160 (PF160) — ProperCare-backlog#309 (Parte 2, PR 4 — pranchas 7 e 8, decisão D6) · zero SQL · zero GAS.
+   Só o visual novo (PF130 ligado). Nenhum cálculo, nenhum campo, nenhuma trava e nenhum envio mudou.
+   1 · FOTOS (etapa 05): as vagas feitas (foto desta visita) e as N/D se juntam numa faixa verde com miniaturas
+       ("✓ 5 feitas · tocar para ver"); tocar mostra/esconde as vagas feitas no lugar de sempre (refazer, apagar, desfazer N/D).
+       A vaga que falta é o nome + [📷 | N/D] lado a lado, 52 px (a dica de cada vaga sai da tela). A marcada à mão sem
+       foto continua à vista. O lembrete do escritório (link da pasta do Drive) vai para um "ⓘ" no fim da etapa.
+   2 · ASSINATURAS (etapa 08): uma linha por assinatura (Técnico / Responsável do cliente) com o estado e o nome; um botão
+       só, "✍️ Assinar", que é o MESMO fluxo de sempre (técnico, depois o cliente). O texto antigo e o botão laranja cheio
+       ficam no DOM, escondidos.
+   3 · FOLHA DO CONCLUIR com trava (todas as máquinas com dado travadas pela foto do horímetro): "Concluir a coleta", a trava
+       em vermelho com "📷 Tirar a foto agora" (o mesmo irFotoHorimetro), o checklist em verde (ou âmbar, com "ver"),
+       "✅ Concluir e enviar" apagado enquanto trava, Voltar e "📄 Só o PDF" (o mesmo pcf116SoPdf). Sem trava: o de sempre.
+   4 · D6: o cartão "Situação do envio" sai. O selo fica acima dos botões; o que só o cartão mostrava (envio em curso,
+       mensagem do salvar, cadastro, faixa da OS) continua aparecendo no mesmo lugar, sem título e sem moldura.
+   Chave de volta: localStorage pcf160 = off ⇒ o V159. Sem prompt/confirm/alert. Diagnóstico: PF160.erros, PF160.S.
+   ═══════════════════════════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+  if (window.PF160) return;
+  var PF160 = window.PF160 = { versao: 'PCF_V160', erros: [] };
+  function nota(e, onde) { try { PF160.erros.push(onde + ': ' + String(e && e.message || e)); if (PF160.erros.length > 30) PF160.erros.shift(); } catch (x) {} }
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function chave() { try { return localStorage.getItem('pcf160') !== 'off'; } catch (e) { return true; } }
+  function ativo() { try { return chave() && !!(window.PF130 && PF130.ligado && PF130.ligado()); } catch (e) { return false; } }
+  PF160.ativo = ativo;
+  function tg(el, c, on) { if (el && el.classList.contains(c) !== !!on) el.classList.toggle(c, !!on); }   // só escreve quando muda
+  function txt(el, t) { if (el && el.textContent !== t) el.textContent = t; }
+  function midxDe(el) { var p = el && el.closest && el.closest('.machine-panel'); return p ? (parseInt(String(p.id).replace('panel-', ''), 10) || 0) : 0; }
+  var S = PF160.S = { ver: {}, info: {} };
+
+  // ── 1 · FOTOS ─────────────────────────────────────────────────────────────────────────────────
+  function pintarFotos(i) {
+    var box = $('m' + i + '_sec5_items'); if (!box) return;
+    var sec = box.closest('.section'), body = box.parentNode;
+    tg(sec, 'pf160-sec5', true);
+    if (!box.classList.contains('pf129-vagas')) return;   // as vagas são do PF129: sem elas, nada aqui
+    var gs = [].slice.call(box.querySelectorAll(':scope > .photo-item-group')), feitas = [], nd = 0;
+    gs.forEach(function (g) {
+      var it = g.querySelector('.photo-item'), e = g.classList.contains('pf129-feita') ? 'f' : (g.classList.contains('pf129-nd') ? 'n' : '');
+      tg(g, 'pf160-feito', !!e);
+      tg(g, 'pf160-marc', !e && !!(it && it.classList.contains('photo-checked')));
+      if (e === 'f') feitas.push(g); else if (e === 'n') nd++;
+    });
+    var st = body.querySelector(':scope > .pf160-feitas');
+    if (!st) { st = document.createElement('button'); st.type = 'button'; st.className = 'pf160-feitas'; st.setAttribute('data-pf160', 'ver'); st.innerHTML = '<span class="mi"></span><span class="tx"><b></b><small></small></span><span class="ch"></span>'; body.insertBefore(st, box); }
+    var n = feitas.length + nd, ver = !!S.ver[i];
+    tg(st, 'pf160-vazio', !n);
+    var srcs = feitas.slice(0, 3).map(function (g) { var im = g.querySelector('.photo-thumb-mini:not(.photo-thumb-prev) img, .photo-thumbs-mini > img'); return im ? String(im.getAttribute('src') || '') : ''; });
+    var sig = srcs.map(function (s) { return s.length + ':' + s.slice(-24); }).join('|') + '#' + nd;
+    if (st.__pf160 !== sig) {
+      st.__pf160 = sig;
+      var mi = st.querySelector('.mi'); mi.innerHTML = '';
+      srcs.forEach(function (s) { var x; if (s) { x = document.createElement('img'); x.alt = ''; x.src = s; } else x = document.createElement('i'); mi.appendChild(x); });
+      if (!srcs.length && nd) mi.appendChild(document.createElement('i'));
+    }
+    var p = []; if (feitas.length) p.push(feitas.length + (feitas.length > 1 ? ' feitas' : ' feita')); if (nd) p.push(nd + ' N/D');
+    txt(st.querySelector('b'), '✓ ' + p.join(' · '));
+    txt(st.querySelector('small'), ver ? 'tocar para esconder' : 'tocar para ver');
+    txt(st.querySelector('.ch'), ver ? '▴' : '›');
+    tg(box, 'pf160-esc', !ver);
+    var dr = body.querySelector(':scope > .drive-reminder');
+    if (dr) {
+      tg(dr, 'pf160-on', !!S.info[i]);
+      var bi = body.querySelector(':scope > .pf160-info');
+      if (!bi) { bi = document.createElement('button'); bi.type = 'button'; bi.className = 'pf160-info'; bi.setAttribute('data-pf160', 'info'); var fim = body.querySelector(':scope > .pf130-fim'); body.insertBefore(bi, fim || null); }
+      txt(bi, S.info[i] ? 'ⓘ Esconder o lembrete do escritório' : 'ⓘ Lembrete para o escritório');
+    }
+  }
+
+  // ── 2 · ASSINATURAS ───────────────────────────────────────────────────────────────────────────
+  function assinEstado(i) {
+    try {
+      if (window._PGP_OS_ID && window.PF136 && typeof PF136.textos === 'function') {   // na OS: o conjunto da OS (o mesmo que a etapa já dizia)
+        var x = PF136.textos();
+        if (x && x.algum) {
+          var mt = /✓ Técnico: ([^·—]+)/.exec(x.txt || ''), mr = /✓ Cliente: ([^·—]+)/.exec(x.txt || '');
+          return { t: mt ? mt[1].trim() : null, r: mr ? mr[1].trim() : null };
+        }
+      }
+    } catch (e) { nota(e, 'assin pf136'); }
+    var a = window._PGP_ASSINATURAS || {}, ok = false;
+    try { ok = typeof pgpAssinaturasContextoOk === 'function' ? !!pgpAssinaturasContextoOk(i) : false; } catch (e) { ok = false; }
+    return {
+      t: ok && a.tecnico && a.tecnico.dataUrl ? String(a.tecnico.nome || 'assinado') : null,
+      r: ok && a.responsavel && a.responsavel.dataUrl ? String(a.responsavel.nome || 'assinado') : null
+    };
+  }
+  PF160.assinEstado = assinEstado;
+  function linhaAssin(el, nome, falta) {
+    tg(el, 'ok', !!nome);
+    txt(el.querySelector('small'), nome ? nome + ' · assinado' : falta);
+    txt(el.querySelector('.st'), nome ? '✓' : '—');
+  }
+  function pintarAssin(i) {
+    var a = $('pf130Assin' + i), bd = a && a.querySelector('.bd2'); if (!bd) return;
+    var al = bd.querySelector(':scope > .pf160-al');
+    if (!al) {
+      al = document.createElement('div'); al.className = 'pf160-al';
+      al.innerHTML = '<div class="pf160-ar" data-p="t"><span class="ic">✍️</span><span class="tx"><b>Técnico</b><small></small></span><span class="st"></span></div>' +
+        '<div class="pf160-ar" data-p="r"><span class="ic">✍️</span><span class="tx"><b>Responsável do cliente</b><small></small></span><span class="st"></span></div>' +
+        '<button type="button" class="pf160-assinar" data-pf160="assin"></button>';
+      bd.appendChild(al);
+    }
+    var e = assinEstado(i);
+    linhaAssin(al.querySelector('[data-p="t"]'), e.t, 'falta assinar');
+    linhaAssin(al.querySelector('[data-p="r"]'), e.r, 'nome → assinar com o dedo');
+    txt(al.querySelector('.pf160-assinar'), e.t && e.r ? '✍️ Assinar de novo' : '✍️ Assinar');
+  }
+
+  // ── 4 · D6: o cartão "Situação do envio" sai ───────────────────────────────────────────────────
+  var FORA = { pcf116Maquinas: 1, pf122Linha1: 1, pcf116BtnEnviar: 1, pcf116Explica: 1, pcf116Salvo: 1 };
+  function temConteudo(el) {
+    if (!el || el.nodeType !== 1 || FORA[el.id] || el.classList.contains('pcf116-linha2')) return false;
+    if (!String(el.textContent || '').trim()) return false;
+    try { var cs = getComputedStyle(el); return cs.display !== 'none' && cs.visibility !== 'hidden'; } catch (e) { return true; }
+  }
+  function pintarRodape() {
+    var rod = $('pcf116Rodape'); if (!rod) return;
+    tg(rod, 'pf160-vazio', ![].some.call(rod.children, temConteudo));
+  }
+  PF160.temConteudo = function () { var rod = $('pcf116Rodape'); return !!rod && [].filter.call(rod.children, temConteudo).map(function (c) { return c.id || c.className; }); };
+
+  // ── o ciclo (gancho no fim do PF130.tudo) ────────────────────────────────────────────────────
+  PF160.depois = function () {
+    var lig = ativo();
+    tg(document.documentElement, 'pf160', lig);
+    if (!lig) return;
+    document.querySelectorAll('#machineContent > .machine-panel').forEach(function (p) {
+      var i = parseInt(String(p.id).replace('panel-', ''), 10); if (isNaN(i)) return;
+      try { pintarFotos(i); } catch (e) { nota(e, 'fotos'); }
+      try { pintarAssin(i); } catch (e) { nota(e, 'assin'); }
+    });
+    try { pintarRodape(); } catch (e) { nota(e, 'rodape'); }
+  };
+  var _t = 0;
+  function depoisJa() { clearTimeout(_t); _t = setTimeout(function () { try { PF160.depois(); } catch (e) { nota(e, 'depoisJa'); } }, 140); }   // depois do vagas() do PF129 (60 ms)
+  document.addEventListener('pcf:secao', depoisJa);
+  document.addEventListener('pcf:estado', depoisJa);
+  try {   // a miniatura entra por renderPhotoThumbs (sem passar pelo ciclo): o mesmo embrulho por nome do PF129
+    var _rpt = window.renderPhotoThumbs;
+    if (typeof _rpt === 'function' && !_rpt.__pf160) {
+      window.renderPhotoThumbs = function () { var r = _rpt.apply(this, arguments); try { if (ativo()) depoisJa(); } catch (e) {} return r; };
+      window.renderPhotoThumbs.__pf160 = true;
+    }
+  } catch (e) { nota(e, 'embrulho thumbs'); }
+  try {   // as assinaturas mudam fora do ciclo
+    var _sa = window.pgpAtualizarStatusAssinaturas;
+    if (typeof _sa === 'function' && !_sa.__pf160) {
+      window.pgpAtualizarStatusAssinaturas = function () { var r = _sa.apply(this, arguments); try { if (ativo()) depoisJa(); } catch (e) {} return r; };
+      window.pgpAtualizarStatusAssinaturas.__pf160 = true;
+    }
+  } catch (e) { nota(e, 'embrulho assin'); }
+
+  // ── 3 · FOLHA DO CONCLUIR com trava ────────────────────────────────────────────────────────────
+  function linhaChecklist() {
+    var p = document.querySelector('#machineContent > .machine-panel.active .pf130-hub .pf158-pl');
+    var m = p ? /Faltam\s+(\d+)/i.exec(String(p.textContent || '')) : null;
+    if (m && +m[1] > 0) return '<div class="pf160-cl am"><span class="ic">📝</span><span class="tx"><b>Peças, fotos e observações</b><small>faltam ' + esc(m[1]) + (+m[1] > 1 ? ' itens' : ' item') + '</small></span><button type="button" class="vr" data-pf130c="pf160ver">Ver</button></div>';
+    return '<div class="pf160-cl ok"><span class="ic">✅</span><span class="tx"><b>Peças, fotos e observações</b><small>tudo preenchido</small></span></div>';
+  }
+  function refazerFolha() {
+    var ov = $('pf130Folha'); if (!ov || ov.__pf160) return;
+    var lis = [].slice.call(ov.querySelectorAll('.pf130-li')).filter(function (li) { return li.querySelector('[data-pf130c="foto"]'); });
+    if (!lis.length) return;
+    var sh = ov.querySelector('.pf130-sh'); if (!sh) return;
+    ov.__pf160 = true;
+    var trav = lis.map(function (li) {
+      var b = li.querySelector('[data-pf130c="foto"]'), k = b.getAttribute('data-i'), nm = String((li.querySelector('.tx > b') || {}).textContent || '').trim();
+      return '<div class="pf160-cl er"><span class="ic">🔒</span><span class="tx"><b>' + esc(nm) + '</b><small>falta a foto do display do horímetro (ou N/D, se o display não aparece)</small></span></div>' +
+        '<button type="button" class="pf160-fz" data-pf130c="foto" data-i="' + esc(k) + '">📷 Tirar a foto agora</button>';
+    }).join('');
+    sh.innerHTML = '<h3>Concluir a coleta</h3><div class="s">Confira antes de enviar ao escritório.</div>' + trav + linhaChecklist() +
+      '<button type="button" class="pf160-env" disabled aria-disabled="true">✅ Concluir e enviar</button>' +
+      '<div class="pf160-r2"><button type="button" class="pf130-b" data-pf130c="voltar">Voltar</button><button type="button" class="pf130-b" data-pf130c="pf160pdf" title="Não envia a coleta e não conclui a tarefa">📄 Só o PDF</button></div>';
+    ov.addEventListener('click', function (e) {   // o ouvinte do PF130 fecha a folha em todo [data-pf130c]; aqui só o que é novo
+      var b = e.target.closest ? e.target.closest('[data-pf130c]') : null; if (!b) return;
+      var a = b.getAttribute('data-pf130c');
+      try {
+        if (a === 'pf160pdf' && typeof window.pcf116SoPdf === 'function') window.pcf116SoPdf(null);
+        else if (a === 'pf160ver') { var p = document.querySelector('#machineContent > .machine-panel.active .pf130-hub .pf158-pl'); if (p) p.click(); }
+      } catch (x) { nota(x, 'folha ' + a); }
+    });
+  }
+  try {
+    if (window.PF130 && typeof PF130.concluir === 'function' && !PF130.concluir.__pf160) {
+      var _cc = PF130.concluir;
+      PF130.concluir = function () { var r = _cc.apply(this, arguments); try { if (ativo()) refazerFolha(); } catch (e) { nota(e, 'concluir'); } return r; };
+      PF130.concluir.__pf160 = true;
+    }
+  } catch (e) { nota(e, 'embrulho concluir'); }
+
+  // ── cliques deste bloco ───────────────────────────────────────────────────────────────────────
+  document.addEventListener('click', function (ev) {
+    if (!ativo()) return;
+    try {
+      var b = ev.target.closest && ev.target.closest('[data-pf160]'); if (!b) return;
+      var k = b.getAttribute('data-pf160'), i = midxDe(b);
+      ev.stopPropagation();
+      if (k === 'ver') { S.ver[i] = !S.ver[i]; pintarFotos(i); }
+      else if (k === 'info') { S.info[i] = !S.info[i]; pintarFotos(i); }
+      else if (k === 'assin') { var o = b.closest('.bd2') && b.closest('.bd2').querySelector(':scope > [data-pf130="assin"]'); if (o) o.click(); }
+    } catch (e) { nota(e, 'clique'); }
+  }, true);
+
+  try { if (window.PF130 && PF130.pintar && ativo()) PF130.pintar(); else PF160.depois(); } catch (e) { nota(e, 'inicio'); }
+})();
+</script>
+<!-- ████ FIM PCF_V160 (PF160) ████ -->
 
 </body>
 </html>
