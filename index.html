@@ -1889,8 +1889,17 @@ html[data-boot="pipeline"] #pf113Splash{display:flex;position:fixed;inset:0;z-in
   envio" (o que so ele dizia continua aparecendo, sem titulo). Chave de volta pcf160=off. Bloco PF160 no fim do body + 1 gancho
   no PF130 (sem o PF160 faz o mesmo de antes).
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V160</title>
-<meta name="app-build" content="PCF_V160" data-date="2026-11-21">
+<!--
+  PCF_V161 · TELA DA OS NO PADRAO · 21/11/2026 · feito SOBRE o PCF_V160 no ar · par sw propertech-v163 · zero SQL, zero GAS.
+  ProperCare-backlog#309 (Parte 2, PR 5 — prancha 1). So o visual novo, so a tela da OS: topo igual ao da coleta (‹ com os avisos =
+  Trocar OS, OS e cliente, conexao e ☰ com Avisos e Menu do ProperHub); agendamento, endereco, ↻, o bloco do campo do V108 e o
+  progresso num cartao so; Conferir as pecas, Pecas e servicos e Kit da OS em linhas de um cartao (abrem no lugar); tarefas com
+  icone e situacao em pilula, a da vez com um botao so laranja ("Assumir e abrir a coleta" = o Assumir e o Abrir de sempre),
+  "Em breve" e o quadradinho saem da vista; "Nao consigo fazer esta OS" no fim. Chave de volta pcf161=off. Bloco PF161 no fim do
+  body; nenhuma linha do corpo mudou.
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V161</title>
+<meta name="app-build" content="PCF_V161" data-date="2026-11-21">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -48755,6 +48764,457 @@ html.pf129.pf130.pf160 #pcf116Rodape.pf160-vazio{display:none!important}
 })();
 </script>
 <!-- ████ FIM PCF_V160 (PF160) ████ -->
+
+<!-- ████ PCF_V161 (PF161) · 🗂 TELA DA OS NO PADRÃO · 21/11/2026 ████ -->
+<style id="pf161Css">
+/* ═════ PCF_V161 (PF161) — só vale com html.pf161 (visual novo + PF161 ligado; sem a classe: o V160) e com a TELA DA OS aberta
+   (#pfOverlay.pf161-os). Tudo em @media screen: a impressão continua a de sempre. ═════ */
+#pf161Topo,#pf161PecasH,#pf161TarH,.pf161-r,#pf161Nao,#pf161Net,#pf161Mn,#pf161Bd{display:none}
+@media screen{
+/* 1 · topo igual ao da coleta: ‹ (com os avisos), OS e cliente, conexão e ☰ */
+html.pf161 #pfOverlay.pf161-os #pf126Menu,html.pf161 #pfOverlay.pf161-os #pfNotifBtn{display:none!important}
+html.pf161 #pfOverlay.pf161-os #pfHeader{gap:8px!important;padding:8px 10px!important}
+html.pf161 #pfOverlay.pf161-os #pfHeader > button:first-child{position:relative;width:48px;height:48px;padding:0!important;border-radius:12px!important;border:1px solid #cbd5e1!important;background:#fff!important;font-size:21px!important}
+html.pf161 #pfOverlay.pf161-os #pf161Bd.on{display:block;position:absolute;top:-6px;right:-6px;background:#dc2626;color:#fff;font:800 10.5px Inter,sans-serif;border-radius:9px;padding:1px 5px;min-width:17px;line-height:15px;text-align:center}
+html.pf161 #pfOverlay.pf161-os #pfTitulo{font-size:16.5px!important;font-weight:800!important}
+html.pf161 #pfOverlay.pf161-os #pf161Net{display:flex;align-items:center;gap:5px;flex-shrink:1;min-width:0;max-width:98px;min-height:40px;padding:0 9px;border-radius:999px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;font:600 12px Inter,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+html.pf161 #pfOverlay.pf161-os #pf161Net i{width:8px;height:8px;border-radius:50%;background:#16a34a;flex-shrink:0}
+html.pf161 #pfOverlay.pf161-os #pf161Net.av{border-color:#fcd34d;background:#fffbeb;color:#92400e}
+html.pf161 #pfOverlay.pf161-os #pf161Net.av i{background:#f59e0b}
+html.pf161 #pfOverlay.pf161-os #pf161Net.er{border-color:#fecaca;background:#fef2f2;color:#991b1b}
+html.pf161 #pfOverlay.pf161-os #pf161Net.er i{background:#dc2626}
+html.pf161 #pfOverlay.pf161-os #pf161Mn{display:flex;align-items:center;justify-content:center;width:48px;height:48px;flex-shrink:0;padding:0!important;border-radius:12px!important;border:1px solid #cbd5e1!important;background:#fff!important;color:#0f172a!important;font-size:21px;cursor:pointer}
+html.pf161 #pfOverlay.pf161-os #pfNotifPanel{top:70px!important}
+html.pf161 #pfOverlay.pf161-os #pf161Net:active,html.pf161 #pfOverlay.pf161-os #pf161Mn:active{background:#f1f5f9!important}
+/* a tela em coluna, na ordem do rascunho (os blocos continuam onde estão no DOM: só a VISTA muda de ordem) */
+html.pf161 #pfOverlay.pf161-os #pfScreenPipeline:not([style*="display: none"]):not([style*="display:none"]){display:flex!important;flex-direction:column;padding:12px 14px calc(24px + env(safe-area-inset-bottom,0px))!important}
+html.pf161 #pfOverlay.pf161-os #pfScreenPipeline > *{order:45;flex-shrink:0}
+html.pf161 #pfOverlay.pf161-os #pf161Topo{order:10}
+html.pf161 #pfOverlay.pf161-os #pf108Campo{order:11}
+html.pf161 #pfOverlay.pf161-os #pfProgressWrap{order:12}
+html.pf161 #pfOverlay.pf161-os #pf142Agenda,html.pf161 #pfOverlay.pf161-os #pfScreenPipeline > .pf113-barra{order:13;display:none!important}
+html.pf161 #pfOverlay.pf161-os #pf153Linha{order:20}
+html.pf161 #pfOverlay.pf161-os #pf152Pode{order:22}
+html.pf161 #pfOverlay.pf161-os #pf161PecasH{order:30}
+html.pf161 #pfOverlay.pf161-os #pf161R_conf{order:31}
+html.pf161 #pfOverlay.pf161-os #pf151Conf{order:32}
+html.pf161 #pfOverlay.pf161-os #pf161R_itens{order:33}
+html.pf161 #pfOverlay.pf161-os #pf145Itens{order:34}
+html.pf161 #pfOverlay.pf161-os #pf161R_kit{order:35}
+html.pf161 #pfOverlay.pf161-os #pf150Kit{order:36}
+html.pf161 #pfOverlay.pf161-os #pf161TarH{order:60}
+html.pf161 #pfOverlay.pf161-os #pfPipelineConteudo{order:61}
+html.pf161 #pfOverlay.pf161-os #pf161Nao{order:70}
+/* 2 · agendamento, "Ir até o cliente" e ↻ e o progresso das tarefas num cartão só */
+html.pf161 #pfOverlay.pf161-os #pf161Topo{display:block;background:#fff;border:1px solid #d9e0ea;border-bottom:0;border-radius:16px 16px 0 0;padding:12px 12px 8px;font-family:Inter,system-ui,sans-serif;color:#0f172a}
+#pf161Topo .l{display:flex;align-items:center;gap:11px}
+#pf161Topo .ic{width:48px;height:48px;flex-shrink:0;border-radius:13px;background:#fff7ed;border:1px solid #fed7aa;display:flex;align-items:center;justify-content:center;font-size:24px}
+#pf161Topo .tx{flex:1;min-width:0}
+#pf161Topo .tx b{display:block;font:800 17px Inter,system-ui,sans-serif;line-height:1.25}
+#pf161Topo .tx small{display:block;font:400 13.5px Inter,system-ui,sans-serif;color:#475569;margin-top:2px}
+#pf161Topo .at{flex-shrink:0;width:52px;height:52px;border-radius:13px;border:1.5px solid #cbd5e1;background:#fff;color:#0f172a;font-size:22px;cursor:pointer;padding:0}
+#pf161Topo .at:active{background:#f1f5f9}
+#pf161Topo .at.ocup{opacity:.45}
+html.pf161 #pfOverlay.pf161-os #pf108Campo{background:#fff;border-left:1px solid #d9e0ea;border-right:1px solid #d9e0ea;padding:0 12px 6px}
+html.pf161 #pfOverlay.pf161-os #pf108Campo:empty{display:none}
+html.pf161 #pfOverlay.pf161-os #pf108Campo .pf108-campo{background:none!important;border:0!important;padding:0!important;margin:0!important;color:#0f172a}
+html.pf161 #pfOverlay.pf161-os #pf108Campo .pf108-campo > div:first-child{display:none}
+html.pf161 #pfOverlay.pf161-os #pf108Campo .pf108-linha{font:400 13.5px Inter,system-ui,sans-serif!important;color:#475569}
+html.pf161 #pfOverlay.pf161-os #pf108Campo .pf108-btn{min-height:52px;border-radius:13px;background:#fff!important;border:1.5px solid #fdba74!important;color:#c2410c!important;font:700 15.5px Inter,system-ui,sans-serif}
+html.pf161 #pfOverlay.pf161-os #pf108Campo .pf108-btn.ok{border-color:#86efac!important;color:#15803d!important}
+html.pf161 #pfOverlay.pf161-os #pfProgressWrap{background:#fff;border:1px solid #d9e0ea;border-top:0;border-radius:0 0 16px 16px;padding:8px 12px 14px;margin:0 0 16px!important}
+html.pf161 #pfOverlay.pf161-os #pfProgressLabel{font:600 13.5px Inter,system-ui,sans-serif!important;color:#334155!important;margin-bottom:8px!important}
+html.pf161 #pfOverlay.pf161-os #pfProgressWrap > div:last-child{height:8px!important;border-radius:5px!important;background:#e2e8f0!important}
+html.pf161 #pfOverlay.pf161-os #pfProgressBar{background:#c2410c!important;border-radius:5px!important}
+/* 3 · Conferir as peças, Peças e serviços e Kit da OS: linhas de UM cartão; cada uma abre no lugar */
+html.pf161 #pfOverlay.pf161-os .pf161-h.pf161-vis{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:2px 2px 8px;font-family:Inter,system-ui,sans-serif}
+.pf161-h b{font:800 18px Inter,system-ui,sans-serif;color:#0f172a}
+.pf161-h small{font:400 12.5px Inter,system-ui,sans-serif;color:#64748b;text-align:right}
+html.pf161 #pfOverlay.pf161-os .pf161-r.pf161-vis{display:flex;align-items:center;gap:11px;width:100%;min-height:64px;margin:0;padding:8px 12px;background:#fff;border:1px solid #d9e0ea;border-radius:0;text-align:left;cursor:pointer;color:#0f172a;font-family:Inter,system-ui,sans-serif;box-sizing:border-box}
+html.pf161 #pfOverlay.pf161-os .pf161-r.pf161-vis:active{background:#f1f5f9}
+.pf161-r .ic{width:44px;height:44px;flex-shrink:0;border-radius:12px;background:#f1f5f9;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:center;font-size:21px}
+.pf161-r .tx{flex:1;min-width:0}
+.pf161-r .tx b{display:block;font:700 15.5px Inter,system-ui,sans-serif}
+.pf161-r .tx small{display:block;font:400 13px Inter,system-ui,sans-serif;color:#475569;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pf161-r .tx small.er{color:#b91c1c}
+.pf161-r .tx small.av{color:#92400e}
+.pf161-r .n{flex-shrink:0;min-width:30px;height:30px;padding:0 8px;border-radius:15px;background:#f1f5f9;color:#334155;font:700 13.5px Inter,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;box-sizing:border-box}
+.pf161-r .ch{flex-shrink:0;color:#64748b;font:400 20px Inter,system-ui,sans-serif;width:16px;text-align:center}
+html.pf161 #pfOverlay.pf161-os #pfScreenPipeline > .pf131[data-pf161f]{display:none!important}
+html.pf161 #pfOverlay.pf161-os #pfScreenPipeline > .pf131[data-pf161p]{margin:0!important;border:1px solid #d9e0ea!important;border-top:0!important;border-radius:0!important;background:#fff!important;box-shadow:none!important}
+html.pf161 #pfOverlay.pf161-os #pfScreenPipeline > .pf131[data-pf161p] > .pf131-h{display:none!important}
+html.pf161 #pfOverlay.pf161-os #pfScreenPipeline > .pf161-r.pf161-vis:not([data-pf161p="i"]):not([data-pf161p="if"]){border-top-color:#eef2f7}
+html.pf161 #pfOverlay.pf161-os #pfScreenPipeline > [data-pf161p="i"]{border-radius:16px 16px 0 0!important}
+html.pf161 #pfOverlay.pf161-os #pfScreenPipeline > [data-pf161p="f"]{border-radius:0 0 16px 16px!important;margin-bottom:16px!important}
+html.pf161 #pfOverlay.pf161-os #pfScreenPipeline > [data-pf161p="if"]{border-radius:16px!important;margin-bottom:16px!important}
+/* 4 · as tarefas: ícone, nome, situação numa pílula; a da vez com um botão só, laranja, 52 px */
+html.pf161 #pfOverlay.pf161-os #pfPipelineConteudo .pf-fase-titulo{font:800 11.5px Inter,system-ui,sans-serif!important;letter-spacing:1px!important;color:#64748b!important;border:0!important;margin:4px 2px 8px!important;padding:0!important}
+html.pf161 #pfOverlay.pf161-os #pfPipelineConteudo .pf-fase-titulo span{color:#7c3aed!important}
+html.pf161 #pfOverlay.pf161-os #pfPipelineConteudo .pf-card{border:1px solid #d9e0ea!important;border-radius:16px!important;padding:12px!important;margin-bottom:10px!important;box-shadow:0 1px 3px rgba(15,23,42,.05);font-family:Inter,system-ui,sans-serif}
+html.pf161 #pfOverlay.pf161-os #pfPipelineConteudo .pf-card.pf161-vez{border:2px solid #f59e42!important}
+html.pf161 #pfOverlay.pf161-os #pfPipelineConteudo .pf-card.status-bloqueado{opacity:1;background:#f8fafc!important}
+html.pf161 #pfOverlay.pf161-os #pfPipelineConteudo .pf-card-header{align-items:center!important;gap:11px!important}
+html.pf161 #pfOverlay.pf161-os #pfPipelineConteudo .pf-status-icon,html.pf161 #pfOverlay.pf161-os #pfPipelineConteudo .pf-badge-adm{display:none!important}
+html.pf161 #pfOverlay.pf161-os #pfPipelineConteudo .pf-card-nome{font:700 16px Inter,system-ui,sans-serif!important;color:#0f172a!important}
+html.pf161 #pfOverlay.pf161-os #pfPipelineConteudo .pf-card.status-bloqueado .pf-card-nome{color:#475569!important}
+html.pf161 #pfOverlay.pf161-os #pfPipelineConteudo .pf-card-desc,html.pf161 #pfOverlay.pf161-os #pfPipelineConteudo .pf-card-meta{font-size:13px!important;line-height:1.4;margin:3px 0 0 55px!important}
+html.pf161 #pfOverlay.pf161-os #pfPipelineConteudo .pf-card.pf161-feita .pf-card-desc{display:none!important}
+.pf161-ic,.pf161-pl{display:none}
+html.pf161 #pfOverlay.pf161-os .pf161-ic{display:flex;width:44px;height:44px;flex-shrink:0;border-radius:12px;background:#f1f5f9;border:1px solid #e2e8f0;align-items:center;justify-content:center;font-size:21px}
+html.pf161 #pfOverlay.pf161-os .pf-card.pf161-vez .pf161-ic{background:#fff7ed;border-color:#fed7aa}
+html.pf161 #pfOverlay.pf161-os .pf161-pl{display:inline-block;flex-shrink:0;font:700 12.5px Inter,system-ui,sans-serif;border-radius:999px;padding:5px 10px;background:#f1f5f9;color:#475569;white-space:nowrap}
+html.pf161 #pfOverlay.pf161-os .pf161-pl.vez{background:#fff7ed;color:#c2410c}
+html.pf161 #pfOverlay.pf161-os .pf161-pl.ok{background:#dcfce7;color:#166534}
+html.pf161 #pfOverlay.pf161-os .pf161-pl.az{background:#e0f2fe;color:#075985}
+html.pf161 #pfOverlay.pf161-os .pf161-pl.am{background:#fef3c7;color:#92400e}
+html.pf161 #pfOverlay.pf161-os .pf161-pl.er{background:#fee2e2;color:#991b1b}
+html.pf161 #pfOverlay.pf161-os #pfPipelineConteudo .pf-btn{font-family:Inter,system-ui,sans-serif!important;text-transform:none!important;letter-spacing:0!important;font-size:16px!important;font-weight:700!important;min-height:52px!important;border-radius:13px!important;white-space:normal}
+html.pf161 #pfOverlay.pf161-os #pfPipelineConteudo .pf-btn-concluir,html.pf161 #pfOverlay.pf161-os #pfPipelineConteudo .pf-btn-abrir-form{width:100%;background:#c2410c!important;color:#fff!important;border:0!important}
+html.pf161 #pfOverlay.pf161-os #pfPipelineConteudo .pf-btn-concluir:active,html.pf161 #pfOverlay.pf161-os #pfPipelineConteudo .pf-btn-abrir-form:active{background:#9a3412!important}
+html.pf161 #pfOverlay.pf161-os #pfPipelineConteudo .pf-card:not(.pf161-vez) .pf-btn-concluir,html.pf161 #pfOverlay.pf161-os #pfPipelineConteudo .pf-card:not(.pf161-vez) .pf-btn-abrir-form{background:#fff!important;color:#c2410c!important;border:1.5px solid #fdba74!important}
+html.pf161 #pfOverlay.pf161-os #pfPipelineConteudo .pf-btn[onclick*="pfResolverDecisao("]{flex:1 1 40%;width:auto;background:#fff!important;color:#c2410c!important;border:1.5px solid #fdba74!important}
+html.pf161 #pfOverlay.pf161-os #pfPipelineConteudo .pf-btn-cancelar{background:#fff!important;color:#475569!important;border:1.5px solid #cbd5e1!important}
+html.pf161 #pfOverlay.pf161-os #pfPipelineConteudo .pf-card > div > .pf-btn-cancelar{width:100%}
+html.pf161 #pfOverlay.pf161-os #pfPipelineConteudo .pf-btn-confirmar{background:#15803d!important;color:#fff!important}
+html.pf161 #pfOverlay.pf161-os #pfPipelineConteudo .pf-btn[disabled]{opacity:.55}
+html.pf161 #pfOverlay.pf161-os #pfPipelineConteudo .pf-btn-breve{display:none!important}
+html.pf161 #pfOverlay.pf161-os #pfPipelineConteudo .pf-confirm-area{border-top-color:#e2e8f0!important}
+html.pf161 #pfOverlay.pf161-os #pfPipelineConteudo .pf-confirm-area input,html.pf161 #pfOverlay.pf161-os #pfPipelineConteudo .pf-obs-input{background:#fff!important;border:1px solid #cbd5e1!important;color:#0f172a!important;min-height:44px;font-size:15px!important}
+/* 5 · "Não consigo fazer esta OS" no fim */
+html.pf161 #pfOverlay.pf161-os #pf161Nao.pf161-vis{display:block;width:100%;min-height:52px;margin:4px 0 0;background:none;border:0;color:#b91c1c;font:700 15.5px Inter,system-ui,sans-serif;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+html.pf161 #pfOverlay.pf161-os #pf161Nao.pf161-vis:active{background:#fef2f2}
+}
+</style>
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════════════
+   PCF_V161 (PF161) — ProperCare-backlog#309 (Parte 2, PR 5 — prancha 1) · zero SQL · zero GAS.
+   Só o visual novo (PF129 ligado) e só a TELA DA OS. Nenhuma regra de tarefa, trava, lock ou envio mudou: esta camada
+   PINTA e chama os botões e funções de sempre.
+   1 · TOPO igual ao da coleta: ‹ com o selo dos avisos (o "‹ Trocar OS" de sempre), "OS 9001 · Tipo", cliente (com a
+       versão), conexão (pílula; toque testa) e ☰ (o menu do PCF + "🔔 Avisos do escritório" e "🏠 Menu do ProperHub",
+       que eram o sino e o botão Menu do topo).
+   2 · Um cartão só no alto: o agendamento (do PF142), o endereço, o ↻ (o Atualizar de sempre), o bloco do campo do V108
+       (Ir até o cliente, Cheguei, Saí) e o progresso das tarefas. "Trocar OS / Atualizar" em caixa alta saem da vista.
+   3 · "Peças da OS": Conferir as peças, Peças e serviços e Kit da OS viram linhas de UM cartão (64 px, com a situação de
+       cada um); tocar abre o cartão de sempre no lugar; tocar de novo fecha.
+   4 · Tarefas: ícone, nome e a situação numa pílula (Sua vez, A fazer, Com você, Feita, Depois, Escritório…), sem o
+       quadradinho; a da vez com borda laranja e um botão só, laranja, 52 px. Tarefa com formulário: "🔒 Assumir e abrir
+       a coleta" (ou "… o formulário") = o Assumir de sempre e, com a tarefa sua, o Abrir de sempre. "Em breve…" sai da vista.
+   5 · "Não consigo fazer esta OS" no fim (os motivos e a gravação são os do PF129).
+   Chave de volta: localStorage pcf161 = off ⇒ o V160. Sem prompt/confirm/alert. Diagnóstico: PF161.erros, PF161.S.
+   ═══════════════════════════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+  if (window.PF161) return;
+  var PF161 = window.PF161 = { versao: 'PCF_V161', erros: [], ciclos: 0 };
+  function nota(e, onde) { try { PF161.erros.push(onde + ': ' + String(e && e.message || e)); if (PF161.erros.length > 30) PF161.erros.shift(); } catch (x) {} }
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function chave() { try { return localStorage.getItem('pcf161') !== 'off'; } catch (e) { return true; } }
+  function ativo() { try { return chave() && !!(window.PF129 && PF129.ligado && PF129.ligado()); } catch (e) { return false; } }
+  PF161.ativo = ativo;
+  function tg(el, c, on) { if (el && el.classList.contains(c) !== !!on) el.classList.toggle(c, !!on); }   // só escreve quando muda
+  function txt(el, t) { if (el && el.textContent !== t) el.textContent = t; }
+  function at(el, k, v) { if (!el) return; if (v == null) { if (el.hasAttribute(k)) el.removeAttribute(k); } else if (el.getAttribute(k) !== v) el.setAttribute(k, v); }
+  function html(el, h) { if (el && el.__pf161 !== h) { el.innerHTML = h; el.__pf161 = h; } }
+  var S = PF161.S = { aberto: {}, ocupado: {} };
+  PF161.cfg = { espera: 3000 };
+
+  function osTela() {
+    var ov = $('pfOverlay'), pip = $('pfScreenPipeline');
+    if (!ov || !pip || ov.style.display === 'none' || pip.style.display === 'none') return '';
+    try { return _pfOsId ? String(_pfOsId) : ''; } catch (e) { return ''; }
+  }
+  function osObj(os) { try { return typeof _pf113OsObj === 'function' ? _pf113OsObj(os) : null; } catch (e) { return null; } }
+  function tarefas() { try { return Array.isArray(_pfTarefas) ? _pfTarefas : []; } catch (e) { return []; } }
+  function tarefa(tid) { return tarefas().filter(function (t) { return String(t.Tarefa_ID || '') === String(tid); })[0] || null; }
+  function eu() { try { var s = window.PROPER_SESSION; return (s && s.tecnico) ? String(s.tecnico.id || s.tecnico.nome || '') : ''; } catch (e) { return ''; } }
+  function meu(lock) { if (!lock) return false; if (String(lock) === eu()) return true; try { return typeof pcf116EhEu === 'function' && !!pcf116EhEu(lock); } catch (e) { return false; } }
+  function trocarBtn() { return document.querySelector('#pfScreenPipeline > .pf113-barra > button:not(#pf113BtnAtualizar)'); }
+  function voltarBtn() { var h = $('pfHeader'); return h ? h.querySelector(':scope > button') : null; }
+  function notifN() { var nb = $('pfNotifBadgeOverlay'); return (nb && nb.style.display !== 'none') ? String(nb.textContent || '').trim() : ''; }
+
+  // ── 1 · o topo ──────────────────────────────────────────────────────────────────────────────
+  function topoGarantir() {
+    var hd = $('pfHeader'), bk = voltarBtn(); if (!hd || !bk) return;
+    if (!$('pf161Bd')) { var bd = document.createElement('span'); bd.id = 'pf161Bd'; bk.appendChild(bd); }
+    if (!$('pf161Net')) {
+      var n = document.createElement('span'); n.id = 'pf161Net'; n.setAttribute('role', 'button'); n.setAttribute('tabindex', '0');
+      n.setAttribute('data-pf161', 'net'); n.title = 'Toque para conferir a conexão'; n.innerHTML = '<i></i><span></span>';
+      var m = document.createElement('button'); m.type = 'button'; m.id = 'pf161Mn'; m.setAttribute('data-pf161', 'menu'); m.setAttribute('aria-label', 'Menu'); m.textContent = '☰';
+      var antes = $('pfNotifBtn'); if (antes && antes.parentNode === hd) { hd.insertBefore(n, antes); hd.insertBefore(m, antes); } else { hd.appendChild(n); hd.appendChild(m); }
+    }
+  }
+  function pintarTopo(os) {
+    topoGarantir();
+    var nv = notifN(), bd = $('pf161Bd');
+    tg(bd, 'on', !!nv); txt(bd, nv);
+    var tx = $('gsTextPgp'), dot = $('gsDotPgp'), net = $('pf161Net');
+    if (net) {
+      var s = tx ? String(tx.textContent || '').trim() : 'Servidor';
+      txt(net.querySelector('span'), s || 'Servidor');
+      var cls = /offline|sem internet|erro|falh/i.test(s) ? 'er' : ((/conect|confer|reconect|servidor/i.test(s) || (dot && /off/.test(dot.className))) ? 'av' : '');
+      tg(net, 'er', cls === 'er'); tg(net, 'av', cls === 'av');
+    }
+    var t = $('pfTitulo');
+    if (os && t && /^🔧\s+/.test(t.textContent)) t.textContent = t.textContent.replace(/^🔧\s+/, 'OS ');
+  }
+
+  // ── 2 · o cartão do alto ────────────────────────────────────────────────────────────────────
+  function garantir(pip) {
+    var cont = $('pfPipelineConteudo'); if (!pip || !cont || cont.parentNode !== pip) return false;
+    function novo(tag, id, cls, extra) { if ($(id)) return $(id); var e = document.createElement(tag); e.id = id; if (cls) e.className = cls; if (extra) extra(e); pip.appendChild(e); return e; }
+    novo('div', 'pf161Topo', '');
+    novo('div', 'pf161PecasH', 'pf161-h', function (e) { e.innerHTML = '<b>Peças da OS</b><small>separadas pelo almoxarifado</small>'; });
+    ['conf', 'itens', 'kit'].forEach(function (k) { novo('button', 'pf161R_' + k, 'pf161-r', function (e) { e.type = 'button'; e.setAttribute('data-pf161', 'row'); e.setAttribute('data-k', k); }); });
+    novo('div', 'pf161TarH', 'pf161-h', function (e) { e.innerHTML = '<b>Tarefas</b><small>na ordem do roteiro</small>'; });
+    novo('button', 'pf161Nao', '', function (e) { e.type = 'button'; e.setAttribute('data-pf161', 'nao'); e.textContent = 'Não consigo fazer esta OS'; });
+    return true;
+  }
+  function cap(s) { s = String(s || ''); return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+  function endereco(o) {
+    var d = null; try { d = typeof _pf108Destino === 'function' ? _pf108Destino(o) : null; } catch (e) {}
+    var e1 = d && String(d.endereco || '').trim();
+    if (e1) return e1;
+    return [o && o.endereco, o && o.cidade].map(function (x) { return String(x || '').trim(); }).filter(Boolean).join(' · ');
+  }
+  function pintarAlto(os) {
+    var o = osObj(os) || {}, a = null;
+    try { a = (window.PF142 && PF142.agenda) ? PF142.agenda(o) : null; } catch (e) { nota(e, 'agenda'); }
+    var ext = false, sem = false;
+    try { ext = typeof pfOsEhExterna === 'function' && !!pfOsEhExterna(o); } catch (e) {}
+    try { sem = typeof pfOsSemLocal === 'function' && !!pfOsSemLocal(o); } catch (e) {}
+    var ic = sem ? '📍' : (ext ? '🚗' : '🏭');
+    var rel = a ? /^(hoje|amanhã|ontem) \(/.exec(String(a.dia || '')) : null;   // "hoje (sáb, 21/11)" → "Hoje"; outro dia: "Seg, 23/11"
+    var tit = a ? cap(rel ? rel[1] : a.dia) + ' · ' + (a.hora || 'sem horário') : 'Sem data marcada';
+    var campo = $('pf108Campo'), temCampo = !!(campo && String(campo.textContent || '').trim());
+    var sub = temCampo ? '' : (endereco(o) || (sem ? 'Local de atendimento não definido' : (ext ? 'Atendimento no cliente' : 'Na oficina')));
+    var hb = $('pf113BtnAtualizar'), ocup = !!(hb && hb.disabled);
+    html($('pf161Topo'), '<div class="l"><span class="ic" aria-hidden="true">' + ic + '</span><span class="tx"><b>' + esc(tit) + '</b>' +
+      (sub ? '<small>' + esc(sub) + '</small>' : '') + '</span><button type="button" class="at" data-pf161="atualizar" aria-label="Atualizar a OS" title="Atualizar a OS">↻</button></div>');
+    tg(document.querySelector('#pf161Topo .at'), 'ocup', ocup);
+  }
+
+  // ── 3 · Peças da OS ─────────────────────────────────────────────────────────────────────────
+  var PECAS = [['conf', 'pf151Conf', '🏷', 'Conferir as peças'], ['itens', 'pf145Itens', '📋', 'Peças e serviços'], ['kit', 'pf150Kit', '🧰', 'Kit da OS']];
+  function linhaTxt(host, sel) { var e = host.querySelector(sel); return e ? String(e.textContent || '').replace(/\s+/g, ' ').trim() : ''; }
+  function situacao(k, host) {
+    var er = linhaTxt(host, '.pf131-nota.er'), av = linhaTxt(host, '.pf150-st.av') || linhaTxt(host, '.pf131-nota.av'), n = '';
+    if (k === 'conf') return er ? { s: '⚠ o servidor recusou — tocar para ver', c: 'er' } : (av ? { s: av, c: 'av' } : { s: 'ler a etiqueta da separação', c: '' });
+    if (k === 'itens') {
+      if (er) return { s: '⚠ não consegui conferir — tocar para ver', c: 'er' };
+      var res = linhaTxt(host, '.pf131-h .pf131-res'), m = /^(\d+)\s+aprovad/.exec(res);
+      if (m) n = m[1];
+      return { s: res || linhaTxt(host, '.pf131-nota') || 'da proposta aprovada', c: av ? 'av' : '', n: n };
+    }
+    if (er) return { s: '⚠ ' + er.replace(/\s*Entendi\s*$/, ''), c: 'er' };
+    return { s: linhaTxt(host, '.pf150-st') || 'ferramental da caminhonete', c: av ? 'av' : '' };
+  }
+  function pintarPecas(os, pip) {
+    var seq = [];
+    PECAS.forEach(function (p) {
+      var host = $(p[1]), row = $('pf161R_' + p[0]);
+      var vis = !!(host && row && host.parentNode === pip && host.style.display !== 'none' && String(host.textContent || '').trim());
+      tg(row, 'pf161-vis', vis);
+      var aberto = !!S.aberto[os + '|' + p[0]];
+      if (host) at(host, 'data-pf161f', (vis && !aberto) ? '1' : null);
+      if (!vis) { if (row) at(row, 'data-pf161p', null); if (host) at(host, 'data-pf161p', null); return; }
+      var si = situacao(p[0], host);
+      html(row, '<span class="ic" aria-hidden="true">' + p[2] + '</span><span class="tx"><b>' + esc(p[3]) + '</b><small class="' + si.c + '">' + esc(si.s) + '</small></span>' +
+        (si.n ? '<span class="n">' + esc(si.n) + '</span>' : '') + '<span class="ch" aria-hidden="true">' + (aberto ? '⌄' : '›') + '</span>');
+      at(row, 'aria-expanded', aberto ? 'true' : 'false');
+      seq.push(row);
+      if (aberto) seq.push(host); else at(host, 'data-pf161p', null);
+    });
+    seq.forEach(function (e, i) { at(e, 'data-pf161p', seq.length === 1 ? 'if' : (i === 0 ? 'i' : (i === seq.length - 1 ? 'f' : 'm'))); });
+    tg($('pf161PecasH'), 'pf161-vis', seq.length > 0);
+  }
+
+  // ── 4 · as tarefas ──────────────────────────────────────────────────────────────────────────
+  function botoes(card, fn) { return [].filter.call(card.querySelectorAll('button[onclick*="' + fn + '("]'), function (b) { return !b.closest('.pf122-card'); }); }
+  function urlForm(t) { try { return typeof pfGetFormUrl === 'function' ? pfGetFormUrl(String(t.Tipo || 'manual'), t) : null; } catch (e) { return null; } }
+  function icone(t, st) {
+    if (st === 'completo') return '✅';
+    var tp = String(t.Tipo || '').toLowerCase();
+    if (String(t.Executor || '').trim().toLowerCase() === 'adm') return '🏢';
+    if (/preventiva|pistao/.test(tp)) return '📝';
+    if (/inspecao/.test(tp)) return '🔍';
+    if (tp === 'decisao') return '❓';
+    if (/form|rotores/.test(tp)) return '📋';
+    return '🛠';
+  }
+  function pintarTarefas() {
+    var cont = $('pfPipelineConteudo'); if (!cont) return;
+    var vez = false;
+    [].forEach.call(cont.querySelectorAll('.pf-card[id^="pfCard-"]'), function (c) {
+      try {
+        var tid = c.id.slice(7), t = tarefa(tid) || {}, st = String(t.Status || 'pendente');
+        var adm = String(t.Executor || 'campo').trim().toLowerCase() === 'adm';
+        var bA = botoes(c, 'pfAssumirTarefa'), bF = botoes(c, 'pfAbrirForm'), bC = botoes(c, 'pfExpandirConfirmar'), bD = botoes(c, 'pfResolverDecisao'), bL = botoes(c, 'pfLiberarTarefa');
+        var age = bA.length || bF.length || bC.length || bD.length;
+        var pl, cls = '', ehVez = false;
+        if (st === 'completo') { pl = '✓ Feita'; cls = 'ok'; }
+        else if (st === 'dispensado') pl = '➖ Dispensada';
+        else if (st === 'condicional') pl = '❓ Aguarda decisão';
+        else if (st === 'bloqueado') pl = '🔒 Depois';
+        else if (adm) { pl = '🏢 Escritório'; cls = 'az'; }
+        else if (age) { ehVez = !vez; vez = true; pl = bL.length ? 'Com você' : (ehVez ? 'Sua vez' : 'A fazer'); cls = bL.length ? 'ok' : (ehVez ? 'vez' : ''); }
+        else if (c.querySelector('.pf-btn-breve')) pl = 'Em breve';
+        else if (t.Lock_Por) { pl = 'Com outro técnico'; cls = 'am'; }
+        else if (st === 'em_andamento') { pl = 'Em andamento'; cls = 'az'; }
+        else if (st === 'incompleto') { pl = 'Incompleta'; cls = 'am'; }
+        else if (st === 'com_pendencia') { pl = 'Com pendência'; cls = 'er'; }
+        else pl = 'A fazer';
+        var hd = c.querySelector(':scope > .pf-card-header'); if (!hd) return;
+        var ic = hd.querySelector(':scope > .pf161-ic');
+        if (!ic) { ic = document.createElement('span'); ic.className = 'pf161-ic'; ic.setAttribute('aria-hidden', 'true'); hd.insertBefore(ic, hd.firstChild); }
+        txt(ic, icone(t, st));
+        var p = hd.querySelector(':scope > .pf161-pl');
+        if (!p) { p = document.createElement('span'); hd.appendChild(p); }
+        var pc = 'pf161-pl' + (cls ? ' ' + cls : ''); if (p.className !== pc) p.className = pc;
+        txt(p, pl);
+        tg(c, 'pf161-vez', ehVez);
+        tg(c, 'pf161-feita', st === 'completo');
+        // "Assumir e abrir": só o Assumir de sempre ("🔒 Assumir tarefa", livre), em tarefa de campo que tem formulário
+        bA.forEach(function (b) {
+          if (b.__pf152) return;   // a trava do PF152 é dona do botão agora (guarda e devolve o texto); ao soltar, o ciclo reaplica
+          var u = adm ? null : urlForm(t), livre = /^🔒 Assumir (tarefa|e abrir)/.test(b.textContent);
+          if (u && livre) {
+            txt(b, u.indexOf('ProperTech/index.html') >= 0 ? '🔒 Assumir e abrir a coleta' : '🔒 Assumir e abrir o formulário');
+            at(b, 'data-pf161abrir', tid);
+          } else if (!u && b.hasAttribute('data-pf161abrir')) { at(b, 'data-pf161abrir', null); if (/^🔒 Assumir e abrir/.test(b.textContent)) b.textContent = '🔒 Assumir tarefa'; }
+        });
+        bF.forEach(function (b) { if (b.textContent === '📋 Abrir formulário' && /ProperTech\/index\.html/.test(b.getAttribute('onclick') || '')) b.textContent = '📋 Abrir a coleta'; });
+      } catch (e) { nota(e, 'tarefa'); }
+    });
+  }
+  function desfazer() {   // chave desligada com a tela aberta: os rótulos voltam aos de sempre
+    try {
+      document.querySelectorAll('[data-pf161abrir]').forEach(function (b) { if (/^🔒 Assumir e abrir/.test(b.textContent)) b.textContent = '🔒 Assumir tarefa'; b.removeAttribute('data-pf161abrir'); });
+      document.querySelectorAll('#pfPipelineConteudo button[onclick*="pfAbrirForm("]').forEach(function (b) { if (b.textContent === '📋 Abrir a coleta') b.textContent = '📋 Abrir formulário'; });
+      var t = $('pfTitulo'); if (t && /^OS\s/.test(t.textContent) && typeof _pf113Cabecalho === 'function') _pf113Cabecalho();
+    } catch (e) { nota(e, 'desfazer'); }
+  }
+
+  // ── 5 · Não consigo fazer esta OS ───────────────────────────────────────────────────────────
+  function pintarNao(os) {
+    var o = osObj(os), b = $('pf161Nao');
+    var pode = !!(o && window.PF129 && typeof PF129.naoConsigo === 'function' && !/conclu|cancel|fatur/i.test(String(o.status || '')));
+    tg(b, 'pf161-vis', pode);
+  }
+
+  // ── o ciclo ─────────────────────────────────────────────────────────────────────────────────
+  var _ligou = false;
+  function ciclo() {
+    PF161.ciclos++;
+    var lig = ativo(), ov = $('pfOverlay');
+    tg(document.documentElement, 'pf161', lig);
+    if (!lig) { tg(ov, 'pf161-os', false); if (_ligou) { _ligou = false; desfazer(); } return; }
+    _ligou = true;
+    var os = osTela();
+    tg(ov, 'pf161-os', !!os);
+    try { pintarTopo(os); } catch (e) { nota(e, 'topo'); }
+    if (!os) return;
+    var pip = $('pfScreenPipeline');
+    if (!garantir(pip)) return;
+    try { pintarAlto(os); } catch (e) { nota(e, 'alto'); }
+    try { pintarPecas(os, pip); } catch (e) { nota(e, 'pecas'); }
+    try { pintarTarefas(); } catch (e) { nota(e, 'tarefas'); }
+    try { pintarNao(os); } catch (e) { nota(e, 'nao'); }
+    tg($('pf161TarH'), 'pf161-vis', !!document.querySelector('#pfPipelineConteudo .pf-card'));
+  }
+  PF161.ciclo = ciclo;
+  var _t = 0;
+  function agendar() { if (_t) return; _t = setTimeout(function () { _t = 0; try { ciclo(); } catch (e) { nota(e, 'ciclo'); } }, 40); }
+  PF161.agendar = agendar;
+
+  // ── assumir e abrir ─────────────────────────────────────────────────────────────────────────
+  function dorme(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  async function assumirEAbrir(tid, btn) {
+    var os = osTela(); if (!os || S.ocupado[tid]) return;
+    S.ocupado[tid] = 1;
+    try {
+      var fim = false, p;
+      try { p = window.pfAssumirTarefa(tid, btn); } catch (e) { nota(e, 'assumir'); return; }
+      Promise.resolve(p).then(function () { fim = true; }, function () { fim = true; });
+      var t0 = Date.now();
+      while (!fim && Date.now() - t0 < PF161.cfg.espera) await dorme(120);
+      while (!fim && document.querySelector('.app-dlg-backdrop')) await dorme(200);   // "designada a outro": espera a resposta do técnico
+      if (!fim) {   // o servidor não respondeu no teto: não abre sozinho (a recusa ainda pode vir); o cartão já mostra o Abrir de sempre
+        try { if (typeof pfToast === 'function') pfToast('📶 O servidor está demorando — quando a tarefa for sua, toque em “Abrir a coleta”.'); } catch (e) {}
+        return;
+      }
+      if (osTela() !== os) return;
+      var t = tarefa(tid);
+      if (!t || String(t.Status || '') === 'completo' || !meu(t.Lock_Por)) return;   // o servidor não deixou: fica o que o Assumir mostrou
+      var u = urlForm(t); if (!u) return;
+      PF161.abriu = (PF161.abriu || 0) + 1;
+      await window.pfAbrirForm(tid, u, null);
+    } catch (e) { nota(e, 'assumirEAbrir'); }
+    finally { delete S.ocupado[tid]; }
+  }
+  PF161.assumirEAbrir = assumirEAbrir;
+
+  // ── o menu ☰ da tela da OS: o menu do PCF + os dois que eram do topo ─────────────────────────
+  function menu() {
+    if (typeof window.pcf116AbrirMenu !== 'function') return;
+    window.pcf116AbrirMenu();
+    var ovs = document.querySelectorAll('.pcf116-ov'), mo = ovs[ovs.length - 1], corpo = mo && mo.querySelector('.pcf116-corpo');
+    if (!corpo || corpo.querySelector('[data-o="pf161hub"]')) return;
+    var n = notifN();
+    function item(o, ic, t, s) { return '<button type="button" class="pcf116-item" data-o="' + o + '"><span class="ic">' + ic + '</span><span>' + esc(t) + '<small>' + esc(s) + '</small></span></button>'; }
+    corpo.insertAdjacentHTML('afterbegin', item('pf161avisos', '🔔', 'Avisos do escritório' + (n ? ' (' + n + ')' : ''), n ? 'há aviso novo para você' : 'o que o escritório mandou para você'));
+    corpo.insertAdjacentHTML('beforeend', item('pf161hub', '🏠', 'Menu do ProperHub', 'Administração, Agenda, Inspeção…'));
+    function fechar() { var c = mo.querySelector('.pcf116-pe .pcf116-cancel'); if (c) c.click(); else try { mo.remove(); } catch (e) {} }
+    corpo.querySelector('[data-o="pf161avisos"]').onclick = function () { fechar(); try { pfToggleNotif(); } catch (e) { nota(e, 'avisos'); } };
+    corpo.querySelector('[data-o="pf161hub"]').onclick = function () { fechar(); try { window._pf126IrMenu($('pf126Menu')); } catch (e) { nota(e, 'hub'); } };
+  }
+  PF161.menu = menu;
+
+  // ── cliques deste bloco (captura: o ‹ e o "Assumir e abrir" passam antes do onclick de sempre) ─────
+  function parar(ev) { ev.preventDefault(); ev.stopPropagation(); if (ev.stopImmediatePropagation) ev.stopImmediatePropagation(); }
+  document.addEventListener('click', function (ev) {
+    if (!ativo()) return;
+    try {
+      var tgt = ev.target, ov = $('pfOverlay');
+      if (ov && ov.classList.contains('pf161-os')) {
+        var bk = voltarBtn();
+        if (bk && (tgt === bk || bk.contains(tgt))) { parar(ev); var tr = trocarBtn(); if (tr) tr.click(); else if (typeof pfVoltarOS === 'function') pfVoltarOS(); return; }
+      }
+      var b = tgt.closest && tgt.closest('[data-pf161abrir],[data-pf161]'); if (!b) return;
+      if (b.hasAttribute('data-pf161abrir')) { parar(ev); if (!b.disabled) assumirEAbrir(b.getAttribute('data-pf161abrir'), b); return; }
+      var k = b.getAttribute('data-pf161'), os = osTela();
+      if (k === 'row') { var ch = os + '|' + b.getAttribute('data-k'); S.aberto[ch] = !S.aberto[ch]; ciclo(); }
+      else if (k === 'atualizar') { var a = $('pf113BtnAtualizar'); if (a && !a.disabled) a.click(); agendar(); }
+      else if (k === 'menu') menu();
+      else if (k === 'net') { if (typeof pgpTestGs === 'function') pgpTestGs(true); }
+      else if (k === 'nao') { if (os && window.PF129 && PF129.naoConsigo) PF129.naoConsigo(os); }
+    } catch (e) { nota(e, 'clique'); }
+  }, true);
+
+  // ── ganchos: embrulho por window[nome], por FORA de todos; e um observador que só AGENDA ───────
+  function embrulhar(nome, fazer) {
+    try { var o = window[nome]; if (typeof o !== 'function' || o.__pf161) return; var n = fazer(o); n.__pf161 = true; window[nome] = n; } catch (e) { nota(e, 'embrulhar ' + nome); }
+  }
+  function depois(r) { try { ciclo(); } catch (e) {} if (r && typeof r.then === 'function') r.then(agendar, agendar); return r; }
+  embrulhar('pfVoltarOS', function (orig) { return function () { var r = orig.apply(this, arguments); return depois(r); }; });
+  embrulhar('pfSelecionarOS', function (orig) { return function () { var r = orig.apply(this, arguments); return depois(r); }; });
+  embrulhar('pfLoadPipeline', function (orig) { return function () { var r = orig.apply(this, arguments); return depois(r); }; });
+  embrulhar('_pf113Cabecalho', function (orig) { return function () { var r = orig.apply(this, arguments); try { if (ativo()) pintarTopo(osTela()); } catch (e) {} return r; }; });
+  function vigiar() {
+    try {
+      var mo = new MutationObserver(agendar), pip = $('pfScreenPipeline'), hd = $('pfHeader'), ov = $('pfOverlay'), gs = $('gsTextPgp');
+      if (pip) mo.observe(pip, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'disabled'] });
+      if (hd) mo.observe(hd, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
+      if (ov) mo.observe(ov, { attributes: true, attributeFilter: ['style'] });
+      if (gs) mo.observe(gs, { childList: true, characterData: true, subtree: true });
+      mo.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    } catch (e) { nota(e, 'vigiar'); }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { vigiar(); ciclo(); }); else { vigiar(); ciclo(); }
+})();
+</script>
+<!-- ████ FIM PCF_V161 (PF161) ████ -->
 
 </body>
 </html>
