@@ -45574,7 +45574,7 @@ html.pf149-on .pcf117-item.pf149-com-nome .pcf121-chips{display:none!important}
   if (window.PF149) return;
   var PF149 = window.PF149 = { versao: 'PCF_V149', log: [], montadas: 0, recolhidas: 0, devolvidos: 0 };
   function ligado() { try { return localStorage.getItem('pcf149') !== 'off'; } catch (e) { return true; } }
-  function recolherLigado() { try { return localStorage.getItem('pcf149_recolher') !== 'off' && !(window.PF159 && PF159.ativo && PF159.ativo()); } catch (e) { return true; } }   /* PCF_V159 (#309): com o PF159 ligado, quem recolhe é ele; sem o PF159, igual */
+  function recolherLigado() { try { return localStorage.getItem('pcf149_recolher') !== 'off' && !(window.PF159 && PF159.recolhe && PF159.recolhe()); } catch (e) { return true; } }   /* PCF_V159 (#309): na preventiva com o PF159 ligado, quem recolhe é ele; sem o PF159, igual */
   function $(id) { return document.getElementById(id); }
   function log() { try { PF149.log.push([new Date().toISOString().slice(11, 19)].concat([].slice.call(arguments)).join(' ')); if (PF149.log.length > 60) PF149.log.shift(); } catch (e) {} }
   var FAKE = { stopPropagation: function () {}, preventDefault: function () {} };
@@ -48041,7 +48041,7 @@ html.pf159 table.pt-table.pf149 .pf149-peca .pt-photo-cols .btn-foto-peca{width:
 /* a peça aberta: contorno laranja */
 html.pf159.pf149-prev table.pt-table.pf149>tbody.pf149-peca.pf159-ab{border:1.5px solid #c2410c;border-left:5px solid #c2410c}
 /* "▸ Mais" como linha de link */
-html.pf159.pf149-prev table.pt-table.pf149>tbody.pf149-peca .btn-pt-detail{background:#fff!important;border:0!important;border-top:1px dashed #cbd5e1!important;border-radius:0!important;color:#c2410c!important;box-shadow:none!important;min-height:48px!important;padding:0 2px!important}
+html.pf159.pf149-prev table.pt-table.pf149>tbody.pf149-peca .btn-pt-detail{background:#fff!important;border:0!important;border-top:1px dashed #cbd5e1!important;border-radius:0!important;color:#c2410c!important;box-shadow:none!important;min-height:52px!important;padding:0 2px!important}
 /* a peça fechada: linha de 56 px (número / ✓ / —, nome, o que foi feito ou o que falta, ›); toque reabre */
 html.pf159.pf149-prev table.pt-table.pf149>tbody.pf149-peca.pf159-fech{min-height:56px;padding:6px 32px 6px 10px;margin:0 0 7px;box-shadow:none;cursor:pointer;align-items:center;border:1px solid #d9e0ea;border-left:5px solid #94a3b8}
 html.pf159.pf149-prev table.pt-table.pf149>tbody.pf149-peca.pf159-fech.pf159-semi{border-left-color:#f59e0b}
@@ -48076,10 +48076,10 @@ html.pf159 .pcf117-item > .pcf117-obs{order:9}
 html.pf159 .pcf117-item > .pcf117-aviso{order:10}
 html.pf159 .pcf117-item:not(.pf159-mais) > .pcf117-med,html.pf159 .pcf117-item:not(.pf159-mais) > .pcf148-campos,html.pf159 .pcf117-item:not(.pf159-mais) > .pcf117-obs{display:none!important}
 html.pf159 .pcf117-item .pcf117-e{min-height:52px!important;border-radius:11px!important}
-html.pf159 .pcf117-item .pcf117-nome,html.pf159 .pcf117-item .pcf117-del{min-height:48px!important}
+html.pf159 .pcf117-item .pcf117-nome,html.pf159 .pcf117-item .pcf117-del{min-height:52px!important}
 html.pf159 .pf159-lista{min-height:52px;margin:8px 0 2px;border-radius:12px;border:1.5px solid #cbd5e1;background:#fff;color:#0f172a;font:700 14px Inter,system-ui,sans-serif;cursor:pointer}
 html.pf159 .pf159-lista:active,html.pf159 .pf159-imais:active{background:#f1f5f9}
-html.pf159 .pf159-imais{display:flex;align-items:center;justify-content:space-between;min-height:48px;margin-top:10px;padding:0 2px;border:0;border-top:1px dashed #cbd5e1;background:none;color:#c2410c;font:700 13.5px Inter,system-ui,sans-serif;text-align:left;cursor:pointer}
+html.pf159 .pf159-imais{display:flex;align-items:center;justify-content:space-between;min-height:52px;margin-top:10px;padding:0 2px;border:0;border-top:1px dashed #cbd5e1;background:none;color:#c2410c;font:700 13.5px Inter,system-ui,sans-serif;text-align:left;cursor:pointer}
 html.pf159 .pcf117-acoes > .pcf117-add{width:100%;min-height:52px!important;background:#fff!important;background-image:none!important;color:#c2410c!important;border:1.5px solid #fdba74!important;border-radius:12px!important;box-shadow:none!important;font-size:0!important}
 html.pf159 .pcf117-acoes > .pcf117-add::before{content:attr(data-pf159-rot);font:700 15px Inter,system-ui,sans-serif;color:#c2410c}
 /* item pronto: linha de 56 px com o ✓; toque reabre */
@@ -48094,7 +48094,7 @@ html.pf159 .pcf117-item.pf159-fech::after{content:'›';position:absolute;right:
 html.pf159 .pcf117-item.pf159-fech .pf159-res{display:block;font:400 12px Inter,system-ui,sans-serif;color:#475569;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 }
 /* folha "Escolher da lista" */
-.pf159-ov{position:fixed;inset:0;z-index:10060;background:rgba(15,23,42,.45);display:flex;align-items:flex-end;justify-content:center}
+.pf159-ov{position:fixed;inset:0;z-index:100003;background:rgba(15,23,42,.45);display:flex;align-items:flex-end;justify-content:center}
 .pf159-sh{width:100%;max-width:520px;max-height:80vh;overflow:auto;background:#fff;border-radius:20px 20px 0 0;padding:16px 14px 18px;font-family:Inter,system-ui,sans-serif;color:#0f172a;box-sizing:border-box}
 .pf159-sh h3{margin:0 0 2px;font-size:18px}
 .pf159-sh .s{color:#475569;font-size:13px;margin-bottom:10px}
@@ -48135,6 +48135,7 @@ html.pf159 .pcf117-item.pf159-fech .pf159-res{display:block;font:400 12px Inter,
   function ativo() { try { return chave() && !!(window.PF130 && PF130.ligado && PF130.ligado()); } catch (e) { return false; } }
   PF159.ativo = ativo;
   function prev() { return document.documentElement.classList.contains('pf149-prev'); }
+  PF159.recolhe = function () { return ativo() && prev(); };   // o PF149 pergunta isto: onde o PF159 recolhe, o recolher antigo sai
   function tg(el, c, on) { if (el && el.classList.contains(c) !== !!on) el.classList.toggle(c, !!on); }   // só escreve quando muda
   function txt(el, t) { if (el && el.textContent !== t) el.textContent = t; }
   function atr(el, a, v) { if (el && el.getAttribute(a) !== v) el.setAttribute(a, v); }
@@ -48293,9 +48294,9 @@ html.pf159 .pcf117-item.pf159-fech .pf159-res{display:block;font:400 12px Inter,
         else if (ok && S.iok0[uid] === false) { S.iab[uid] = true; S.ivirou[uid] = Date.now(); vigiar(); }
         if (!ok) { S.iab[uid] = true; delete S.ivirou[uid]; }
         S.iok0[uid] = ok;
-        tg(it, 'pf159-fech', ok && !S.iab[uid]);
+        var tit = it.querySelector(':scope > .pf149-tit');   // o título com o nome é do PF149: sem ele (pcf149=off) o item não vira linha
+        tg(it, 'pf159-fech', ok && !S.iab[uid] && !!tit);
         tg(it, 'pf159-mais', !!S.imais[uid]);
-        var tit = it.querySelector(':scope > .pf149-tit');
         if (tit) {
           var r = tit.querySelector(':scope > .pf159-res');
           if (!r) { r = document.createElement('span'); r.className = 'pf159-res'; tit.appendChild(r); }
@@ -48433,7 +48434,7 @@ html.pf159 .pcf117-item.pf159-fech .pf159-res{display:block;font:400 12px Inter,
   }
   embrulhar('selectScenario', function (p, sc, midx) { var i = typeof midx === 'number' ? midx : (parseInt(String(p || '').replace(/\D/g, ''), 10) || 0); S.troca[i] = false; zerar(i); });
   embrulhar('pgpAplicarPerfil', function () { zerar(); });
-  embrulhar('createPanel', function () { zerar(); });
+  embrulhar('createPanel', function (idx) { zerar(typeof idx === 'number' ? idx : null); });   // máquina nova não mexe na peça aberta das outras
   embrulhar('restoreState', function () { zerar(); });   // coleta reaberta: as prontas nascem recolhidas
 
   // cabeçalho da etapa 04 aberta: "x de y prontas" (a régua do selo), no lugar de "peças com ação"
