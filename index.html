@@ -47803,14 +47803,16 @@ html.pf129.pf130.pf158 .machine-panel.pf158-hist > .pf-prevfotos-section .pf130-
 /* hub */
 html.pf129.pf130.pf158 .pf130-hub{position:relative}
 html.pf129.pf130.pf158 .pf130-hub > .pf135-ver{position:absolute;top:14px;right:4px;margin:0;font-size:11px;color:#64748b}
-.pf158-pl{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:12px;font:13px Inter,system-ui,sans-serif;color:#334155}
+.pf158-pl{display:flex;width:100%;justify-content:space-between;align-items:center;gap:8px;margin-top:6px;min-height:52px;padding:0;background:none;border:0;cursor:pointer;text-align:left;font:13px Inter,system-ui,sans-serif;color:#334155}
 .pf158-pl b{color:#c2410c;font-size:14px}
-.pf158-pl button{color:#c2410c;font:700 13px Inter,system-ui,sans-serif;background:none;border:0;padding:0;cursor:pointer;min-height:32px}
+.pf158-pl .v{color:#c2410c;font-weight:700}
+.pf158-pl:active{opacity:.6}
 html.pf129.pf130.pf158 .pf130-hub .pf130-hist{min-height:52px;margin-top:10px;padding-top:4px;gap:8px}
 html.pf129.pf130.pf158 .pf130-hub .pf130-hist > span:first-child{flex:1;text-align:left}
 .pf158-cnt{font:700 12px Inter,system-ui,sans-serif;background:#f1f5f9;color:#334155;border-radius:999px;padding:3px 9px}
 .pf158-cnt:empty{display:none}
 html.pf129.pf130.pf158 .pf130-sec h2{font-size:17px}
+@media screen{
 /* "Antes de comecar": a foto geral e o cadastro incompleto num cartao so, no padrao (sem degrade, sem faixa vermelha) */
 html.pf129.pf130.pf158 .machine-panel > .photo-thumbs-mini[data-pkey="geral"]:empty{display:none}
 html.pf129.pf130.pf158 .machine-panel > .pf158-ag{background:#fff!important;border:1px solid #d9e0ea!important;border-left:4px solid #16a34a!important;border-radius:0!important;margin:0!important;box-shadow:none!important}
@@ -47835,6 +47837,7 @@ html.pf129.pf130.pf158 .machine-panel > .pgp-missing-alert::before{content:'🏢
 html.pf129.pf130.pf158 .machine-panel > .pgp-missing-alert strong{font-size:0!important;margin:0 0 2px!important;text-transform:none!important;letter-spacing:0!important}
 html.pf129.pf130.pf158 .machine-panel > .pgp-missing-alert strong::before{content:'Cadastro incompleto';font:700 15px Inter,system-ui,sans-serif;color:#0f172a}
 html.pf129.pf130.pf158 .machine-panel > .pgp-missing-alert::after{content:'Etapa 01 ›';position:absolute;right:12px;top:50%;margin-top:-11px;font:700 14px Inter,system-ui,sans-serif;color:#c2410c}
+}
 /* etapas em linha de 56 px: numero, nome, situacao; a descricao some; completa = ✓ verde; aberta = numero laranja */
 html.pf129.pf130.pf158 .machine-panel .section > .section-header{min-height:56px!important;padding:8px 12px!important}
 html.pf129.pf130.pf158 .pf130-hd{gap:12px}
@@ -47849,23 +47852,23 @@ html.pf129.pf130.pf158 .pf130-assin .h{min-height:56px;padding:8px 12px}
 html.pf129.pf130.pf158 .pf130-assin .pf130-hd .d{display:none}
 html.pf129.pf130.pf158 .pf130-fim .pf130-b{min-height:52px}
 /* checklist (etapas 01, 02, 03, 06): o campo ja aparece aberto; o ✓ vira a pilula "Conferir / ✓ Conferido" a direita do rotulo; nada riscado */
-html.pf129.pf130.pf158 .machine-panel .field-item{padding:10px 14px 14px!important}
-html.pf129.pf130.pf158 .machine-panel .field-item > .field-input{display:block!important;margin-top:4px}
-html.pf129.pf130.pf158 .machine-panel .field-item > .field-label{align-items:center;min-height:52px;margin-bottom:0;gap:10px}
-html.pf129.pf130.pf158 .machine-panel .field-item > .field-label > .label-text{order:1}
-html.pf129.pf130.pf158 .machine-panel .field-item > .field-label > .checkbox{order:2;width:auto;min-width:104px;height:40px;margin:0;padding:0 12px;border-radius:999px;border:1.5px solid #cbd5e1!important;background:#fff!important;font-size:0!important;color:#334155!important;transition:none}
-html.pf129.pf130.pf158 .machine-panel .field-item > .field-label > .checkbox::after{content:'Conferir';font:700 14px Inter,system-ui,sans-serif;color:#334155}
-html.pf129.pf130.pf158 .machine-panel .field-item.checked > .field-label > .checkbox{background:#dcfce7!important;border-color:#86efac!important}
-html.pf129.pf130.pf158 .machine-panel .field-item.checked > .field-label > .checkbox::after{content:'✓ Conferido';color:#166534}
-html.pf129.pf130.pf158 .machine-panel .field-item .label-main,html.pf129.pf130.pf158 .machine-panel .field-item.checked .label-main{font:700 14.5px Inter,system-ui,sans-serif!important;color:#0f172a!important;text-decoration:none!important}
-html.pf129.pf130.pf158 .machine-panel .field-item .label-hint{font-style:normal;color:#64748b}
-html.pf129.pf130.pf158 .machine-panel .field-item > .field-input input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden]),
-html.pf129.pf130.pf158 .machine-panel .field-item > .field-input select,html.pf129.pf130.pf158 .machine-panel .field-item > .field-input textarea{min-height:48px;border-radius:12px!important;border:1px solid #cbd5e1!important;font-size:16px;padding:10px 12px;box-sizing:border-box;background:#fff!important}
-html.pf129.pf130.pf158 .machine-panel .field-item > .field-input input[readonly]{background:#f1f5f9!important;color:#334155!important}
-html.pf129.pf130.pf158 .machine-panel .field-item > .field-input label{text-transform:none;letter-spacing:0;font:600 12.5px Inter,system-ui,sans-serif;color:#475569}
+html.pf129.pf130.pf158 .machine-panel .field-item[onclick^="toggleField"]{padding:10px 14px 14px!important}
+html.pf129.pf130.pf158 .machine-panel .field-item[onclick^="toggleField"] > .field-input{display:block!important;margin-top:4px}
+html.pf129.pf130.pf158 .machine-panel .field-item[onclick^="toggleField"] > .field-label{align-items:center;min-height:52px;margin-bottom:0;gap:10px}
+html.pf129.pf130.pf158 .machine-panel .field-item[onclick^="toggleField"] > .field-label > .label-text{order:1}
+html.pf129.pf130.pf158 .machine-panel .field-item[onclick^="toggleField"] > .field-label > .checkbox{order:2;width:auto;min-width:104px;height:40px;margin:0;padding:0 12px;border-radius:999px;border:1.5px solid #cbd5e1!important;background:#fff!important;font-size:0!important;color:#334155!important;transition:none}
+html.pf129.pf130.pf158 .machine-panel .field-item[onclick^="toggleField"] > .field-label > .checkbox::after{content:'Conferir';font:700 14px Inter,system-ui,sans-serif;color:#334155}
+html.pf129.pf130.pf158 .machine-panel .field-item[onclick^="toggleField"].checked > .field-label > .checkbox{background:#dcfce7!important;border-color:#86efac!important}
+html.pf129.pf130.pf158 .machine-panel .field-item[onclick^="toggleField"].checked > .field-label > .checkbox::after{content:'✓ Conferido';color:#166534}
+html.pf129.pf130.pf158 .machine-panel .field-item[onclick^="toggleField"] .label-main,html.pf129.pf130.pf158 .machine-panel .field-item[onclick^="toggleField"].checked .label-main{font:700 14.5px Inter,system-ui,sans-serif!important;color:#0f172a!important;text-decoration:none!important}
+html.pf129.pf130.pf158 .machine-panel .field-item[onclick^="toggleField"] .label-hint{font-style:normal;color:#64748b}
+html.pf129.pf130.pf158 .machine-panel .field-item[onclick^="toggleField"] > .field-input input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden]),
+html.pf129.pf130.pf158 .machine-panel .field-item[onclick^="toggleField"] > .field-input select,html.pf129.pf130.pf158 .machine-panel .field-item[onclick^="toggleField"] > .field-input textarea{min-height:48px;border-radius:12px!important;border:1px solid #cbd5e1!important;font-size:16px;padding:10px 12px;box-sizing:border-box;background:#fff!important}
+html.pf129.pf130.pf158 .machine-panel .field-item[onclick^="toggleField"] > .field-input input[readonly]{background:#f1f5f9!important;color:#334155!important}
+html.pf129.pf130.pf158 .machine-panel .field-item[onclick^="toggleField"] > .field-input label{text-transform:none;letter-spacing:0;font:600 12.5px Inter,system-ui,sans-serif;color:#475569}
 @media print{.pf158-pl,.pf158-cnt{display:none!important}
-html.pf129.pf130.pf158 .machine-panel .field-item > .field-label > .checkbox{font-size:13px!important}
-html.pf129.pf130.pf158 .machine-panel .field-item > .field-label > .checkbox::after{content:none}}
+html.pf129.pf130.pf158 .machine-panel .field-item[onclick^="toggleField"] > .field-label > .checkbox{font-size:13px!important}
+html.pf129.pf130.pf158 .machine-panel .field-item[onclick^="toggleField"] > .field-label > .checkbox::after{content:none}}
 </style>
 <script>
 /* ═══════════════════════════════════════════════════════════════════════════════════
@@ -47915,7 +47918,7 @@ html.pf129.pf130.pf158 .machine-panel .field-item > .field-label > .checkbox::af
     if (!ativo()) return null;
     var i = x.i, pr = x.pr || {}, prox = null;
     for (var k = 0; k < x.etapas.length; k++) if (!x.etapas[k].ok) { prox = x.etapas[k]; break; }
-    var sub = prox ? 'Próxima: etapa ' + (prox.n ? prox.n + ' · ' : '') + prox.t : 'Tudo preenchido ✓ — confira e conclua';
+    var sub = prox ? 'Próxima: etapa ' + (prox.n ? prox.n + ' · ' : '') + prox.t : (pr.falta ? 'Falta pouco — toque em "ver ›" abaixo' : 'Tudo preenchido ✓ — confira e conclua');   // régua: o progresso do motor
     var falta = pr.falta ? 'Faltam ' + pr.falta + ' ite' + (pr.falta > 1 ? 'ns' : 'm') + (pr.semAcao ? ' (' + pr.semAcao + ' peça' + (pr.semAcao > 1 ? 's' : '') + ' sem ação)' : '') : 'Tudo preenchido ✓';
     var html = '<div class="kick">Coleta em andamento</div>' +
       '<h1>' + esc(x.cli || 'Cliente não informado') + '</h1><div class="sub">' + esc(sub) + '</div>' +
@@ -47923,7 +47926,7 @@ html.pf129.pf130.pf158 .machine-panel .field-item > .field-label > .checkbox::af
       '<div class="pf130-card"><div class="pf130-maq"><div class="pf130-ic">' + (x.pistao ? '🔩' : '🔧') + '</div><div style="min-width:0"><b>' + esc(x.nome) + '</b><div class="m">' + esc(x.ident || 'sem série / TAG') + '</div></div>' +
       '<button type="button" class="pf130-trocar" data-pf130="trocar">Trocar ▾</button></div>' +
       '<div class="pf130-chips"><span class="pf130-chip">' + esc(x.pfTxt) + '</span>' + (x.ult ? '<span class="pf130-chip">Última visita ' + esc(x.ult) + '</span>' : '') + (x.nMaq > 1 ? '<span class="pf130-chip">Máq. ' + (i + 1) + ' de ' + x.nMaq + '</span>' : '') + '</div>' +
-      '<div class="pf158-pl"><span>' + esc(falta) + ' · <button type="button" data-pf130="falta">ver ›</button></span><b>' + (pr.pct || 0) + '%</b></div>' +
+      '<button type="button" class="pf158-pl" data-pf130="falta"><span>' + esc(falta) + ' · <span class="v">ver ›</span></span><b>' + (pr.pct || 0) + '%</b></button>' +
       '<div class="pf130-pbar"><i style="width:' + (pr.pct || 0) + '%"></i></div>' +
       '<button type="button" class="pf130-hist" data-pf130="hist"><span>🕘 Últimas visitas e fotos</span><span class="pf158-cnt">' + esc(contagemFotos(i)) + '</span><span>' + (x.hist ? '▴' : '›') + '</span></button>' +
       '<div class="pf130-histslot" id="pf130HistSlot' + i + '"></div></div>';
@@ -47946,7 +47949,7 @@ html.pf129.pf130.pf158 .machine-panel .field-item > .field-label > .checkbox::af
         var ok = !!(b && b.querySelector('.foto-ini-btn.done'));
         if (b) tg(b, 'pf158-ok', ok);
         var partes = [b, t, a].filter(function (el) { return visivel(el, p); });
-        var pend = !ok || partes.indexOf(a) >= 0;
+        var pend = (partes.indexOf(b) >= 0 && !ok) || partes.indexOf(a) >= 0;   // sem o cartão da foto, só o cadastro decide
         [b, t, a].forEach(function (el) {
           if (!el) return;
           var k = partes.indexOf(el);
