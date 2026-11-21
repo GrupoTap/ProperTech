@@ -48811,7 +48811,7 @@ html.pf161 #pfOverlay.pf161-os #pf161Topo{display:block;background:#fff;border:1
 #pf161Topo .ic{width:48px;height:48px;flex-shrink:0;border-radius:13px;background:#fff7ed;border:1px solid #fed7aa;display:flex;align-items:center;justify-content:center;font-size:24px}
 #pf161Topo .tx{flex:1;min-width:0}
 #pf161Topo .tx b{display:block;font:800 17px Inter,system-ui,sans-serif;line-height:1.25}
-#pf161Topo .tx small{display:block;font:400 13.5px Inter,system-ui,sans-serif;color:#475569;margin-top:2px}
+#pf161Topo .tx .sb{display:block;font:400 13.5px Inter,system-ui,sans-serif;color:#475569;margin-top:2px}
 #pf161Topo .at{flex-shrink:0;width:52px;height:52px;border-radius:13px;border:1.5px solid #cbd5e1;background:#fff;color:#0f172a;font-size:22px;cursor:pointer;padding:0}
 #pf161Topo .at:active{background:#f1f5f9}
 #pf161Topo .at.ocup{opacity:.45}
@@ -48829,15 +48829,15 @@ html.pf161 #pfOverlay.pf161-os #pfProgressBar{background:#c2410c!important;borde
 /* 3 · Conferir as peças, Peças e serviços e Kit da OS: linhas de UM cartão; cada uma abre no lugar */
 html.pf161 #pfOverlay.pf161-os .pf161-h.pf161-vis{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:2px 2px 8px;font-family:Inter,system-ui,sans-serif}
 .pf161-h b{font:800 18px Inter,system-ui,sans-serif;color:#0f172a}
-.pf161-h small{font:400 12.5px Inter,system-ui,sans-serif;color:#64748b;text-align:right}
+.pf161-h .sb{font:400 12.5px Inter,system-ui,sans-serif;color:#64748b;text-align:right}
 html.pf161 #pfOverlay.pf161-os .pf161-r.pf161-vis{display:flex;align-items:center;gap:11px;width:100%;min-height:64px;margin:0;padding:8px 12px;background:#fff;border:1px solid #d9e0ea;border-radius:0;text-align:left;cursor:pointer;color:#0f172a;font-family:Inter,system-ui,sans-serif;box-sizing:border-box}
 html.pf161 #pfOverlay.pf161-os .pf161-r.pf161-vis:active{background:#f1f5f9}
 .pf161-r .ic{width:44px;height:44px;flex-shrink:0;border-radius:12px;background:#f1f5f9;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:center;font-size:21px}
 .pf161-r .tx{flex:1;min-width:0}
 .pf161-r .tx b{display:block;font:700 15.5px Inter,system-ui,sans-serif}
-.pf161-r .tx small{display:block;font:400 13px Inter,system-ui,sans-serif;color:#475569;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pf161-r .tx small.er{color:#b91c1c}
-.pf161-r .tx small.av{color:#92400e}
+.pf161-r .tx .sb{display:block;font:400 13px Inter,system-ui,sans-serif;color:#475569;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pf161-r .tx .sb.er{color:#b91c1c}
+.pf161-r .tx .sb.av{color:#92400e}
 .pf161-r .n{flex-shrink:0;min-width:30px;height:30px;padding:0 8px;border-radius:15px;background:#f1f5f9;color:#334155;font:700 13.5px Inter,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;box-sizing:border-box}
 .pf161-r .ch{flex-shrink:0;color:#64748b;font:400 20px Inter,system-ui,sans-serif;width:16px;text-align:center}
 html.pf161 #pfOverlay.pf161-os #pfScreenPipeline > .pf131[data-pf161f]{display:none!important}
@@ -48965,9 +48965,9 @@ html.pf161 #pfOverlay.pf161-os #pf161Nao.pf161-vis:active{background:#fef2f2}
     var cont = $('pfPipelineConteudo'); if (!pip || !cont || cont.parentNode !== pip) return false;
     function novo(tag, id, cls, extra) { if ($(id)) return $(id); var e = document.createElement(tag); e.id = id; if (cls) e.className = cls; if (extra) extra(e); pip.appendChild(e); return e; }
     novo('div', 'pf161Topo', '');
-    novo('div', 'pf161PecasH', 'pf161-h', function (e) { e.innerHTML = '<b>Peças da OS</b><small>separadas pelo almoxarifado</small>'; });
+    novo('div', 'pf161PecasH', 'pf161-h', function (e) { e.innerHTML = '<b>Peças da OS</b><span class="sb">separadas pelo almoxarifado</span>'; });
     ['conf', 'itens', 'kit'].forEach(function (k) { novo('button', 'pf161R_' + k, 'pf161-r', function (e) { e.type = 'button'; e.setAttribute('data-pf161', 'row'); e.setAttribute('data-k', k); }); });
-    novo('div', 'pf161TarH', 'pf161-h', function (e) { e.innerHTML = '<b>Tarefas</b><small>na ordem do roteiro</small>'; });
+    novo('div', 'pf161TarH', 'pf161-h', function (e) { e.innerHTML = '<b>Tarefas</b><span class="sb">na ordem do roteiro</span>'; });
     novo('button', 'pf161Nao', '', function (e) { e.type = 'button'; e.setAttribute('data-pf161', 'nao'); e.textContent = 'Não consigo fazer esta OS'; });
     return true;
   }
@@ -48991,7 +48991,7 @@ html.pf161 #pfOverlay.pf161-os #pf161Nao.pf161-vis:active{background:#fef2f2}
     var sub = temCampo ? '' : (endereco(o) || (sem ? 'Local de atendimento não definido' : (ext ? 'Atendimento no cliente' : 'Na oficina')));
     var hb = $('pf113BtnAtualizar'), ocup = !!(hb && hb.disabled);
     html($('pf161Topo'), '<div class="l"><span class="ic" aria-hidden="true">' + ic + '</span><span class="tx"><b>' + esc(tit) + '</b>' +
-      (sub ? '<small>' + esc(sub) + '</small>' : '') + '</span><button type="button" class="at" data-pf161="atualizar" aria-label="Atualizar a OS" title="Atualizar a OS">↻</button></div>');
+      (sub ? '<span class="sb">' + esc(sub) + '</span>' : '') + '</span><button type="button" class="at" data-pf161="atualizar" aria-label="Atualizar a OS" title="Atualizar a OS">↻</button></div>');
     tg(document.querySelector('#pf161Topo .at'), 'ocup', ocup);
   }
 
@@ -49020,7 +49020,7 @@ html.pf161 #pfOverlay.pf161-os #pf161Nao.pf161-vis:active{background:#fef2f2}
       if (host) at(host, 'data-pf161f', (vis && !aberto) ? '1' : null);
       if (!vis) { if (row) at(row, 'data-pf161p', null); if (host) at(host, 'data-pf161p', null); return; }
       var si = situacao(p[0], host);
-      html(row, '<span class="ic" aria-hidden="true">' + p[2] + '</span><span class="tx"><b>' + esc(p[3]) + '</b><small class="' + si.c + '">' + esc(si.s) + '</small></span>' +
+      html(row, '<span class="ic" aria-hidden="true">' + p[2] + '</span><span class="tx"><b>' + esc(p[3]) + '</b><span class="sb ' + si.c + '">' + esc(si.s) + '</span></span>' +
         (si.n ? '<span class="n">' + esc(si.n) + '</span>' : '') + '<span class="ch" aria-hidden="true">' + (aberto ? '⌄' : '›') + '</span>');
       at(row, 'aria-expanded', aberto ? 'true' : 'false');
       seq.push(row);
