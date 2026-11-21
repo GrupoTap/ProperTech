@@ -9,7 +9,8 @@
  * O activate abaixo apaga qualquer cache antigo com prefixo 'propertech-'.
  */
 const CACHE_BASE = 'propertech-';
-const CACHE = CACHE_BASE + 'v160';  // 20/11/2026 — par do PCF_V158 (🧭 hub, etapas em linha de 56 px e "Antes de começar" no padrão — ProperCare-backlog#309). Sem bump, o celular serve o V157 do cache.
+const CACHE = CACHE_BASE + 'v161';  // 20/11/2026 — par do PCF_V159 (🧩 peças e itens adicionais: uma aberta por vez, a pronta recolhe — ProperCare-backlog#309). Sem bump, o celular serve o V158 do cache.
+// antes: 'v160'  // 20/11/2026 — par do PCF_V158 (🧭 hub, etapas em linha de 56 px e "Antes de começar" no padrão — ProperCare-backlog#309). Sem bump, o celular serve o V157 do cache.
 // antes: 'v159'  // 20/11/2026 — par do PCF_V157 (✨ o visual novo vira o padrão; voltar ao de sempre pede o motivo — ProperCare-backlog#309). Sem bump, o celular serve o V156 do cache.
 // antes: 'v157'  // 19/11/2026 — par do PCF_V155 (🔎 a busca do ＋ diz quantos achou e tem "Mostrar mais" — ProperCare-backlog#273)
 // antes: 'v156'  // 18/11/2026 — par do PCF_V154 (🔎 série que já existe: "É esta máquina?" — ProperCare-backlog#183). Sem bump, o celular serve o V153 do cache.
@@ -84,6 +85,7 @@ const CACHE = CACHE_BASE + 'v160';  // 20/11/2026 — par do PCF_V158 (🧭 hub,
 //        PCF_V108 ↔  propertech-v110  (11/09 — a rodada Campo e Documentos)
 //        PCF_V110 ↔  propertech-v112  (17/09 — os motores CFX + PWAIT, front puro)
 //        PCF_V109 ↔  propertech-v111  (11/09 — o PDF da preventiva: compress:true + PDF na fila do IndexedDB)
+//        PCF_V159 ↔  propertech-v161  (20/11 — 🧩 peças e itens adicionais: uma aberta por vez, a pronta recolhe — ProperCare-backlog#309)
 //        PCF_V158 ↔  propertech-v160  (20/11 — 🧭 hub, etapas em linha de 56 px e "Antes de começar" no padrão — ProperCare-backlog#309)
 //        PCF_V157 ↔  propertech-v159  (20/11 — ✨ o visual novo vira o padrão; voltar ao de sempre pede o motivo — ProperCare-backlog#309)
 //        PCF_V156 ↔  propertech-v158  (20/11 — ⛔ preventiva de várias máquinas: a máquina que o envio recusa pergunta ou trava com "Resolver" — ProperCare-backlog#300)

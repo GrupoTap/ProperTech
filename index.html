@@ -1871,8 +1871,17 @@ html[data-boot="pipeline"] #pf113Splash{display:flex;position:fixed;inset:0;z-in
   aberto e a pilula "Conferir / ✓ Conferido". Chave de volta pcf158=off. Bloco PF158 no fim do body + 3 ganchos no PF130 (sem o
   PF158 fazem o mesmo de antes).
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V158</title>
-<meta name="app-build" content="PCF_V158" data-date="2026-11-20">
+<!--
+  PCF_V159 · PECAS E ITENS ADICIONAIS: UMA ABERTA POR VEZ, PRONTA RECOLHE · 20/11/2026 · feito SOBRE o PCF_V158 no ar · par sw
+  propertech-v161 · zero SQL, zero GAS. ProperCare-backlog#309 (Parte 2, PR 3 — pranchas 4, 5 e 6, decisoes D1, D2 e D4). So o
+  visual novo, na preventiva: peca pronta = o selo Completa do motor (ou N/A; "Precisa trocar?" sem marca = nao); uma peca aberta
+  por vez, as outras em linha de 56 px; a pronta recolhe ao sair do cartao ou 3 s sem toque e abre a proxima pendente; cenario
+  numa linha com Trocar; trilho por peca; fotos lado a lado; Referencia a vista. Itens adicionais: o pronto recolhe, nomes prontos
+  em "Escolher da lista", campos opcionais em "Mais". Chave de volta pcf159=off. Bloco PF159 no fim do body + 1 gancho no PF130 e
+  1 no PF149 (sem o PF159 fazem o mesmo de antes).
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V159</title>
+<meta name="app-build" content="PCF_V159" data-date="2026-11-20">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -38864,6 +38873,7 @@ html.pf129.pf130.pf130-cli #pgpTipoVisitaWrap{display:block!important}
     try { pilha(); } catch (e) { nota(e, 'pilha'); }
     try { resgatar(); } catch (e) { nota(e, 'resgatar'); }
     try { if (window.PF158 && PF158.depois) PF158.depois(); } catch (e) { nota(e, 'pf158'); }   /* PCF_V158 (#309); sem o PF158, igual */
+    try { if (window.PF159 && PF159.depois) PF159.depois(); } catch (e) { nota(e, 'pf159'); }   /* PCF_V159 (#309); sem o PF159, igual */
   }
   function agendar() { if (_raf) return; _raf = (window.requestAnimationFrame || setTimeout)(tudo, 16); }
   PF130.pintar = function () { _raf = 0; tudo(); };
@@ -45564,7 +45574,7 @@ html.pf149-on .pcf117-item.pf149-com-nome .pcf121-chips{display:none!important}
   if (window.PF149) return;
   var PF149 = window.PF149 = { versao: 'PCF_V149', log: [], montadas: 0, recolhidas: 0, devolvidos: 0 };
   function ligado() { try { return localStorage.getItem('pcf149') !== 'off'; } catch (e) { return true; } }
-  function recolherLigado() { try { return localStorage.getItem('pcf149_recolher') !== 'off'; } catch (e) { return true; } }
+  function recolherLigado() { try { return localStorage.getItem('pcf149_recolher') !== 'off' && !(window.PF159 && PF159.ativo && PF159.ativo()); } catch (e) { return true; } }   /* PCF_V159 (#309): com o PF159 ligado, quem recolhe é ele; sem o PF159, igual */
   function $(id) { return document.getElementById(id); }
   function log() { try { PF149.log.push([new Date().toISOString().slice(11, 19)].concat([].slice.call(arguments)).join(' ')); if (PF149.log.length > 60) PF149.log.shift(); } catch (e) {} }
   var FAKE = { stopPropagation: function () {}, preventDefault: function () {} };
@@ -47999,6 +48009,455 @@ html.pf129.pf130.pf158 .machine-panel .field-item[onclick^="toggleField"] > .fie
 })();
 </script>
 <!-- ████ FIM PCF_V158 (PF158) ████ -->
+<!-- ████ PCF_V159 (PF159) · 🧩 PEÇAS E ITENS ADICIONAIS: UMA ABERTA POR VEZ, PRONTA RECOLHE · 20/11/2026 ████ -->
+<style id="pf159Css">
+/* ═════ PCF_V159 (PF159) — só vale com html.pf159 (visual novo + PF159 ligado; sem a classe: o V158). Tudo em @media screen:
+   a impressão continua a de sempre (todas as peças abertas). Uma aberta por vez e o recolher: só na preventiva (html.pf149-prev). ═════ */
+@media screen{
+/* etapa 04 · o item "Selecione o cenário" some; o cenário escolhido vira uma linha com "Trocar" */
+html.pf159 .machine-panel .field-item.pf159-sec4{padding:0!important;border:0!important;background:none!important;box-shadow:none!important;margin:0!important}
+html.pf159 .machine-panel .field-item.pf159-sec4 > .field-label{display:none!important}
+html.pf159 .machine-panel .field-item.pf159-sec4 > .field-input{display:block!important;margin:0!important;padding:0!important}
+html.pf159 .scenario-selector > .pf159-cen{display:none}
+html.pf159 .scenario-selector.pf159-esc > .pf159-cen{display:flex;align-items:center;gap:10px;min-height:56px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:6px 8px 6px 12px;margin:0 0 10px}
+html.pf159 .scenario-selector.pf159-esc > .scenario-label,html.pf159 .scenario-selector.pf159-esc > .scenario-btns{display:none!important}
+html.pf159 .pf159-cen .tx{flex:1;min-width:0;font:700 14px Inter,system-ui,sans-serif;color:#0f172a;line-height:1.25}
+html.pf159 .pf159-cen .tx small{display:block;font:400 12px Inter,system-ui,sans-serif;color:#475569}
+html.pf159 .pf159-trocar{min-height:52px;padding:0 14px;border-radius:12px;border:1.5px solid #fdba74;background:#fff;color:#c2410c;font:700 14px Inter,system-ui,sans-serif;cursor:pointer;flex-shrink:0}
+html.pf159 .pf159-trocar:active{background:#fff7ed}
+html.pf159 [id$="_parts_table_content"] > .sc-hint{display:none!important}
+html.pf159.pf149-prev [id$="_parts_table_wrap"] > .btn-reset[onclick^="collapseCompletedParts"]{display:none!important}
+/* trilho: um traço por peça (verde pronta, cinza N/A, laranja a aberta) */
+html.pf159 .pf159-tri{display:none}
+html.pf159.pf149-prev .pf159-tri:not(.pf159-vazio){display:flex;gap:3px;margin:2px 0 12px}
+html.pf159 .pf159-tri i{flex:1;height:6px;border-radius:4px;background:#e2e8f0}
+html.pf159 .pf159-tri i.ok{background:#16a34a}
+html.pf159 .pf159-tri i.na{background:#94a3b8}
+html.pf159 .pf159-tri i.ab{background:#c2410c}
+/* fotos da peça lado a lado */
+html.pf159 table.pt-table.pf149 .pf149-peca .pt-quick-box>.pt-photo-cols{display:grid!important;grid-template-columns:1fr 1fr;gap:8px;align-items:start}
+html.pf159 table.pt-table.pf149 .pf149-peca .pt-photo-cols > .pt-photo-col{min-width:0;width:auto!important;margin:0!important}
+html.pf159 table.pt-table.pf149 .pf149-peca .pt-photo-cols .btn-foto-peca{width:100%!important;min-height:52px!important;font-size:13px!important;line-height:1.2!important;white-space:normal!important;padding:4px 6px!important;border-radius:12px!important}
+/* a peça aberta: contorno laranja */
+html.pf159.pf149-prev table.pt-table.pf149>tbody.pf149-peca.pf159-ab{border:1.5px solid #c2410c;border-left:5px solid #c2410c}
+/* "▸ Mais" como linha de link */
+html.pf159.pf149-prev table.pt-table.pf149>tbody.pf149-peca .btn-pt-detail{background:#fff!important;border:0!important;border-top:1px dashed #cbd5e1!important;border-radius:0!important;color:#c2410c!important;box-shadow:none!important;min-height:48px!important;padding:0 2px!important}
+/* a peça fechada: linha de 56 px (número / ✓ / —, nome, o que foi feito ou o que falta, ›); toque reabre */
+html.pf159.pf149-prev table.pt-table.pf149>tbody.pf149-peca.pf159-fech{min-height:56px;padding:6px 32px 6px 10px;margin:0 0 7px;box-shadow:none;cursor:pointer;align-items:center;border:1px solid #d9e0ea;border-left:5px solid #94a3b8}
+html.pf159.pf149-prev table.pt-table.pf149>tbody.pf149-peca.pf159-fech.pf159-semi{border-left-color:#f59e0b}
+html.pf159.pf149-prev table.pt-table.pf149>tbody.pf149-peca.pf159-fech.pf159-ok{border-left-color:#16a34a}
+html.pf159.pf149-prev table.pt-table.pf149>tbody.pf149-peca.pf159-fech.pf159-na{background:#f8fafc;border-left-color:#94a3b8}
+html.pf159.pf149-prev table.pt-table.pf149>tbody.pf149-peca.pf159-fech:active{background:#f1f5f9}
+html.pf159.pf149-prev table.pt-table.pf149>tbody.pf149-peca.pf159-fech>tr:not(.pt-group){display:none!important}
+html.pf159.pf149-prev table.pt-table.pf149>tbody.pf149-peca.pf159-fech>tr.pt-group>td:not(.pt-name){display:none!important}
+html.pf159.pf149-prev table.pt-table.pf149>tbody.pf149-peca.pf159-fech>tr.pt-group>td.pt-name{flex:1 1 100%;position:relative;min-height:42px;padding-left:36px!important;display:flex!important;flex-direction:column;justify-content:center;font-size:14.5px!important;font-weight:700!important;color:#0f172a}
+html.pf159.pf149-prev table.pt-table.pf149>tbody.pf149-peca.pf159-fech>tr.pt-group>td.pt-name>small,
+html.pf159.pf149-prev table.pt-table.pf149>tbody.pf149-peca.pf159-fech>tr.pt-group>td.pt-name>.pt-status-badge{display:none!important}
+html.pf159.pf149-prev table.pt-table.pf149>tbody.pf149-peca.pf159-fech>tr.pt-group>td.pt-name::before{content:attr(data-pf159n);position:absolute;left:0;top:50%;margin-top:-13px;width:26px;height:26px;border-radius:50%;background:#f1f5f9;color:#475569;font:800 12.5px Inter,system-ui,sans-serif;display:flex;align-items:center;justify-content:center}
+html.pf159.pf149-prev table.pt-table.pf149>tbody.pf149-peca.pf159-fech.pf159-ok>tr.pt-group>td.pt-name::before{content:'✓';background:#16a34a;color:#fff}
+html.pf159.pf149-prev table.pt-table.pf149>tbody.pf149-peca.pf159-fech.pf159-na>tr.pt-group>td.pt-name::before{content:'—'}
+html.pf159.pf149-prev table.pt-table.pf149>tbody.pf149-peca.pf159-fech>tr.pt-group>td.pt-name::after{content:'›';position:absolute;right:-22px;top:50%;transform:translateY(-50%);margin:0;padding:0;background:none;border-radius:0;color:#94a3b8;font:400 20px Inter,system-ui,sans-serif}
+html.pf159 .pf159-res{display:none}
+html.pf159.pf149-prev table.pt-table.pf149>tbody.pf149-peca.pf159-fech .pf159-res{display:block;font:400 12px Inter,system-ui,sans-serif;color:#475569;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* etapa 07 · itens adicionais */
+html.pf159 .pcf117-sec .pcf117-dica,html.pf159 .pcf117-item > .pcf121-novo,html.pf159 .pcf117-item > .pcf121-chips,
+html.pf159 .pcf117-acoes > .pcf117-assin,html.pf159 .pcf117-assin-st{display:none!important}
+html.pf159 .pcf117-item{display:flex!important;flex-direction:column;position:relative;background:#fff!important;border:1.5px solid #c2410c!important;border-left:5px solid #c2410c!important;border-radius:12px!important;box-shadow:none!important}
+html.pf159 .pcf117-item > .pf149-tit{order:0}
+html.pf159 .pcf117-item > .pcf117-l1{order:1}
+html.pf159 .pcf117-item > .pf159-lista{order:2}
+html.pf159 .pcf117-item > .pf149-est-rot{order:3}
+html.pf159 .pcf117-item > .pcf117-est{order:4}
+html.pf159 .pcf117-item > .pcf117-foto{order:5}
+html.pf159 .pcf117-item > .pf159-imais{order:6}
+html.pf159 .pcf117-item > .pcf117-med{order:7}
+html.pf159 .pcf117-item > .pcf148-campos{order:8}
+html.pf159 .pcf117-item > .pcf117-obs{order:9}
+html.pf159 .pcf117-item > .pcf117-aviso{order:10}
+html.pf159 .pcf117-item:not(.pf159-mais) > .pcf117-med,html.pf159 .pcf117-item:not(.pf159-mais) > .pcf148-campos,html.pf159 .pcf117-item:not(.pf159-mais) > .pcf117-obs{display:none!important}
+html.pf159 .pcf117-item .pcf117-e{min-height:52px!important;border-radius:11px!important}
+html.pf159 .pcf117-item .pcf117-nome,html.pf159 .pcf117-item .pcf117-del{min-height:48px!important}
+html.pf159 .pf159-lista{min-height:52px;margin:8px 0 2px;border-radius:12px;border:1.5px solid #cbd5e1;background:#fff;color:#0f172a;font:700 14px Inter,system-ui,sans-serif;cursor:pointer}
+html.pf159 .pf159-lista:active,html.pf159 .pf159-imais:active{background:#f1f5f9}
+html.pf159 .pf159-imais{display:flex;align-items:center;justify-content:space-between;min-height:48px;margin-top:10px;padding:0 2px;border:0;border-top:1px dashed #cbd5e1;background:none;color:#c2410c;font:700 13.5px Inter,system-ui,sans-serif;text-align:left;cursor:pointer}
+html.pf159 .pcf117-acoes > .pcf117-add{width:100%;min-height:52px!important;background:#fff!important;background-image:none!important;color:#c2410c!important;border:1.5px solid #fdba74!important;border-radius:12px!important;box-shadow:none!important;font-size:0!important}
+html.pf159 .pcf117-acoes > .pcf117-add::before{content:attr(data-pf159-rot);font:700 15px Inter,system-ui,sans-serif;color:#c2410c}
+/* item pronto: linha de 56 px com o ✓; toque reabre */
+html.pf159 .pcf117-item.pf159-fech{border:1px solid #d9e0ea!important;border-left:5px solid #16a34a!important;padding:6px 32px 6px 46px!important;min-height:56px;justify-content:center;cursor:pointer}
+html.pf159 .pcf117-item.pf159-fech:active{background:#f1f5f9!important}
+html.pf159 .pcf117-item.pf159-fech > :not(.pf149-tit){display:none!important}
+html.pf159 .pcf117-item.pf159-fech > .pf149-tit{display:block!important;border:0!important;margin:0!important;padding:0!important}
+html.pf159 .pcf117-item.pf159-fech > .pf149-tit .rot{display:none!important}
+html.pf159 .pcf117-item.pf159-fech > .pf149-tit .nm{font:700 14.5px Inter,system-ui,sans-serif!important;font-style:normal!important;opacity:1!important}
+html.pf159 .pcf117-item.pf159-fech::before{content:'✓';position:absolute;left:12px;top:50%;margin-top:-13px;width:26px;height:26px;border-radius:50%;background:#16a34a;color:#fff;font:800 12.5px Inter,system-ui,sans-serif;display:flex;align-items:center;justify-content:center}
+html.pf159 .pcf117-item.pf159-fech::after{content:'›';position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#94a3b8;font:400 20px Inter,system-ui,sans-serif}
+html.pf159 .pcf117-item.pf159-fech .pf159-res{display:block;font:400 12px Inter,system-ui,sans-serif;color:#475569;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+}
+/* folha "Escolher da lista" */
+.pf159-ov{position:fixed;inset:0;z-index:10060;background:rgba(15,23,42,.45);display:flex;align-items:flex-end;justify-content:center}
+.pf159-sh{width:100%;max-width:520px;max-height:80vh;overflow:auto;background:#fff;border-radius:20px 20px 0 0;padding:16px 14px 18px;font-family:Inter,system-ui,sans-serif;color:#0f172a;box-sizing:border-box}
+.pf159-sh h3{margin:0 0 2px;font-size:18px}
+.pf159-sh .s{color:#475569;font-size:13px;margin-bottom:10px}
+.pf159-sh .ls{display:flex;flex-direction:column;gap:6px}
+.pf159-sh .ls button,.pf159-sh .x{min-height:52px;border-radius:12px;border:1px solid #e2e8f0;background:#fff;color:#0f172a;font:600 15px Inter,system-ui,sans-serif;text-align:left;padding:0 14px;cursor:pointer}
+.pf159-sh .ls button:active{background:#f1f5f9}
+.pf159-sh .x{width:100%;margin-top:10px;text-align:center;font-weight:700;border-color:#94a3b8}
+@media print{.pf159-cen,.pf159-tri,.pf159-res,.pf159-lista,.pf159-imais,.pf159-ov{display:none!important}}
+</style>
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════════════
+   PCF_V159 (PF159) — ProperCare-backlog#309 (Parte 2, PR 3 — pranchas 4, 5 e 6, decisões D1, D2 e D4) · zero SQL · zero GAS.
+   Só o visual novo (PF130 ligado). Nenhum cálculo, nenhum campo e nenhum envio mudou: só classes, a linha-resumo e a ordem visual.
+   1 · PEÇA PRONTA (D1) = o selo "Completa" do motor (updatePartCompletionStatus: ação + leitura + fotos exigidas) ou N/A.
+       O "Precisa trocar?" sem marca conta como Não (o selo já não o exigia; só o recolher do PF149 exigia — achado F1).
+   2 · UMA ABERTA POR VEZ (D2), na preventiva: as outras peças são linhas de 56 px (✓ pronta · — N/A · número pendente, com o
+       que foi feito ou o que falta); tocar na linha abre aquela peça. A que fica pronta recolhe quando o técnico sai do cartão
+       (toque em outro lugar, que não seja rolagem) ou 3 s sem toque nela — nunca com o teclado aberto dentro dela — e abre a
+       próxima pendente. Reaberta já pronta só recolhe ao sair. Coleta reaberta: as prontas nascem recolhidas.
+       Nada repinta por innerHTML: o motor continua dono das linhas; aqui só classe, atributo e o texto do resumo.
+       O recolher do PF149 (V149) e o botão "▲ Recolher peças completas" saem na preventiva (processo mudou).
+   3 · CENÁRIO escolhido vira uma linha com "Trocar" (as 5 opções voltam ao tocar); a caixa de dica e o item "Selecione o
+       cenário" saem; trilho com um traço por peça; fotos da peça lado a lado; a Referência fica à vista (D4).
+   4 · ITENS ADICIONAIS: o pronto (nome + estado) recolhe igual à peça; os nomes prontos (PF121) numa folha "Escolher da
+       lista"; medição, referência, horímetro, intervalo e observação em "▸ Mais" (com a contagem do que já foi preenchido);
+       "＋ Adicionar outro item" contornado; o botão de assinaturas sai da etapa 07 (é a etapa 08).
+   Na INSPEÇÃO a peça não tem Ação e o selo do motor não chega a "Completa": lá as peças ficam abertas como antes.
+   Chave de volta: localStorage pcf159 = off ⇒ o V158. Sem prompt/confirm/alert. Diagnóstico: PF159.erros, PF159.S.
+   ═══════════════════════════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+  if (window.PF159) return;
+  var PF159 = window.PF159 = { versao: 'PCF_V159', erros: [], recolhidas: 0 };
+  function nota(e, onde) { try { PF159.erros.push(onde + ': ' + String(e && e.message || e)); if (PF159.erros.length > 30) PF159.erros.shift(); } catch (x) {} }
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function chave() { try { return localStorage.getItem('pcf159') !== 'off'; } catch (e) { return true; } }
+  function ativo() { try { return chave() && !!(window.PF130 && PF130.ligado && PF130.ligado()); } catch (e) { return false; } }
+  PF159.ativo = ativo;
+  function prev() { return document.documentElement.classList.contains('pf149-prev'); }
+  function tg(el, c, on) { if (el && el.classList.contains(c) !== !!on) el.classList.toggle(c, !!on); }   // só escreve quando muda
+  function txt(el, t) { if (el && el.textContent !== t) el.textContent = t; }
+  function atr(el, a, v) { if (el && el.getAttribute(a) !== v) el.setAttribute(a, v); }
+  function val(id) { var e = $(id); return e ? String(e.value == null ? '' : e.value).trim() : ''; }
+  function midxDe(el) { var p = el && el.closest && el.closest('.machine-panel'); return p ? (parseInt(String(p.id).replace('panel-', ''), 10) || 0) : 0; }
+  PF159.cfg = { espera: 3000, saida: 300, passo: 300 };
+
+  // estado da tela (não vai ao rascunho): peça aberta por máquina, quem virou pronta com ela aberta, quem o técnico deixou
+  var S = PF159.S = { ab: {}, ok0: {}, virou: {}, saiu: {}, troca: {}, iab: {}, iok0: {}, ivirou: {}, isaiu: {}, imais: {} };
+  var _dedo = false, _soltou = 0, _toque = {}, _fora = null;
+  function zerar(i) {
+    if (i == null) { S.ab = {}; S.ok0 = {}; S.virou = {}; S.saiu = {}; S.iab = {}; S.iok0 = {}; S.ivirou = {}; S.isaiu = {}; return; }
+    delete S.ab[i];
+    Object.keys(S.ok0).forEach(function (pk) { if (pk.indexOf('m' + i + '_') === 0) { delete S.ok0[pk]; delete S.virou[pk]; delete S.saiu[pk]; } });
+  }
+  function digitando(el) {
+    var f = document.activeElement;
+    return !!(f && f !== document.body && el && el.contains(f) && /^(INPUT|TEXTAREA|SELECT)$/.test(f.tagName) && f.type !== 'hidden');
+  }
+
+  // ── PEÇAS ────────────────────────────────────────────────────────────────────────────────────
+  function tabela(i) { var c = $('m' + i + '_parts_table_content'); return c ? c.querySelector('table.pt-table.pf149') : null; }
+  function listaPecas(t) { return t ? [].slice.call(t.querySelectorAll(':scope > tbody.pf149-peca[data-pk]')) : []; }
+  function estado(pk) {   // a régua é o SELO do motor (D1)
+    var na = $(pk + '_na'), b = $(pk + '_status_badge'), c = b ? String(b.className) : '';
+    if ((na && na.classList.contains('active')) || /\bpt-badge-na\b/.test(c)) return 'na';
+    if (/\bpt-badge-ok\b/.test(c)) return 'ok';
+    return /\bpt-badge-semi\b/.test(c) ? 'semi' : 'pend';
+  }
+  function pronta(e) { return e === 'ok' || e === 'na'; }
+  function leitura(pk) {
+    var v = val(pk + '_valor_mostrado'); if (!v) return '';
+    var tr = $(pk + '_tr'), td = tr && tr.querySelector('td.pt-inp[data-rot]'), rot = td ? String(td.getAttribute('data-rot') || '') : '';
+    var h = /\(h\)/i.test(rot), r = rot.replace(/\s*\(h\)\s*$/i, '').trim();
+    return (r ? r.charAt(0).toLowerCase() + r.slice(1) + ' ' : '') + v + (h ? ' h' : '');
+  }
+  function fotosFaltam(pk) {
+    try {
+      if (typeof pgpEhPistao === 'function' && pgpEhPistao(pgpMidxDePk(pk))) return 0;
+      var inf = pgpPartKeyInfo(pk); if (!inf) return 0;
+      var n = pgpPartPhotoCount(inf.midx, 'hori_' + inf.partK) > 0 ? 0 : 1;
+      var k = (pgpPartPhotoMapDe(inf.midx) || {})[inf.partK];
+      if (k && !(pgpPartPhotoCount(inf.midx, k) > 0)) n++;
+      return n;
+    } catch (e) { return 0; }
+  }
+  function resumo(pk, e) {
+    if (e === 'na') return 'N/A';
+    var ac = val(pk + '_acao'), l = leitura(pk), p = [];
+    if (e === 'ok') {
+      if (ac === 'conferida') p.push('Conferida'); else if (ac === 'trocada') p.push('🔧 Trocada');
+      if (l) p.push(l);
+      var s = val(pk + '_subst');
+      if ($(pk + '_subst')) p.push(s === 'urgente' ? '🔴 trocar urgente' : s === 'proxima' ? '🟠 trocar na próxima' : 'não troca');
+      return p.join(' · ') || 'Completa';
+    }
+    if (e === 'pend') return 'Não começou';
+    if ($(pk + '_acao_conferida') && ac !== 'conferida' && ac !== 'trocada') p.push('ação');
+    if ($(pk + '_valor_mostrado') && !l) p.push('leitura');
+    var nf = fotosFaltam(pk); if (nf) p.push(nf + (nf > 1 ? ' fotos' : ' foto'));
+    return p.length ? 'falta: ' + p.join(', ') : 'falta completar';
+  }
+  function proxPend(pks, est, de) {
+    for (var k = de + 1; k < pks.length; k++) if (!pronta(est[pks[k]])) return pks[k];
+    for (var j = 0; j < Math.min(de, pks.length); j++) if (!pronta(est[pks[j]])) return pks[j];
+    return '';
+  }
+  function desrecolher(pk) {   // a marca do "Recolher" antigo (V46/V149) não pode prender a peça que se abre aqui
+    var tr = $(pk + '_tr'); if (!tr || !tr.classList.contains('pt-collapsed-complete')) return;
+    var q = $(pk + '_quick_row'), na = $(pk + '_na');
+    tr.classList.remove('pt-collapsed-complete');
+    if (q && !(na && na.classList.contains('active'))) q.style.display = '';
+  }
+  function cenario(i) {
+    var body = $('m' + i + '_sec4_body'), sel = body && body.querySelector('.scenario-selector'); if (!sel) return;
+    tg(body.closest('.field-item'), 'pf159-sec4', true);
+    var on = sel.querySelector('.sc-btn.active'), ln = sel.querySelector(':scope > .pf159-cen');
+    if (!ln) {
+      ln = document.createElement('div'); ln.className = 'pf159-cen';
+      ln.innerHTML = '<div class="tx"><b></b><small>cenário desta máquina</small></div><button type="button" class="pf159-trocar" data-pf159="cen">Trocar</button>';
+      sel.insertBefore(ln, sel.firstChild);
+    }
+    if (on) txt(ln.querySelector('b'), String((on.querySelector('.sc-title') || on).textContent || '').trim());
+    tg(sel, 'pf159-esc', !!(val('m' + i + '_scenario') && on && !S.troca[i]));
+  }
+  function trilho(i, ests) {
+    var w = $('m' + i + '_parts_table_wrap'), c = $('m' + i + '_parts_table_content'); if (!w || !c || c.parentNode !== w) return;
+    var d = w.querySelector(':scope > .pf159-tri');
+    if (!d) { if (!ests.length) return; d = document.createElement('div'); d.className = 'pf159-tri'; d.setAttribute('aria-hidden', 'true'); w.insertBefore(d, c); }
+    tg(d, 'pf159-vazio', !ests.length);
+    if (d.children.length !== ests.length) d.innerHTML = new Array(ests.length + 1).join('<i></i>');
+    ests.forEach(function (e, k) { var x = d.children[k]; tg(x, 'ok', e === 'ok'); tg(x, 'na', e === 'na'); tg(x, 'ab', e === 'ab'); });
+  }
+  function pintarPecas(i) {
+    try { cenario(i); } catch (e) { nota(e, 'cenario'); }
+    var tbs = listaPecas(tabela(i));
+    if (!prev()) { tbs.forEach(function (tb) { tg(tb, 'pf159-fech', false); tg(tb, 'pf159-ab', false); }); trilho(i, []); return; }
+    var pks = tbs.map(function (tb) { return tb.getAttribute('data-pk'); }), est = {};
+    pks.forEach(function (pk) { est[pk] = estado(pk); });
+    var ab = S.ab[i];
+    if (ab === undefined || (ab && pks.indexOf(ab) < 0)) { ab = S.ab[i] = proxPend(pks, est, -1); if (ab) desrecolher(ab); }
+    pks.forEach(function (pk) {
+      var ok = pronta(est[pk]);
+      if (pk === ab && ok && S.ok0[pk] === false && !S.virou[pk]) { S.virou[pk] = Date.now(); vigiar(); }   // virou pronta COM ela aberta
+      if (!ok) delete S.virou[pk];
+      S.ok0[pk] = ok;
+    });
+    tbs.forEach(function (tb, k) {
+      var pk = pks[k], e = est[pk], tr = $(pk + '_tr'), nm = tr && tr.querySelector(':scope > td.pt-name');
+      tg(tb, 'pf159-ab', pk === ab); tg(tb, 'pf159-fech', pk !== ab);
+      tg(tb, 'pf159-ok', e === 'ok'); tg(tb, 'pf159-na', e === 'na'); tg(tb, 'pf159-semi', e === 'semi');
+      if (!nm) return;
+      atr(nm, 'data-pf159n', String(k + 1));
+      var r = nm.querySelector(':scope > .pf159-res');
+      if (!r) { r = document.createElement('span'); r.className = 'pf159-res'; nm.appendChild(r); }
+      txt(r, pk === ab ? '' : resumo(pk, e));
+    });
+    trilho(i, pks.map(function (pk) { return pk === ab ? 'ab' : (est[pk] === 'semi' ? 'pend' : est[pk]); }));
+  }
+  function aVista(el) {
+    try { setTimeout(function () { var r = el.getBoundingClientRect(); if (r.top < 70 || r.top > window.innerHeight - 160) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }, 60); } catch (e) {}
+  }
+  function recolherPeca(i, pk) {
+    var tbs = listaPecas(tabela(i)), pks = tbs.map(function (tb) { return tb.getAttribute('data-pk'); }), est = {};
+    pks.forEach(function (p) { est[p] = estado(p); });
+    var nx = proxPend(pks, est, pks.indexOf(pk));
+    S.ab[i] = nx; delete S.virou[pk]; delete S.saiu[pk];
+    PF159.recolhidas++;
+    if (nx) desrecolher(nx);
+    pintarPecas(i);
+    if (nx && $(nx + '_pf149')) aVista($(nx + '_pf149'));
+  }
+  function abrirPeca(i, pk) {
+    S.ab[i] = pk; delete S.virou[pk]; S.saiu = {};
+    desrecolher(pk); pintarPecas(i);
+    var tb = $(pk + '_pf149'); if (tb) aVista(tb);
+  }
+
+  // ── ITENS ADICIONAIS ─────────────────────────────────────────────────────────────────────────
+  function itens(i) { var l = $('pcf117Lista' + i); return l ? [].slice.call(l.querySelectorAll(':scope > .pcf117-item[data-uid]')) : []; }
+  function itemPronto(it) { var n = it.querySelector('.pcf117-nome'); return !!(n && String(n.value || '').trim()) && !!it.querySelector('.pcf117-est > .pcf117-e.on'); }
+  function maisCheios(it) { var n = 0; it.querySelectorAll('.pcf117-med, .pcf148-campos input, .pcf117-obs').forEach(function (x) { if (String(x.value || '').trim()) n++; }); return n; }
+  function nFotosItem(it) { var t = it.querySelector('.pcf117-foto .photo-thumbs-mini'); return t ? t.children.length : 0; }
+  function resumoItem(it) {
+    var e = it.querySelector('.pcf117-est > .pcf117-e.on'), p = [e ? String(e.textContent || '').trim() : ''];
+    var m = it.querySelector('.pcf117-med'); if (m && String(m.value || '').trim()) p.push(String(m.value).trim());
+    var f = nFotosItem(it); p.push(f ? f + (f > 1 ? ' fotos' : ' foto') : 'sem foto');
+    return p.filter(Boolean).join(' · ');
+  }
+  function pintarItens(i) {
+    var lst = itens(i);
+    lst.forEach(function (it) {
+      try {
+        var uid = it.getAttribute('data-uid'), ok = itemPronto(it);
+        if (S.iok0[uid] === undefined) S.iab[uid] = !ok;                                  // 1ª vez (coleta reaberta): pronto nasce recolhido
+        else if (ok && S.iok0[uid] === false) { S.iab[uid] = true; S.ivirou[uid] = Date.now(); vigiar(); }
+        if (!ok) { S.iab[uid] = true; delete S.ivirou[uid]; }
+        S.iok0[uid] = ok;
+        tg(it, 'pf159-fech', ok && !S.iab[uid]);
+        tg(it, 'pf159-mais', !!S.imais[uid]);
+        var tit = it.querySelector(':scope > .pf149-tit');
+        if (tit) {
+          var r = tit.querySelector(':scope > .pf159-res');
+          if (!r) { r = document.createElement('span'); r.className = 'pf159-res'; tit.appendChild(r); }
+          txt(r, ok ? resumoItem(it) : '');
+        }
+        var ch = it.querySelector(':scope > .pcf121-chips'), bl = it.querySelector(':scope > .pf159-lista');
+        if (ch && ch.querySelector('.pcf121-chip')) {
+          if (!bl) { bl = document.createElement('button'); bl.type = 'button'; bl.className = 'pf159-lista'; bl.setAttribute('data-pf159', 'lista'); bl.textContent = '📋 Escolher da lista'; it.appendChild(bl); }
+        } else if (bl) bl.remove();
+        var bm = it.querySelector(':scope > .pf159-imais');
+        if (!bm) { bm = document.createElement('button'); bm.type = 'button'; bm.className = 'pf159-imais'; bm.setAttribute('data-pf159', 'imais'); it.appendChild(bm); }
+        var n = maisCheios(it);
+        txt(bm, S.imais[uid] ? '▾ Fechar: medição, referência, observação' : '▸ Mais: medição, referência, observação' + (n ? ' (' + n + ' preenchido' + (n > 1 ? 's' : '') + ')' : ''));
+      } catch (e) { nota(e, 'item'); }
+    });
+    var sec = $('pcf117Sec' + i), add = sec && sec.querySelector('.pcf117-acoes > .pcf117-add');
+    atr(add, 'data-pf159-rot', lst.length ? '＋ Adicionar outro item' : '＋ Adicionar item');
+  }
+  function itemDe(uid) { var x = null; document.querySelectorAll('.pcf117-item[data-uid]').forEach(function (it) { if (it.getAttribute('data-uid') === uid) x = it; }); return x; }
+  function recolherItem(uid) { S.iab[uid] = false; delete S.ivirou[uid]; delete S.isaiu[uid]; PF159.recolhidas++; var it = itemDe(uid); if (it) pintarItens(midxDe(it)); }
+
+  // folha "Escolher da lista": os nomes são os do próprio cartão (PF121); escolher = o toque no nome pronto de sempre
+  function fecharFolha() { var o = $('pf159Folha'); if (o) o.remove(); }
+  function folha(it) {
+    fecharFolha();
+    var uid = it.getAttribute('data-uid'), nomes = [].map.call(it.querySelectorAll(':scope > .pcf121-chips .pcf121-chip'), function (b) { return String(b.textContent || ''); });
+    if (!nomes.length) return;
+    var ov = document.createElement('div'); ov.id = 'pf159Folha'; ov.className = 'pf159-ov';
+    ov.innerHTML = '<div class="pf159-sh" role="dialog" aria-label="Escolher da lista"><h3>Escolher da lista</h3><div class="s">Toque no nome do item.</div><div class="ls">' +
+      nomes.map(function (n, k) { return '<button type="button" data-k="' + k + '">' + esc(n) + '</button>'; }).join('') + '</div><button type="button" class="x" data-x="1">Fechar</button></div>';
+    ov.addEventListener('click', function (ev) {
+      var t = ev.target;
+      if (t === ov || (t.getAttribute && t.getAttribute('data-x'))) { fecharFolha(); return; }
+      var b = t.closest && t.closest('[data-k]'); if (!b) return;
+      var n = nomes[+b.getAttribute('data-k')], vivo = itemDe(uid); fecharFolha();
+      if (!vivo) return;
+      var chip = [].filter.call(vivo.querySelectorAll(':scope > .pcf121-chips .pcf121-chip'), function (c) { return String(c.textContent || '') === n; })[0];
+      if (chip) chip.click();
+    });
+    document.body.appendChild(ov);
+  }
+  PF159.fecharFolha = fecharFolha;
+
+  // ── o ciclo (gancho no fim do PF130.tudo) ────────────────────────────────────────────────────
+  PF159.depois = function () {
+    var lig = ativo();
+    tg(document.documentElement, 'pf159', lig);
+    if (!lig) return;
+    document.querySelectorAll('#machineContent > .machine-panel').forEach(function (p) {
+      var i = parseInt(String(p.id).replace('panel-', ''), 10); if (isNaN(i)) return;
+      try { pintarPecas(i); } catch (e) { nota(e, 'pecas'); }
+      try { pintarItens(i); } catch (e) { nota(e, 'itens'); }
+    });
+  };
+
+  // ── recolher: 3 s sem toque, ou ao sair do cartão (toque que não é rolagem) ─────────────────────
+  var _vig = 0;
+  function vigiar() { if (!_vig) _vig = setTimeout(passo, PF159.cfg.passo); }
+  function passo() {
+    _vig = 0;
+    if (!ativo()) return;
+    var mais = false, agora = Date.now(), cfg = PF159.cfg;
+    Object.keys(S.ab).forEach(function (i) {
+      var pk = S.ab[i]; if (!pk || !prev()) return;
+      var tb = $(pk + '_pf149'); if (!tb || !tb.isConnected) return;
+      if (!pronta(estado(pk))) { delete S.virou[pk]; delete S.saiu[pk]; return; }
+      if (!S.virou[pk] && !S.saiu[pk]) return;
+      if (_dedo || digitando(tb)) { mais = true; return; }                         // nunca com o teclado aberto nela
+      if (S.saiu[pk]) { if (agora - _soltou >= cfg.saida) recolherPeca(+i, pk); else mais = true; return; }
+      if (agora - Math.max(S.virou[pk], _toque[tb.id] || 0) >= cfg.espera) recolherPeca(+i, pk); else mais = true;
+    });
+    Object.keys(S.iab).forEach(function (uid) {
+      if (!S.iab[uid] || (!S.ivirou[uid] && !S.isaiu[uid])) return;
+      var it = itemDe(uid); if (!it) return;
+      if (!itemPronto(it)) { delete S.ivirou[uid]; delete S.isaiu[uid]; return; }
+      if (_dedo || digitando(it)) { mais = true; return; }
+      if (S.isaiu[uid]) { if (agora - _soltou >= cfg.saida) recolherItem(uid); else mais = true; return; }
+      if (agora - Math.max(S.ivirou[uid], _toque['i:' + uid] || 0) >= cfg.espera) recolherItem(uid); else mais = true;
+    });
+    if (mais) vigiar();
+  }
+  function marcarToque(t) {
+    var tb = t && t.closest && t.closest('tbody.pf149-peca'), it = t && t.closest && t.closest('.pcf117-item[data-uid]');
+    if (tb) _toque[tb.id] = Date.now();
+    if (it) _toque['i:' + it.getAttribute('data-uid')] = Date.now();
+  }
+  document.addEventListener('pointerdown', function (ev) {
+    _dedo = true; _fora = null;
+    if (!ativo()) return;
+    try {
+      var t = ev.target; marcarToque(t);
+      if ($('pf159Folha') && $('pf159Folha').contains(t)) return;
+      var f = { p: [], it: [] };
+      Object.keys(S.ab).forEach(function (i) { var pk = S.ab[i], tb = pk && $(pk + '_pf149'); if (tb && !tb.contains(t) && pronta(estado(pk))) f.p.push(pk); });
+      Object.keys(S.iab).forEach(function (uid) { if (!S.iab[uid]) return; var it = itemDe(uid); if (it && !it.contains(t) && itemPronto(it)) f.it.push(uid); });
+      _fora = f;
+    } catch (e) { nota(e, 'pointerdown'); }
+  }, true);
+  document.addEventListener('pointerup', function () {
+    _dedo = false; _soltou = Date.now();
+    var f = _fora; _fora = null; if (!f) return;
+    f.p.forEach(function (pk) { S.saiu[pk] = Date.now(); });
+    f.it.forEach(function (uid) { S.isaiu[uid] = Date.now(); });
+    if (f.p.length || f.it.length) vigiar();
+  }, true);
+  document.addEventListener('pointercancel', function () { _dedo = false; _soltou = Date.now(); _fora = null; }, true);   // rolagem não é "sair do cartão"
+  ['input', 'change'].forEach(function (n) { document.addEventListener(n, function (ev) { try { if (ativo()) marcarToque(ev.target); } catch (e) {} }, true); });
+
+  // toque na linha recolhida abre aquela peça/item (antes do onclick da linha, que abriria o "Mais"); os botões deste bloco
+  document.addEventListener('click', function (ev) {
+    if (!ativo()) return;
+    try {
+      var t = ev.target;
+      var tb = t.closest && t.closest('tbody.pf149-peca.pf159-fech[data-pk]');
+      if (tb && prev()) { ev.stopPropagation(); ev.preventDefault(); abrirPeca(midxDe(tb), tb.getAttribute('data-pk')); return; }
+      var it = t.closest && t.closest('.pcf117-item.pf159-fech[data-uid]');
+      if (it) { ev.stopPropagation(); ev.preventDefault(); var u = it.getAttribute('data-uid'); S.iab[u] = true; delete S.ivirou[u]; pintarItens(midxDe(it)); aVista(it); return; }
+      var b = t.closest && t.closest('[data-pf159]'); if (!b) return;
+      var k = b.getAttribute('data-pf159');
+      if (k === 'cen') { ev.stopPropagation(); S.troca[midxDe(b)] = true; pintarPecas(midxDe(b)); return; }
+      var card = b.closest('.pcf117-item[data-uid]'); if (!card) return;
+      ev.stopPropagation();
+      if (k === 'lista') folha(card);
+      else if (k === 'imais') { var uid = card.getAttribute('data-uid'); S.imais[uid] = !S.imais[uid]; pintarItens(midxDe(card)); }
+    } catch (e) { nota(e, 'clique'); }
+  }, true);
+
+  // ── recomeços: tabela remontada (cenário, perfil, painel novo) ou coleta reaberta ──────────────
+  function embrulhar(nome, antes) {
+    try {
+      var o = window[nome]; if (typeof o !== 'function' || o.__pf159) return;
+      var n = function () { try { antes.apply(this, arguments); } catch (e) { nota(e, nome); } return o.apply(this, arguments); };
+      n.__pf159 = true; window[nome] = n;
+    } catch (e) { nota(e, 'embrulhar ' + nome); }
+  }
+  embrulhar('selectScenario', function (p, sc, midx) { var i = typeof midx === 'number' ? midx : (parseInt(String(p || '').replace(/\D/g, ''), 10) || 0); S.troca[i] = false; zerar(i); });
+  embrulhar('pgpAplicarPerfil', function () { zerar(); });
+  embrulhar('createPanel', function () { zerar(); });
+  embrulhar('restoreState', function () { zerar(); });   // coleta reaberta: as prontas nascem recolhidas
+
+  // cabeçalho da etapa 04 aberta: "x de y prontas" (a régua do selo), no lugar de "peças com ação"
+  try {
+    if (window.PF158 && typeof PF158.cab === 'function' && !PF158.cab.__pf159) {
+      var _cab = PF158.cab;
+      PF158.cab = function (sec, et, ic, c, aberta, pecas) {
+        var r = _cab.apply(this, arguments);
+        try {
+          if (r && pecas && aberta && ativo() && prev()) {
+            var tbs = listaPecas(tabela(midxDe(sec)));
+            if (tbs.length) { var n = tbs.filter(function (tb) { return pronta(estado(tb.getAttribute('data-pk'))); }).length; r[3] = n + ' de ' + tbs.length + (tbs.length > 1 ? ' prontas' : ' pronta'); }
+          }
+        } catch (e) { nota(e, 'cab'); }
+        return r;
+      };
+      PF158.cab.__pf159 = true;
+    }
+  } catch (e) { nota(e, 'embrulho cab'); }
+
+  try { if (window.PF130 && PF130.pintar && ativo()) PF130.pintar(); else PF159.depois(); } catch (e) { nota(e, 'inicio'); }
+})();
+</script>
+<!-- ████ FIM PCF_V159 (PF159) ████ -->
 
 </body>
 </html>
