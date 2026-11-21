@@ -48487,7 +48487,7 @@ html.pf160 .pf160-feitas .tx{flex:1;min-width:0}
 html.pf160 .pf160-feitas .tx b{display:block;font:700 15px Inter,system-ui,sans-serif;color:#166534}
 html.pf160 .pf160-feitas .tx small{display:block;font:400 12.5px Inter,system-ui,sans-serif;color:#475569}
 html.pf160 .pf160-feitas .ch{color:#64748b;font:400 20px Inter,system-ui,sans-serif;flex-shrink:0}
-html.pf160 .pf129-vagas.pf160-esc > .photo-item-group.pf160-feito{display:none!important}
+html.pf160 .pf129-vagas.pf160-esc > .photo-item-group.pf160-feito:not(.pf160-rec){display:none!important}
 html.pf160 .pf129-vagas > .photo-item-group:not(.pf160-feito){min-height:0!important;padding:10px!important}
 html.pf160 .pf129-vagas > .photo-item-group:not(.pf160-feito):not(.pf160-marc) > .pf129-vst{display:none!important}
 html.pf160 .pf129-vagas > .photo-item-group:not(.pf160-feito) .photo-item{display:grid!important;grid-template-columns:minmax(0,1fr) 62px;gap:6px!important;align-items:stretch!important}
@@ -48569,16 +48569,20 @@ html.pf129.pf130.pf160 #pcf116Rodape.pf160-vazio{display:none!important}
   function txt(el, t) { if (el && el.textContent !== t) el.textContent = t; }
   function midxDe(el) { var p = el && el.closest && el.closest('.machine-panel'); return p ? (parseInt(String(p.id).replace('panel-', ''), 10) || 0) : 0; }
   var S = PF160.S = { ver: {}, info: {} };
+  PF160.cfg = { recem: 3000 };
 
   // ── 1 · FOTOS ─────────────────────────────────────────────────────────────────────────────────
   function pintarFotos(i) {
     var box = $('m' + i + '_sec5_items'); if (!box) return;
-    var sec = box.closest('.section'), body = box.parentNode;
-    tg(sec, 'pf160-sec5', true);
-    if (!box.classList.contains('pf129-vagas')) return;   // as vagas são do PF129: sem elas, nada aqui
+    var sec = box.closest('.section'), body = box.parentNode, vg = box.classList.contains('pf129-vagas');
+    tg(sec, 'pf160-sec5', vg);
+    if (!vg) return;   // as vagas são do PF129: sem elas, nada aqui (e o lembrete fica onde sempre esteve)
     var gs = [].slice.call(box.querySelectorAll(':scope > .photo-item-group')), feitas = [], nd = 0;
     gs.forEach(function (g) {
       var it = g.querySelector('.photo-item'), e = g.classList.contains('pf129-feita') ? 'f' : (g.classList.contains('pf129-nd') ? 'n' : '');
+      if (g.__pf160 !== undefined && !g.__pf160 && e) { g.__pf160rec = Date.now(); setTimeout(depoisJa, PF160.cfg.recem + 60); }   // acabou de ficar feita/N/D
+      g.__pf160 = e;
+      tg(g, 'pf160-rec', !!e && !!g.__pf160rec && Date.now() - g.__pf160rec < PF160.cfg.recem);
       tg(g, 'pf160-feito', !!e);
       tg(g, 'pf160-marc', !e && !!(it && it.classList.contains('photo-checked')));
       if (e === 'f') feitas.push(g); else if (e === 'n') nd++;
@@ -48605,6 +48609,7 @@ html.pf129.pf130.pf160 #pcf116Rodape.pf160-vazio{display:none!important}
       tg(dr, 'pf160-on', !!S.info[i]);
       var bi = body.querySelector(':scope > .pf160-info');
       if (!bi) { bi = document.createElement('button'); bi.type = 'button'; bi.className = 'pf160-info'; bi.setAttribute('data-pf160', 'info'); var fim = body.querySelector(':scope > .pf130-fim'); body.insertBefore(bi, fim || null); }
+      if (bi.previousElementSibling !== dr) body.insertBefore(dr, bi);   // o lembrete abre junto do ⓘ, não lá no topo
       txt(bi, S.info[i] ? 'ⓘ Esconder o lembrete do escritório' : 'ⓘ Lembrete para o escritório');
     }
   }
@@ -48615,7 +48620,7 @@ html.pf129.pf130.pf160 #pcf116Rodape.pf160-vazio{display:none!important}
       if (window._PGP_OS_ID && window.PF136 && typeof PF136.textos === 'function') {   // na OS: o conjunto da OS (o mesmo que a etapa já dizia)
         var x = PF136.textos();
         if (x && x.algum) {
-          var mt = /✓ Técnico: ([^·—]+)/.exec(x.txt || ''), mr = /✓ Cliente: ([^·—]+)/.exec(x.txt || '');
+          var mt = /✓ Técnico: (.+?)(?= · ✓| — |$)/.exec(x.txt || ''), mr = /✓ Cliente: (.+?)(?= · ✓| — |$)/.exec(x.txt || '');
           return { t: mt ? mt[1].trim() : null, r: mr ? mr[1].trim() : null };
         }
       }
@@ -48694,12 +48699,15 @@ html.pf129.pf130.pf160 #pcf116Rodape.pf160-vazio{display:none!important}
   } catch (e) { nota(e, 'embrulho assin'); }
 
   // ── 3 · FOLHA DO CONCLUIR com trava ────────────────────────────────────────────────────────────
-  function linhaChecklist() {
-    var p = document.querySelector('#machineContent > .machine-panel.active .pf130-hub .pf158-pl');
-    var m = p ? /Faltam\s+(\d+)/i.exec(String(p.textContent || '')) : null;
+  function linhaChecklist() {   // soma as máquinas; se alguma não tem a leitura do hub, a linha não afirma nada
+    var ps = [].slice.call(document.querySelectorAll('#machineContent > .machine-panel')), tot = 0, cego = !ps.length;
+    ps.forEach(function (pn) { var p = pn.querySelector('.pf130-hub .pf158-pl'); if (!p) { cego = true; return; } var x = /Faltam\s+(\d+)/i.exec(String(p.textContent || '')); if (x) tot += +x[1]; });
+    if (cego) return '';
+    var m = tot > 0 ? [null, String(tot)] : null;
     if (m && +m[1] > 0) return '<div class="pf160-cl am"><span class="ic">📝</span><span class="tx"><b>Peças, fotos e observações</b><small>faltam ' + esc(m[1]) + (+m[1] > 1 ? ' itens' : ' item') + '</small></span><button type="button" class="vr" data-pf130c="pf160ver">Ver</button></div>';
     return '<div class="pf160-cl ok"><span class="ic">✅</span><span class="tx"><b>Peças, fotos e observações</b><small>tudo preenchido</small></span></div>';
   }
+  PF160.linhaChecklist = linhaChecklist;
   function refazerFolha() {
     var ov = $('pf130Folha'); if (!ov || ov.__pf160) return;
     var lis = [].slice.call(ov.querySelectorAll('.pf130-li')).filter(function (li) { return li.querySelector('[data-pf130c="foto"]'); });
@@ -48719,7 +48727,7 @@ html.pf129.pf130.pf160 #pcf116Rodape.pf160-vazio{display:none!important}
       var a = b.getAttribute('data-pf130c');
       try {
         if (a === 'pf160pdf' && typeof window.pcf116SoPdf === 'function') window.pcf116SoPdf(null);
-        else if (a === 'pf160ver') { var p = document.querySelector('#machineContent > .machine-panel.active .pf130-hub .pf158-pl'); if (p) p.click(); }
+        else if (a === 'pf160ver') { var p = document.querySelector('#machineContent > .machine-panel.active .pf130-hub .pf158-pl'); if (p && p.offsetParent) p.click(); }
       } catch (x) { nota(x, 'folha ' + a); }
     });
   }
@@ -48737,7 +48745,6 @@ html.pf129.pf130.pf160 #pcf116Rodape.pf160-vazio{display:none!important}
     try {
       var b = ev.target.closest && ev.target.closest('[data-pf160]'); if (!b) return;
       var k = b.getAttribute('data-pf160'), i = midxDe(b);
-      ev.stopPropagation();
       if (k === 'ver') { S.ver[i] = !S.ver[i]; pintarFotos(i); }
       else if (k === 'info') { S.info[i] = !S.info[i]; pintarFotos(i); }
       else if (k === 'assin') { var o = b.closest('.bd2') && b.closest('.bd2').querySelector(':scope > [data-pf130="assin"]'); if (o) o.click(); }
