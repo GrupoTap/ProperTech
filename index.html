@@ -1855,8 +1855,16 @@ html[data-boot="pipeline"] #pf113Splash{display:flex;position:fixed;inset:0;z-in
   aviso do fim separa "ficou para depois" de "falha de conexao". Chave de volta pcf156=off. Bloco PF156 no fim do body + 6
   ganchos (sem o PF156 fazem o mesmo de antes).
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V156</title>
-<meta name="app-build" content="PCF_V156" data-date="2026-11-20">
+<!--
+  PCF_V157 · VISUAL NOVO VIRA O PADRAO · 20/11/2026 · feito SOBRE o PCF_V156 no ar · par sw propertech-v159 · SQL PCF_VISUAL_VOLTA
+  (cadeia 158) roda ANTES · zero GAS. ProperCare-backlog#309 (Parte 2, PR 1 — decisao D7). O visual novo (V129/V130) passa a valer em
+  todo aparelho que nunca escolheu. A chave pf129_visual_novo agora e TRI-ESTADO: ausente ou '1' = novo; '0' = o tecnico voltou ao de
+  sempre. Voltar (☰ Menu ou o botao da lista) pede o motivo numa folha propria e grava quem voltou e por que (pc_visual_volta_registrar,
+  fila no aparelho ate o "ok"). Aviso de uma vez para quem ganhou o visual novo sem pedir. Bloco PF157 no fim do body + 4 trocas no
+  corpo (os 2 scripts do topo, PF129.ligado/ligar e os rotulos do menu).
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V157</title>
+<meta name="app-build" content="PCF_V157" data-date="2026-11-20">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -3723,13 +3731,13 @@ tr.pt-group.pt-nao-conforme{background:#fff5f4}
 /* PCF_V129 (PF129) · VISUAL NOVO POR APARELHO — liga ANTES do primeiro desenho (sem piscar o tema escuro).
    Chave: localStorage 'pf129_visual_novo' = '1' (☰ Menu → "Visual novo"). Desligada = o PCF de sempre. */
 (function () {
-  try { if (localStorage.getItem('pf129_visual_novo') === '1') document.documentElement.classList.add('pf129'); } catch (e) {}
+  try { if (localStorage.getItem('pf129_visual_novo') !== '0') document.documentElement.classList.add('pf129'); } catch (e) {}   // PCF_V157: ausente = novo (#309)
 })();
 </script>
 <script>
 /* PCF_V130 (PF130) · HUB DE CARTOES — mesma chave do V129 ("Visual novo"); liga antes do 1o desenho (sem piscar o cabecalho antigo). */
 (function () {
-  try { if (localStorage.getItem('pf129_visual_novo') === '1') document.documentElement.classList.add('pf130'); } catch (e) {}
+  try { if (localStorage.getItem('pf129_visual_novo') !== '0') document.documentElement.classList.add('pf130'); } catch (e) {}   // PCF_V157: ausente = novo (#309)
 })();
 </script>
 </head>
@@ -37735,9 +37743,10 @@ html.pf129 .pf129-vagas .pf129-nd .pf129-vst{color:#475569}
   // string JS dentro de onclick="…": escapa barra e aspa simples (JS) e tambem " < > & (o atributo HTML) — auditoria P9
   function js(s) { return String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\x22').replace(/</g, '\\x3c').replace(/>/g, '\\x3e').replace(/&/g, '\\x26'); }
   function $(id) { return document.getElementById(id); }
-  PF129.ligado = function () { try { return localStorage.getItem(CHAVE) === '1'; } catch (e) { return false; } };
+  // PCF_V157 (#309): a chave é TRI-ESTADO — ausente ou '1' = visual novo (o padrão); '0' = o técnico voltou ao de sempre (com motivo, PF157)
+  PF129.ligado = function () { try { return localStorage.getItem(CHAVE) !== '0'; } catch (e) { return true; } };
   PF129.ligar = function (sim) {
-    try { if (sim) localStorage.setItem(CHAVE, '1'); else localStorage.removeItem(CHAVE); } catch (e) {}
+    try { localStorage.setItem(CHAVE, sim ? '1' : '0'); } catch (e) {}
     document.documentElement.classList.toggle('pf129', !!sim);
     if (!sim) devolverEstado();
     aplicarTudo();
@@ -38190,8 +38199,8 @@ html.pf129 .pf129-vagas .pf129-nd .pf129-vst{color:#475569}
           if (corpo && !corpo.querySelector('[data-o="pf129vis"]')) {
             var on = PF129.ligado();
             corpo.insertAdjacentHTML('beforeend', '<button type="button" class="pcf116-item" data-o="pf129vis"><span class="ic">✨</span><span>' +
-              (on ? 'Voltar ao visual de sempre' : 'Visual novo (teste)') + '<small>' +
-              (on ? 'tema escuro e a tela de OS antiga — vale só para este aparelho' : 'Minhas OS nova, cartões na coleta e tema claro — só neste aparelho; desliga aqui mesmo') + '</small></span></button>');
+              (on ? 'Voltar ao visual de sempre' : 'Voltar ao visual novo') + '<small>' +
+              (on ? 'só por pouco tempo: o visual de sempre vai sair do PCF — conte o que faltou' : 'Minhas OS nova, cartões na coleta e tema claro — o padrão do PCF') + '</small></span></button>');   // PCF_V157 (#309)
             corpo.querySelector('[data-o="pf129vis"]').onclick = function () {
               var c = ov.querySelector('.pcf116-pe .pcf116-cancel'); if (c) c.click(); else try { ov.remove(); } catch (e) {}
               PF129.ligar(!on);
@@ -47624,5 +47633,147 @@ html.pf129 .pf155-erro{color:#b91c1c}
 })();
 </script>
 <!-- ████ FIM PCF_V156 (PF156) ████ -->
+<!-- ████ PCF_V157 (PF157) · ✨ VISUAL NOVO É O PADRÃO — voltar ao de sempre pede o motivo · 20/11/2026 ████ -->
+<style id="pf157Css">
+/* PCF_V157 (PF157) — a folha do motivo usa as classes do V130 (.pf130-ov/.pf130-sh/.pf130-li/.pf130-b) e só acerta o toque (52 px) */
+#pf157Folha .pf130-li{min-height:52px}
+#pf157Folha .pf130-li .ic{font-size:20px;width:28px;text-align:center;flex-shrink:0}
+#pf157Folha textarea{width:100%;min-height:64px;border:1px solid #cbd5e1;border-radius:11px;padding:10px 12px;font:15px Inter,system-ui,sans-serif;color:#0f172a;resize:vertical;box-sizing:border-box;margin:2px 0 4px}
+#pf157Folha .rw{display:flex;gap:8px;margin-top:8px}
+#pf157Folha .rw .pf130-b{min-height:52px;margin-top:0}
+#pf157Folha .pf130-b[disabled]{opacity:.45;cursor:default}
+#pf157Folha .cont{font-size:11.5px;color:#64748b;text-align:right}
+</style>
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════════════
+   PCF_V157 (PF157) — ProperCare-backlog#309 (Parte 2, PR 1 — decisão D7) · par do SQL PCF_VISUAL_VOLTA (cadeia 158) · zero GAS · número 156 já era da #300.
+   O visual novo (V129/V130) passa a ser o padrão (a chave pf129_visual_novo virou tri-estado no corpo: ausente/'1' = novo, '0' = voltou).
+   1 · VOLTAR PEDE O MOTIVO: PF129.ligar(false) (☰ Menu e o botão da lista) abre uma folha própria: 4 motivos + detalhe opcional.
+       "Voltar ao de sempre" grava a volta NO APARELHO primeiro (fila pf157_voltas, teto 20) e só então desliga o visual novo. A fila sobe
+       por pc_visual_volta_registrar com o crachá do PIN (PF123.rpc) e só sai com o "ok" do servidor (a mesma volta reenviada não duplica:
+       uid). Sem SQL, sem crachá ou sem rede: fica na fila e tenta na próxima abertura e quando a rede volta. Ligar de novo não pergunta.
+   2 · AVISO DE UMA VEZ: aparelho que nunca escolheu (chave ausente) ganhou o visual novo sem pedir ⇒ um aviso, uma vez (pf157_aviso).
+   Chave de volta: localStorage pcf157 = off ⇒ voltar é direto, sem perguntar (o padrão continua o novo; isso é do corpo do V156).
+   Sem prompt/confirm/alert. Nada renomeado. Diagnóstico: PF157.log, PF157.fila().
+   ═══════════════════════════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+  if (window.PF157) return;
+  var PF157 = window.PF157 = { versao: 'PCF_V157', log: [], subidas: 0 };
+  var FILA = 'pf157_voltas', AVISO = 'pf157_aviso', CHAVE = 'pf129_visual_novo';
+  var MOTIVOS = [['nao_acho', '🔎', 'Não acho o que preciso'], ['lento', '🐢', 'Está mais lento'], ['prefiro', '👀', 'Prefiro o de sempre'], ['outro', '✍️', 'Outro motivo']];
+  function ativo() { try { return localStorage.getItem('pcf157') !== 'off'; } catch (e) { return true; } }
+  function log() { try { PF157.log.push([new Date().toISOString().slice(11, 19)].concat([].slice.call(arguments)).join(' ')); if (PF157.log.length > 40) PF157.log.shift(); } catch (e) {} }
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function lerFila() { try { var f = JSON.parse(localStorage.getItem(FILA) || '[]'); return Array.isArray(f) ? f : []; } catch (e) { return []; } }
+  function gravarFila(f) { try { if (f.length) localStorage.setItem(FILA, JSON.stringify(f.slice(-20))); else localStorage.removeItem(FILA); } catch (e) {} }
+  PF157.fila = lerFila;
+  function novoUid() {
+    try { if (window.crypto && crypto.randomUUID) return crypto.randomUUID(); } catch (e) {}
+    return 'v' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+  }
+  function build() { try { var m = document.querySelector('meta[name="app-build"]'); return String((m && m.getAttribute('content')) || '').slice(0, 40); } catch (e) { return ''; } }
+
+  // ── a fila sobe ao servidor ───────────────────────────────────────────────────────────
+  var _subindo = false;
+  async function subir() {
+    if (_subindo) return;
+    if (!lerFila().length || !(window.PF123 && typeof PF123.rpc === 'function')) return;
+    _subindo = true;
+    try {
+      var f = lerFila();
+      for (var i = 0; i < f.length; i++) {
+        var it = f[i];
+        try {
+          var r = await PF123.rpc('pc_visual_volta_registrar', { p: it }, 12000);
+          if (r && r.ok) {
+            gravarFila(lerFila().filter(function (x) { return x && x.uid !== it.uid; }));
+            PF157.subidas++; log('subiu', it.uid, r.gravou ? 'gravou' : (r.repetida ? 'repetida' : 'teto'));
+          } else { log('resposta sem ok', it.uid); break; }
+        } catch (e) {
+          log('não subiu', it.uid, (e && (e.pf123 || e.message)) || e);
+          // recusa do PRÓPRIO dado (motivo/uid) nunca vai passar: sai da fila; rede, crachá e "sem SQL": fica para depois
+          if (e && e.pf123 === 'recusado' && /^(motivo|uid)$/.test(String(e.hint || ''))) { gravarFila(lerFila().filter(function (x) { return x && x.uid !== it.uid; })); continue; }
+          break;
+        }
+      }
+    } finally { _subindo = false; }
+  }
+  PF157.subir = subir;
+
+  // ── a folha do motivo ─────────────────────────────────────────────────────────────────
+  function fecharFolha() { try { var f = document.getElementById('pf157Folha'); if (f) f.remove(); } catch (e) {} }
+  function abrirFolha(orig) {
+    fecharFolha();
+    var ov = document.createElement('div');
+    ov.className = 'pf130-ov'; ov.id = 'pf157Folha';
+    ov.innerHTML = '<div class="pf130-sh" role="dialog" aria-modal="true" aria-labelledby="pf157T">' +
+      '<h3 id="pf157T">Voltar ao visual de sempre?</h3>' +
+      '<div class="s">Ele vai sair do PCF em breve. Conte o que faltou no novo: o escritório vê e corrige.</div>' +
+      MOTIVOS.map(function (m) { return '<button type="button" class="pf130-li" data-m="' + m[0] + '"><span class="ic">' + m[1] + '</span><span class="tx"><b>' + esc(m[2]) + '</b></span></button>'; }).join('') +
+      '<textarea id="pf157Det" maxlength="300" rows="2" placeholder="Se quiser, diga o quê (opcional)" autocomplete="off" name="pf157_det_nofill" data-lpignore="true" data-1p-ignore></textarea>' +
+      '<div class="rw"><button type="button" class="pf130-b" data-a="ficar">Ficar no novo</button>' +
+      '<button type="button" class="pf130-b or" data-a="voltar" disabled>Voltar ao de sempre</button></div></div>';
+    document.body.appendChild(ov);
+    var escolhido = '', det = ov.querySelector('#pf157Det'), bVoltar = ov.querySelector('[data-a="voltar"]');
+    function mexida() { return !!escolhido || !!String(det.value || '').trim(); }
+    ov.querySelectorAll('[data-m]').forEach(function (b) {
+      b.onclick = function () {
+        escolhido = b.getAttribute('data-m');
+        ov.querySelectorAll('[data-m]').forEach(function (x) { x.classList.toggle('on', x === b); });
+        bVoltar.disabled = false;
+      };
+    });
+    ov.querySelector('[data-a="ficar"]').onclick = fecharFolha;
+    ov.addEventListener('click', function (ev) { if (ev.target === ov && !mexida()) fecharFolha(); });   // janela mexida não fecha pelo fundo
+    bVoltar.onclick = function () {
+      if (!escolhido || bVoltar.disabled) return;
+      bVoltar.disabled = true;
+      var it = { uid: novoUid(), motivo: escolhido, detalhe: String(det.value || '').trim().slice(0, 300), build: build(), quando: new Date().toISOString() };
+      var f = lerFila(); f.push(it); gravarFila(f);   // grava no aparelho ANTES de desligar e antes do 1º envio
+      log('volta', it.uid, it.motivo);
+      fecharFolha();
+      try { orig.call(window.PF129, false); } catch (e) { log('desligar', e && e.message); }
+      setTimeout(subir, 300);
+    };
+    try { ov.querySelector('[data-m]').focus({ preventScroll: true }); } catch (e) {}
+  }
+  PF157.abrirFolha = function () { if (window.PF129 && PF129.ligar && PF129.ligar.__pf157orig) abrirFolha(PF129.ligar.__pf157orig); };
+
+  // ── embrulho do PF129.ligar (resolvido na hora do clique: o menu e a lista chamam PF129.ligar(...)) ───────────
+  function embrulhar() {
+    var P = window.PF129;
+    if (!P || typeof P.ligar !== 'function') return false;
+    if (P.ligar.__pf157) return true;
+    var orig = P.ligar;
+    var w = function (sim) {
+      if (sim || !ativo()) return orig.apply(this, arguments);
+      abrirFolha(orig);
+    };
+    w.__pf157 = true; w.__pf157orig = orig; P.ligar = w;
+    return true;
+  }
+
+  // ── aviso de uma vez para quem ganhou o visual novo sem pedir ──────────────────────────────────
+  function avisar() {
+    try {
+      if (localStorage.getItem(CHAVE) !== null || localStorage.getItem(AVISO)) return;
+      if (typeof showNotification !== 'function') return;   // sem o toast ainda: não marca (o aviso fica para a próxima abertura)
+      showNotification('✨ O visual novo agora é o padrão do PCF. Para voltar ao de sempre: ☰ Menu.');
+      localStorage.setItem(AVISO, new Date().toISOString().slice(0, 10));
+    } catch (e) {}
+  }
+
+  function iniciar() {
+    if (!embrulhar()) { var n = 0, t = setInterval(function () { if (embrulhar() || ++n > 40) clearInterval(t); }, 250); }
+    setTimeout(avisar, 2500);
+    setTimeout(subir, 4000);
+    try { window.addEventListener('online', function () { setTimeout(subir, 1500); }); } catch (e) {}
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
+})();
+</script>
+<!-- ████ FIM PCF_V157 (PF157) ████ -->
+
 </body>
 </html>
