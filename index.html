@@ -1863,8 +1863,16 @@ html[data-boot="pipeline"] #pf113Splash{display:flex;position:fixed;inset:0;z-in
   fila no aparelho ate o "ok"). Aviso de uma vez para quem ganhou o visual novo sem pedir. Bloco PF157 no fim do body + 4 trocas no
   corpo (os 2 scripts do topo, PF129.ligado/ligar e os rotulos do menu).
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V157</title>
-<meta name="app-build" content="PCF_V157" data-date="2026-11-20">
+<!--
+  PCF_V158 · HUB, ETAPAS EM LINHA E ANTES DE COMECAR NO PADRAO · 20/11/2026 · feito SOBRE o PCF_V157 no ar · par sw propertech-v160 ·
+  zero SQL, zero GAS. ProperCare-backlog#309 (Parte 2, PR 2 — pranchas 2 e 3, decisoes D3 e D5). So o visual novo: hub com "Proxima:
+  etapa", "Faltam N itens" e "Ultimas visitas e fotos" (a etapa "Fotos da ultima visita" sai da lista e abre junto); foto geral e
+  cadastro incompleto num cartao so; etapas em linha de 56 px (numero, nome, situacao; completa = ✓ verde); checklist com o campo
+  aberto e a pilula "Conferir / ✓ Conferido". Chave de volta pcf158=off. Bloco PF158 no fim do body + 3 ganchos no PF130 (sem o
+  PF158 fazem o mesmo de antes).
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V158</title>
+<meta name="app-build" content="PCF_V158" data-date="2026-11-20">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -38579,6 +38587,7 @@ html.pf129.pf130.pf130-cli #pgpTipoVisitaWrap{display:block!important}
       var pn0 = sec.closest('.machine-panel'), i0 = pn0 ? parseInt(String(pn0.id).replace('panel-', ''), 10) : atual();
       var c0 = contaPecasSec(sec, i0) || contaSec(sec); if (c0.total > 0 && !c0.semTabela) n += ' · ' + c0.feitos + ' de ' + c0.total;
     }
+    if (window.PF158 && PF158.cab) { try { var pn8 = sec.closest('.machine-panel'), i8 = pn8 ? parseInt(String(pn8.id).replace('panel-', ''), 10) : atual(); var q8 = PF158.cab(sec, et, ic, sec.hasAttribute('data-section') ? (contaPecasSec(sec, i8) || contaSec(sec)) : null, secAberta(sec), !!contaPecasSec(sec, i8)); if (q8) { ic = q8[0]; n = q8[1]; t = q8[2]; d = q8[3]; } } catch (e8) { nota(e8, 'pf158 cab'); } }   /* PCF_V158 (#309): linha de 56 px; sem o PF158, igual */
     if (hd.__pf130 !== ic + n + t + d) {
       hd.querySelector('.ic2').textContent = ic; hd.querySelector('.n').textContent = n;
       hd.querySelector('.t').textContent = t; hd.querySelector('.d').textContent = d; hd.__pf130 = ic + n + t + d;
@@ -38711,6 +38720,7 @@ html.pf129.pf130.pf130-cli #pgpTipoVisitaWrap{display:block!important}
     if (!et) { et = document.createElement('div'); et.className = 'pf130-sec pf130-etapas'; }
     if (s1 && et.nextElementSibling !== s1) p.insertBefore(et, s1);
     var eh = '<h2>Etapas da coleta</h2><span>' + feitas + ' de ' + ss.length + ' concluídas · 07 e 08 opcionais</span>';
+    if (window.PF158 && PF158.hub) { try { var h8 = PF158.hub({ i: i, pr: pr, cli: cli, prev: prev, pfTxt: pfTxt, pistao: !!(pf && pf.id === 'pistao'), ult: ult, nMaq: nMaq(), nome: nomeMaq(i), ident: idMaq(i), hist: !!PF130.histAberto, feitas: feitas, etapas: ss.map(function (s) { var c = contaPecasSec(s, i) || contaSec(s), e = etapaDe(s); return { n: e[1], t: e[2], ok: c.total > 0 && !c.semTabela && c.feitos >= c.total }; }) }); if (h8) { html = h8[0]; eh = h8[1]; } } catch (e8) { nota(e8, 'pf158 hub'); } }   /* PCF_V158 (#309); sem o PF158, igual */
     if (et.__pf130 !== eh) { et.innerHTML = eh; et.__pf130 = eh; }
     if (hub.__pf130 !== html) {
       var slotAntes = $('machineHistoryPanel');
@@ -38853,6 +38863,7 @@ html.pf129.pf130.pf130-cli #pgpTipoVisitaWrap{display:block!important}
     try { pintarStrip(); } catch (e) { nota(e, 'strip'); }
     try { pilha(); } catch (e) { nota(e, 'pilha'); }
     try { resgatar(); } catch (e) { nota(e, 'resgatar'); }
+    try { if (window.PF158 && PF158.depois) PF158.depois(); } catch (e) { nota(e, 'pf158'); }   /* PCF_V158 (#309); sem o PF158, igual */
   }
   function agendar() { if (_raf) return; _raf = (window.requestAnimationFrame || setTimeout)(tudo, 16); }
   PF130.pintar = function () { _raf = 0; tudo(); };
@@ -47774,6 +47785,220 @@ html.pf129 .pf155-erro{color:#b91c1c}
 })();
 </script>
 <!-- ████ FIM PCF_V157 (PF157) ████ -->
+<!-- ████ PCF_V158 (PF158) · 🧭 HUB, ETAPAS EM LINHA E "ANTES DE COMEÇAR" NO PADRÃO · 20/11/2026 ████ -->
+<style id="pf158Css">
+/* ═════ PCF_V158 (PF158) — so vale com html.pf129.pf130.pf158 (visual novo + PF158 ligado). Sem a classe: o V157.
+   Nada sai do DOM nem troca de lugar: a ordem visual vem do flex do painel (o no do motor continua onde sempre esteve). ═════ */
+@media screen{
+html.pf129.pf130.pf158 #machineContent > .machine-panel.active{display:flex!important;flex-direction:column}
+html.pf129.pf130.pf158 #machineContent > .machine-panel > .pf130-hub{order:-3}
+/* D5: "Fotos da ultima visita" sai da lista de etapas e abre junto com "Ultimas visitas e fotos" (logo abaixo do cartao da maquina) */
+html.pf129.pf130.pf158 #machineContent > .machine-panel > .pf-prevfotos-section{order:-2;display:none!important}
+html.pf129.pf130.pf158 #machineContent > .machine-panel.pf158-hist > .pf-prevfotos-section{display:block!important;margin:0 0 12px!important}
+html.pf129.pf130.pf158 .machine-panel.pf158-hist > .pf-prevfotos-section > .section-header{pointer-events:none;min-height:44px!important}
+html.pf129.pf130.pf158 .machine-panel.pf158-hist > .pf-prevfotos-section > .section-header .pf130-pl{display:none!important}
+html.pf129.pf130.pf158 .machine-panel.pf158-hist > .pf-prevfotos-section > .section-body{display:block!important}
+html.pf129.pf130.pf158 .machine-panel.pf158-hist > .pf-prevfotos-section .pf130-fim{display:none!important}
+}
+/* hub */
+html.pf129.pf130.pf158 .pf130-hub{position:relative}
+html.pf129.pf130.pf158 .pf130-hub > .pf135-ver{position:absolute;top:14px;right:4px;margin:0;font-size:11px;color:#64748b}
+.pf158-pl{display:flex;width:100%;justify-content:space-between;align-items:center;gap:8px;margin-top:6px;min-height:52px;padding:0;background:none;border:0;cursor:pointer;text-align:left;font:13px Inter,system-ui,sans-serif;color:#334155}
+.pf158-pl b{color:#c2410c;font-size:14px}
+.pf158-pl .v{color:#c2410c;font-weight:700}
+.pf158-pl:active{opacity:.6}
+html.pf129.pf130.pf158 .pf130-hub .pf130-hist{min-height:52px;margin-top:10px;padding-top:4px;gap:8px}
+html.pf129.pf130.pf158 .pf130-hub .pf130-hist > span:first-child{flex:1;text-align:left}
+.pf158-cnt{font:700 12px Inter,system-ui,sans-serif;background:#f1f5f9;color:#334155;border-radius:999px;padding:3px 9px}
+.pf158-cnt:empty{display:none}
+html.pf129.pf130.pf158 .pf130-sec h2{font-size:17px}
+@media screen{
+/* "Antes de comecar": a foto geral e o cadastro incompleto num cartao so, no padrao (sem degrade, sem faixa vermelha) */
+html.pf129.pf130.pf158 .machine-panel > .photo-thumbs-mini[data-pkey="geral"]:empty{display:none}
+html.pf129.pf130.pf158 .machine-panel > .pf158-ag{background:#fff!important;border:1px solid #d9e0ea!important;border-left:4px solid #16a34a!important;border-radius:0!important;margin:0!important;box-shadow:none!important}
+html.pf129.pf130.pf158 .machine-panel > .pf158-ag.pf158-pend{border-left-color:#c2410c!important}
+html.pf129.pf130.pf158 .machine-panel > .pf158-ag + .pf158-ag{border-top:1px solid #eef2f7!important}
+html.pf129.pf130.pf158 .machine-panel > .pf158-ag:not(.pf158-ag1){border-top-width:0!important}
+html.pf129.pf130.pf158 .machine-panel > .pf158-ag1{border-top-left-radius:16px!important;border-top-right-radius:16px!important;margin-top:2px!important}
+html.pf129.pf130.pf158 .machine-panel > .pf158-agn{border-bottom-left-radius:16px!important;border-bottom-right-radius:16px!important;margin-bottom:12px!important}
+html.pf129.pf130.pf158 .machine-panel > .foto-inicial-banner{display:flex;align-items:center;gap:12px;padding:12px!important;min-height:68px}
+html.pf129.pf130.pf158 .foto-inicial-banner .foto-ini-icon{width:44px;height:44px;border-radius:12px;background:#fff7ed;border:1px solid #fed7aa;display:flex;align-items:center;justify-content:center;font-size:21px}
+html.pf129.pf130.pf158 .foto-inicial-banner.pf158-ok .foto-ini-icon{background:#f0fdf4;border-color:#bbf7d0}
+html.pf129.pf130.pf158 .foto-inicial-banner .foto-ini-text{font-size:0!important;color:#0f172a!important;line-height:1.25}
+html.pf129.pf130.pf158 .foto-inicial-banner .foto-ini-text small{display:none!important}
+html.pf129.pf130.pf158 .foto-inicial-banner .foto-ini-text::before{content:'Foto geral do local';display:block;font:700 15px Inter,system-ui,sans-serif;color:#0f172a}
+html.pf129.pf130.pf158 .foto-inicial-banner .foto-ini-text::after{content:'obrigatória para começar';display:block;font:400 13px Inter,system-ui,sans-serif;color:#475569;margin-top:2px}
+html.pf129.pf130.pf158 .foto-inicial-banner.pf158-ok .foto-ini-text::after{content:'feita · toque para tirar outra';color:#166534}
+html.pf129.pf130.pf158 .foto-inicial-banner .foto-ini-btn{background:#fff!important;color:#c2410c!important;border:1.5px solid #fdba74!important;box-shadow:none!important;min-height:52px!important;border-radius:12px!important;padding:0 12px!important;font:700 14px Inter,system-ui,sans-serif!important}
+html.pf129.pf130.pf158 .foto-inicial-banner .foto-ini-btn.done{color:#166534!important;border-color:#86efac!important;background:#f0fdf4!important}
+html.pf129.pf130.pf158 .machine-panel > .photo-thumbs-mini[data-pkey="geral"].pf158-ag{padding:4px 12px 10px 60px!important}
+html.pf129.pf130.pf158 .machine-panel > .pgp-missing-alert{position:relative;padding:12px 104px 12px 68px!important;min-height:68px;cursor:pointer;font:400 13px/1.35 Inter,system-ui,sans-serif!important;color:#475569!important}
+html.pf129.pf130.pf158 .machine-panel > .pgp-missing-alert::before{content:'🏢';position:absolute;left:12px;top:12px;width:44px;height:44px;border-radius:12px;background:#f1f5f9;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:center;font-size:20px}
+html.pf129.pf130.pf158 .machine-panel > .pgp-missing-alert strong{font-size:0!important;margin:0 0 2px!important;text-transform:none!important;letter-spacing:0!important}
+html.pf129.pf130.pf158 .machine-panel > .pgp-missing-alert strong::before{content:'Cadastro incompleto';font:700 15px Inter,system-ui,sans-serif;color:#0f172a}
+html.pf129.pf130.pf158 .machine-panel > .pgp-missing-alert::after{content:'Etapa 01 ›';position:absolute;right:12px;top:50%;margin-top:-11px;font:700 14px Inter,system-ui,sans-serif;color:#c2410c}
+}
+/* etapas em linha de 56 px: numero, nome, situacao; a descricao some; completa = ✓ verde; aberta = numero laranja */
+html.pf129.pf130.pf158 .machine-panel .section > .section-header{min-height:56px!important;padding:8px 12px!important}
+html.pf129.pf130.pf158 .pf130-hd{gap:12px}
+html.pf129.pf130.pf158 .pf130-hd .ic2{width:36px;height:36px;border-radius:50%;font:700 14px Inter,system-ui,sans-serif;background:#f1f5f9;border:1px solid #e2e8f0;color:#334155}
+html.pf129.pf130.pf158 .pf130-hd .n{display:none}
+html.pf129.pf130.pf158 .pf130-hd .d:empty{display:none}
+html.pf129.pf130.pf158 .pf130-hd .t{font-size:16px}
+html.pf129.pf130.pf158 .machine-panel .section.pf130-ok .pf130-hd .ic2{background:#16a34a;border-color:#16a34a;color:#fff}
+html.pf129.pf130.pf158 .machine-panel .section.pf130-lock .pf130-hd .ic2{background:#fef2f2;border-color:#fecaca;color:#991b1b}
+html.pf129.pf130.pf158 .machine-panel .section.pf130-open .pf130-hd .ic2{background:#c2410c;border-color:#c2410c;color:#fff}
+html.pf129.pf130.pf158 .pf130-assin .h{min-height:56px;padding:8px 12px}
+html.pf129.pf130.pf158 .pf130-assin .pf130-hd .d{display:none}
+html.pf129.pf130.pf158 .pf130-fim .pf130-b{min-height:52px}
+/* checklist (etapas 01, 02, 03, 06): o campo ja aparece aberto; o ✓ vira a pilula "Conferir / ✓ Conferido" a direita do rotulo; nada riscado */
+html.pf129.pf130.pf158 .machine-panel .field-item[onclick^="toggleField"]{padding:10px 14px 14px!important}
+html.pf129.pf130.pf158 .machine-panel .field-item[onclick^="toggleField"] > .field-input{display:block!important;margin-top:4px}
+html.pf129.pf130.pf158 .machine-panel .field-item[onclick^="toggleField"] > .field-label{align-items:center;min-height:52px;margin-bottom:0;gap:10px}
+html.pf129.pf130.pf158 .machine-panel .field-item[onclick^="toggleField"] > .field-label > .label-text{order:1}
+html.pf129.pf130.pf158 .machine-panel .field-item[onclick^="toggleField"] > .field-label > .checkbox{order:2;width:auto;min-width:104px;height:40px;margin:0;padding:0 12px;border-radius:999px;border:1.5px solid #cbd5e1!important;background:#fff!important;font-size:0!important;color:#334155!important;transition:none}
+html.pf129.pf130.pf158 .machine-panel .field-item[onclick^="toggleField"] > .field-label > .checkbox::after{content:'Conferir';font:700 14px Inter,system-ui,sans-serif;color:#334155}
+html.pf129.pf130.pf158 .machine-panel .field-item[onclick^="toggleField"].checked > .field-label > .checkbox{background:#dcfce7!important;border-color:#86efac!important}
+html.pf129.pf130.pf158 .machine-panel .field-item[onclick^="toggleField"].checked > .field-label > .checkbox::after{content:'✓ Conferido';color:#166534}
+html.pf129.pf130.pf158 .machine-panel .field-item[onclick^="toggleField"] .label-main,html.pf129.pf130.pf158 .machine-panel .field-item[onclick^="toggleField"].checked .label-main{font:700 14.5px Inter,system-ui,sans-serif!important;color:#0f172a!important;text-decoration:none!important}
+html.pf129.pf130.pf158 .machine-panel .field-item[onclick^="toggleField"] .label-hint{font-style:normal;color:#64748b}
+html.pf129.pf130.pf158 .machine-panel .field-item[onclick^="toggleField"] > .field-input input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden]),
+html.pf129.pf130.pf158 .machine-panel .field-item[onclick^="toggleField"] > .field-input select,html.pf129.pf130.pf158 .machine-panel .field-item[onclick^="toggleField"] > .field-input textarea{min-height:48px;border-radius:12px!important;border:1px solid #cbd5e1!important;font-size:16px;padding:10px 12px;box-sizing:border-box;background:#fff!important}
+html.pf129.pf130.pf158 .machine-panel .field-item[onclick^="toggleField"] > .field-input input[readonly]{background:#f1f5f9!important;color:#334155!important}
+html.pf129.pf130.pf158 .machine-panel .field-item[onclick^="toggleField"] > .field-input label{text-transform:none;letter-spacing:0;font:600 12.5px Inter,system-ui,sans-serif;color:#475569}
+@media print{.pf158-pl,.pf158-cnt{display:none!important}
+html.pf129.pf130.pf158 .machine-panel .field-item[onclick^="toggleField"] > .field-label > .checkbox{font-size:13px!important}
+html.pf129.pf130.pf158 .machine-panel .field-item[onclick^="toggleField"] > .field-label > .checkbox::after{content:none}}
+</style>
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════════════
+   PCF_V158 (PF158) — ProperCare-backlog#309 (Parte 2, PR 2 — pranchas 2 e 3, decisões D3 e D5) · zero SQL · zero GAS.
+   Só o visual novo (html.pf129.pf130). Três ganchos no PF130 (decorarSecao, pintarHub, fim do tudo) chamam este bloco; sem o
+   PF158 (ou com pcf158=off) eles fazem o mesmo de antes. Nada sai do DOM, nada troca de lugar: a ordem visual é a do flex do painel.
+   1 · HUB: "Coleta em andamento", o cliente, "Próxima: etapa NN · nome"; no cartão da máquina, "Faltam N itens · ver ›" com o %, a
+       barra, e "🕘 Últimas visitas e fotos" com a contagem — ao abrir, o histórico entra no cartão (o do PF130) e as fotos da última
+       visita aparecem logo abaixo (D5: a etapa "Fotos da última visita" sai da lista).
+   2 · ANTES DE COMEÇAR: a foto geral obrigatória e o "Dados cadastrais faltantes" viram um cartão só, no padrão (o botão de foto e
+       a lista são os do motor; tocar no cadastro abre a etapa 01).
+   3 · ETAPAS EM LINHA DE 56 px: número (✓ verde quando completa, laranja quando aberta), nome e a situação; a etapa aberta diz
+       "x de y conferidos". D3: "Próxima →" fecha a etapa (já era do PF130).
+   4 · CHECKLIST: o campo já aparece aberto; o ✓ vira a pílula "Conferir / ✓ Conferido" à direita do rótulo; nada riscado. Marcar
+       continua o toggleField do motor, mas só pela linha do rótulo (tocar entre os campos, que agora ficam abertos, não desmarca).
+   Chave de volta: localStorage pcf158 = off ⇒ o V157. Sem prompt/confirm/alert. Diagnóstico: PF158.erros.
+   ═══════════════════════════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+  if (window.PF158) return;
+  var PF158 = window.PF158 = { versao: 'PCF_V158', erros: [] };
+  function nota(e, onde) { try { PF158.erros.push(onde + ': ' + String(e && e.message || e)); if (PF158.erros.length > 30) PF158.erros.shift(); } catch (x) {} }
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function chave() { try { return localStorage.getItem('pcf158') !== 'off'; } catch (e) { return true; } }
+  function ativo() { try { return chave() && !!(window.PF130 && PF130.ligado && PF130.ligado()); } catch (e) { return false; } }
+  PF158.ativo = ativo;
+  function atual() { try { return currentMachine || 0; } catch (e) { return 0; } }
+  function tg(el, c, on) { if (el && el.classList.contains(c) !== !!on) el.classList.toggle(c, !!on); }   // so escreve quando muda (observador nao entra em laco)
+
+  // ── 3 · cabeçalho da etapa (gancho no PF130.decorarSecao) ────────────────────────────────────
+  PF158.cab = function (sec, et, ic, c, aberta, pecas) {
+    if (!ativo()) return null;
+    var ok = !!(c && c.total > 0 && !c.semTabela && c.feitos >= c.total);
+    var num = et[1] || ic;
+    var d = '';
+    if (aberta && c && c.total > 0 && !c.semTabela) d = c.feitos + ' de ' + c.total + (pecas ? (c.total > 1 ? ' peças com ação' : ' peça com ação') : (c.total > 1 ? ' conferidos' : ' conferido'));
+    return [ok ? '✓' : num, '', et[2], d];
+  };
+
+  // ── 1 · o hub (gancho no PF130.pintarHub) ─────────────────────────────────────────────────────
+  function contagemFotos(i) {
+    var b = $('m' + i + '_prevfotos_badge'), t = b ? String(b.textContent || '').trim() : '';
+    return /^(\d+|…)$/.test(t) ? t : '';
+  }
+  PF158.hub = function (x) {
+    if (!ativo()) return null;
+    var i = x.i, pr = x.pr || {}, prox = null;
+    for (var k = 0; k < x.etapas.length; k++) if (!x.etapas[k].ok) { prox = x.etapas[k]; break; }
+    var sub = prox ? 'Próxima: etapa ' + (prox.n ? prox.n + ' · ' : '') + prox.t : (pr.falta ? 'Falta pouco — toque em "ver ›" abaixo' : 'Tudo preenchido ✓ — confira e conclua');   // régua: o progresso do motor
+    var falta = pr.falta ? 'Faltam ' + pr.falta + ' ite' + (pr.falta > 1 ? 'ns' : 'm') + (pr.semAcao ? ' (' + pr.semAcao + ' peça' + (pr.semAcao > 1 ? 's' : '') + ' sem ação)' : '') : 'Tudo preenchido ✓';
+    var html = '<div class="kick">Coleta em andamento</div>' +
+      '<h1>' + esc(x.cli || 'Cliente não informado') + '</h1><div class="sub">' + esc(sub) + '</div>' +
+      '<div class="pf130-seg" role="group" aria-label="Tipo de visita"><button type="button" data-pf130="tipo-i" class="' + (x.prev ? '' : 'on') + '">🔍 Inspeção</button><button type="button" data-pf130="tipo-p" class="' + (x.prev ? 'on' : '') + '">🔧 Preventiva</button></div>' +
+      '<div class="pf130-card"><div class="pf130-maq"><div class="pf130-ic">' + (x.pistao ? '🔩' : '🔧') + '</div><div style="min-width:0"><b>' + esc(x.nome) + '</b><div class="m">' + esc(x.ident || 'sem série / TAG') + '</div></div>' +
+      '<button type="button" class="pf130-trocar" data-pf130="trocar">Trocar ▾</button></div>' +
+      '<div class="pf130-chips"><span class="pf130-chip">' + esc(x.pfTxt) + '</span>' + (x.ult ? '<span class="pf130-chip">Última visita ' + esc(x.ult) + '</span>' : '') + (x.nMaq > 1 ? '<span class="pf130-chip">Máq. ' + (i + 1) + ' de ' + x.nMaq + '</span>' : '') + '</div>' +
+      '<button type="button" class="pf158-pl" data-pf130="falta"><span>' + esc(falta) + ' · <span class="v">ver ›</span></span><b>' + (pr.pct || 0) + '%</b></button>' +
+      '<div class="pf130-pbar"><i style="width:' + (pr.pct || 0) + '%"></i></div>' +
+      '<button type="button" class="pf130-hist" data-pf130="hist"><span>🕘 Últimas visitas e fotos</span><span class="pf158-cnt">' + esc(contagemFotos(i)) + '</span><span>' + (x.hist ? '▴' : '›') + '</span></button>' +
+      '<div class="pf130-histslot" id="pf130HistSlot' + i + '"></div></div>';
+    var eh = '<h2>Etapas</h2><span>' + x.feitas + ' de ' + x.etapas.length + ' · 07 e 08 opcionais</span>';
+    return [html, eh];
+  };
+
+  // ── 2 · "Antes de começar" e o resto que o PF130 não pinta (gancho no fim do PF130.tudo) ─────────
+  function visivel(el, p) { try { return !!(el && el.parentNode === p && getComputedStyle(el).display !== 'none'); } catch (e) { return false; } }
+  PF158.depois = function () {
+    var lig = ativo();
+    tg(document.documentElement, 'pf158', lig);
+    if (!lig) return;
+    var cur = atual();
+    document.querySelectorAll('#machineContent > .machine-panel').forEach(function (p) {
+      try {
+        var i = parseInt(String(p.id).replace('panel-', ''), 10);
+        tg(p, 'pf158-hist', !!(PF130.histAberto && i === cur));
+        var b = $('m' + i + '_banner_foto_inicial'), t = p.querySelector(':scope > .photo-thumbs-mini[data-pkey="geral"]'), a = $('pgp_missing_alert_' + i);
+        var ok = !!(b && b.querySelector('.foto-ini-btn.done'));
+        if (b) tg(b, 'pf158-ok', ok);
+        var partes = [b, t, a].filter(function (el) { return visivel(el, p); });
+        var pend = (partes.indexOf(b) >= 0 && !ok) || partes.indexOf(a) >= 0;   // sem o cartão da foto, só o cadastro decide
+        [b, t, a].forEach(function (el) {
+          if (!el) return;
+          var k = partes.indexOf(el);
+          tg(el, 'pf158-ag', k >= 0); tg(el, 'pf158-ag1', k === 0); tg(el, 'pf158-agn', k >= 0 && k === partes.length - 1); tg(el, 'pf158-pend', k >= 0 && pend);
+        });
+        var as = $('pf130Assin' + i), ic = as && as.querySelector('.pf130-hd .ic2');   // etapa 08: o número no lugar do ✍️ (a linha diz "08", como as outras)
+        if (ic && ic.textContent !== '08') ic.textContent = '08';
+      } catch (e) { nota(e, 'painel'); }
+    });
+  };
+
+  // tocar no "Cadastro incompleto" abre a etapa 01; abrir/fechar "Últimas visitas e fotos" mostra as fotos da última visita
+  document.addEventListener('click', function (ev) {
+    if (!ativo()) return;
+    try {
+      var t = ev.target;
+      var al = t && t.closest ? t.closest('#machineContent > .machine-panel > .pgp-missing-alert') : null;
+      if (al) {
+        var s1 = al.parentNode.querySelector(':scope > .section[data-section]');
+        if (s1 && PF130.abrirSec) { PF130.abrirSec(s1, true); PF130.pintar(); }
+        return;
+      }
+      if (t && t.closest && t.closest('[data-pf130="hist"]')) setTimeout(function () { try { PF130.pintar(); } catch (e) { nota(e, 'hist'); } }, 0);
+    } catch (e) { nota(e, 'clique'); }
+  });
+
+  // ── 4 · marcar o item só pela linha do rótulo (os campos agora ficam sempre abertos) ────────────
+  try {
+    var _tf = window.toggleField;
+    if (typeof _tf === 'function' && !_tf.__pf158) {
+      window.toggleField = function (el) {
+        try {
+          var ev = window.event;
+          if (ativo() && ev && ev.target && el && el.querySelector && el.closest && el.closest('.machine-panel')) {
+            var lb = el.querySelector(':scope > .field-label');
+            if (lb && !lb.contains(ev.target)) return;
+          }
+        } catch (e) { nota(e, 'toggleField'); }
+        return _tf.apply(this, arguments);
+      };
+      window.toggleField.__pf158 = true;
+    }
+  } catch (e) { nota(e, 'embrulho toggleField'); }
+
+  // primeira pintura (o PF130 chama o depois() no fim de cada ciclo; aqui só garante a classe no 1º desenho)
+  try { if (window.PF130 && PF130.pintar && ativo()) PF130.pintar(); else PF158.depois(); } catch (e) { nota(e, 'inicio'); }
+})();
+</script>
+<!-- ████ FIM PCF_V158 (PF158) ████ -->
 
 </body>
 </html>
