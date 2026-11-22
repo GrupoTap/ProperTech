@@ -1898,8 +1898,16 @@ html[data-boot="pipeline"] #pf113Splash{display:flex;position:fixed;inset:0;z-in
   "Em breve" e o quadradinho saem da vista; "Nao consigo fazer esta OS" no fim. Chave de volta pcf161=off. Bloco PF161 no fim do
   body; nenhuma linha do corpo mudou.
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V161</title>
-<meta name="app-build" content="PCF_V161" data-date="2026-11-21">
+<!--
+  PCF_V162 · NADA TROCA DE LUGAR DEBAIXO DO DEDO · 22/11/2026 · feito SOBRE o PCF_V161 no ar · par sw propertech-v164 · zero SQL,
+  zero GAS. ProperCare-backlog#317. Etapa 05: a vaga feita (ou N/D) com a etapa aberta nao some mais aos 3 s (na grade de 2 colunas
+  as vagas seguintes andavam uma casa e o toque abria a camera da vaga errada); fica na casa dela, do tamanho das que faltam
+  (nome + camera | miniatura) e so vai para a faixa quando a etapa fecha; a faixa que nasce em cima da grade nao empurra as
+  vagas (a rolagem compensa). Pecas e itens adicionais: o recolher automatico segura o que esta debaixo do ultimo toque.
+  Chave de volta pcf162=off. Bloco PF162 no fim do body + 1 gancho no PF160 e 1 no PF159 (sem o PF162 fazem o mesmo de antes).
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V162</title>
+<meta name="app-build" content="PCF_V162" data-date="2026-11-22">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -48277,20 +48285,29 @@ html.pf159 .pcf117-item.pf159-fech .pf159-res{display:block;font:400 12px Inter,
   function aVista(el) {
     try { setTimeout(function () { var r = el.getBoundingClientRect(); if (r.top < 70 || r.top > window.innerHeight - 160) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }, 60); } catch (e) {}
   }
+  function firme(card, fn) {   // PCF_V162 (#317): o que está debaixo do dedo não sai do lugar quando o cartão recolhe; sem o PF162, igual
+    var usa = false;
+    try { usa = !!(card && window.PF162 && PF162.ativo()); } catch (e) { nota(e, 'pf162'); }
+    if (usa) return PF162.firme(card, fn);   // o PF162.firme roda o fn uma vez só (e devolve se segurou algo)
+    fn(); return false;
+  }
   function recolherPeca(i, pk) {
     var tbs = listaPecas(tabela(i)), pks = tbs.map(function (tb) { return tb.getAttribute('data-pk'); }), est = {};
     pks.forEach(function (p) { est[p] = estado(p); });
     var nx = proxPend(pks, est, pks.indexOf(pk));
     S.ab[i] = nx; delete S.virou[pk]; delete S.saiu[pk];
     PF159.recolhidas++;
-    if (nx) desrecolher(nx);
-    pintarPecas(i);
-    if (nx && $(nx + '_pf149')) aVista($(nx + '_pf149'));
+    var fixo = firme($(pk + '_pf149'), function () {
+      if (nx) desrecolher(nx);
+      pintarPecas(i);
+    });
+    if (!fixo && nx && $(nx + '_pf149')) aVista($(nx + '_pf149'));   // V162: com algo segurado debaixo do dedo, a tela não corre atrás da próxima
   }
   function abrirPeca(i, pk) {
+    var ant = S.ab[i];
     S.ab[i] = pk; delete S.virou[pk]; S.saiu = {};
-    desrecolher(pk); pintarPecas(i);
-    var tb = $(pk + '_pf149'); if (tb) aVista(tb);
+    firme(ant && ant !== pk ? $(ant + '_pf149') : null, function () { desrecolher(pk); pintarPecas(i); });   // V162: a linha tocada fica onde o dedo está
+    var tb = $(pk + '_pf149'); if (tb) aVista(tb);   // tocou para abrir: mostrar a peça aberta continua (é a resposta ao toque)
   }
 
   // ── ITENS ADICIONAIS ─────────────────────────────────────────────────────────────────────────
@@ -48335,7 +48352,7 @@ html.pf159 .pcf117-item.pf159-fech .pf159-res{display:block;font:400 12px Inter,
     atr(add, 'data-pf159-rot', lst.length ? '＋ Adicionar outro item' : '＋ Adicionar item');
   }
   function itemDe(uid) { var x = null; document.querySelectorAll('.pcf117-item[data-uid]').forEach(function (it) { if (it.getAttribute('data-uid') === uid) x = it; }); return x; }
-  function recolherItem(uid) { S.iab[uid] = false; delete S.ivirou[uid]; delete S.isaiu[uid]; PF159.recolhidas++; var it = itemDe(uid); if (it) pintarItens(midxDe(it)); }
+  function recolherItem(uid) { S.iab[uid] = false; delete S.ivirou[uid]; delete S.isaiu[uid]; PF159.recolhidas++; var it = itemDe(uid); if (it) firme(it, function () { pintarItens(midxDe(it)); }); }   /* V162 (#317): firme */
 
   // folha "Escolher da lista": os nomes são os do próprio cartão (PF121); escolher = o toque no nome pronto de sempre
   function fecharFolha() { var o = $('pf159Folha'); if (o) o.remove(); }
@@ -48577,7 +48594,7 @@ html.pf129.pf130.pf160 #pcf116Rodape.pf160-vazio{display:none!important}
   function tg(el, c, on) { if (el && el.classList.contains(c) !== !!on) el.classList.toggle(c, !!on); }   // só escreve quando muda
   function txt(el, t) { if (el && el.textContent !== t) el.textContent = t; }
   function midxDe(el) { var p = el && el.closest && el.closest('.machine-panel'); return p ? (parseInt(String(p.id).replace('panel-', ''), 10) || 0) : 0; }
-  var S = PF160.S = { ver: {}, info: {} };
+  var S = PF160.S = { ver: {}, info: {}, ab5: {} };
   PF160.cfg = { recem: 3000 };
 
   // ── 1 · FOTOS ─────────────────────────────────────────────────────────────────────────────────
@@ -48587,11 +48604,22 @@ html.pf129.pf130.pf160 #pcf116Rodape.pf160-vazio{display:none!important}
     tg(sec, 'pf160-sec5', vg);
     if (!vg) return;   // as vagas são do PF129: sem elas, nada aqui (e o lembrete fica onde sempre esteve)
     var gs = [].slice.call(box.querySelectorAll(':scope > .photo-item-group')), feitas = [], nd = 0;
+    var fx = false, ab = false, y0 = null;   // PCF_V162 (#317): nada troca de lugar debaixo do dedo; sem o PF162, igual ao V160
+    try { fx = !!(window.PF162 && PF162.ativo()); ab = fx && PF162.aberta(sec); if (fx && ab && S.ab5[i] && box.offsetParent && PF162.gradeAVista() === box) y0 = box.getBoundingClientRect().top; } catch (e) { nota(e, 'pf162'); fx = false; }
     gs.forEach(function (g) {
       var it = g.querySelector('.photo-item'), e = g.classList.contains('pf129-feita') ? 'f' : (g.classList.contains('pf129-nd') ? 'n' : '');
-      if (g.__pf160 !== undefined && !g.__pf160 && e) { g.__pf160rec = Date.now(); setTimeout(depoisJa, PF160.cfg.recem + 60); }   // acabou de ficar feita/N/D
-      g.__pf160 = e;
-      tg(g, 'pf160-rec', !!e && !!g.__pf160rec && Date.now() - g.__pf160rec < PF160.cfg.recem);
+      if (fx) {   // a vaga que fica feita/N/D com a etapa aberta guarda a casa dela até a etapa fechar — sem relógio
+        if (!ab || !e) g.__pf160rec = 0;
+        else if (g.__pf160 !== undefined && !g.__pf160) g.__pf160rec = Date.now();
+        g.__pf160 = e;
+        tg(g, 'pf160-rec', !!e && !!g.__pf160rec);
+        tg(g, 'pf160-nova', PF162.nova(g));
+      } else {
+        if (g.__pf160 !== undefined && !g.__pf160 && e) { g.__pf160rec = Date.now(); setTimeout(depoisJa, PF160.cfg.recem + 60); }   // acabou de ficar feita/N/D
+        g.__pf160 = e;
+        tg(g, 'pf160-rec', !!e && !!g.__pf160rec && Date.now() - g.__pf160rec < PF160.cfg.recem);
+        tg(g, 'pf160-nova', false);
+      }
       tg(g, 'pf160-feito', !!e);
       tg(g, 'pf160-marc', !e && !!(it && it.classList.contains('photo-checked')));
       if (e === 'f') feitas.push(g); else if (e === 'n') nd++;
@@ -48613,6 +48641,10 @@ html.pf129.pf130.pf160 #pcf116Rodape.pf160-vazio{display:none!important}
     txt(st.querySelector('small'), ver ? 'tocar para esconder' : 'tocar para ver');
     txt(st.querySelector('.ch'), ver ? '▴' : '›');
     tg(box, 'pf160-esc', !ver);
+    if (fx) {   // PCF_V162 (#317): a faixa que nasce (ou some) em cima da grade não empurra as vagas — a rolagem compensa
+      try { if (y0 != null && box.offsetParent) { var d = box.getBoundingClientRect().top - y0; if (Math.abs(d) >= 1) PF162.rolar(d); } } catch (e) { nota(e, 'pf162 rolar'); }
+      S.ab5[i] = ab && !!box.offsetParent;
+    }
     var dr = body.querySelector(':scope > .drive-reminder');
     if (dr) {
       tg(dr, 'pf160-on', !!S.info[i]);
@@ -49215,6 +49247,196 @@ html.pf161 #pfOverlay.pf161-os #pf161Nao.pf161-vis:active{background:#fef2f2}
 })();
 </script>
 <!-- ████ FIM PCF_V161 (PF161) ████ -->
+
+<!-- ████ PCF_V162 (PF162) · ✋ NADA TROCA DE LUGAR DEBAIXO DO DEDO · 22/11/2026 ████ -->
+<style id="pf162Css">
+/* ═════ PCF_V162 (PF162) — só vale com html.pf162 (visual novo + PF160 + PF162 ligados; sem a classe: o V161). Tudo em @media screen. ═════ */
+@media screen{
+/* etapa 05 · a vaga feita (ou N/D) com a etapa aberta fica na casa dela, do tamanho das que faltam: nome + [📷 | miniatura] */
+html.pf160.pf162 .pf129-vagas > .photo-item-group.pf160-rec{min-height:0!important;padding:10px!important}
+html.pf160.pf162 .pf129-vagas > .photo-item-group.pf160-rec > .pf129-vst{display:none!important}
+html.pf160.pf162 .pf129-vagas > .photo-item-group.pf160-rec .photo-item{display:grid!important;grid-template-columns:minmax(0,1fr) 62px;gap:6px!important;align-items:stretch!important}
+html.pf160.pf162 .pf129-vagas > .photo-item-group.pf160-rec .photo-item > :not(button):not(input){grid-column:1 / -1;min-height:34px}
+html.pf160.pf162 .pf129-vagas > .photo-item-group.pf160-rec .photo-hint{display:none!important}
+html.pf160.pf162 .pf129-vagas > .photo-item-group.pf160-rec .photo-pname{font-size:13.5px!important}
+html.pf160.pf162 .pf129-vagas > .photo-item-group.pf160-rec .btn-photo-capture{width:auto!important;min-height:52px!important;margin:0!important;background:#fff!important;border:1.5px solid #fdba74!important;border-radius:12px!important}
+html.pf160.pf162 .pf129-vagas > .photo-item-group.pf160-rec .photo-nd-btn{width:auto!important;min-height:52px!important;margin:0!important;padding:0!important;border-radius:12px!important;font:700 13px Inter,system-ui,sans-serif!important}
+/* a miniatura da foto desta visita entra na casa do N/D (desde o instante em que a foto entra, antes de a vaga virar "feita") */
+html.pf160.pf162 .pf129-vagas > .photo-item-group.pf160-nova:not(.pf160-feito) > .photo-thumbs-mini,
+html.pf160.pf162 .pf129-vagas > .photo-item-group.pf160-nova.pf160-rec > .photo-thumbs-mini{position:static!important;padding-top:0!important;padding-right:0!important;gap:6px!important}
+html.pf160.pf162 .pf129-vagas > .photo-item-group.pf160-nova:not(.pf160-feito) > .photo-thumbs-mini > .photo-thumb-mini:not(.photo-thumb-prev),
+html.pf160.pf162 .pf129-vagas > .photo-item-group.pf160-nova.pf160-rec > .photo-thumbs-mini > .photo-thumb-mini:not(.photo-thumb-prev){position:absolute!important;right:10px;top:var(--pf162-nd,auto);bottom:auto;width:62px!important;height:52px!important;margin:0!important;border-radius:12px!important;border:2px solid #16a34a!important}
+html.pf160.pf162 .pf129-vagas > .photo-item-group.pf160-nova:not(.pf162-prev):not(.pf160-feito) > .photo-thumbs-mini,
+html.pf160.pf162 .pf129-vagas > .photo-item-group.pf160-nova.pf160-rec:not(.pf162-prev) > .photo-thumbs-mini{display:contents!important}   /* sem a anterior (↩), a caixa das miniaturas não ocupa linha */
+html.pf160.pf162 .pf129-vagas > .photo-item-group.pf160-nova > .photo-thumbs-mini > .photo-thumb-mini:not(.photo-thumb-prev) .photo-thumb-wrap{display:block;width:100%;height:100%}
+html.pf160.pf162 .pf129-vagas > .photo-item-group.pf160-nova > .photo-thumbs-mini > .photo-thumb-mini:not(.photo-thumb-prev) img{width:100%!important;height:100%!important;object-fit:cover;border-radius:10px}
+html.pf160.pf162 .pf129-vagas > .photo-item-group.pf160-nova:not(.pf160-feito) > .photo-thumbs-mini > .photo-thumb-mini:not(.photo-thumb-prev) ~ .photo-thumb-mini:not(.photo-thumb-prev),
+html.pf160.pf162 .pf129-vagas > .photo-item-group.pf160-nova.pf160-rec > .photo-thumbs-mini > .photo-thumb-mini:not(.photo-thumb-prev) ~ .photo-thumb-mini:not(.photo-thumb-prev),
+html.pf160.pf162 .pf129-vagas > .photo-item-group.pf160-nova:not(.pf160-feito) > .photo-thumbs-mini > .photo-thumb-count,
+html.pf160.pf162 .pf129-vagas > .photo-item-group.pf160-nova.pf160-rec > .photo-thumbs-mini > .photo-thumb-count{position:absolute!important;right:40px;top:calc(var(--pf162-nd,0px) + 34px);z-index:3;padding:0 5px;border-radius:7px;background:rgba(15,23,42,.78);color:#fff!important;font:700 10.5px/16px Inter,system-ui,sans-serif!important;pointer-events:none}   /* "2/3": a 2ª foto existe */
+html.pf160.pf162 .pf129-vagas > .photo-item-group.pf160-nova:not(.pf160-feito) > .photo-thumbs-mini > .pcf121-prev-nota,
+html.pf160.pf162 .pf129-vagas > .photo-item-group.pf160-nova.pf160-rec > .photo-thumbs-mini > .pcf121-prev-nota{display:none!important}   /* a ↩ apagada já diz que é a anterior */
+html.pf160.pf162 .pf129-vagas > .photo-item-group.pf160-nova:not(.pf160-feito) .photo-nd-btn,
+html.pf160.pf162 .pf129-vagas > .photo-item-group.pf160-nova.pf160-rec.pf129-feita .photo-nd-btn{visibility:hidden!important}
+/* a marcada à mão (sem foto): o "✓ MARCADA" vira etiqueta na borda, sem empurrar a vaga */
+html.pf160.pf162 .pf129-vagas > .photo-item-group.pf160-marc:not(.pf160-feito) > .pf129-vst{position:absolute;top:-9px;left:10px;margin:0!important;padding:0 6px;background:#f8fafc;line-height:16px}
+}
+</style>
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════════════
+   PCF_V162 (PF162) — ProperCare-backlog#317 · zero SQL · zero GAS. Regra: nada troca de lugar debaixo do dedo.
+   1 · FOTOS (etapa 05): a vaga que fica feita ou N/D com a etapa aberta NÃO some por relógio (o V160 tirava aos 3 s e, na grade
+       de 2 colunas, todas as vagas seguintes andavam uma casa — o toque caía na vaga errada). Ela fica na casa dela, do tamanho
+       das que faltam: nome + [📷 | miniatura] (ou [📷 | N/D]). Só se junta na faixa "✓ n feitas" quando a etapa fecha (ou a
+       coleta reabre). A faixa que nasce em cima da grade não empurra as vagas: a rolagem compensa. A marcada à mão vira
+       etiqueta na borda. 2 · PEÇAS e ITENS ADICIONAIS (PF159): quando o cartão pronto recolhe, o que está debaixo do último toque
+       (ou, sem ele, o primeiro cartão seguinte à vista) fica onde estava — a rolagem compensa; e a tela não corre atrás da
+       próxima peça quando algo foi segurado.
+   Gancho: PF160 (pintarFotos) e PF159 (recolher/abrir) perguntam PF162.ativo(); sem o PF162, fazem o mesmo de antes.
+   Chave de volta: localStorage pcf162 = off ⇒ o V161. Diagnóstico: PF162.erros, PF162.seguradas, PF162.rolou.
+   ═══════════════════════════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+  if (window.PF162) return;
+  var PF162 = window.PF162 = { versao: 'PCF_V162', erros: [], seguradas: 0, rolou: 0 };
+  function nota(e, onde) { try { PF162.erros.push(onde + ': ' + String(e && e.message || e)); if (PF162.erros.length > 30) PF162.erros.shift(); } catch (x) {} }
+  function chave() { try { return localStorage.getItem('pcf162') !== 'off'; } catch (e) { return true; } }
+  PF162.ativo = function () { try { return chave() && !!(window.PF130 && PF130.ligado && PF130.ligado()); } catch (e) { return false; } };
+  function tg(el, c, on) { if (el && el.classList.contains(c) !== !!on) el.classList.toggle(c, !!on); }
+
+  PF162.aberta = function (sec) { var h = sec && sec.querySelector(':scope > .section-header'); return !!(h && !h.classList.contains('collapsed')); };
+  PF162.nova = function (g) {   // a vaga tem foto DESTA visita (a anterior, ↩, não conta); a miniatura vai para a altura do N/D
+    var t = g && g.querySelector(':scope > .photo-thumbs-mini > .photo-thumb-mini:not(.photo-thumb-prev)');
+    tg(g, 'pf162-prev', !!g.querySelector(':scope > .photo-thumbs-mini > .photo-thumb-prev'));
+    if (!t) return false;
+    try { var nd = g.querySelector('.photo-nd-btn'); if (nd && nd.offsetParent) { var v = Math.round(nd.getBoundingClientRect().top - g.getBoundingClientRect().top - g.clientTop) + 'px'; if (g.style.getPropertyValue('--pf162-nd') !== v) g.style.setProperty('--pf162-nd', v); } } catch (e) { nota(e, 'nova'); }
+    return true;
+  };
+  PF162.rolar = function (d) {
+    PF162.rolou++;
+    try { window.scrollTo({ top: window.scrollY + d, left: 0, behavior: 'instant' }); } catch (e) { window.scrollBy(0, d); }
+  };
+
+  // ── o último toque: o que está debaixo dele é o que não pode andar ───────────────────────────────
+  var _pt = null;
+  document.addEventListener('pointerdown', function (ev) { _pt = { x: ev.clientX, y: ev.clientY, t: Date.now(), el: ev.target && ev.target.nodeType === 1 ? ev.target : null }; }, true);
+  function fixa(e) {   // dentro de barra fixa (topo, rodapé, folha): não anda com a rolagem
+    for (var n = e; n && n !== document.body; n = n.parentElement) { var p = getComputedStyle(n).position; if (p === 'fixed' || p === 'sticky') return true; }
+    return false;
+  }
+  function aVistaDe(s) {   // o topo do elemento aparece na tela (não atrás do topo nem do rodapé fixos)
+    var r = s.getBoundingClientRect(); if (!r.height || r.top < 0 || r.top > window.innerHeight - 8) return false;
+    var x = Math.min(Math.max(r.left + Math.min(24, r.width / 2), 1), window.innerWidth - 2), e = document.elementFromPoint(x, r.top + Math.min(6, r.height / 2));
+    return !!e && (s === e || s.contains(e));
+  }
+  function ancora(card) {
+    if (_pt && Date.now() - _pt.t < 15000) {
+      var e = _pt.el && _pt.el.isConnected && _pt.el.offsetParent ? _pt.el : document.elementFromPoint(_pt.x, _pt.y);   // o que o dedo tocou (mesmo depois de rolar)
+      if (e && e !== document.body && e !== document.documentElement && !card.contains(e) && !e.contains(card) && !fixa(e)) return e;
+    }
+    for (var n = card, k = 0; n && n !== document.body && k < 6; n = n.parentElement, k++) {
+      for (var s = n.nextElementSibling; s; s = s.nextElementSibling) {
+        if (!s.offsetParent) continue;
+        if (s.getBoundingClientRect().top > window.innerHeight) return null;
+        if (aVistaDe(s)) return s;
+      }
+    }
+    return null;
+  }
+  PF162.ancora = ancora;
+  PF162.firme = function (card, fn) {
+    var a = null, y0 = 0;
+    try { a = ancora(card); if (a) y0 = a.getBoundingClientRect().top; } catch (e) { nota(e, 'ancora'); a = null; }
+    fn();   // uma vez só; o erro dele sobe como no V161
+    if (!a || !a.isConnected) return false;
+    try { var d = a.getBoundingClientRect().top - y0; if (Math.abs(d) >= 1) PF162.rolar(d); PF162.seguradas++; return true; } catch (e) { nota(e, 'firme'); return false; }
+  };
+
+  // ── a classe e a miniatura no mesmo instante em que a foto entra ─────────────────────────────────
+  try {
+    var _d = window.PF160 && PF160.depois;
+    if (typeof _d === 'function' && !_d.__pf162) {
+      PF160.depois = function () {
+        try { tg(document.documentElement, 'pf162', PF162.ativo() && !!(window.PF160 && PF160.ativo && PF160.ativo())); } catch (e) { nota(e, 'classe'); }
+        var r = _d.apply(this, arguments);
+        try { vigiarPaineis(); } catch (e) { nota(e, 'vigiar'); }
+        return r;
+      };
+      PF160.depois.__pf162 = true;
+    }
+  } catch (e) { nota(e, 'embrulho depois'); }
+  // a mesma foto aparece em mais de um lugar (a "Foto geral" também no cartão "Antes de começar", lá no alto): o que cresce ACIMA
+  // da grade de fotos à vista não pode empurrá-la — a rolagem compensa
+  function gradeAVista() {
+    var gs = document.querySelectorAll('#machineContent > .machine-panel .pf129-vagas');
+    for (var k = 0; k < gs.length; k++) {   // bem dentro da tela: o topo da grade acima da faixa de baixo e um bom pedaço dela à vista (só a beirada não segura nada)
+      var g = gs[k]; if (!g.offsetParent) continue; var r = g.getBoundingClientRect();
+      if (r.bottom > 140 && r.top < window.innerHeight - 200) return g;
+    }
+    return null;
+  }
+  function segurarGrade(fn, ctx, args) {
+    var a = null, y0 = 0;
+    try { if (PF162.ativo() && document.documentElement.classList.contains('pf162')) { a = gradeAVista(); if (a) y0 = a.getBoundingClientRect().top; } } catch (e) { nota(e, 'grade'); a = null; }
+    var r = fn.apply(ctx, args);
+    try { if (a && a.isConnected) { var d = a.getBoundingClientRect().top - y0; if (Math.abs(d) >= 1) PF162.rolar(d); } } catch (e) { nota(e, 'grade rolar'); }
+    return r;
+  }
+  PF162.gradeAVista = gradeAVista;
+  // guarda da grade à vista: o que muda de tamanho ACIMA dela depois (ciclos do hub, faixa, cartão do alto) também não a empurra.
+  // Rolagem (do técnico ou da tela) só registra onde a grade está; o ResizeObserver roda antes de pintar, então nada pisca.
+  var _gr = { el: null, top: 0 };
+  function registrar() { try { var g = gradeAVista(); _gr.el = g; _gr.top = g ? g.getBoundingClientRect().top : 0; } catch (e) { _gr.el = null; } }
+  function registrarRapido() {   // na rolagem: só relê a grade que já estava à vista (sem varrer a tela); sumiu ⇒ procura de novo
+    try { var g = _gr.el; if (g && g.isConnected && g.offsetParent) { var r = g.getBoundingClientRect(); if (r.bottom > 140 && r.top < window.innerHeight - 200) { _gr.top = r.top; return; } } } catch (e) {}
+    registrar();
+  }
+  function conferirGrade() {
+    try {
+      if (PF162.ativo() && document.documentElement.classList.contains('pf162')) {
+        var g = gradeAVista();
+        if (g && g === _gr.el) { var d = g.getBoundingClientRect().top - _gr.top; if (Math.abs(d) >= 1) PF162.rolar(d); }
+      }
+    } catch (e) { nota(e, 'guarda'); }
+    registrar();
+  }
+  window.addEventListener('scroll', registrarRapido, { passive: true });   // no próprio evento (antes de qualquer repintura do quadro)
+  var _ro = null; try { _ro = new ResizeObserver(conferirGrade); } catch (e) { _ro = null; }
+  function vigiarPaineis() {
+    if (!_ro) return;
+    document.querySelectorAll('#machineContent > .machine-panel, #machineContent > .machine-panel > *').forEach(function (c) { if (!c.__pf162ro) { c.__pf162ro = 1; _ro.observe(c); } });
+  }
+  PF162.conferirGrade = conferirGrade;
+  try {
+    var _sdb = window.syncDoneButtonsForKey;   // muda o rótulo do botão da foto no "Antes de começar" ("✅ Foto ok (1/3)"), que pode quebrar linha
+    if (typeof _sdb === 'function' && !_sdb.__pf162) {
+      window.syncDoneButtonsForKey = function () { return segurarGrade(_sdb, this, arguments); };
+      window.syncDoneButtonsForKey.__pf162 = true;
+    }
+  } catch (e) { nota(e, 'embrulho sync'); }
+  try {
+    var _rpt = window.renderPhotoThumbs;
+    if (typeof _rpt === 'function' && !_rpt.__pf162) {
+      window.renderPhotoThumbs = function (midx, key) {
+        var r = segurarGrade(_rpt, this, arguments);
+        try {
+          if (PF162.ativo() && document.documentElement.classList.contains('pf162')) {
+            document.querySelectorAll('.pf129-vagas > .photo-item-group > .photo-thumbs-mini[data-pkey]').forEach(function (t) {
+              if (t.getAttribute('data-pkey') === String(key) && String(t.getAttribute('data-midx')) === String(midx)) tg(t.parentNode, 'pf160-nova', PF162.nova(t.parentNode));
+            });
+          }
+        } catch (e) { nota(e, 'thumbs'); }
+        return r;
+      };
+      window.renderPhotoThumbs.__pf162 = true;
+      window.renderPhotoThumbs.__pf160 = !!_rpt.__pf160;
+    }
+  } catch (e) { nota(e, 'embrulho thumbs'); }
+
+  try { if (window.PF160 && PF160.depois) PF160.depois(); } catch (e) { nota(e, 'inicio'); }
+})();
+</script>
+<!-- ████ FIM PCF_V162 (PF162) ████ -->
 
 </body>
 </html>
