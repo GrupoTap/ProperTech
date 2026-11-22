@@ -48594,7 +48594,7 @@ html.pf129.pf130.pf160 #pcf116Rodape.pf160-vazio{display:none!important}
   function tg(el, c, on) { if (el && el.classList.contains(c) !== !!on) el.classList.toggle(c, !!on); }   // só escreve quando muda
   function txt(el, t) { if (el && el.textContent !== t) el.textContent = t; }
   function midxDe(el) { var p = el && el.closest && el.closest('.machine-panel'); return p ? (parseInt(String(p.id).replace('panel-', ''), 10) || 0) : 0; }
-  var S = PF160.S = { ver: {}, info: {}, ab5: {} };
+  var S = PF160.S = { ver: {}, info: {} };
   PF160.cfg = { recem: 3000 };
 
   // ── 1 · FOTOS ─────────────────────────────────────────────────────────────────────────────────
@@ -48604,8 +48604,8 @@ html.pf129.pf130.pf160 #pcf116Rodape.pf160-vazio{display:none!important}
     tg(sec, 'pf160-sec5', vg);
     if (!vg) return;   // as vagas são do PF129: sem elas, nada aqui (e o lembrete fica onde sempre esteve)
     var gs = [].slice.call(box.querySelectorAll(':scope > .photo-item-group')), feitas = [], nd = 0;
-    var fx = false, ab = false, y0 = null;   // PCF_V162 (#317): nada troca de lugar debaixo do dedo; sem o PF162, igual ao V160
-    try { fx = !!(window.PF162 && PF162.ativo()); ab = fx && PF162.aberta(sec); if (fx && ab && S.ab5[i] && box.offsetParent && PF162.gradeAVista() === box) y0 = box.getBoundingClientRect().top; } catch (e) { nota(e, 'pf162'); fx = false; }
+    var fx = false, ab = false;   // PCF_V162 (#317): nada troca de lugar debaixo do dedo; sem o PF162, igual ao V160 (a faixa que nasce em cima não empurra a grade: a guarda do PF162)
+    try { fx = !!(window.PF162 && PF162.ativo()); ab = fx && PF162.aberta(sec); } catch (e) { nota(e, 'pf162'); fx = false; }
     gs.forEach(function (g) {
       var it = g.querySelector('.photo-item'), e = g.classList.contains('pf129-feita') ? 'f' : (g.classList.contains('pf129-nd') ? 'n' : '');
       if (fx) {   // a vaga que fica feita/N/D com a etapa aberta guarda a casa dela até a etapa fechar — sem relógio
@@ -48641,10 +48641,6 @@ html.pf129.pf130.pf160 #pcf116Rodape.pf160-vazio{display:none!important}
     txt(st.querySelector('small'), ver ? 'tocar para esconder' : 'tocar para ver');
     txt(st.querySelector('.ch'), ver ? '▴' : '›');
     tg(box, 'pf160-esc', !ver);
-    if (fx) {   // PCF_V162 (#317): a faixa que nasce (ou some) em cima da grade não empurra as vagas — a rolagem compensa
-      try { if (y0 != null && box.offsetParent) { var d = box.getBoundingClientRect().top - y0; if (Math.abs(d) >= 1) PF162.rolar(d); } } catch (e) { nota(e, 'pf162 rolar'); }
-      S.ab5[i] = ab && !!box.offsetParent;
-    }
     var dr = body.querySelector(':scope > .drive-reminder');
     if (dr) {
       tg(dr, 'pf160-on', !!S.info[i]);
@@ -49375,13 +49371,6 @@ html.pf160.pf162 .pf129-vagas > .photo-item-group.pf160-marc:not(.pf160-feito) >
     }
     return null;
   }
-  function segurarGrade(fn, ctx, args) {
-    var a = null, y0 = 0;
-    try { if (PF162.ativo() && document.documentElement.classList.contains('pf162')) { a = gradeAVista(); if (a) y0 = a.getBoundingClientRect().top; } } catch (e) { nota(e, 'grade'); a = null; }
-    var r = fn.apply(ctx, args);
-    try { if (a && a.isConnected) { var d = a.getBoundingClientRect().top - y0; if (Math.abs(d) >= 1) PF162.rolar(d); } } catch (e) { nota(e, 'grade rolar'); }
-    return r;
-  }
   PF162.gradeAVista = gradeAVista;
   // guarda da grade à vista: o que muda de tamanho ACIMA dela depois (ciclos do hub, faixa, cartão do alto) também não a empurra.
   // Rolagem (do técnico ou da tela) só registra onde a grade está; o ResizeObserver roda antes de pintar, então nada pisca.
@@ -49408,17 +49397,10 @@ html.pf160.pf162 .pf129-vagas > .photo-item-group.pf160-marc:not(.pf160-feito) >
   }
   PF162.conferirGrade = conferirGrade;
   try {
-    var _sdb = window.syncDoneButtonsForKey;   // muda o rótulo do botão da foto no "Antes de começar" ("✅ Foto ok (1/3)"), que pode quebrar linha
-    if (typeof _sdb === 'function' && !_sdb.__pf162) {
-      window.syncDoneButtonsForKey = function () { return segurarGrade(_sdb, this, arguments); };
-      window.syncDoneButtonsForKey.__pf162 = true;
-    }
-  } catch (e) { nota(e, 'embrulho sync'); }
-  try {
     var _rpt = window.renderPhotoThumbs;
     if (typeof _rpt === 'function' && !_rpt.__pf162) {
       window.renderPhotoThumbs = function (midx, key) {
-        var r = segurarGrade(_rpt, this, arguments);
+        var r = _rpt.apply(this, arguments);
         try {
           if (PF162.ativo() && document.documentElement.classList.contains('pf162')) {
             document.querySelectorAll('.pf129-vagas > .photo-item-group > .photo-thumbs-mini[data-pkey]').forEach(function (t) {
