@@ -9,7 +9,7 @@
  * O activate abaixo apaga qualquer cache antigo com prefixo 'propertech-'.
  */
 const CACHE_BASE = 'propertech-';
-const CACHE = CACHE_BASE + 'v163';  // 21/11/2026 — par do PCF_V161 (🗂 tela da OS no padrão — ProperCare-backlog#309). Sem bump, o celular serve o V160 do cache.
+const CACHE = CACHE_BASE + 'v164';  // 22/11/2026 — par do PCF_V162 (✋ nada troca de lugar debaixo do dedo — ProperCare-backlog#317). Sem bump, o celular serve o V161 do cache.
 // antes: 'v162'  // 21/11/2026 — par do PCF_V160 (📸 fotos, assinaturas e o fechamento no padrão — ProperCare-backlog#309). Sem bump, o celular serve o V159 do cache.
 // antes: 'v161'  // 20/11/2026 — par do PCF_V159 (🧩 peças e itens adicionais: uma aberta por vez, a pronta recolhe — ProperCare-backlog#309). Sem bump, o celular serve o V158 do cache.
 // antes: 'v160'  // 20/11/2026 — par do PCF_V158 (🧭 hub, etapas em linha de 56 px e "Antes de começar" no padrão — ProperCare-backlog#309). Sem bump, o celular serve o V157 do cache.
@@ -89,6 +89,7 @@ const CACHE = CACHE_BASE + 'v163';  // 21/11/2026 — par do PCF_V161 (🗂 tela
 //        PCF_V109 ↔  propertech-v111  (11/09 — o PDF da preventiva: compress:true + PDF na fila do IndexedDB)
 //        PCF_V160 ↔  propertech-v162  (21/11 — 📸 fotos em faixa, assinaturas em linha, folha do Concluir e sai o cartão "Situação do envio" — ProperCare-backlog#309)
 //        PCF_V161 ↔  propertech-v163  (21/11 — 🗂 tela da OS no padrão: topo da coleta, um cartão no alto, Peças da OS em linhas, tarefas em pílulas — ProperCare-backlog#309)
+//        PCF_V162 ↔  propertech-v164  (22/11 — ✋ fotos da etapa 05 não trocam de lugar debaixo do dedo; peças e itens recolhem sem mexer no que está sob o toque — ProperCare-backlog#317)
 //        PCF_V159 ↔  propertech-v161  (20/11 — 🧩 peças e itens adicionais: uma aberta por vez, a pronta recolhe — ProperCare-backlog#309)
 //        PCF_V158 ↔  propertech-v160  (20/11 — 🧭 hub, etapas em linha de 56 px e "Antes de começar" no padrão — ProperCare-backlog#309)
 //        PCF_V157 ↔  propertech-v159  (20/11 — ✨ o visual novo vira o padrão; voltar ao de sempre pede o motivo — ProperCare-backlog#309)
