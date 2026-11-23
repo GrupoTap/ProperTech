@@ -1906,8 +1906,16 @@ html[data-boot="pipeline"] #pf113Splash{display:flex;position:fixed;inset:0;z-in
   vagas (a rolagem compensa). Pecas e itens adicionais: o recolher automatico segura o que esta debaixo do ultimo toque.
   Chave de volta pcf162=off. Bloco PF162 no fim do body + 1 gancho no PF160 e 1 no PF159 (sem o PF162 fazem o mesmo de antes).
 -->
-<title>ProperCare Field · PGP Preventivas v36 · build PCF_V162</title>
-<meta name="app-build" content="PCF_V162" data-date="2026-11-22">
+<!--
+  PCF_V163 · O ENVIO DIZ O QUE JA FOI E O QUE FALTA · 22/11/2026 · feito SOBRE o PCF_V162 no ar · par sw propertech-v165 · zero SQL,
+  zero GAS. ProperCare-backlog#300 (parte 2). Uma regra so por maquina (PF163.selo: Registrada, Mudou depois do registro, Na fila,
+  Nao atendida, Envio parado, Falta registrar) usada pela janela de envio (dois grupos: Para registrar agora e Ja no sistema, sem
+  caixa e sem "Faltam N" na que ja foi), pelo fim da coleta, pelo trocador de maquinas e pela grade do visual antigo; o backup do
+  rascunho vira "Copia no servidor - falta registrar"; o botao diz o que falta ("Registrar a Maq. 4"); "Proxima" pula a
+  registrada; topo "Completa" e "N parado(s)". Chave de volta pcf163=off. Bloco PF163 no fim do body; nenhuma linha do corpo mudou.
+-->
+<title>ProperCare Field · PGP Preventivas v36 · build PCF_V163</title>
+<meta name="app-build" content="PCF_V163" data-date="2026-11-22">
 <!-- ══════════════════════════════════════════════════════════════════════════
      PCF V89 — 13/08/2026 — O CARD TRAVADO EM "⏳ sincronizando…" E O PIPELINE
      QUE ÀS VEZES ERA DE OUTRA OS. Feita EM CIMA da V88. 100% ADITIVA.
@@ -49419,6 +49427,478 @@ html.pf160.pf162 .pf129-vagas > .photo-item-group.pf160-marc:not(.pf160-feito) >
 })();
 </script>
 <!-- ████ FIM PCF_V162 (PF162) ████ -->
+
+<!-- ████ PCF_V163 (PF163) · 🔧 O ENVIO DIZ O QUE JÁ FOI E O QUE FALTA · 22/11/2026 ████ -->
+<style id="pf163Css">
+/* ═════ PCF_V163 (PF163) — só vale com html.pf163 (chave pcf163 ligada). ProperCare-backlog#300, parte 2. ═════ */
+@media screen{
+/* janela de envio: 2 grupos */
+html.pf163 .pcf116-sheet .pf140-nota{display:none!important}
+html.pf163 .pcf116-sheet .pf163-grupo{display:flex;justify-content:space-between;align-items:baseline;font:800 13.5px Inter,system-ui,sans-serif;letter-spacing:.02em;color:#475569;margin:12px 2px 2px}
+html.pf163 .pcf116-ov.pf163-esp .pcf116-sheet{visibility:hidden}
+html.pf163 .pcf116-sheet .pf163-grupo b{color:#0f172a;font-size:14px}
+html.pf163 .pcf116-sheet .pf163-grupo:first-child{margin-top:2px}
+html.pf163 .pcf116-sheet .pf163-vazio{font-size:13px;color:#475569;padding:8px 2px 10px;border-bottom:1px solid #e2e8f0}
+html.pf163 .pcf116-sheet .pf163-selo{font-size:13px;font-weight:700;line-height:1.35;margin-top:3px;white-space:normal}
+html.pf163 .pcf116-sheet .pf163-selo.ok{color:#15803d}
+html.pf163 .pcf116-sheet .pf163-selo.alt{color:#b45309}
+html.pf163 .pcf116-sheet .pf163-selo.fila{color:#1d4ed8}
+html.pf163 .pcf116-sheet .pf163-dica{display:block;font-size:12.5px;font-weight:600;color:#475569;margin-top:2px;white-space:normal}
+html.pf163 .pcf116-sheet .pf163-ic{width:24px;flex:none;text-align:center;font-size:19px;line-height:1}
+html.pf163 .pcf116-sheet .pf163-bt{margin-top:6px;display:inline-flex;align-items:center;min-height:52px;border-radius:10px;border:1.5px solid #94a3b8;background:#fff;color:#334155;font:700 13.5px Inter,system-ui,sans-serif;padding:0 12px;cursor:pointer}
+html.pf163 .pcf116-sheet .pf163-bt[aria-pressed="true"]{border-color:#16a34a;color:#15803d;background:#f0fdf4}
+html.pf163 .pcf116-sheet label[data-pf163g="sistema"]{cursor:default}
+html.pf163 .pcf116-sheet label[data-pf163g="sistema"] > input.pcf116-cb{display:none!important}
+html.pf163 .pcf116-sheet label[data-pf163g="sistema"] .ja,
+html.pf163 .pcf116-sheet label[data-pf163g="sistema"] .falta,
+html.pf163 .pcf116-sheet label[data-pf163g="sistema"] .pf138-est,
+html.pf163 .pcf116-sheet label[data-pf163g="sistema"] .pct,
+html.pf163 .pcf116-sheet label[data-pf163g="sistema"] .pf156-trava{display:none!important}
+html.pf163 .pcf116-sheet label[data-pf163g="sistema"]:not([data-pf163k="na"]) .pf140-na{display:none!important}
+html.pf163 .pcf116-sheet label[data-pf163k="pronta"] .pct{display:none!important}
+/* fim da coleta e trocador de máquinas: um selo por máquina */
+html.pf163 .pf122-lin .pf163-dica{display:block;font-size:12px;font-weight:600;color:#64748b;margin-top:2px;white-space:normal}
+html.pf163 .pf122-lin .pf163-dica.alt{color:#b45309}
+html.pf163 .pf122-selo.pf163-alt{background:#fff7ed!important;color:#9a3412!important;border-color:#fdba74!important}
+html.pf163.pf130 .pf122-lin .q{color:#334155!important;opacity:1!important}
+html.pf163 .pf130-li small .pf163-st{font-weight:700}
+html.pf163 .pf130-li small .pf163-st.ok{color:#15803d}
+html.pf163 .pf130-li small .pf163-st.alt{color:#b45309}
+html.pf163 .pf130-li small .pf163-st.falta{color:#c2410c}
+html.pf163 .pf130-li small .pf163-st.fila{color:#1d4ed8}
+html.pf163 .pcf116-maq.pf163-alt{border-color:#f59e0b!important}
+html.pf163 .pcf116-maq.pf163-falta{border-color:#f97316!important}
+/* topo: "✓ Completa" verde */
+html.pf163 #progressPill.pf163-completa{background:#16a34a!important;color:#fff!important}
+}
+</style>
+<script>
+/* ════════════════════════════════════════════════════════════════════════════════════════════════════════════
+   PCF_V163 (PF163) — ProperCare-backlog#300, parte 2 · 22/11/2026 · zero SQL, zero GAS. Arranjo aprovado pelo Fernando
+   (prévia na issue, "faça a parte 2" em 22/11).
+   O caso: preventiva de 6 máquinas; a tela dizia coisas diferentes da mesma máquina em lugares diferentes ("Recebido pelo
+   servidor" × "O sistema manteve…"), "Concluir coleta das 6 máquinas" com uma sem registro, "☁️ Salvo no servidor" que era só a
+   cópia do rascunho, "Faltam 15 item(ns)" numa máquina já gravada, "Próxima" apontando para máquina já registrada.
+   UMA regra por máquina — PF163.selo(i) — e todos os lugares a usam:
+     ✅ Registrada às HH:MM · ✏️ Mudou depois do registro · ⏳ Na fila · 🚫 Não atendida · ⛔ Envio parado ·
+     ⏳ Falta registrar (completa / faltam N / ⛔ trava do PF156) · Sem dados
+   Fontes (nada novo no aparelho): o estado por OS do PF138 (tentativas e respostas), a marca de não atendida do PF140,
+   as travas do PF156 e o progresso do V116.
+     1 · janela de envio: "Para registrar agora" (com caixa) e "Já no sistema" (sem caixa, um selo só, sem "Faltam N");
+         máquina mudada depois do registro diz o que fazer e tem "🔁 Registrar de novo"; "🚫 Marcar como não atendida…".
+     2 · fim da coleta (selos do PF122) e trocador de máquinas (▾): o mesmo selo; backup do rascunho = "💾 Cópia no
+         servidor … — falta registrar" (não é o registro); "✅ Recebido pelo servidor" = "✅ Registrada".
+     3 · botão do envio: com máquina já registrada e outra não, diz o que falta ("🔧 Registrar a Máq. 4"); "Próxima" pula
+         a registrada; o cartão "✅ Preventiva registrada" diz "⏳ Falta registrar: Máq. 4" enquanto faltar; topo "✓ Completa"
+         (verde) e "⚠ N parado(s)" (abre a Fila de envios, que diz de qual máquina é cada um).
+   Só ADITIVO: embrulho por window[nome]/elemento; nada no corpo mudou. Chave de volta: localStorage pcf163 = off ⇒ o V162.
+   ════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+  var PF163 = window.PF163 = { versao: 'PCF_V163', log: [] };
+  function nota(e, onde) { try { PF163.log.push({ onde: onde, msg: String(e && e.message || e), em: Date.now() }); if (PF163.log.length > 60) PF163.log.shift(); } catch (x) {} }
+  function ativo() { try { return localStorage.getItem('pcf163') !== 'off'; } catch (e) { return true; } }
+  PF163.ativo = ativo;
+  try { if (ativo()) document.documentElement.classList.add('pf163'); } catch (e) {}
+  function $(id) { return document.getElementById(id); }
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function hhmm(t) { var d = new Date(t || Date.now()); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+  function campo(i, k) { try { return String(pgpFieldVal(i, k) || ''); } catch (e) { var el = document.querySelector('[data-key="m' + i + '_' + k + '"]'); return el ? String(el.value || '') : ''; } }
+  function nMaq() { try { return (typeof machines !== 'undefined' && machines && machines.length) ? machines.length : document.querySelectorAll('#machineContent > .machine-panel').length; } catch (e) { return 1; } }
+  function tipo() { try { return String(_pgpTipoVisita || 'inspecao'); } catch (e) { return 'inspecao'; } }
+  function ehPrev() { return tipo() === 'preventiva'; }
+  function temDado(i) { try { return !!pgpHasMachineData(i); } catch (e) { return false; } }
+  function prog(i) { try { return window.pcf116Progresso ? pcf116Progresso(i) : { pct: 0, falta: 0 }; } catch (e) { return { pct: 0, falta: 0 }; } }
+  var TXT = Object.getOwnPropertyDescriptor(Node.prototype, 'textContent');
+
+  // ── a marca de não atendida do PF140 (pf140_na_v1), com as MESMAS chaves de máquina dele ──────────────────────
+  function chavesDe(i) {
+    var ks = [];
+    try {
+      var eq = null; try { eq = pgpGetLoadedMachineForIndex(i); } catch (e) {}
+      var ck = function (x) { try { return compactKey(String(x || '')); } catch (e) { return String(x || '').toLowerCase(); } };
+      var compat = function (a, b) { var ka = ck(a), kb = ck(b); return !ka || !kb || ka === kb; };
+      if (eq && eq.id && compat(eq.brand, campo(i, 'marca')) && compat(eq.model, campo(i, 'modelo')) && compat(eq.serial, campo(i, 'ns'))) ks.push(String(eq.id));
+      try { ks.push(String(pgpMachineKey(campo(i, 'razao_social'), campo(i, 'marca'), campo(i, 'modelo'), campo(i, 'ns')))); } catch (e) {}
+      if (eq && (eq.id || eq.machine_id)) ks.push(String(eq.id || eq.machine_id));
+      var ns = campo(i, 'ns'); if (ns) ks.push(ns);
+    } catch (e) {}
+    return ks.filter(function (k, j) { return k && ks.indexOf(k) === j; });
+  }
+  function naoAtendida(i) {
+    try {
+      var os = String(window._PGP_OS_ID || '').trim(); if (!os) return null;
+      var o = JSON.parse(localStorage.getItem('pf140_na_v1') || '{}') || {}, ks = chavesDe(i), melhor = null;
+      Object.keys(o).forEach(function (k) {
+        var m = o[k]; if (!m || m.os !== os || m.estado === 'recusada') return;
+        if (!(m.chaves || []).some(function (c) { return ks.indexOf(String(c)) >= 0; })) return;
+        if (!melhor || (m.quando || 0) > (melhor.quando || 0)) melhor = m;
+      });
+      return melhor && !melhor.desfazer ? melhor : null;
+    } catch (e) { return null; }
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  // A REGRA — o selo de uma máquina da tela. g = 'agora' (vai neste envio) | 'sistema' (já foi; sem caixa)
+  // ════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  function quandoServ(st) {
+    var a = st && st.a, rec = st && st.rec;
+    if (a && a.serv) return a.serv.conf || a.serv.t;
+    if (rec && rec.quandoAntigo) return rec.quandoAntigo;
+    if (st && st.reg && st.reg.quando) return st.reg.quando;
+    return 0;
+  }
+  var _memo = {}, _memoEm = 0;
+  function esquecer() { _memo = {}; _memoEm = 0; }
+  PF163.esquecer = esquecer;
+  function selo(i) {   // memo curto (400 ms): num ciclo vários lugares perguntam a mesma coisa
+    var k = i + '|' + tipo() + '|' + String(window._PGP_OS_ID || ''), agora = Date.now();
+    if (agora - _memoEm > 400) { _memo = {}; _memoEm = agora; }
+    return _memo[k] || (_memo[k] = seloAgora(i));
+  }
+  function seloAgora(i) {
+    var prev = ehPrev(), st = null;
+    try { st = (window.PF138 && typeof PF138.estadoMaq === 'function') ? PF138.estadoMaq(i, tipo()) : null; } catch (e) { nota(e, 'estado'); }
+    var e = st ? st.e : 'nada', q = quandoServ(st), h = q ? hhmm(q) : '—';
+    var na = naoAtendida(i);
+    if (na) return { k: 'na', g: 'sistema', cls: 'ok', ic: '🚫', txt: '🚫 Não atendida', curto: '🚫 Não atendida',
+                     dica: na.estado === 'ok' ? 'registrada no sistema' : 'sobe sozinha ao conectar' };
+    if (e === 'semAssinatura') {   // enviada por versão anterior do app (sem tentativas): só "Registrada" com o registro confirmado
+      var rs = st.reg && st.reg.estado;
+      if (rs === 'fila') e = 'fila';
+      else if (rs !== 'ok' && rs !== 'duplicado') e = 'nada';
+    }
+    if (e === 'ok' || e === 'semAssinatura') return { k: 'reg', g: 'sistema', cls: 'ok', ic: '✅', txt: '✅ Registrada às ' + h, curto: '✅ Registrada ' + h, dica: '' };
+    if (e === 'mantida') {
+      var u = st.a && st.a.ultimo, hu = u ? hhmm(u.t) : '—';
+      return { k: 'reg', g: 'sistema', cls: 'ok', ic: '✅', txt: '✅ Registrada às ' + h, curto: '✅ Registrada ' + h,
+               dica: st.a && st.a.incerta ? 'O envio das ' + hu + ' subiu sem confirmação — se mudou algo, confira com o escritório.'
+                                          : 'O envio das ' + hu + ' não trocou o registro — se você mudou algo, avise o escritório.' };
+    }
+    if (e === 'alterada' && st.a && (st.a.conf.length || (st.rec && st.rec.antigo)) && prev && !st.novaVisita)
+      return { k: 'alt', g: 'sistema', cls: 'alt', ic: '✏️', txt: '✏️ Mudou depois do registro das ' + h, curto: '✏️ Mudou depois',
+               dica: 'Avise o escritório para reabrir a OS; depois registre de novo.' };
+    if (e === 'fila') return { k: 'fila', g: 'sistema', cls: 'fila', ic: '⏳', txt: '⏳ Na fila — sobe sozinha ao conectar', curto: '⏳ Na fila', dica: '' };
+    if (e === 'parada') return { k: 'parada', g: 'agora', cls: 'trava', ic: '⛔', txt: '⛔ Envio parado — ☰ → Fila de envios', curto: '⛔ Envio parado', dica: '' };
+    // ainda não registrada nesta OS (nada · novaVisita · outraOS · alterada só na fila ou de inspeção)
+    if (!temDado(i)) return { k: 'vazia', g: 'agora', cls: '', ic: '', txt: 'Sem dados', curto: '', dica: '' };
+    var pend = []; try { if (window.PF156 && PF156.ativo()) pend = PF156.pendencias(i) || []; } catch (x) {}
+    var foto = false; try { foto = !!(window.PF130 && typeof PF130.travado === 'function' && PF130.travado(i)); } catch (x) {}
+    if (foto) return { k: 'trava', g: 'agora', cls: 'falta', ic: '🔒', txt: '🔒 Falta a foto do horímetro', curto: '🔒 Falta a foto do horímetro', dica: '' };
+    if (pend.length) return { k: 'trava', g: 'agora', cls: 'falta', ic: '⛔', txt: '⛔ Não registra ainda', curto: '⛔ Falta resolver', dica: '' };
+    var p = prog(i);
+    if (p.falta > 0) return { k: 'falta', g: 'agora', cls: 'falta', ic: '⏳', txt: '⏳ Falta registrar · faltam ' + p.falta + ' itens', curto: '⏳ Falta registrar', dica: '' };
+    return { k: 'pronta', g: 'agora', cls: 'falta', ic: '⏳', txt: '✓ Completa — pronta para ' + (prev ? 'registrar' : 'enviar'), curto: '⏳ Falta ' + (prev ? 'registrar' : 'enviar'), dica: '' };
+  }
+  PF163.selo = selo;
+
+  // ════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  // 1 · A JANELA DE ENVIO (.pcf116-ov do V116, depois do PF138 60 ms, PF140, PF156 40 ms e do lock do PF130)
+  // ════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  function ehJanelaEnvio(ov) {
+    var h = ov && ov.querySelector('.pcf116-sheet > h3');
+    return !!(h && /^(Registrar preventiva|Enviar inspeção)$/.test(String(h.textContent || '').trim()) && ov.querySelector('.pcf116-cb'));
+  }
+  function grupoHtml(id, titulo, n) { return '<div class="pf163-grupo" id="' + id + '"><span>' + esc(titulo) + '</span><b>' + n + '</b></div>'; }
+  function tratarJanela(ov) {
+    if (!ativo() || !ov || ov.__pf163 || !ehJanelaEnvio(ov) || !document.body.contains(ov)) return;
+    ov.__pf163 = true; esquecer();
+    try {
+      var corpo = ov.querySelector('.pcf116-corpo'); if (!corpo) return;
+      var prev = ehPrev(), agora = [], sistema = [], temFila = false;
+      [].forEach.call(ov.querySelectorAll('.pcf116-cb'), function (cb) {
+        var i = parseInt(cb.getAttribute('data-idx'), 10); if (isNaN(i)) return;
+        var lab = cb.closest('label') || cb.parentNode, s = selo(i), alvo = lab.querySelector('div') || lab;
+        lab.setAttribute('data-pf163g', s.g); lab.setAttribute('data-pf163k', s.k);
+        if (s.g === 'sistema') {
+          if (s.k === 'fila' || (s.k === 'na' && s.dica !== 'registrada no sistema')) temFila = true;
+          if (cb.checked) { cb.checked = false; try { cb.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) {} }
+          cb.disabled = true;
+          var ic = document.createElement('span'); ic.className = 'pf163-ic'; ic.textContent = s.ic; lab.insertBefore(ic, lab.firstChild);
+          if (s.k !== 'na') {
+            var d = document.createElement('div'); d.className = 'pf163-selo ' + s.cls;
+            d.innerHTML = esc(s.txt) + (s.dica ? '<span class="pf163-dica">' + esc(s.dica) + '</span>' : '');
+            alvo.appendChild(d);
+          }
+          if (s.k === 'alt') {
+            var b = document.createElement('button'); b.type = 'button'; b.className = 'pf163-bt'; b.setAttribute('data-pf163', 'denovo'); b.setAttribute('aria-pressed', 'false');
+            b.textContent = '🔁 Registrar de novo (OS reaberta)';
+            b.addEventListener('click', function (e) {
+              e.preventDefault(); e.stopPropagation();
+              var on = b.getAttribute('aria-pressed') !== 'true';
+              b.setAttribute('aria-pressed', on ? 'true' : 'false');
+              b.textContent = on ? '✓ Vai neste envio — toque para tirar' : '🔁 Registrar de novo (OS reaberta)';
+              cb.disabled = !on; cb.checked = on;
+              try { cb.dispatchEvent(new Event('change', { bubbles: true })); } catch (x) {}
+            });
+            alvo.appendChild(b);
+          }
+          // tocar na linha não marca a caixa escondida (a label repassaria o toque)
+          lab.addEventListener('click', function (e) { if (!(e.target.closest && e.target.closest('button,textarea,a'))) e.preventDefault(); });
+          sistema.push(lab);
+        } else {
+          if (s.k === 'pronta') { var d2 = document.createElement('div'); d2.className = 'pf163-selo ok'; d2.textContent = s.txt; alvo.appendChild(d2); }
+          agora.push(lab);
+        }
+      });
+      // a ordem: grupo "agora" em cima (na ordem das máquinas), "já no sistema" embaixo
+      var vao = agora.filter(function (l) { return l.getAttribute('data-pf163k') !== 'vazia'; }).length;   // "Sem dados" não vai: não conta
+      var g1 = document.createElement('div'); g1.className = 'pf163-g1';
+      g1.innerHTML = grupoHtml('pf163G1', prev ? 'Para registrar agora' : 'Para enviar agora', vao) +
+                     (vao ? '' : '<div class="pf163-vazio">Nenhuma ' + (agora.length ? 'com dados para ' + (prev ? 'registrar' : 'enviar') + '.' : '— todas já estão no sistema.') + '</div>');
+      agora.forEach(function (l) { g1.appendChild(l); });
+      var g2 = document.createElement('div'); g2.className = 'pf163-g2';
+      if (sistema.length) {
+        g2.innerHTML = grupoHtml('pf163G2', temFila ? 'Já enviadas' : 'Já no sistema', sistema.length);
+        sistema.forEach(function (l) { g2.appendChild(l); });
+      }
+      var nt = corpo.querySelector('.pf140-nota');
+      corpo.insertBefore(g2, nt ? nt.nextSibling : corpo.firstChild);
+      corpo.insertBefore(g1, g2);
+      var sub = ov.querySelector('.pcf116-sheet > .pcf116-sub');
+      if (sub) sub.textContent = (prev ? 'Marque as máquinas que vão agora. Depois sai o PDF' + ' (com assinaturas).' : 'Marque as máquinas que vão agora. Depois sai o PDF.') +
+                                 ' O que você desmarcar continua salvo no celular.';
+      renomearNA(ov);
+      // o PF140 repinta o controle dele (innerHTML): o nome do botão volta a ser trocado; e "↩ Desfazer" numa não atendida
+      // devolve a caixa (a linha fica onde está — nada troca de lugar debaixo do dedo — e vai neste envio)
+      try { new MutationObserver(function () { renomearNA(ov); desfeitas(ov); }).observe(corpo, { childList: true, subtree: true }); } catch (e) {}
+    } catch (e) { nota(e, 'janela'); }
+  }
+  function desfeitas(ov) {
+    [].forEach.call(ov.querySelectorAll('label[data-pf163k="na"]'), function (lab) {
+      try {
+        var cb = lab.querySelector('.pcf116-cb'), i = cb ? parseInt(cb.getAttribute('data-idx'), 10) : NaN; if (isNaN(i) || naoAtendida(i)) return;
+        esquecer(); var s = selo(i); if (s.k === 'na') return;
+        lab.setAttribute('data-pf163g', 'agora'); lab.setAttribute('data-pf163k', s.k);
+        var ic = lab.querySelector('.pf163-ic'); if (ic) ic.remove();
+        cb.disabled = false;
+        if (!cb.checked) { cb.checked = true; try { cb.dispatchEvent(new Event('change', { bubbles: true })); } catch (x) {} }
+      } catch (e) { nota(e, 'desfeita'); }
+    });
+  }
+  function renomearNA(ov) {
+    [].forEach.call(ov.querySelectorAll('.pf140-bt[data-a="abrir"]'), function (b) { if (b.textContent !== '🚫 Marcar como não atendida…') b.textContent = '🚫 Marcar como não atendida…'; });
+  }
+  PF163.tratarJanela = tratarJanela;
+  try {
+    new MutationObserver(function (ms) {
+      if (!ativo()) return;
+      ms.forEach(function (m) { [].forEach.call(m.addedNodes || [], function (nd) {
+        if (!(nd.nodeType === 1 && nd.classList && nd.classList.contains('pcf116-ov'))) return;
+        var esp = ehJanelaEnvio(nd); if (esp) nd.classList.add('pf163-esp');   // a folha só aparece arrumada (os outros blocos mexem nela até ~60 ms)
+        setTimeout(function () { try { tratarJanela(nd); } finally { nd.classList.remove('pf163-esp'); } }, 140);
+      }); });
+    }).observe(document.body, { childList: true });
+  } catch (e) { nota(e, 'observer janela'); }
+
+  // ════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  // 2 · O MESMO SELO NO FIM DA COLETA (PF122), NO TROCADOR (▾) E NA GRADE DO VISUAL ANTIGO
+  // ════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  // "✅ Recebido pelo servidor" = registrada; o ☁️ do rascunho (PF123) é a cópia de segurança, não o registro
+  try {
+    if (window.PF122 && PF122.ROT && !PF122.ROT.ok.__pf163) {
+      var _ok = PF122.ROT.ok;
+      PF122.ROT.ok = function (h, fechou) { if (!ativo()) return _ok.apply(this, arguments); return fechou ? '✅ Registrada, tarefa concluída' : '✅ Registrada às ' + h; };
+      PF122.ROT.ok.__pf163 = true;
+    }
+  } catch (e) { nota(e, 'rot'); }
+  try {
+    var _dec = window.PF122 && PF122.decorarSalvo;
+    if (typeof _dec === 'function' && !_dec.__pf163) {
+      PF122.decorarSalvo = function (m, sv, e0) {
+        var r = _dec.apply(this, arguments);
+        try {
+          if (ativo() && r && r.cod === 'servidor' && /^☁️ Salvo no servidor às /.test(r.txt || ''))
+            r = Object.assign({}, r, { txt: r.txt.replace(/^☁️ Salvo no servidor às /, '💾 Cópia no servidor às ') + ' — falta ' + (m && m.tipo === 'inspecao' ? 'enviar' : 'registrar') });
+        } catch (e) { nota(e, 'decorar'); }
+        return r;
+      };
+      PF122.decorarSalvo.__pf163 = true;
+    }
+  } catch (e) { nota(e, 'embrulho decorar'); }
+  // a frase do 💾 depois de subir: "☁️ Salvo no servidor (6 máquinas) às 15:45 e no celular — conferido."
+  function fraseCopia(t) {
+    if (!ativo() || !t) return t;
+    var m = /^☁️ (?:Salvo no servidor(?: \((\d+) máquinas\))?|(\d+) de (\d+) máquinas no servidor) às (\d{2}:\d{2}) e (?:todas )?no celular — conferido\.(.*)$/.exec(t);
+    if (!m) return t;
+    var parte = m[2] ? ' de ' + m[2] + ' de ' + m[3] + ' máquinas' : '';
+    return '📝 Salvo no celular — conferido. 💾 Cópia de segurança' + parte + ' no servidor às ' + m[4] + ' (não é o registro).' + m[5];
+  }
+  PF163.fraseCopia = fraseCopia;
+  function prenderTexto(el, traduz, marca) {   // o setter transforma; o getter devolve o que o dono escreveu (as comparações dele seguem valendo)
+    if (!el || el[marca] || !TXT) return;
+    var d = Object.getOwnPropertyDescriptor(el, 'textContent') || TXT;
+    el[marca] = true;
+    Object.defineProperty(el, 'textContent', {
+      configurable: true,
+      get: function () { var atual = d.get.call(this); return (this.__pf163Bruto != null && this.__pf163Feito === atual) ? this.__pf163Bruto : atual; },
+      set: function (v) { var b = String(v == null ? '' : v), t = traduz.call(this, b); this.__pf163Bruto = b; d.set.call(this, t); this.__pf163Feito = d.get.call(this); }
+    });
+    try { var a0 = d.get.call(el); if (a0) el.textContent = a0; } catch (e) {}
+  }
+  function linhasFim() {
+    var box = $('pf122Selos'); if (!box) return;
+    [].forEach.call(box.querySelectorAll('.pf122-lin'), function (lin) {
+      try {
+        var q = lin.querySelector('.q'), m = q && /^Máq\. (\d+)\b/.exec(String(q.textContent || '')), sp = lin.querySelector('.pf122-selo');
+        if (!m || !sp) return;
+        var s = selo(parseInt(m[1], 10) - 1);
+        if (sp.__pf163o == null) sp.__pf163o = TXT.get.call(sp);
+        var o = sp.__pf163o, quer = o;
+        if (s.k === 'alt' || s.k === 'na') quer = s.txt;
+        else if (s.k === 'reg' && /^✅ Registrada às \d{2}:\d{2}$/.test(o)) quer = s.txt;   // a mesma hora da janela ("tarefa concluída" fica)
+        if (TXT.get.call(sp) !== quer) TXT.set.call(sp, quer);
+        sp.classList.toggle('pf163-alt', s.k === 'alt');
+        var dk = (s.k === 'alt' || (s.k === 'reg' && s.dica)) ? s.dica : '', di = lin.querySelector('.pf163-dica');
+        if (dk && !di) { di = document.createElement('span'); di.className = 'pf163-dica'; lin.appendChild(di); }
+        if (di) { if (!dk) di.remove(); else { if (di.textContent !== dk) di.textContent = dk; di.classList.toggle('alt', s.k === 'alt'); } }
+      } catch (e) { nota(e, 'linha fim'); }
+    });
+  }
+  function gradeAntiga() {   // o visual de sempre (pf129_visual_novo = 0): "Máq. 1 · 100% ✓ · ✅ enviada"
+    var box = $('pcf116Maquinas'); if (!box || !box.getClientRects().length) return;   // no visual novo a grade fica escondida
+    [].forEach.call(box.querySelectorAll('button.pcf116-maq'), function (b, k) {
+      try {
+        var tn = b.firstChild; if (!tn || tn.nodeType !== 3) return;
+        var s = selo(k), base = String(tn.nodeValue || '').replace(/ · (✅ enviada|⏳ na fila)$/, '').replace(/ · (✅ Registrada \d{2}:\d{2}|✏️ Mudou depois|⏳ Na fila|🚫 Não atendida|⛔ Envio parado|⏳ Falta registrar|⏳ Falta enviar|⛔ Falta resolver)$/, '');
+        var quer = s.g === 'sistema' || s.k === 'parada' ? 'Máq. ' + (k + 1) + ' · ' + s.curto : (s.curto ? base + ' · ' + s.curto : base);
+        if (tn.nodeValue !== quer) tn.nodeValue = quer;
+        b.classList.toggle('pf163-alt', s.k === 'alt');
+        b.classList.toggle('pf163-falta', s.g === 'agora' && s.k !== 'vazia' && n2() > 1);
+      } catch (e) { nota(e, 'grade'); }
+    });
+  }
+  function n2() { return nMaq(); }
+  function trocador() {
+    var f = $('pf130Folha'); if (!f) return;
+    [].forEach.call(f.querySelectorAll('.pf130-li[data-i]'), function (li) {
+      try {
+        var k = parseInt(li.getAttribute('data-i'), 10), sm = li.querySelector('small'); if (isNaN(k) || !sm || sm.querySelector('.pf163-st')) return;
+        var s = selo(k), base = String(sm.textContent || '').replace(/ · (✅ enviada|⏳ na fila)$/, '');
+        sm.textContent = base;
+        if (s.curto && !/🔒/.test(base)) { var sp = document.createElement('span'); sp.className = 'pf163-st ' + s.cls; sp.textContent = ' · ' + s.curto; sm.appendChild(sp); }
+      } catch (e) { nota(e, 'trocador'); }
+    });
+  }
+  try {
+    var _tr = window.PF130 && PF130.trocador;
+    if (typeof _tr === 'function' && !_tr.__pf163) {
+      PF130.trocador = function () { var r = _tr.apply(this, arguments); try { if (ativo()) trocador(); } catch (e) { nota(e, 'trocador'); } return r; };
+      PF130.trocador.__pf163 = true;
+    }
+  } catch (e) { nota(e, 'embrulho trocador'); }
+
+  // ════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  // 3 · O BOTÃO DO ENVIO, A "PRÓXIMA" E O TOPO
+  // ════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  // a coleta inteira: quem já foi (reg), quem mudou depois (alt), quem falta (pend, nº da máquina), envio parado
+  function situacao() {
+    var n = nMaq(), o = { n: n, reg: 0, alt: [], pend: [], parada: 0 };
+    for (var i = 0; i < n; i++) {
+      if (!temDado(i)) continue;
+      var s = selo(i);
+      if (s.k === 'parada') o.parada++;
+      else if (s.g === 'sistema') { o.reg++; if (s.k === 'alt') o.alt.push(i + 1); }
+      else o.pend.push(i + 1);
+    }
+    return o;
+  }
+  PF163.situacao = situacao;
+  function listaMaq(l) { return l.length === 1 ? 'Máq. ' + l[0] : 'Máq. ' + l.slice(0, -1).join(', ') + ' e ' + l[l.length - 1]; }
+  function rotuloEnvio() {
+    if (!ativo()) return '';
+    var o = situacao(), prev = ehPrev(); if (o.n < 2) return '';
+    if (o.parada) return '';                                 // o "⚠ Envio parado — ☰ → Fila de envios" do PF138 manda
+    if (o.reg && o.pend.length) return (prev ? '🔧 Registrar ' : '📤 Enviar ') + (o.pend.length === 1 ? 'a Máq. ' + o.pend[0] : o.pend.length + ' máquinas');
+    if (!o.pend.length && o.alt.length) return '✏️ ' + (o.alt.length === 1 ? 'Máq. ' + o.alt[0] + ' mudou' : o.alt.length + ' máquinas mudaram') + ' depois do registro';
+    return '';
+  }
+  PF163.rotuloEnvio = rotuloEnvio;
+  // o cartão "✅ Preventiva registrada · Voltar para OS" (V28/V99) aparecia com máquina sem registro
+  function cartaoVoltar() {
+    var w = $('pgpReturnToOSContainer'); if (!w || w.style.display === 'none') return;
+    var st = w.querySelector('.pgp-return-os-txt strong'), sm = w.querySelector('.pgp-return-os-txt small'); if (!st || !sm) return;
+    if (st.__pf163o == null) { st.__pf163o = st.textContent; sm.__pf163o = sm.textContent; }
+    if (!/Preventiva registrada/.test(st.__pf163o)) return;   // o cartão de entrada ("🔧 Tarefa da OS …") não muda
+    var o = situacao(), qt = st.__pf163o, qs = sm.__pf163o;
+    if (o.n > 1 && o.reg && o.pend.length) { qt = '⏳ Falta registrar: ' + listaMaq(o.pend); qs = 'As outras já estão no sistema. Registre ' + (o.pend.length > 1 ? 'as que faltam' : 'a que falta') + ' (ou marque não atendida) e volte para a OS.'; }
+    if (st.textContent !== qt) st.textContent = qt;
+    if (sm.textContent !== qs) sm.textContent = qs;
+  }
+  function prenderBotao() {
+    var be = $('pcf116BtnEnviar'); if (!be || !TXT) return;
+    var d = Object.getOwnPropertyDescriptor(be, 'textContent');
+    if (d && d.set && d.set.__pf163) return;
+    // o PF138 tem de estar POR BAIXO (o rótulo dele: envio parado, coleta enviada, alteração): instala antes, e só então embrulha
+    if (!(d && d.set && d.set.__pf138)) { try { if (window.PF138 && PF138.pintarBotao) PF138.pintarBotao(); } catch (e) {} d = Object.getOwnPropertyDescriptor(be, 'textContent'); }
+    if (window.PF138 && !(d && d.set && d.set.__pf138)) return;   // ainda não: o próximo ciclo tenta
+    d = d || TXT;
+    var setter = function (v) {
+      d.set.call(this, v);
+      try {
+        var s = String(v == null ? '' : v);
+        if (ativo() && !this.classList.contains('is-busy') && !/^⏳/.test(s)) { var t = rotuloEnvio(); if (t && TXT.get.call(this) !== t) TXT.set.call(this, t); }
+      } catch (e) { nota(e, 'rotulo'); }
+    };
+    setter.__pf163 = true;
+    setter.__pf138 = true;   // o prender() do PF138 não embrulha de novo por cima deste: ele JÁ está por baixo (conferido acima)
+    Object.defineProperty(be, 'textContent', { configurable: true, get: function () { return d.get.call(this); }, set: setter });
+  }
+  function proxima() {
+    var bp = $('pcf116BtnProxima'); if (!bp || bp.style.display === 'none') return;
+    var i = parseInt(bp.dataset.idx || '', 10); if (isNaN(i)) return;
+    if (selo(i).g !== 'sistema') return;
+    var n = nMaq(), cur = 0; try { cur = pgpGetMachineIndex(currentMachine); } catch (e) {}
+    for (var k = 1; k < n; k++) {
+      var j = (cur + k) % n; if (j === cur) continue;
+      var s = selo(j); if (s.g === 'sistema' || s.k === 'vazia') continue;
+      var mod = campo(j, 'modelo') || campo(j, 'marca'), ns = campo(j, 'ns');
+      bp.innerHTML = esc('Próxima: Máq. ' + (j + 1) + (mod ? ' — ' + mod : '')) + '<br><span style="font-size:13px;font-weight:600">' + esc((ns ? 'série ' + ns + ' · ' : '') + prog(j).pct + '% preenchida') + '</span> →';
+      bp.dataset.idx = String(j); return;
+    }
+    bp.style.display = 'none'; bp.dataset.idx = '';
+  }
+  function pilula(b) { var m = /^✓ (\d+)\/(\d+)$/.exec(b); return (ativo() && m && m[1] === m[2] && m[1] !== '0') ? '✓ Completa' : b; }
+  function fila(b) {
+    if (!ativo()) return b;
+    var m = /^(?:⏳ (\d+))?(?: · )?(?:⚠ (\d+))?$/.exec(b); if (!m || (!m[1] && !m[2])) return b;
+    var c = { perdidos: 0 }; try { c = pgpFilaContagens(); } catch (e) {}
+    var cf = m[2] ? (c.perdidos ? '⚠ ' + m[2] + ' a conferir' : '⚠ ' + m[2] + (m[2] === '1' ? ' parado' : ' parados')) : '';   // "Conferir" também conta foto não guardada
+    return [m[1] ? '⏳ ' + m[1] : '', cf].filter(Boolean).join(' · ');
+  }
+  PF163.pilula = pilula; PF163.fila = fila;
+
+  // ── o ciclo: prende os textos assim que os elementos existem e repinta o que não tem evento próprio ──────────────────
+  var _obs = {};
+  function vigiar(id, fn) {
+    var el = $(id); if (!el || _obs[id] === el) return;
+    _obs[id] = el;
+    try { new MutationObserver(function () { if (ativo()) fn(); }).observe(el, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-idx', 'style'] }); } catch (e) { nota(e, 'vigiar ' + id); }
+  }
+  function ciclo() {
+    if (!ativo()) return;
+    try { prenderBotao(); } catch (e) { nota(e, 'botao'); }
+    try { prenderTexto($('pf122Msg'), fraseCopia, '__pf163Copia'); } catch (e) { nota(e, 'msg'); }
+    try {
+      var pp = $('progressPill');
+      if (pp && !pp.__pf163Pil) { prenderTexto(pp, function (b) { var t = pilula(b); this.classList.toggle('pf163-completa', t !== b); return t; }, '__pf163Pil'); }
+    } catch (e) { nota(e, 'pilula'); }
+    try { prenderTexto($('pf130Fila'), fila, '__pf163Fila'); } catch (e) { nota(e, 'fila'); }
+    vigiar('pf122Selos', linhasFim); vigiar('pcf116Maquinas', gradeAntiga); vigiar('pcf116BtnProxima', proxima); vigiar('pgpReturnToOSContainer', cartaoVoltar);
+    try { linhasFim(); gradeAntiga(); proxima(); cartaoVoltar(); } catch (e) { nota(e, 'ciclo'); }
+    try { if (window.PF138 && PF138.pintarBotao) PF138.pintarBotao(); } catch (e) {}
+  }
+  PF163.ciclo = ciclo;
+  var _tq = null;
+  function agendar() { clearTimeout(_tq); _tq = setTimeout(ciclo, 400); }
+  document.addEventListener('input', function () { esquecer(); agendar(); }, true);
+  document.addEventListener('change', agendar, true);
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') agendar(); });
+  setInterval(function () { try { if (ativo() && document.visibilityState === 'visible') ciclo(); } catch (e) {} }, 3000);
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { setTimeout(ciclo, 300); }); else setTimeout(ciclo, 300);
+})();
+</script>
+<!-- ████ FIM PCF_V163 (PF163) ████ -->
 
 </body>
 </html>
